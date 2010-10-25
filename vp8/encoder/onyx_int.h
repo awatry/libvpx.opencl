@@ -29,7 +29,6 @@
 #include "vpx/internal/vpx_codec_internal.h"
 #include "mcomp.h"
 
-#define INTRARDOPT
 //#define SPEEDSTATS 1
 #define MIN_GF_INTERVAL             4
 #define DEFAULT_GF_INTERVAL         7
@@ -233,20 +232,20 @@ typedef struct VP8_ENCODER_RTCD
 typedef struct
 {
 
-    DECLARE_ALIGNED(16, short, Y1quant[QINDEX_RANGE][4][4]);
-    DECLARE_ALIGNED(16, short, Y1quant_shift[QINDEX_RANGE][4][4]);
-    DECLARE_ALIGNED(16, short, Y1zbin[QINDEX_RANGE][4][4]);
-    DECLARE_ALIGNED(16, short, Y1round[QINDEX_RANGE][4][4]);
+    DECLARE_ALIGNED(16, short, Y1quant[QINDEX_RANGE][16]);
+    DECLARE_ALIGNED(16, short, Y1quant_shift[QINDEX_RANGE][16]);
+    DECLARE_ALIGNED(16, short, Y1zbin[QINDEX_RANGE][16]);
+    DECLARE_ALIGNED(16, short, Y1round[QINDEX_RANGE][16]);
 
-    DECLARE_ALIGNED(16, short, Y2quant[QINDEX_RANGE][4][4]);
-    DECLARE_ALIGNED(16, short, Y2quant_shift[QINDEX_RANGE][4][4]);
-    DECLARE_ALIGNED(16, short, Y2zbin[QINDEX_RANGE][4][4]);
-    DECLARE_ALIGNED(16, short, Y2round[QINDEX_RANGE][4][4]);
+    DECLARE_ALIGNED(16, short, Y2quant[QINDEX_RANGE][16]);
+    DECLARE_ALIGNED(16, short, Y2quant_shift[QINDEX_RANGE][16]);
+    DECLARE_ALIGNED(16, short, Y2zbin[QINDEX_RANGE][16]);
+    DECLARE_ALIGNED(16, short, Y2round[QINDEX_RANGE][16]);
 
-    DECLARE_ALIGNED(16, short, UVquant[QINDEX_RANGE][4][4]);
-    DECLARE_ALIGNED(16, short, UVquant_shift[QINDEX_RANGE][4][4]);
-    DECLARE_ALIGNED(16, short, UVzbin[QINDEX_RANGE][4][4]);
-    DECLARE_ALIGNED(16, short, UVround[QINDEX_RANGE][4][4]);
+    DECLARE_ALIGNED(16, short, UVquant[QINDEX_RANGE][16]);
+    DECLARE_ALIGNED(16, short, UVquant_shift[QINDEX_RANGE][16]);
+    DECLARE_ALIGNED(16, short, UVzbin[QINDEX_RANGE][16]);
+    DECLARE_ALIGNED(16, short, UVround[QINDEX_RANGE][16]);
 
     DECLARE_ALIGNED(16, short, zrun_zbin_boost_y1[QINDEX_RANGE][16]);
     DECLARE_ALIGNED(16, short, zrun_zbin_boost_y2[QINDEX_RANGE][16]);
@@ -274,6 +273,7 @@ typedef struct
 
     int last_alt_ref_sei;
     int is_src_frame_alt_ref;
+    int is_next_src_alt_ref;
 
     int gold_is_last; // golden frame same as last frame ( short circuit gold searches)
     int alt_is_last;  // Alt reference frame same as last ( short circuit altref search)
@@ -310,15 +310,12 @@ typedef struct
     int subseqblockweight;
     int errthresh;
 
-#ifdef INTRARDOPT
     int RDMULT;
     int RDDIV ;
 
     TOKENEXTRA *rdtok;
-    int intra_rd_opt;
     vp8_writer rdbc;
     int intra_mode_costs[10];
-#endif
 
 
     CODING_CONTEXT coding_context;
@@ -464,14 +461,14 @@ typedef struct
 
     int target_bandwidth;
     long long bits_left;
-    FIRSTPASS_STATS total_stats;
-    FIRSTPASS_STATS this_frame_stats;
+    FIRSTPASS_STATS *total_stats;
+    FIRSTPASS_STATS *this_frame_stats;
     FIRSTPASS_STATS *stats_in, *stats_in_end;
     struct vpx_codec_pkt_list  *output_pkt_list;
     int                          first_pass_done;
     unsigned char *fp_motion_map;
-    FILE *fp_motion_mapfile;
-    int fpmm_pos;
+
+    unsigned char *fp_motion_map_stats, *fp_motion_map_stats_save;
 
 #if 0
     // Experimental code for lagged and one pass

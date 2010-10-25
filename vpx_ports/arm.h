@@ -9,16 +9,19 @@
  */
 
 
-#if !defined __INC_FIRSTPASS_H
-#define      __INC_FIRSTPASS_H
+#ifndef VPX_PORTS_ARM_H
+#define VPX_PORTS_ARM_H
+#include <stdlib.h>
+#include "config.h"
 
-extern void vp8_init_first_pass(VP8_COMP *cpi);
-extern void vp8_first_pass(VP8_COMP *cpi);
-extern void vp8_end_first_pass(VP8_COMP *cpi);
+/*ARMv5TE "Enhanced DSP" instructions.*/
+#define HAS_EDSP  0x01
+/*ARMv6 "Parallel" or "Media" instructions.*/
+#define HAS_MEDIA 0x02
+/*ARMv7 optional NEON instructions.*/
+#define HAS_NEON  0x04
 
-extern void vp8_init_second_pass(VP8_COMP *cpi);
-extern void vp8_second_pass(VP8_COMP *cpi);
-extern void vp8_end_second_pass(VP8_COMP *cpi);
+int arm_cpu_caps(void);
 
-extern size_t vp8_firstpass_stats_sz(unsigned int mb_count);
 #endif
+

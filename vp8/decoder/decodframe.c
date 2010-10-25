@@ -40,27 +40,24 @@
 
 void vp8cx_init_de_quantizer(VP8D_COMP *pbi)
 {
-    int r, c;
     int i;
     int Q;
     VP8_COMMON *const pc = & pbi->common;
 
     for (Q = 0; Q < QINDEX_RANGE; Q++)
     {
-        pc->Y1dequant[Q][0][0] = (short)vp8_dc_quant(Q, pc->y1dc_delta_q);
-        pc->Y2dequant[Q][0][0] = (short)vp8_dc2quant(Q, pc->y2dc_delta_q);
-        pc->UVdequant[Q][0][0] = (short)vp8_dc_uv_quant(Q, pc->uvdc_delta_q);
+        pc->Y1dequant[Q][0] = (short)vp8_dc_quant(Q, pc->y1dc_delta_q);
+        pc->Y2dequant[Q][0] = (short)vp8_dc2quant(Q, pc->y2dc_delta_q);
+        pc->UVdequant[Q][0] = (short)vp8_dc_uv_quant(Q, pc->uvdc_delta_q);
 
         // all the ac values = ;
         for (i = 1; i < 16; i++)
         {
             int rc = vp8_default_zig_zag1d[i];
-            r = (rc >> 2);
-            c = (rc & 3);
 
-            pc->Y1dequant[Q][r][c] = (short)vp8_ac_yquant(Q);
-            pc->Y2dequant[Q][r][c] = (short)vp8_ac2quant(Q, pc->y2ac_delta_q);
-            pc->UVdequant[Q][r][c] = (short)vp8_ac_uv_quant(Q, pc->uvac_delta_q);
+            pc->Y1dequant[Q][rc] = (short)vp8_ac_yquant(Q);
+            pc->Y2dequant[Q][rc] = (short)vp8_ac2quant(Q, pc->y2ac_delta_q);
+            pc->UVdequant[Q][rc] = (short)vp8_ac_uv_quant(Q, pc->uvac_delta_q);
         }
     }
 }
@@ -253,7 +250,7 @@ void vp8_decode_macroblock(VP8D_COMP *pbi, MACROBLOCKD *xd)
         }
 
         DEQUANT_INVOKE (&pbi->dequant, dc_idct_add_y_block)
-                        (xd->qcoeff, &xd->block[0].dequant[0][0],
+                        (xd->qcoeff, xd->block[0].dequant,
                          xd->predictor, xd->dst.y_buffer,
                          xd->dst.y_stride, xd->eobs, xd->block[24].diff);
     }
@@ -268,13 +265,13 @@ void vp8_decode_macroblock(VP8D_COMP *pbi, MACROBLOCKD *xd)
             if (xd->eobs[i] > 1)
             {
                 DEQUANT_INVOKE(&pbi->dequant, idct_add)
-                    (b->qcoeff, &b->dequant[0][0],  b->predictor,
+                    (b->qcoeff, b->dequant,  b->predictor,
                     *(b->base_dst) + b->dst, 16, b->dst_stride);
             }
             else
             {
                 IDCT_INVOKE(RTCD_VTABLE(idct), idct1_scalar_add)
-                    (b->qcoeff[0] * b->dequant[0][0], b->predictor,
+                    (b->qcoeff[0] * b->dequant[0], b->predictor,
                     *(b->base_dst) + b->dst, 16, b->dst_stride);
                 ((int *)b->qcoeff)[0] = 0;
             }
@@ -284,13 +281,13 @@ void vp8_decode_macroblock(VP8D_COMP *pbi, MACROBLOCKD *xd)
     else
     {
         DEQUANT_INVOKE (&pbi->dequant, idct_add_y_block)
-                        (xd->qcoeff, &xd->block[0].dequant[0][0],
+                        (xd->qcoeff, xd->block[0].dequant,
                          xd->predictor, xd->dst.y_buffer,
                          xd->dst.y_stride, xd->eobs);
     }
 
     DEQUANT_INVOKE (&pbi->dequant, idct_add_uv_block)
-                    (xd->qcoeff+16*16, &xd->block[16].dequant[0][0],
+                    (xd->qcoeff+16*16, xd->block[16].dequant,
                      xd->predictor+16*16, xd->dst.u_buffer, xd->dst.v_buffer,
                      xd->dst.uv_stride, xd->eobs+16);
 }
@@ -462,7 +459,7 @@ static void setup_token_decoder(VP8D_COMP *pbi,
             partition_size = user_data_end - partition;
         }
 
-        if (partition + partition_size > user_data_end)
+        if (user_data_end - partition < partition_size)
             vpx_internal_error(&pc->error, VPX_CODEC_CORRUPT_FRAME,
                                "Truncated packet or corrupt partition "
                                "%d length", i + 1);
@@ -564,12 +561,15 @@ int vp8_decode_frame(VP8D_COMP *pbi)
     MACROBLOCKD *const xd  = & pbi->mb;
     const unsigned char *data = (const unsigned char *)pbi->Source;
     const unsigned char *const data_end = data + pbi->source_sz;
-    int first_partition_length_in_bytes;
+    unsigned int first_partition_length_in_bytes;
 
     int mb_row;
     int i, j, k, l;
     const int *const mb_feature_data_bits = vp8_mb_feature_data_bits;
 
+    if (data_end - data < 3)
+        vpx_internal_error(&pc->error, VPX_CODEC_CORRUPT_FRAME,
+                           "Truncated packet");
     pc->frame_type = (FRAME_TYPE)(data[0] & 1);
     pc->version = (data[0] >> 1) & 7;
     pc->show_frame = (data[0] >> 4) & 1;
@@ -577,7 +577,7 @@ int vp8_decode_frame(VP8D_COMP *pbi)
         (data[0] | (data[1] << 8) | (data[2] << 16)) >> 5;
     data += 3;
 
-    if (data + first_partition_length_in_bytes > data_end)
+    if (data_end - data < first_partition_length_in_bytes)
         vpx_internal_error(&pc->error, VPX_CODEC_CORRUPT_FRAME,
                            "Truncated packet or corrupt partition 0 length");
     vp8_setup_version(pc);
