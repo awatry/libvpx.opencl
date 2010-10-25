@@ -320,7 +320,7 @@ void vp8_dealloc_compressor_data(VP8_COMP *cpi)
     vpx_free(cpi->tok);
     cpi->tok = 0;
 
-    // Structure used to minitor GF useage
+    // Structure used to minitor GF usage
     if (cpi->gf_active_flags != 0)
         vpx_free(cpi->gf_active_flags);
 
