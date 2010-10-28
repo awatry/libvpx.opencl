@@ -17,6 +17,8 @@ sym(vp8_short_walsh4x4_sse2):
     push        rbp
     mov         rbp, rsp
     SHADOW_ARGS_TO_STACK 3
+    SAVE_XMM
+    GET_GOT     rbx
     push        rsi
     push        rdi
     ; end prolog
@@ -141,6 +143,8 @@ sym(vp8_short_walsh4x4_sse2):
     ; begin epilog
     pop rdi
     pop rsi
+    RESTORE_GOT
+    RESTORE_XMM
     UNSHADOW_ARGS
     pop         rbp
     ret

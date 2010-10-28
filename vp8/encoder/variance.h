@@ -32,6 +32,16 @@
      unsigned int *sad_array\
     )
 
+#define prototype_sad_multi_same_address_1(sym)\
+    void (sym)\
+    (\
+     const unsigned char *src_ptr, \
+     int source_stride, \
+     const unsigned char *ref_ptr, \
+     int  ref_stride, \
+     unsigned short *sad_array\
+    )
+
 #define prototype_sad_multi_dif_address(sym)\
     void (sym)\
     (\
@@ -138,6 +148,31 @@ extern prototype_sad_multi_same_address(vp8_variance_sad8x16x3);
 #endif
 extern prototype_sad_multi_same_address(vp8_variance_sad4x4x3);
 
+#ifndef vp8_variance_sad16x16x8
+#define vp8_variance_sad16x16x8 vp8_sad16x16x8_c
+#endif
+extern prototype_sad_multi_same_address_1(vp8_variance_sad16x16x8);
+
+#ifndef vp8_variance_sad16x8x8
+#define vp8_variance_sad16x8x8 vp8_sad16x8x8_c
+#endif
+extern prototype_sad_multi_same_address_1(vp8_variance_sad16x8x8);
+
+#ifndef vp8_variance_sad8x8x8
+#define vp8_variance_sad8x8x8 vp8_sad8x8x8_c
+#endif
+extern prototype_sad_multi_same_address_1(vp8_variance_sad8x8x8);
+
+#ifndef vp8_variance_sad8x16x8
+#define vp8_variance_sad8x16x8 vp8_sad8x16x8_c
+#endif
+extern prototype_sad_multi_same_address_1(vp8_variance_sad8x16x8);
+
+#ifndef vp8_variance_sad4x4x8
+#define vp8_variance_sad4x4x8 vp8_sad4x4x8_c
+#endif
+extern prototype_sad_multi_same_address_1(vp8_variance_sad4x4x8);
+
 //-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 
 #ifndef vp8_variance_sad16x16x4d
@@ -219,6 +254,21 @@ extern prototype_subpixvariance(vp8_variance_subpixvar16x8);
 #endif
 extern prototype_subpixvariance(vp8_variance_subpixvar16x16);
 
+#ifndef vp8_variance_halfpixvar16x16_h
+#define vp8_variance_halfpixvar16x16_h vp8_variance_halfpixvar16x16_h_c
+#endif
+extern prototype_variance(vp8_variance_halfpixvar16x16_h);
+
+#ifndef vp8_variance_halfpixvar16x16_v
+#define vp8_variance_halfpixvar16x16_v vp8_variance_halfpixvar16x16_v_c
+#endif
+extern prototype_variance(vp8_variance_halfpixvar16x16_v);
+
+#ifndef vp8_variance_halfpixvar16x16_hv
+#define vp8_variance_halfpixvar16x16_hv vp8_variance_halfpixvar16x16_hv_c
+#endif
+extern prototype_variance(vp8_variance_halfpixvar16x16_hv);
+
 #ifndef vp8_variance_subpixmse16x16
 #define vp8_variance_subpixmse16x16 vp8_sub_pixel_mse16x16_c
 #endif
@@ -259,6 +309,7 @@ extern prototype_sad(vp8_variance_get4x4sse_cs);
 
 typedef prototype_sad(*vp8_sad_fn_t);
 typedef prototype_sad_multi_same_address(*vp8_sad_multi_fn_t);
+typedef prototype_sad_multi_same_address_1(*vp8_sad_multi1_fn_t);
 typedef prototype_sad_multi_dif_address(*vp8_sad_multi_d_fn_t);
 typedef prototype_variance(*vp8_variance_fn_t);
 typedef prototype_variance2(*vp8_variance2_fn_t);
@@ -283,6 +334,9 @@ typedef struct
     vp8_subpixvariance_fn_t  subpixvar8x16;
     vp8_subpixvariance_fn_t  subpixvar16x8;
     vp8_subpixvariance_fn_t  subpixvar16x16;
+    vp8_variance_fn_t        halfpixvar16x16_h;
+    vp8_variance_fn_t        halfpixvar16x16_v;
+    vp8_variance_fn_t        halfpixvar16x16_hv;
     vp8_subpixvariance_fn_t  subpixmse16x16;
 
     vp8_getmbss_fn_t         getmbss;
@@ -299,6 +353,12 @@ typedef struct
     vp8_sad_multi_fn_t       sad8x8x3;
     vp8_sad_multi_fn_t       sad4x4x3;
 
+    vp8_sad_multi1_fn_t      sad16x16x8;
+    vp8_sad_multi1_fn_t      sad16x8x8;
+    vp8_sad_multi1_fn_t      sad8x16x8;
+    vp8_sad_multi1_fn_t      sad8x8x8;
+    vp8_sad_multi1_fn_t      sad4x4x8;
+
     vp8_sad_multi_d_fn_t     sad16x16x4d;
     vp8_sad_multi_d_fn_t     sad16x8x4d;
     vp8_sad_multi_d_fn_t     sad8x16x4d;
@@ -309,11 +369,15 @@ typedef struct
 
 typedef struct
 {
-    vp8_sad_fn_t  sdf;
-    vp8_sad_multi_fn_t sdx3f;
-    vp8_sad_multi_d_fn_t sdx4df;
-    vp8_variance_fn_t vf;
+    vp8_sad_fn_t            sdf;
+    vp8_variance_fn_t       vf;
     vp8_subpixvariance_fn_t svf;
+    vp8_variance_fn_t       svf_halfpix_h;
+    vp8_variance_fn_t       svf_halfpix_v;
+    vp8_variance_fn_t       svf_halfpix_hv;
+    vp8_sad_multi_fn_t      sdx3f;
+    vp8_sad_multi1_fn_t     sdx8f;
+    vp8_sad_multi_d_fn_t    sdx4df;
 } vp8_variance_fn_ptr_t;
 
 #if CONFIG_RUNTIME_CPU_DETECT
@@ -321,8 +385,5 @@ typedef struct
 #else
 #define VARIANCE_INVOKE(ctx,fn) vp8_variance_##fn
 #endif
-
-/* TODO: Determine if this USEBILINEAR flag is necessary. */
-#define USEBILINEAR
 
 #endif

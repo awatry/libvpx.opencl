@@ -291,7 +291,7 @@ void vp8_output_stats(const VP8_COMP            *cpi,
 
 
         fpfile = fopen("fpmotionmap.stt", "a");
-        fwrite(cpi->fp_motion_map, 1, cpi->common.MBs, fpfile);
+        if(fwrite(cpi->fp_motion_map, 1, cpi->common.MBs, fpfile));
         fclose(fpfile);
     }
 #endif
@@ -462,12 +462,11 @@ void vp8_first_pass_motion_search(VP8_COMP *cpi, MACROBLOCK *x, MV *ref_mv, MV *
     int step_param = 3;                                       //3;          // Dont search over full range for first pass
     int further_steps = (MAX_MVSEARCH_STEPS - 1) - step_param; //3;
     int n;
-    vp8_variance_fn_ptr_t v_fn_ptr;
+    vp8_variance_fn_ptr_t v_fn_ptr = cpi->fn_ptr[BLOCK_16X16];
     int new_mv_mode_penalty = 256;
 
+    // override the default variance function to use MSE
     v_fn_ptr.vf    = VARIANCE_INVOKE(IF_RTCD(&cpi->rtcd.variance), mse16x16);
-    v_fn_ptr.sdf   = cpi->fn_ptr.sdf;
-    v_fn_ptr.sdx4df = cpi->fn_ptr.sdx4df;
 
     // Set up pointers for this macro block recon buffer
     xd->pre.y_buffer = recon_buffer->y_buffer + recon_yoffset;
@@ -880,7 +879,7 @@ void vp8_first_pass(VP8_COMP *cpi)
         else
             recon_file = fopen(filename, "ab");
 
-        fwrite(lst_yv12->buffer_alloc, lst_yv12->frame_size, 1, recon_file);
+        if(fwrite(lst_yv12->buffer_alloc, lst_yv12->frame_size, 1, recon_file));
         fclose(recon_file);
     }
 
@@ -2587,7 +2586,7 @@ void vp8_find_next_key_frame(VP8_COMP *cpi, FIRSTPASS_STATS *this_frame)
         if (0)
         {
             FILE *f = fopen("Subsamle.stt", "a");
-            fprintf(f, " %8d %8d %8d %8d %12.0f %8d %8d %8d\n",  cpi->common.current_video_frame, kf_q, cpi->common.horiz_scale, cpi->common.vert_scale,  kf_group_err / cpi->frames_to_key, cpi->kf_group_bits / cpi->frames_to_key, new_height, new_width);
+            fprintf(f, " %8d %8d %8d %8d %12.0f %8d %8d %8d\n",  cpi->common.current_video_frame, kf_q, cpi->common.horiz_scale, cpi->common.vert_scale,  kf_group_err / cpi->frames_to_key, (int)(cpi->kf_group_bits / cpi->frames_to_key), new_height, new_width);
             fclose(f);
         }
 
@@ -2645,7 +2644,7 @@ void vp8_find_next_key_frame(VP8_COMP *cpi, FIRSTPASS_STATS *this_frame)
                 if (0)
                 {
                     FILE *f = fopen("Subsamle.stt", "a");
-                    fprintf(f, "******** %8d %8d %8d %12.0f %8d %8d %8d\n",  kf_q, cpi->common.horiz_scale, cpi->common.vert_scale,  kf_group_err / cpi->frames_to_key, cpi->kf_group_bits / cpi->frames_to_key, new_height, new_width);
+                    fprintf(f, "******** %8d %8d %8d %12.0f %8d %8d %8d\n",  kf_q, cpi->common.horiz_scale, cpi->common.vert_scale,  kf_group_err / cpi->frames_to_key, (int)(cpi->kf_group_bits / cpi->frames_to_key), new_height, new_width);
                     fclose(f);
                 }
             }
