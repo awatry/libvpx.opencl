@@ -59,16 +59,24 @@ void vp8_filter_block2d_first_pass
     unsigned int i, j;
     int  Temp;
 
+    short filter0 = vp8_filter[0];
+    short filter1 = vp8_filter[1];
+    short filter2 = vp8_filter[2];
+    short filter3 = vp8_filter[3];
+    short filter4 = vp8_filter[4];
+    short filter5 = vp8_filter[5];
+
+
     for (i = 0; i < output_height; i++)
     {
         for (j = 0; j < output_width; j++)
         {
-            Temp = ((int)src_ptr[-2 * (int)pixel_step] * vp8_filter[0]) +
-                   ((int)src_ptr[-1 * (int)pixel_step] * vp8_filter[1]) +
-                   ((int)src_ptr[0]                 * vp8_filter[2]) +
-                   ((int)src_ptr[pixel_step]         * vp8_filter[3]) +
-                   ((int)src_ptr[2*pixel_step]       * vp8_filter[4]) +
-                   ((int)src_ptr[3*pixel_step]       * vp8_filter[5]) +
+            Temp = ((int)src_ptr[-2 * (int)pixel_step] * filter0) +
+                   ((int)src_ptr[-1 * (int)pixel_step] * filter1) +
+                   ((int)src_ptr[0]                 * filter2) +
+                   ((int)src_ptr[pixel_step]         * filter3) +
+                   ((int)src_ptr[2*pixel_step]       * filter4) +
+                   ((int)src_ptr[3*pixel_step]       * filter5) +
                    (VP8_FILTER_WEIGHT >> 1);      /* Rounding */
 
             /* Normalize back to 0-255 */
@@ -104,17 +112,25 @@ void vp8_filter_block2d_second_pass
     unsigned int i, j;
     int  Temp;
 
+    short filter0 = vp8_filter[0];
+    short filter1 = vp8_filter[1];
+    short filter2 = vp8_filter[2];
+    short filter3 = vp8_filter[3];
+    short filter4 = vp8_filter[4];
+    short filter5 = vp8_filter[5];
+
+
     for (i = 0; i < output_height; i++)
     {
         for (j = 0; j < output_width; j++)
         {
             /* Apply filter */
-            Temp = ((int)src_ptr[-2 * (int)pixel_step] * vp8_filter[0]) +
-                   ((int)src_ptr[-1 * (int)pixel_step] * vp8_filter[1]) +
-                   ((int)src_ptr[0]                 * vp8_filter[2]) +
-                   ((int)src_ptr[pixel_step]         * vp8_filter[3]) +
-                   ((int)src_ptr[2*pixel_step]       * vp8_filter[4]) +
-                   ((int)src_ptr[3*pixel_step]       * vp8_filter[5]) +
+            Temp = ((int)src_ptr[-2 * (int)pixel_step] * filter0) +
+                   ((int)src_ptr[-1 * (int)pixel_step] * filter1) +
+                   ((int)src_ptr[0]                 * filter2) +
+                   ((int)src_ptr[pixel_step]         * filter3) +
+                   ((int)src_ptr[2*pixel_step]       * filter4) +
+                   ((int)src_ptr[3*pixel_step]       * filter5) +
                    (VP8_FILTER_WEIGHT >> 1);   /* Rounding */
 
             /* Normalize back to 0-255 */
