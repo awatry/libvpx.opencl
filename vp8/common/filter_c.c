@@ -56,7 +56,13 @@ void vp8_filter_block2d_first_pass
     const short *vp8_filter
 )
 {
+#define NESTED_FILTER 1
+    
+#if NESTED_FILTER
     unsigned int i, j;
+#else
+    unsigned int pix,x;
+#endif
     int  Temp;
 
     short filter0 = vp8_filter[0];
@@ -66,35 +72,56 @@ void vp8_filter_block2d_first_pass
     short filter4 = vp8_filter[4];
     short filter5 = vp8_filter[5];
 
-
+#if NESTED_FILTER
     for (i = 0; i < output_height; i++)
     {
         for (j = 0; j < output_width; j++)
         {
+#else
+    x=0;
+    for (pix = 0; pix < output_height*output_width; pix++){
+#endif
             Temp = ((int)src_ptr[-2 * (int)pixel_step] * filter0) +
-                   ((int)src_ptr[-1 * (int)pixel_step] * filter1) +
-                   ((int)src_ptr[0]                 * filter2) +
-                   ((int)src_ptr[pixel_step]         * filter3) +
-                   ((int)src_ptr[2*pixel_step]       * filter4) +
-                   ((int)src_ptr[3*pixel_step]       * filter5) +
-                   (VP8_FILTER_WEIGHT >> 1);      /* Rounding */
+               ((int)src_ptr[-1 * (int)pixel_step] * filter1) +
+               ((int)src_ptr[0]                 * filter2) +
+               ((int)src_ptr[pixel_step]         * filter3) +
+               ((int)src_ptr[2*pixel_step]       * filter4) +
+               ((int)src_ptr[3*pixel_step]       * filter5) +
+               (VP8_FILTER_WEIGHT >> 1);      /* Rounding */
 
-            /* Normalize back to 0-255 */
-            Temp = Temp >> VP8_FILTER_SHIFT;
+        /* Normalize back to 0-255 */
+        Temp = Temp >> VP8_FILTER_SHIFT;
 
-            if (Temp < 0)
-                Temp = 0;
-            else if (Temp > 255)
-                Temp = 255;
+        if (Temp < 0)
+            Temp = 0;
+        else if (Temp > 255)
+            Temp = 255;
 
+
+#if NESTED_FILTER
             output_ptr[j] = Temp;
             src_ptr++;
         }
+#else
+        *output_ptr = Temp;
+        output_ptr++;
+        src_ptr++;
+#endif
 
+#if NESTED_FILTER
         /* Next row... */
         src_ptr    += src_pixels_per_line - output_width;
         output_ptr += output_width;
+#else
+            if (++x == output_width){
+                /* Next row... */
+                src_ptr    += src_pixels_per_line - output_width;
+                //output_ptr += output_width;
+            }
+
+#endif
     }
+
 }
 
 void vp8_filter_block2d_second_pass
