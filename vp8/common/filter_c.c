@@ -56,14 +56,14 @@ void vp8_filter_block2d_first_pass
     const short *vp8_filter
 )
 {
+
 #define NESTED_FILTER 1
-    
 #if NESTED_FILTER
     unsigned int i, j;
 #else
     unsigned int pix,x;
 #endif
-    int  Temp;
+    int Temp;
 
     short filter0 = vp8_filter[0];
     short filter1 = vp8_filter[1];
@@ -71,6 +71,8 @@ void vp8_filter_block2d_first_pass
     short filter3 = vp8_filter[3];
     short filter4 = vp8_filter[4];
     short filter5 = vp8_filter[5];
+
+    unsigned int src_increment = src_pixels_per_line - output_width;
 
 #if NESTED_FILTER
     for (i = 0; i < output_height; i++)
@@ -97,27 +99,25 @@ void vp8_filter_block2d_first_pass
         else if (Temp > 255)
             Temp = 255;
 
-
 #if NESTED_FILTER
             output_ptr[j] = Temp;
             src_ptr++;
         }
-#else
-        *output_ptr = Temp;
-        output_ptr++;
-        src_ptr++;
-#endif
 
-#if NESTED_FILTER
         /* Next row... */
-        src_ptr    += src_pixels_per_line - output_width;
+        src_ptr    += src_increment;
         output_ptr += output_width;
+
 #else
-            if (++x == output_width){
-                /* Next row... */
-                src_ptr    += src_pixels_per_line - output_width;
-                //output_ptr += output_width;
-            }
+        output_ptr[pix] = Temp;
+        
+        if (++x == output_width){
+            /* Next row... */
+            src_ptr += src_increment + 1;
+            //output_ptr += output_width;
+            x = 0; //reset counter
+        } else
+            src_ptr++;
 
 #endif
     }
