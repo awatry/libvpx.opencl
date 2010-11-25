@@ -61,7 +61,7 @@ void vp8_filter_block2d_first_pass
 #define REGISTER_FILTER 1
 #define STATIC_SRC_PTR 0
 #define CLAMP(x,min,max) if (x < min) x = min; else if ( x > max ) x = max;
-#define PRE_CALC_PIXEL_STEPS 0
+#define PRE_CALC_PIXEL_STEPS 1
 
 #if NESTED_FILTER
     unsigned int i, j;
@@ -93,8 +93,8 @@ void vp8_filter_block2d_first_pass
 #endif
 
 #if PRE_CALC_PIXEL_STEPS
-    int two_pixel_steps = ((int)pixel_step) << 1;
-    int three_pixel_steps = two_pixel_steps + (int)pixel_step;
+    int two_pixel_steps = 2*(int)pixel_step;
+    int three_pixel_steps = 3*(int)pixel_step;//two_pixel_steps + (int)pixel_step;
 #define PS2 two_pixel_steps
 #define PS3 three_pixel_steps
 #else
@@ -113,8 +113,8 @@ void vp8_filter_block2d_first_pass
     x=0;
     for (pix = 0; pix < output_height*output_width; pix++){
 #endif
-            Temp = ((int)src_ptr[-PS2]         * FILTER0) +
-               ((int)src_ptr[-(int)pixel_step] * FILTER1) +
+            Temp = ((int)src_ptr[-1*PS2]         * FILTER0) +
+               ((int)src_ptr[-1*(int)pixel_step] * FILTER1) +
                ((int)src_ptr[0]                * FILTER2) +
                ((int)src_ptr[pixel_step]       * FILTER3) +
                ((int)src_ptr[PS2]              * FILTER4) +
@@ -123,12 +123,7 @@ void vp8_filter_block2d_first_pass
 
         /* Normalize back to 0-255 */
         Temp = Temp >> VP8_FILTER_SHIFT;
-
-        //CLAMP(Temp, 0, 255);
-        if (Temp < 0)
-            Temp = 0;
-        else if (Temp > 255)
-            Temp = 255;
+        CLAMP(Temp, 0, 255);
 
 #if NESTED_FILTER
             output_ptr[j] = Temp;
@@ -175,42 +170,30 @@ void vp8_filter_block2d_second_pass
     short filter3 = vp8_filter[3];
     short filter4 = vp8_filter[4];
     short filter5 = vp8_filter[5];
-#define FILTER0 filter0
-#define FILTER1 filter1
-#define FILTER2 filter2
-#define FILTER3 filter3
-#define FILTER4 filter4
-#define FILTER5 filter5
-#else
-#define FILTER0 vp8_filter[0]
-#define FILTER1 vp8_filter[1]
-#define FILTER2 vp8_filter[2]
-#define FILTER3 vp8_filter[3]
-#define FILTER4 vp8_filter[4]
-#define FILTER5 vp8_filter[5]
 #endif
 
+#if PRE_CALC_PIXEL_STEPS
+    int two_pixel_steps = ((int)pixel_step) << 1;
+    int three_pixel_steps = two_pixel_steps + (int)pixel_step;
+#endif
 
     for (i = 0; i < output_height; i++)
     {
         for (j = 0; j < output_width; j++)
         {
             /* Apply filter */
-            Temp = ((int)src_ptr[-2 * (int)pixel_step] * FILTER0) +
-                   ((int)src_ptr[-1 * (int)pixel_step] * FILTER1) +
+            Temp = ((int)src_ptr[-1*PS2] * FILTER0) +
+                   ((int)src_ptr[-1*(int)pixel_step] * FILTER1) +
                    ((int)src_ptr[0]                  * FILTER2) +
                    ((int)src_ptr[pixel_step]         * FILTER3) +
-                   ((int)src_ptr[2*pixel_step]       * FILTER4) +
-                   ((int)src_ptr[3*pixel_step]       * FILTER5) +
+                   ((int)src_ptr[PS2]       * FILTER4) +
+                   ((int)src_ptr[PS3]       * FILTER5) +
                    (VP8_FILTER_WEIGHT >> 1);   /* Rounding */
 
             /* Normalize back to 0-255 */
             Temp = Temp >> VP8_FILTER_SHIFT;
 
-            if (Temp < 0)
-                Temp = 0;
-            else if (Temp > 255)
-                Temp = 255;
+            CLAMP(Temp, 0, 255);
 
             output_ptr[j] = (unsigned char)Temp;
             src_ptr++;
@@ -241,7 +224,6 @@ void vp8_filter_block2d
     /* then filter verticaly... */
     vp8_filter_block2d_second_pass(FData + 8, output_ptr, output_pitch, 4, 4, 4, 4, VFilter);
 }
-
 
 void vp8_block_variation_c
 (
