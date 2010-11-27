@@ -15,6 +15,42 @@
 #define VP8_FILTER_WEIGHT 128
 #define VP8_FILTER_SHIFT  7
 
+#define NESTED_FILTER 1
+#define REGISTER_FILTER 0
+#define CLAMP(x,min,max) if (x < min) x = min; else if ( x > max ) x = max;
+#define PRE_CALC_PIXEL_STEPS 0
+#define PRE_CALC_SRC_INCREMENT 0
+
+#if PRE_CALC_PIXEL_STEPS
+#define PS2 two_pixel_steps
+#define PS3 three_pixel_steps
+#else
+#define PS2 2*(int)pixel_step
+#define PS3 3*(int)pixel_step
+#endif
+
+#if REGISTER_FILTER
+#define FILTER0 filter0
+#define FILTER1 filter1
+#define FILTER2 filter2
+#define FILTER3 filter3
+#define FILTER4 filter4
+#define FILTER5 filter5
+#else
+#define FILTER0 vp8_filter[0]
+#define FILTER1 vp8_filter[1]
+#define FILTER2 vp8_filter[2]
+#define FILTER3 vp8_filter[3]
+#define FILTER4 vp8_filter[4]
+#define FILTER5 vp8_filter[5]
+#endif
+
+
+#if PRE_CALC_SRC_INCREMENT
+#define SRC_INCREMENT src_increment
+#else
+#define SRC_INCREMENT (src_pixels_per_line - output_width)
+#endif
 
 static const int bilinear_filters[8][2] =
 {
@@ -56,29 +92,62 @@ void vp8_filter_block2d_first_pass
     const short *vp8_filter
 )
 {
-    unsigned int i, j;
-    int  Temp;
 
+#if NESTED_FILTER
+    unsigned int i, j;
+#else
+    unsigned int src_offset,out_offset,i;
+#endif
+    int Temp;
+
+#if REGISTER_FILTER
+    short filter0 = vp8_filter[0];
+    short filter1 = vp8_filter[1];
+    short filter2 = vp8_filter[2];
+    short filter3 = vp8_filter[3];
+    short filter4 = vp8_filter[4];
+    short filter5 = vp8_filter[5];
+#endif
+
+#if PRE_CALC_PIXEL_STEPS
+    int two_pixel_steps = 2*(int)pixel_step;
+    int three_pixel_steps = 3*(int)pixel_step;//two_pixel_steps + (int)pixel_step;
+#endif
+
+#if NESTED_FILTER
     for (i = 0; i < output_height; i++)
     {
         for (j = 0; j < output_width; j++)
         {
-            Temp = ((int)src_ptr[-2 * (int)pixel_step] * vp8_filter[0]) +
-                   ((int)src_ptr[-1 * (int)pixel_step] * vp8_filter[1]) +
-                   ((int)src_ptr[0]                 * vp8_filter[2]) +
-                   ((int)src_ptr[pixel_step]         * vp8_filter[3]) +
-                   ((int)src_ptr[2*pixel_step]       * vp8_filter[4]) +
-                   ((int)src_ptr[3*pixel_step]       * vp8_filter[5]) +
-                   (VP8_FILTER_WEIGHT >> 1);      /* Rounding */
+            Temp = ((int)src_ptr[-1*PS2]         * FILTER0) +
+               ((int)src_ptr[-1*(int)pixel_step] * FILTER1) +
+               ((int)src_ptr[0]                * FILTER2) +
+               ((int)src_ptr[pixel_step]       * FILTER3) +
+               ((int)src_ptr[PS2]              * FILTER4) +
+               ((int)src_ptr[PS3]              * FILTER5) +
+               (VP8_FILTER_WEIGHT >> 1);      /* Rounding */
+#else
+#if PRE_CALC_SRC_INCREMENT
+    unsigned int src_increment = src_pixels_per_line - output_width;
+#endif
+    for (i = 0; i < output_height*output_width; i++){
+		out_offset = src_offset = i/output_width;
+		out_offset = (i - out_offset*output_width) + (out_offset * output_width);
+		src_offset = i + (src_offset * SRC_INCREMENT);
+        Temp = ((int)src_ptr[src_offset - PS2]         * FILTER0) +
+           ((int)src_ptr[src_offset - (int)pixel_step] * FILTER1) +
+           ((int)src_ptr[src_offset]                * FILTER2) +
+           ((int)src_ptr[src_offset + pixel_step]       * FILTER3) +
+           ((int)src_ptr[src_offset + PS2]              * FILTER4) +
+           ((int)src_ptr[src_offset + PS3]              * FILTER5) +
+           (VP8_FILTER_WEIGHT >> 1);      /* Rounding */
+#endif
 
-            /* Normalize back to 0-255 */
-            Temp = Temp >> VP8_FILTER_SHIFT;
+        /* Normalize back to 0-255 */
+        Temp = Temp >> VP8_FILTER_SHIFT;
+        CLAMP(Temp, 0, 255);
 
-            if (Temp < 0)
-                Temp = 0;
-            else if (Temp > 255)
-                Temp = 255;
-
+#if NESTED_FILTER
             output_ptr[j] = Temp;
             src_ptr++;
         }
@@ -86,6 +155,10 @@ void vp8_filter_block2d_first_pass
         /* Next row... */
         src_ptr    += src_pixels_per_line - output_width;
         output_ptr += output_width;
+
+#else
+        output_ptr[out_offset] = Temp;
+#endif
     }
 }
 
@@ -101,30 +174,65 @@ void vp8_filter_block2d_second_pass
     const short *vp8_filter
 )
 {
-    unsigned int i, j;
-    int  Temp;
+#if NESTED_FILTER
+	unsigned int i, j;
+#else
+	unsigned int i;
+	int out_offset,src_offset;
+#endif
 
+	int  Temp;
+
+#if REGISTER_FILTER
+    short filter0 = vp8_filter[0];
+    short filter1 = vp8_filter[1];
+    short filter2 = vp8_filter[2];
+    short filter3 = vp8_filter[3];
+    short filter4 = vp8_filter[4];
+    short filter5 = vp8_filter[5];
+#endif
+
+#if PRE_CALC_PIXEL_STEPS
+    int two_pixel_steps = ((int)pixel_step) << 1;
+    int three_pixel_steps = two_pixel_steps + (int)pixel_step;
+#endif
+
+#if NESTED_FILTER
     for (i = 0; i < output_height; i++)
     {
         for (j = 0; j < output_width; j++)
         {
             /* Apply filter */
-            Temp = ((int)src_ptr[-2 * (int)pixel_step] * vp8_filter[0]) +
-                   ((int)src_ptr[-1 * (int)pixel_step] * vp8_filter[1]) +
-                   ((int)src_ptr[0]                 * vp8_filter[2]) +
-                   ((int)src_ptr[pixel_step]         * vp8_filter[3]) +
-                   ((int)src_ptr[2*pixel_step]       * vp8_filter[4]) +
-                   ((int)src_ptr[3*pixel_step]       * vp8_filter[5]) +
+            Temp = ((int)src_ptr[-1*PS2] * FILTER0) +
+                   ((int)src_ptr[-1*(int)pixel_step] * FILTER1) +
+                   ((int)src_ptr[0]                  * FILTER2) +
+                   ((int)src_ptr[pixel_step]         * FILTER3) +
+                   ((int)src_ptr[PS2]       * FILTER4) +
+                   ((int)src_ptr[PS3]       * FILTER5) +
                    (VP8_FILTER_WEIGHT >> 1);   /* Rounding */
+#else
+#if PRE_CALC_SRC_INCREMENT
+    unsigned int src_increment = src_pixels_per_line - output_width;
+#endif
+	for (i = 0; i < output_height * output_width; i++){
+		out_offset = src_offset = i/output_width;
+		out_offset = (i - out_offset*output_width) + (out_offset * output_pitch);
+		src_offset = i + (src_offset * SRC_INCREMENT);
+        /* Apply filter */
+        Temp = ((int)src_ptr[src_offset - PS2] * FILTER0) +
+               ((int)src_ptr[src_offset - (int)pixel_step] * FILTER1) +
+               ((int)src_ptr[src_offset]                  * FILTER2) +
+               ((int)src_ptr[src_offset + pixel_step]         * FILTER3) +
+               ((int)src_ptr[src_offset + PS2]       * FILTER4) +
+               ((int)src_ptr[src_offset + PS3]       * FILTER5) +
+               (VP8_FILTER_WEIGHT >> 1);   /* Rounding */
+#endif
 
             /* Normalize back to 0-255 */
             Temp = Temp >> VP8_FILTER_SHIFT;
+            CLAMP(Temp, 0, 255);
 
-            if (Temp < 0)
-                Temp = 0;
-            else if (Temp > 255)
-                Temp = 255;
-
+#if NESTED_FILTER
             output_ptr[j] = (unsigned char)Temp;
             src_ptr++;
         }
@@ -132,6 +240,9 @@ void vp8_filter_block2d_second_pass
         /* Start next row */
         src_ptr    += src_pixels_per_line - output_width;
         output_ptr += output_pitch;
+#else
+        output_ptr[out_offset] = (unsigned char)Temp;
+#endif
     }
 }
 
@@ -146,7 +257,7 @@ void vp8_filter_block2d
     const short  *VFilter
 )
 {
-    int FData[9*4]; /* Temp data bufffer used in filtering */
+    int FData[9*4]; /* Temp data buffer used in filtering */
 
     /* First filter 1-D horizontally... */
     vp8_filter_block2d_first_pass(src_ptr - (2 * src_pixels_per_line), FData, src_pixels_per_line, 1, 9, 4, HFilter);
@@ -154,7 +265,6 @@ void vp8_filter_block2d
     /* then filter verticaly... */
     vp8_filter_block2d_second_pass(FData + 8, output_ptr, output_pitch, 4, 4, 4, 4, VFilter);
 }
-
 
 void vp8_block_variation_c
 (
@@ -238,7 +348,7 @@ void vp8_sixtap_predict8x4_c
 {
     const short  *HFilter;
     const short  *VFilter;
-    int FData[13*16];   /* Temp data bufffer used in filtering */
+    int FData[13*16];   /* Temp data buffer used in filtering */
 
     HFilter = sub_pel_filters[xoffset];   /* 6 tap */
     VFilter = sub_pel_filters[yoffset];   /* 6 tap */
@@ -264,7 +374,7 @@ void vp8_sixtap_predict16x16_c
 {
     const short  *HFilter;
     const short  *VFilter;
-    int FData[21*24];   /* Temp data bufffer used in filtering */
+    int FData[21*24];   /* Temp data buffer used in filtering */
 
 
     HFilter = sub_pel_filters[xoffset];   /* 6 tap */
