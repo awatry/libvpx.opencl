@@ -60,3 +60,7 @@
 /vpx_config.h
 /vpx_version.h
 TAGS
+vpxdec
+vpxenc
+.project
+.cproject
