@@ -15,6 +15,42 @@
 #define VP8_FILTER_WEIGHT 128
 #define VP8_FILTER_SHIFT  7
 
+#define NESTED_FILTER 1
+#define REGISTER_FILTER 0
+#define CLAMP(x,min,max) if (x < min) x = min; else if ( x > max ) x = max;
+#define PRE_CALC_PIXEL_STEPS 0
+#define PRE_CALC_SRC_INCREMENT 0
+
+#if PRE_CALC_PIXEL_STEPS
+#define PS2 two_pixel_steps
+#define PS3 three_pixel_steps
+#else
+#define PS2 2*(int)pixel_step
+#define PS3 3*(int)pixel_step
+#endif
+
+#if REGISTER_FILTER
+#define FILTER0 filter0
+#define FILTER1 filter1
+#define FILTER2 filter2
+#define FILTER3 filter3
+#define FILTER4 filter4
+#define FILTER5 filter5
+#else
+#define FILTER0 vp8_filter[0]
+#define FILTER1 vp8_filter[1]
+#define FILTER2 vp8_filter[2]
+#define FILTER3 vp8_filter[3]
+#define FILTER4 vp8_filter[4]
+#define FILTER5 vp8_filter[5]
+#endif
+
+
+#if PRE_CALC_SRC_INCREMENT
+#define SRC_INCREMENT src_increment
+#else
+#define SRC_INCREMENT (src_pixels_per_line - output_width)
+#endif
 
 static const int bilinear_filters[8][2] =
 {
@@ -57,17 +93,6 @@ void vp8_filter_block2d_first_pass
 )
 {
 
-#define NESTED_FILTER 0
-#define REGISTER_FILTER 1
-#define CLAMP(x,min,max) if (x < min) x = min; else if ( x > max ) x = max;
-#define PRE_CALC_PIXEL_STEPS 1
-#define PRE_CALC_SRC_INCREMENT 1
-#if PRE_CALC_SRC_INCREMENT
-#define SRC_INCREMENT src_increment
-#else
-#define SRC_INCREMENT (src_pixels_per_line - output_width)
-#endif
-
 #if NESTED_FILTER
     unsigned int i, j;
 #else
@@ -82,29 +107,11 @@ void vp8_filter_block2d_first_pass
     short filter3 = vp8_filter[3];
     short filter4 = vp8_filter[4];
     short filter5 = vp8_filter[5];
-#define FILTER0 filter0
-#define FILTER1 filter1
-#define FILTER2 filter2
-#define FILTER3 filter3
-#define FILTER4 filter4
-#define FILTER5 filter5
-#else
-#define FILTER0 vp8_filter[0]
-#define FILTER1 vp8_filter[1]
-#define FILTER2 vp8_filter[2]
-#define FILTER3 vp8_filter[3]
-#define FILTER4 vp8_filter[4]
-#define FILTER5 vp8_filter[5]
 #endif
 
 #if PRE_CALC_PIXEL_STEPS
     int two_pixel_steps = 2*(int)pixel_step;
     int three_pixel_steps = 3*(int)pixel_step;//two_pixel_steps + (int)pixel_step;
-#define PS2 two_pixel_steps
-#define PS3 three_pixel_steps
-#else
-#define PS2 2*(int)pixel_step
-#define PS3 3*(int)pixel_step
 #endif
 
 #if NESTED_FILTER
