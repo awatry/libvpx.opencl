@@ -11,6 +11,8 @@
 
 #include <stdlib.h>
 
+#include <CL/cl.h>
+
 #define BLOCK_HEIGHT_WIDTH 4
 #define VP8_FILTER_WEIGHT 128
 #define VP8_FILTER_SHIFT  7
@@ -44,6 +46,8 @@ static const short sub_pel_filters[8][6] =
 
 
 };
+
+
 
 void vp8_filter_block2d_first_pass_cl
 (
@@ -180,8 +184,6 @@ void vp8_block_variation_cl
 }
 
 
-
-
 void vp8_sixtap_predict_cl
 (
     unsigned char  *src_ptr,
@@ -200,6 +202,7 @@ void vp8_sixtap_predict_cl
 
     vp8_filter_block2d(src_ptr, dst_ptr, src_pixels_per_line, dst_pitch, HFilter, VFilter);
 }
+
 void vp8_sixtap_predict8x8_cl
 (
     unsigned char  *src_ptr,
