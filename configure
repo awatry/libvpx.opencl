@@ -41,6 +41,7 @@ Advanced options:
   ${toggle_shared}                shared library support
   ${toggle_small}                 favor smaller size over speed
   ${toggle_arm_asm_detok}         assembly version of the detokenizer (ARM platforms only)
+  ${toggle_opencl}                support for OpenCL-assisted VP8 decoding (Enables run-time CPU detect)
 
 Codecs:
   Codecs can be selectively enabled or disabled individually, or by family:
@@ -250,6 +251,7 @@ CONFIG_LIST="
     shared
     small
     arm_asm_detok
+    opencl
 "
 CMDLINE_SELECT="
     extra_warnings
@@ -289,6 +291,7 @@ CMDLINE_SELECT="
     shared
     small
     arm_asm_detok
+    opencl
 "
 
 process_cmdline() {
