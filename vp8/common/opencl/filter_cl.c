@@ -12,6 +12,7 @@
 #include <stdlib.h>
 
 #include <CL/cl.h>
+#include "filter_cl.h"
 
 #define BLOCK_HEIGHT_WIDTH 4
 #define VP8_FILTER_WEIGHT 128
@@ -68,7 +69,6 @@ static const int bilinear_filters[8][2] =
 
 static const short sub_pel_filters[8][6] =
 {
-
     { 0,  0,  128,    0,   0,  0 },         /* note that 1/8 pel positions are just as per alpha -0.5 bicubic */
     { 0, -6,  123,   12,  -1,  0 },
     { 2, -11, 108,   36,  -8,  1 },         /* New 1/4 pel 6 tap filter */
@@ -77,9 +77,6 @@ static const short sub_pel_filters[8][6] =
     { 0, -6,   50,   93,  -9,  0 },
     { 1, -8,   36,  108, -11,  2 },         /* New 1/4 pel 6 tap filter */
     { 0, -1,   12,  123,  -6,  0 },
-
-
-
 };
 
 
