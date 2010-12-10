@@ -16,9 +16,9 @@
 #define VP8_FILTER_SHIFT  7
 
 #define NESTED_FILTER 1
-#define REGISTER_FILTER 0
+#define REGISTER_FILTER 1
 #define CLAMP(x,min,max) if (x < min) x = min; else if ( x > max ) x = max;
-#define PRE_CALC_PIXEL_STEPS 0
+#define PRE_CALC_PIXEL_STEPS 1
 #define PRE_CALC_SRC_INCREMENT 0
 
 #if PRE_CALC_PIXEL_STEPS
