@@ -11,7 +11,12 @@
 
 #include <stdlib.h>
 
+#ifdef __MAC__
+#include <OpenCL/cl.h>
+#else
 #include <CL/cl.h>
+#endif
+
 #include "filter_cl.h"
 
 #define BLOCK_HEIGHT_WIDTH 4
