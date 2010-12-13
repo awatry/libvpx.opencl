@@ -11,7 +11,10 @@
 #ifndef FILTER_CL_H_
 #define FILTER_CL_H_
 
-#define vp8_filter_block2d_first_pass_kernel_src "__kernel void vp8_filter_block2d_first_pass_kernel(__global    unsigned char *src_ptr,\
+#define VP8_FILTER_WEIGHT 128
+#define VP8_FILTER_SHIFT  7
+
+const char *vp8_filter_block2d_first_pass_kernel_src="__kernel void vp8_filter_block2d_first_pass_kernel(__global    unsigned char *src_ptr,\
                              __global   int *output_ptr,\
                              unsigned int src_pixels_per_line,\
                              unsigned int pixel_step,\
@@ -33,10 +36,10 @@
            ((int)src_ptr[src_offset + pixel_step]       * vp8_filter[3]) +\
            ((int)src_ptr[src_offset + PS2]              * vp8_filter[4]) +\
            ((int)src_ptr[src_offset + 3*(int)pixel_step]              * vp8_filter[5]) +\
-           (VP8_FILTER_WEIGHT >> 1);\
+           (128 >> 1);\
 \
 \
-    Temp = Temp >> VP8_FILTER_SHIFT;\
+    Temp = Temp >> 7;\
 	\
     if (Temp < 0)\
 		Temp = 0;\
@@ -44,6 +47,18 @@
 		Temp = 255;\
 \
     output_ptr[out_offset] = Temp;\
-}"
+}";
+
+const char *test_kernel_src="\
+__kernel void test_kernel(__global    int *src_ptr,\
+                             __global   int *output_ptr,\
+                             unsigned int max)\
+{\
+    uint tid = get_global_id(0);\
+    if (tid < max)\
+        output_ptr[tid] = -src_ptr[tid];\
+        \
+    return;\
+}";
 
 #endif /* FILTER_CL_H_ */
