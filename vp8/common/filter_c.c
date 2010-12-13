@@ -10,6 +10,7 @@
 
 
 #include <stdlib.h>
+#include <stdio.h>
 
 #define BLOCK_HEIGHT_WIDTH 4
 #define VP8_FILTER_WEIGHT 128
@@ -44,7 +45,6 @@
 #define FILTER4 vp8_filter[4]
 #define FILTER5 vp8_filter[5]
 #endif
-
 
 #if PRE_CALC_SRC_INCREMENT
 #define SRC_INCREMENT src_increment
@@ -96,7 +96,7 @@ void vp8_filter_block2d_first_pass
 #if NESTED_FILTER
     unsigned int i, j;
 #else
-    unsigned int src_offset,out_offset,i;
+    unsigned int src_offset,i;
 #endif
     int Temp;
 
@@ -114,38 +114,38 @@ void vp8_filter_block2d_first_pass
     int three_pixel_steps = 3*(int)pixel_step;//two_pixel_steps + (int)pixel_step;
 #endif
 
+#if PRE_CALC_SRC_INCREMENT
+    unsigned int src_increment = src_pixels_per_line - output_width;
+#endif
 #if NESTED_FILTER
     for (i = 0; i < output_height; i++)
     {
         for (j = 0; j < output_width; j++)
         {
-            Temp = ((int)src_ptr[-1*PS2]         * FILTER0) +
-               ((int)src_ptr[-1*(int)pixel_step] * FILTER1) +
+            Temp = ((int)src_ptr[-1*PS2]         * FILTER0);
+            Temp += ((int)src_ptr[-1*(int)pixel_step] * FILTER1) +
                ((int)src_ptr[0]                * FILTER2) +
                ((int)src_ptr[pixel_step]       * FILTER3) +
                ((int)src_ptr[PS2]              * FILTER4) +
                ((int)src_ptr[PS3]              * FILTER5) +
                (VP8_FILTER_WEIGHT >> 1);      /* Rounding */
 #else
-#if PRE_CALC_SRC_INCREMENT
-    unsigned int src_increment = src_pixels_per_line - output_width;
-#endif
+    //printf("src_ptr=%p\n",src_ptr);
     for (i = 0; i < output_height*output_width; i++){
-		out_offset = src_offset = i/output_width;
-		out_offset = (i - out_offset*output_width) + (out_offset * output_width);
-		src_offset = i + (src_offset * SRC_INCREMENT);
-        Temp = ((int)src_ptr[src_offset - PS2]         * FILTER0) +
-           ((int)src_ptr[src_offset - (int)pixel_step] * FILTER1) +
-           ((int)src_ptr[src_offset]                * FILTER2) +
-           ((int)src_ptr[src_offset + pixel_step]       * FILTER3) +
-           ((int)src_ptr[src_offset + PS2]              * FILTER4) +
-           ((int)src_ptr[src_offset + PS3]              * FILTER5) +
+	src_offset = i + (i/output_width * SRC_INCREMENT);
+        Temp = ((int)*(src_ptr+src_offset - PS2)         * FILTER0) +
+           ((int)*(src_ptr+src_offset - (int)pixel_step) * FILTER1) +
+           ((int)*(src_ptr+src_offset)                * FILTER2) +
+           ((int)*(src_ptr+src_offset + pixel_step)       * FILTER3) +
+           ((int)*(src_ptr+src_offset + PS2)              * FILTER4) +
+           ((int)*(src_ptr+src_offset + PS3)              * FILTER5) +
            (VP8_FILTER_WEIGHT >> 1);      /* Rounding */
 #endif
 
         /* Normalize back to 0-255 */
         Temp = Temp >> VP8_FILTER_SHIFT;
         CLAMP(Temp, 0, 255);
+        //printf("Clamped Temp=%d\n",Temp);
 
 #if NESTED_FILTER
             output_ptr[j] = Temp;
@@ -153,11 +153,11 @@ void vp8_filter_block2d_first_pass
         }
 
         /* Next row... */
-        src_ptr    += src_pixels_per_line - output_width;
+        src_ptr    += SRC_INCREMENT;
         output_ptr += output_width;
 
 #else
-        output_ptr[out_offset] = Temp;
+        output_ptr[i] = Temp;
 #endif
     }
 }
@@ -197,6 +197,9 @@ void vp8_filter_block2d_second_pass
     int three_pixel_steps = two_pixel_steps + (int)pixel_step;
 #endif
 
+#if PRE_CALC_SRC_INCREMENT
+    unsigned int src_increment = src_pixels_per_line - output_width;
+#endif
 #if NESTED_FILTER
     for (i = 0; i < output_height; i++)
     {
@@ -211,23 +214,19 @@ void vp8_filter_block2d_second_pass
                    ((int)src_ptr[PS3]       * FILTER5) +
                    (VP8_FILTER_WEIGHT >> 1);   /* Rounding */
 #else
-#if PRE_CALC_SRC_INCREMENT
-    unsigned int src_increment = src_pixels_per_line - output_width;
-#endif
 	for (i = 0; i < output_height * output_width; i++){
-		out_offset = src_offset = i/output_width;
-		out_offset = (i - out_offset*output_width) + (out_offset * output_pitch);
-		src_offset = i + (src_offset * SRC_INCREMENT);
-        /* Apply filter */
-        Temp = ((int)src_ptr[src_offset - PS2] * FILTER0) +
-               ((int)src_ptr[src_offset - (int)pixel_step] * FILTER1) +
+            src_offset = out_offset = i/output_width;
+            src_offset = i + (src_offset * SRC_INCREMENT);
+            out_offset = i%output_width + (out_offset * output_pitch);
+            /* Apply filter */
+            Temp = ((int)src_ptr[src_offset - PS2] * FILTER0) +
+               ((int)src_ptr[src_offset -(int)pixel_step] * FILTER1) +
                ((int)src_ptr[src_offset]                  * FILTER2) +
                ((int)src_ptr[src_offset + pixel_step]         * FILTER3) +
                ((int)src_ptr[src_offset + PS2]       * FILTER4) +
                ((int)src_ptr[src_offset + PS3]       * FILTER5) +
                (VP8_FILTER_WEIGHT >> 1);   /* Rounding */
 #endif
-
             /* Normalize back to 0-255 */
             Temp = Temp >> VP8_FILTER_SHIFT;
             CLAMP(Temp, 0, 255);
