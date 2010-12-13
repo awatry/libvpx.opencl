@@ -175,3 +175,8 @@ OBJS-yes += $(VP8_PREFIX)common/arm/vpx_asm_offsets.c.o
 CLEAN-OBJS += vpx_asm_offsets.asm
 $(filter %$(ASM).o,$(OBJS-yes)): vpx_asm_offsets.asm
 endif
+
+#Append OpenCL source files to source listing if needed
+VP8_COMMON_SRCS-$(CONFIG_OPENCL) += common/opencl/subpixel_cl.h
+VP8_COMMON_SRCS-$(CONFIG_OPENCL) += common/opencl/opencl_systemdependent.c
+VP8_COMMON_SRCS-$(CONFIG_OPENCL) += common/opencl/filter_cl.c

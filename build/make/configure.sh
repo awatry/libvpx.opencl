@@ -934,6 +934,11 @@ process_common_toolchain() {
         enabled rvct && check_add_cflags -Otime
         enabled small && check_add_cflags -O2 || check_add_cflags -O3
     fi
+    
+    if enabled opencl; then
+    	enable runtime_cpu_detect
+        add_extralibs -lOpenCL
+    fi
 
     # Position Independant Code (PIC) support, for building relocatable
     # shared objects
