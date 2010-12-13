@@ -937,14 +937,7 @@ process_common_toolchain() {
     
     if enabled opencl; then
     	enable runtime_cpu_detect
-        case ${toolchain} in
-            *-win32-gcc)
-                add_extralibs --library OpenCL
-                ;;
-            *)
-                add_extralibs -lOpenCL
-                ;;
-        esac
+        add_extralibs --library OpenCL
     fi
 
     # Position Independant Code (PIC) support, for building relocatable
