@@ -288,9 +288,6 @@ void vp8_block_variation_c
     }
 }
 
-
-
-
 void vp8_sixtap_predict_c
 (
     unsigned char  *src_ptr,
@@ -309,6 +306,7 @@ void vp8_sixtap_predict_c
 
     vp8_filter_block2d(src_ptr, dst_ptr, src_pixels_per_line, dst_pitch, HFilter, VFilter);
 }
+
 void vp8_sixtap_predict8x8_c
 (
     unsigned char  *src_ptr,
