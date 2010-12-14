@@ -24,6 +24,7 @@
 
 #define SIXTAP_FILTER_LEN 6
 #define MAX_NUM_PLATFORMS 4
+#define BLOCK_HEIGHT_WIDTH 4
 
 int cl_initialized = 0;
 cl_device_id device_id; // compute device id
@@ -78,7 +79,7 @@ int cl_init_filter_block2d_first_pass() {
     }
 
     // Create the compute program from the header defined source code
-    //printf("source: %s\n", vp8_filter_block2d_first_pass_kernel_src);
+    printf("source: %s\n", vp8_filter_block2d_first_pass_kernel_src);
     program = clCreateProgramWithSource(context, 1, &vp8_filter_block2d_first_pass_kernel_src, NULL, &err);
     if (!program) {
         printf("Error: Couldn't compile program\n");
@@ -87,7 +88,7 @@ int cl_init_filter_block2d_first_pass() {
     printf("Created Program\n");
 
     // Build the program executable
-    err = clBuildProgram(program, 0, NULL, NULL, NULL, NULL);
+    err = clBuildProgram(program, 0, NULL, compileOptions, NULL, NULL);
     if (err != CL_SUCCESS) {
         size_t len;
         char buffer[2048];
@@ -157,10 +158,16 @@ int cl_run(
         ) {
 
     int err,j;
-
+    size_t local, global;
+    
     //Calculate size of input and output arrays
     int max_i = (output_height*output_width)-1;
+#if PAD_SRC
+    //Copy the -2*pixel_step bytes because the filter algorithm accesses negative indexes
+    int src_len = (max_i + (max_i/output_width)*(src_pixels_per_line - output_width) + 3 * (int)pixel_step) + 2*(int)pixel_step;
+#else
     int src_len = (max_i + (max_i/output_width)*(src_pixels_per_line - output_width) + 3 * (int)pixel_step);
+#endif
     int dest_len = output_height * output_width;
 
     if (!cl_initialized)
@@ -192,12 +199,16 @@ int cl_run(
     //printf("Created buffers on device\n");
 
     // Copy input and filter data to device
+#if PAD_SRC
+    err = clEnqueueWriteBuffer(commands, srcData, CL_TRUE, 0,
+            sizeof (unsigned char) * src_len, src_ptr-(2*(int)pixel_step), 0, NULL, NULL);
+#else
     err = clEnqueueWriteBuffer(commands, srcData, CL_TRUE, 0,
             sizeof (unsigned char) * src_len, src_ptr, 0, NULL, NULL);
-    //printf("Copied srcData\n");
+#endif
+
     err = clEnqueueWriteBuffer(commands, filterData, CL_TRUE, 0,
             sizeof (short) * SIXTAP_FILTER_LEN, vp8_filter, 0, NULL, NULL);
-    //printf("Copied filterData\n");
     if (err != CL_SUCCESS) {
         printf("Error: Failed to write to source array!\n");
         return EXIT_FAILURE;
@@ -219,7 +230,6 @@ int cl_run(
     //printf("Set kernel arguments\n");
 
     // Get the maximum work group size for executing the kernel on the device
-    size_t local;
     err = clGetKernelWorkGroupInfo(kernel, device_id, CL_KERNEL_WORK_GROUP_SIZE, sizeof (local), &local, NULL);
     if (err != CL_SUCCESS) {
         printf("Error: Failed to retrieve kernel work group info! %d\n", err);
@@ -228,9 +238,9 @@ int cl_run(
     //printf("local=%d\n",local);
 
     // Execute the kernel
-    size_t global = output_width*output_height; //How many threads do we need?
+    global = output_width*output_height; //How many threads do we need?
     //err = clEnqueueNDRangeKernel(commands, kernel, 1, NULL, &global, &local, 0, NULL, NULL);
-    err = clEnqueueNDRangeKernel(commands, kernel, 1, NULL, &global, NULL, 0, NULL, NULL);
+    err = clEnqueueNDRangeKernel(commands, kernel, 1, NULL, &global, ((local<global)? &local: &global) , 0, NULL, NULL);
     if (err) {
         printf("Error: Failed to execute kernel!\n");
         return EXIT_FAILURE;
@@ -251,10 +261,12 @@ int cl_run(
     clFinish(commands);
 
     //printf("Read back data from kernel\n");
-
-    //for (j=0; j < dest_len; j++){
-    //    printf("output[%d] = %d\n", j, output_ptr[j]);
-    //}
+#define SHOW_OUTPUT 1
+#if SHOW_OUTPUT
+    for (j=0; j < dest_len; j++){
+        printf("output[%d] = %d\n", j, output_ptr[j]);
+    }
+#endif
 
     // Shutdown and cleanup
     //printf("Free srcData\n");
@@ -268,46 +280,6 @@ int cl_run(
     //Return a success code
     return EXIT_SUCCESS;
 }
-
-#define BLOCK_HEIGHT_WIDTH 4
-#define VP8_FILTER_WEIGHT 128
-#define VP8_FILTER_SHIFT  7
-
-#define REGISTER_FILTER 1
-#define CLAMP(x,min,max) if (x < min) x = min; else if ( x > max ) x = max;
-#define PRE_CALC_PIXEL_STEPS 1
-#define PRE_CALC_SRC_INCREMENT 1
-
-#if PRE_CALC_PIXEL_STEPS
-#define PS2 two_pixel_steps
-#define PS3 three_pixel_steps
-#else
-#define PS2 2*(int)pixel_step
-#define PS3 3*(int)pixel_step
-#endif
-
-#if REGISTER_FILTER
-#define FILTER0 filter0
-#define FILTER1 filter1
-#define FILTER2 filter2
-#define FILTER3 filter3
-#define FILTER4 filter4
-#define FILTER5 filter5
-#else
-#define FILTER0 vp8_filter[0]
-#define FILTER1 vp8_filter[1]
-#define FILTER2 vp8_filter[2]
-#define FILTER3 vp8_filter[3]
-#define FILTER4 vp8_filter[4]
-#define FILTER5 vp8_filter[5]
-#endif
-
-
-#if PRE_CALC_SRC_INCREMENT
-#define SRC_INCREMENT src_increment
-#else
-#define SRC_INCREMENT (src_pixels_per_line - output_width)
-#endif
 
 static const int bilinear_filters[8][2] = {
     { 128, 0},
@@ -343,7 +315,7 @@ void vp8_filter_block2d_first_pass_cl
         const short *vp8_filter
         ) {
 
-#define USE_CL 1
+#define USE_CL 0
 #if USE_CL
     cl_run(src_ptr, output_ptr, src_pixels_per_line, pixel_step, output_height, output_width, vp8_filter);
 #else
@@ -383,6 +355,9 @@ void vp8_filter_block2d_first_pass_cl
         CLAMP(Temp, 0, 255);
 
         output_ptr[i] = Temp;
+#if SHOW_OUTPUT
+        printf("output_ptr[%d] = %d\n",i,Temp);
+#endif
     }
 #endif
 }
