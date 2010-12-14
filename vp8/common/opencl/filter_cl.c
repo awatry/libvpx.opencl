@@ -37,6 +37,11 @@ cl_mem srcData;
 cl_mem destData;
 cl_mem filterData;
 
+#define USE_LOCAL_SIZE 0
+#if USE_LOCAL_SIZE
+    size_t local;
+#endif
+
 
 int cl_init_filter_block2d_first_pass() {
     // Connect to a compute device
@@ -110,12 +115,23 @@ int cl_init_filter_block2d_first_pass() {
     }
     //printf("Created kernel\n");
 
+#if USE_LOCAL_SIZE
+    // Get the maximum work group size for executing the kernel on the device
+    err = clGetKernelWorkGroupInfo(kernel, device_id, CL_KERNEL_WORK_GROUP_SIZE, sizeof (local), &local, NULL);
+    if (err != CL_SUCCESS) {
+        printf("Error: Failed to retrieve kernel work group info! %d\n", err);
+        return EXIT_FAILURE;
+    }
+    //printf("local=%d\n",local);
+#endif
+
+    //Filter size doesn't change. Allocate buffer once, and just replace contents
+    //on each kernel execution.
     filterData = clCreateBuffer(context, CL_MEM_READ_ONLY, sizeof (short) * SIXTAP_FILTER_LEN, NULL, NULL);
     if (!filterData){
         printf("Error: Failed to allocate filter buffer\n");
         return EXIT_FAILURE;
     }
-
 
     cl_initialized = 1;
 
@@ -192,7 +208,7 @@ void vp8_filter_block2d_first_pass_cl
 #if SHOW_OUTPUT
     int j;
 #endif
-    size_t local, global;
+    size_t global;
 
     //Calculate size of input and output arrays
     int dest_len = output_height * output_width;
@@ -261,20 +277,16 @@ void vp8_filter_block2d_first_pass_cl
     }
     //printf("Set kernel arguments\n");
 
-    // Get the maximum work group size for executing the kernel on the device
-    err = clGetKernelWorkGroupInfo(kernel, device_id, CL_KERNEL_WORK_GROUP_SIZE, sizeof (local), &local, NULL);
-    if (err != CL_SUCCESS) {
-        clFinish(commands);
-        printf("Error: Failed to retrieve kernel work group info! %d\n", err);
-        vp8_filter_block2d_first_pass(src_ptr, output_ptr, src_pixels_per_line, pixel_step, output_height, output_width, vp8_filter);
-        return;
-    }
-    //printf("local=%d\n",local);
-
     // Execute the kernel
     global = output_width*output_height; //How many threads do we need?
-    //err = clEnqueueNDRangeKernel(commands, kernel, 1, NULL, &global, ((local<global)? &local: &global) , 0, NULL, NULL);
+#if USE_LOCAL_SIZE
+    //NOTE: if local<global, global MUST be evenly divisible by local or the
+    //      kernel will fail.
+    printf("local=%d, global=%d\n", local, global);
+    err = clEnqueueNDRangeKernel(commands, kernel, 1, NULL, &global, ((local<global)? &local: &global) , 0, NULL, NULL);
+#else
     err = clEnqueueNDRangeKernel(commands, kernel, 1, NULL, &global, NULL , 0, NULL, NULL);
+#endif
     if (err) {
         clFinish(commands);
         printf("Error: Failed to execute kernel!\n");
