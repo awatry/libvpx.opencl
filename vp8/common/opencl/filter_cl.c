@@ -163,10 +163,10 @@ int cl_run(
     
     //Calculate size of input and output arrays
     int dest_len = output_height * output_width;
-    int max_i = dest_len;
+    int max_i = dest_len-1;
 #if PAD_SRC
     //Copy the -2*pixel_step bytes because the filter algorithm accesses negative indexes
-    int src_len = (max_i + (max_i/output_width)*(src_pixels_per_line - output_width) + 5 * (int)pixel_step);
+    int src_len = (dest_len + (max_i/output_width)*(src_pixels_per_line - output_width) + 5 * (int)pixel_step);
 #else
     int src_len = (max_i + (max_i/output_width)*(src_pixels_per_line - output_width) + 3 * (int)pixel_step);
 #endif
@@ -287,8 +287,6 @@ int cl_run(
     clReleaseMemObject(destData);
     destData = NULL;
     //printf("Done freeing\n");
-
-    clFinish(commands);
 
     //Return a success code
     return EXIT_SUCCESS;
