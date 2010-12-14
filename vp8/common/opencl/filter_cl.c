@@ -169,29 +169,6 @@ void cl_destroy() {
     return;
 }
 
-static const int bilinear_filters[8][2] = {
-    { 128, 0},
-    { 112, 16},
-    { 96, 32},
-    { 80, 48},
-    { 64, 64},
-    { 48, 80},
-    { 32, 96},
-    { 16, 112}
-};
-
-
-static const short sub_pel_filters[8][6] = {
-    { 0, 0, 128, 0, 0, 0}, /* note that 1/8 pel positions are just as per alpha -0.5 bicubic */
-    { 0, -6, 123, 12, -1, 0},
-    { 2, -11, 108, 36, -8, 1}, /* New 1/4 pel 6 tap filter */
-    { 0, -9, 93, 50, -6, 0},
-    { 3, -16, 77, 77, -16, 3}, /* New 1/2 pel 6 tap filter */
-    { 0, -6, 50, 93, -9, 0},
-    { 1, -8, 36, 108, -11, 2}, /* New 1/4 pel 6 tap filter */
-    { 0, -1, 12, 123, -6, 0},
-};
-
 void vp8_filter_block2d_first_pass_cl
 (
         unsigned char *src_ptr,
