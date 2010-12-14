@@ -246,6 +246,10 @@ static vpx_codec_err_t vp8_destroy(vpx_codec_alg_priv_t *ctx)
             ctx->mmaps[i].dtor(&ctx->mmaps[i]);
     }
 
+#if CONFIG_OPENCL
+    cl_destroy();
+#endif
+
     return VPX_CODEC_OK;
 }
 

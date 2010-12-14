@@ -53,7 +53,7 @@ int cl_init_filter_block2d_first_pass() {
         printf("No platforms found\n");
         return EXIT_FAILURE;
     }
-    printf("Found %d platforms\n", num_found);
+    //printf("Found %d platforms\n", num_found);
 
     //Favor the GPU, but fall back to any other available device if necessary
     err = clGetDeviceIDs(platform_ids[0], CL_DEVICE_TYPE_GPU, 1, &device_id, NULL);
@@ -80,13 +80,13 @@ int cl_init_filter_block2d_first_pass() {
     }
 
     // Create the compute program from the header defined source code
-    printf("source: %s\n", vp8_filter_block2d_first_pass_kernel_src);
+    //printf("source: %s\n", vp8_filter_block2d_first_pass_kernel_src);
     program = clCreateProgramWithSource(context, 1, &vp8_filter_block2d_first_pass_kernel_src, NULL, &err);
     if (!program) {
         printf("Error: Couldn't compile program\n");
         return EXIT_FAILURE;
     }
-    printf("Created Program\n");
+    //printf("Created Program\n");
 
     // Build the program executable
     err = clBuildProgram(program, 0, NULL, compileOptions, NULL, NULL);
@@ -99,7 +99,7 @@ int cl_init_filter_block2d_first_pass() {
         printf("Compile output: %s\n", buffer);
         return EXIT_FAILURE;
     }
-    printf("Built executable\n");
+    //printf("Built executable\n");
 
     // Create the compute kernel in the program we wish to run
     kernel = clCreateKernel(program, "vp8_filter_block2d_first_pass_kernel", &err);
@@ -108,7 +108,7 @@ int cl_init_filter_block2d_first_pass() {
         printf("Error: Failed to create compute kernel!\n");
         return EXIT_FAILURE;
     }
-    printf("Created kernel\n");
+    //printf("Created kernel\n");
 
     filterData = clCreateBuffer(context, CL_MEM_READ_ONLY, sizeof (short) * SIXTAP_FILTER_LEN, NULL, NULL);
     if (!filterData){
@@ -134,10 +134,19 @@ void cl_destroy() {
     }
 
     //Release the objects that we've allocated on the GPU
-    clReleaseProgram(program);
-    clReleaseKernel(kernel);
-    clReleaseCommandQueue(commands);
-    clReleaseContext(context);
+    if (program)
+        clReleaseProgram(program);
+    if (kernel)
+        clReleaseKernel(kernel);
+    if (commands)
+        clReleaseCommandQueue(commands);
+    if (context)
+        clReleaseContext(context);
+
+    program = NULL;
+    kernel = NULL;
+    commands = NULL;
+    context = NULL;
 
     cl_initialized = 0;
 
