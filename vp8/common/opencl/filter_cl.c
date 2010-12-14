@@ -225,15 +225,20 @@ int cl_run(
         printf("Error: Failed to retrieve kernel work group info! %d\n", err);
         return EXIT_FAILURE;
     }
+    //printf("local=%d\n",local);
 
     // Execute the kernel
-    size_t global = local;
-    err = clEnqueueNDRangeKernel(commands, kernel, 1, NULL, &global, &local, 0, NULL, NULL);
+    size_t global = output_width*output_height; //How many threads do we need?
+    //err = clEnqueueNDRangeKernel(commands, kernel, 1, NULL, &global, &local, 0, NULL, NULL);
+    err = clEnqueueNDRangeKernel(commands, kernel, 1, NULL, &global, NULL, 0, NULL, NULL);
     if (err) {
         printf("Error: Failed to execute kernel!\n");
         return EXIT_FAILURE;
     }
     //printf("Kernel queued\n");
+
+    // Wait for the command queue to finish
+    clFinish(commands);
 
     // Read back the result data from the device
     err = clEnqueueReadBuffer(commands, destData, CL_TRUE, 0, sizeof (int) * dest_len, output_ptr, 0, NULL, NULL);
@@ -268,10 +273,10 @@ int cl_run(
 #define VP8_FILTER_WEIGHT 128
 #define VP8_FILTER_SHIFT  7
 
-#define REGISTER_FILTER 0
+#define REGISTER_FILTER 1
 #define CLAMP(x,min,max) if (x < min) x = min; else if ( x > max ) x = max;
-#define PRE_CALC_PIXEL_STEPS 0
-#define PRE_CALC_SRC_INCREMENT 0
+#define PRE_CALC_PIXEL_STEPS 1
+#define PRE_CALC_SRC_INCREMENT 1
 
 #if PRE_CALC_PIXEL_STEPS
 #define PS2 two_pixel_steps
@@ -342,7 +347,7 @@ void vp8_filter_block2d_first_pass_cl
 #if USE_CL
     cl_run(src_ptr, output_ptr, src_pixels_per_line, pixel_step, output_height, output_width, vp8_filter);
 #else
-    unsigned int src_offset, out_offset, i;
+    unsigned int src_offset, i;
     int Temp;
 
 #if REGISTER_FILTER
@@ -356,20 +361,14 @@ void vp8_filter_block2d_first_pass_cl
 
 #if PRE_CALC_PIXEL_STEPS
     int two_pixel_steps = 2 * (int) pixel_step;
-    int three_pixel_steps = 3 * (int) pixel_step; //two_pixel_steps + (int)pixel_step;
+    int three_pixel_steps = 3 * (int) pixel_step;
 #endif
 
 #if PRE_CALC_SRC_INCREMENT
     unsigned int src_increment = src_pixels_per_line - output_width;
 #endif
-
-    int max_offset = ((output_height*output_width)-1) + (((output_height*output_width)-1)/output_width)*(src_pixels_per_line - output_width) + 3 * (int)pixel_step;
-    unsigned int src_size = max_offset+PS3;
-
     for (i = 0; i < output_height * output_width; i++) {
-        out_offset = src_offset = i / output_width;
-        out_offset = (i - out_offset * output_width) + (out_offset * output_width);
-        src_offset = i + (src_offset * SRC_INCREMENT);
+        src_offset = i + (i / output_width * SRC_INCREMENT);
 
         Temp = ((int)*(src_ptr+src_offset - PS2) * FILTER0) +
                 ((int)*(src_ptr+src_offset - (int) pixel_step) * FILTER1) +
@@ -383,7 +382,7 @@ void vp8_filter_block2d_first_pass_cl
         Temp = Temp >> VP8_FILTER_SHIFT;
         CLAMP(Temp, 0, 255);
 
-        output_ptr[out_offset] = Temp;
+        output_ptr[i] = Temp;
     }
 #endif
 }
