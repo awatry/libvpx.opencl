@@ -27,6 +27,7 @@
 #define BLOCK_HEIGHT_WIDTH 4
 
 int cl_initialized = 0;
+int pass=0;
 cl_device_id device_id; // compute device id
 cl_context context; // compute context
 cl_command_queue commands; // compute command queue
@@ -161,14 +162,14 @@ int cl_run(
     size_t local, global;
     
     //Calculate size of input and output arrays
-    int max_i = (output_height*output_width)-1;
+    int dest_len = output_height * output_width;
+    int max_i = dest_len;
 #if PAD_SRC
     //Copy the -2*pixel_step bytes because the filter algorithm accesses negative indexes
-    int src_len = (max_i + (max_i/output_width)*(src_pixels_per_line - output_width) + 3 * (int)pixel_step) + 2*(int)pixel_step;
+    int src_len = (max_i + (max_i/output_width)*(src_pixels_per_line - output_width) + 5 * (int)pixel_step);
 #else
     int src_len = (max_i + (max_i/output_width)*(src_pixels_per_line - output_width) + 3 * (int)pixel_step);
 #endif
-    int dest_len = output_height * output_width;
 
     if (!cl_initialized)
         cl_init_filter_block2d_first_pass();
@@ -239,8 +240,8 @@ int cl_run(
 
     // Execute the kernel
     global = output_width*output_height; //How many threads do we need?
-    //err = clEnqueueNDRangeKernel(commands, kernel, 1, NULL, &global, &local, 0, NULL, NULL);
-    err = clEnqueueNDRangeKernel(commands, kernel, 1, NULL, &global, ((local<global)? &local: &global) , 0, NULL, NULL);
+    //err = clEnqueueNDRangeKernel(commands, kernel, 1, NULL, &global, ((local<global)? &local: &global) , 0, NULL, NULL);
+    err = clEnqueueNDRangeKernel(commands, kernel, 1, NULL, &global, NULL , 0, NULL, NULL);
     if (err) {
         printf("Error: Failed to execute kernel!\n");
         return EXIT_FAILURE;
@@ -248,7 +249,7 @@ int cl_run(
     //printf("Kernel queued\n");
 
     // Wait for the command queue to finish
-    clFinish(commands);
+    //clFinish(commands);
 
     // Read back the result data from the device
     err = clEnqueueReadBuffer(commands, destData, CL_TRUE, 0, sizeof (int) * dest_len, output_ptr, 0, NULL, NULL);
@@ -263,8 +264,18 @@ int cl_run(
     //printf("Read back data from kernel\n");
 #define SHOW_OUTPUT 1
 #if SHOW_OUTPUT
+
+    //Run C code so that we can compare output for correctness.
+    int c_output[output_height*output_width];
+    pass++;
+    vp8_filter_block2d_first_pass(src_ptr, c_output, src_pixels_per_line, pixel_step, output_height, output_width, vp8_filter);
+    
+
     for (j=0; j < dest_len; j++){
-        printf("output[%d] = %d\n", j, output_ptr[j]);
+        if (output_ptr[j] != c_output[j]){
+            printf("pass %d, dest_len %d, output_ptr[%d] = %d, c[%d]=%d\n", pass, dest_len, j, output_ptr[j], j, c_output[j]);
+            //exit(1);
+        }
     }
 #endif
 
@@ -276,6 +287,8 @@ int cl_run(
     clReleaseMemObject(destData);
     destData = NULL;
     //printf("Done freeing\n");
+
+    clFinish(commands);
 
     //Return a success code
     return EXIT_SUCCESS;
@@ -315,7 +328,7 @@ void vp8_filter_block2d_first_pass_cl
         const short *vp8_filter
         ) {
 
-#define USE_CL 0
+#define USE_CL 1
 #if USE_CL
     cl_run(src_ptr, output_ptr, src_pixels_per_line, pixel_step, output_height, output_width, vp8_filter);
 #else
