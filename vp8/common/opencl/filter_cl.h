@@ -27,10 +27,10 @@ const char *vp8_filter_block2d_first_pass_kernel_src="__kernel void vp8_filter_b
 	int out_offset,src_offset;\
     int PS2 = 2*(int)pixel_step;\
 \
-	out_offset = src_offset = tid/output_width;\
-	out_offset = (tid - out_offset*output_width) + (out_offset * output_width);\
-	src_offset = tid + (src_offset * (src_pixels_per_line - output_width));\
-	int Temp = ((int)src_ptr[src_offset - PS2]         * vp8_filter[0]) +\
+	if (tid < (output_width*output_height)){\
+	   out_offset = src_offset = tid/output_width;\
+	   src_offset = tid + (src_offset * (src_pixels_per_line - output_width));\
+	   int Temp = ((int)src_ptr[src_offset - PS2]         * vp8_filter[0]) +\
            ((int)src_ptr[src_offset - (int)pixel_step] * vp8_filter[1]) +\
            ((int)src_ptr[src_offset]                * vp8_filter[2]) +\
            ((int)src_ptr[src_offset + pixel_step]       * vp8_filter[3]) +\
@@ -39,14 +39,15 @@ const char *vp8_filter_block2d_first_pass_kernel_src="__kernel void vp8_filter_b
            (128 >> 1);\
 \
 \
-    Temp = Temp >> 7;\
-	\
-    if (Temp < 0)\
-		Temp = 0;\
-	else if (Temp > 255)\
-		Temp = 255;\
+        Temp = Temp >> 7;\
 \
-    output_ptr[out_offset] = Temp;\
+        if (Temp < 0)\
+		  Temp = 0;\
+	   else if (Temp > 255)\
+    		Temp = 255;\
+\
+        output_ptr[tid] = Temp;\
+    }\
 }";
 
 const char *test_kernel_src="\

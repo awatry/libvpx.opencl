@@ -22,6 +22,9 @@
 
 #include "filter_cl.h"
 
+#define SIXTAP_FILTER_LEN 6
+#define MAX_NUM_PLATFORMS 4
+
 int cl_initialized = 0;
 cl_device_id device_id; // compute device id
 cl_context context; // compute context
@@ -32,11 +35,10 @@ cl_mem srcData;
 cl_mem destData;
 cl_mem filterData;
 
+
 int cl_init_filter_block2d_first_pass() {
     // Connect to a compute device
     int err;
-
-#define MAX_NUM_PLATFORMS 4
     cl_platform_id platform_ids[MAX_NUM_PLATFORMS];
     cl_uint num_found;
     err = clGetPlatformIDs(MAX_NUM_PLATFORMS, platform_ids, &num_found);
@@ -106,10 +108,40 @@ int cl_init_filter_block2d_first_pass() {
     }
     printf("Created kernel\n");
 
+    filterData = clCreateBuffer(context, CL_MEM_READ_ONLY, sizeof (short) * SIXTAP_FILTER_LEN, NULL, NULL);
+    if (!filterData){
+        printf("Error: Failed to allocate filter buffer\n");
+        return EXIT_FAILURE;
+    }
+
+
     cl_initialized = 1;
 
     return 0;
 }
+
+/**
+ *
+ */
+void cl_destroy() {
+
+    //printf("Free filterData\n");
+    if (filterData){
+        clReleaseMemObject(filterData);
+        filterData = NULL;
+    }
+
+    //Release the objects that we've allocated on the GPU
+    clReleaseProgram(program);
+    clReleaseKernel(kernel);
+    clReleaseCommandQueue(commands);
+    clReleaseContext(context);
+
+    cl_initialized = 0;
+
+    return;
+}
+
 
 /**
  * 
@@ -130,7 +162,6 @@ int cl_run(
     int max_i = (output_height*output_width)-1;
     int src_len = (max_i + (max_i/output_width)*(src_pixels_per_line - output_width) + 3 * (int)pixel_step);
     int dest_len = output_height * output_width;
-    int filter_len = 6;
 
     if (!cl_initialized)
         cl_init_filter_block2d_first_pass();
@@ -138,30 +169,35 @@ int cl_run(
     // Create input/output buffers in device memory
     srcData = clCreateBuffer(context, CL_MEM_READ_ONLY, sizeof (unsigned char) * src_len, NULL, NULL);
     destData = clCreateBuffer(context, CL_MEM_WRITE_ONLY, sizeof (int) * dest_len, NULL, NULL);
-    filterData = clCreateBuffer(context, CL_MEM_READ_ONLY, sizeof (short) * filter_len, NULL, NULL);
 
-    printf("srcData=%p\tdestData=%p\tfilterData=%p\n",srcData,destData,filterData);
-    if (!srcData || !destData || !filterData) {
-        printf("Error: Failed to allocate device memory!\n");
+    //printf("srcData=%p\tdestData=%p\tfilterData=%p\n",srcData,destData,filterData);
+    if (!srcData || !destData) {
+        printf("Error: Failed to allocate device memory. Using CPU path!\n");
 
         //Free up whatever objects were successfully allocated
-        if (srcData)
+        if (srcData){
             clReleaseMemObject(srcData);
-        if (destData)
+            srcData=NULL;
+        }
+        if (destData){
             clReleaseMemObject(destData);
-        if (filterData)
-            clReleaseMemObject(filterData);
+            destData = NULL;
+        }
+
+        cl_destroy();
 
         vp8_filter_block2d_first_pass(src_ptr, output_ptr, src_pixels_per_line, pixel_step, output_height, output_width, vp8_filter);
         return EXIT_SUCCESS;
     }
-    printf("Created buffers on device\n");
+    //printf("Created buffers on device\n");
 
     // Copy input and filter data to device
-    err = clEnqueueWriteBuffer(commands, srcData, CL_TRUE, 0, sizeof (unsigned char) * src_len, src_ptr, 0, NULL, NULL);
-    printf("Copied srcData\n");
-    err = clEnqueueWriteBuffer(commands, filterData, CL_TRUE, 0, sizeof (short) * filter_len, vp8_filter, 0, NULL, NULL);
-    printf("Copied filterData\n");
+    err = clEnqueueWriteBuffer(commands, srcData, CL_TRUE, 0,
+            sizeof (unsigned char) * src_len, src_ptr, 0, NULL, NULL);
+    //printf("Copied srcData\n");
+    err = clEnqueueWriteBuffer(commands, filterData, CL_TRUE, 0,
+            sizeof (short) * SIXTAP_FILTER_LEN, vp8_filter, 0, NULL, NULL);
+    //printf("Copied filterData\n");
     if (err != CL_SUCCESS) {
         printf("Error: Failed to write to source array!\n");
         return EXIT_FAILURE;
@@ -180,7 +216,7 @@ int cl_run(
         printf("Error: Failed to set kernel arguments! %d\n", err);
         return EXIT_FAILURE;
     }
-    printf("Set kernel arguments\n");
+    //printf("Set kernel arguments\n");
 
     // Get the maximum work group size for executing the kernel on the device
     size_t local;
@@ -197,10 +233,7 @@ int cl_run(
         printf("Error: Failed to execute kernel!\n");
         return EXIT_FAILURE;
     }
-    printf("Kernel queued\n");
-
-    // Wait for the command queue to finish
-    clFinish(commands);
+    //printf("Kernel queued\n");
 
     // Read back the result data from the device
     err = clEnqueueReadBuffer(commands, destData, CL_TRUE, 0, sizeof (int) * dest_len, output_ptr, 0, NULL, NULL);
@@ -212,45 +245,23 @@ int cl_run(
     // Wait for the command queue to finish
     clFinish(commands);
 
-    printf("Read back data from kernel\n");
+    //printf("Read back data from kernel\n");
 
-    for (j=0; j < dest_len; j++){
-        printf("output[%d] = %d\n", j, output_ptr[j]);
-    }
+    //for (j=0; j < dest_len; j++){
+    //    printf("output[%d] = %d\n", j, output_ptr[j]);
+    //}
 
     // Shutdown and cleanup
-    printf("Free srcData\n");
+    //printf("Free srcData\n");
     clReleaseMemObject(srcData);
     srcData = NULL;
-    printf("Free destData\n");
-    //clReleaseMemObject(destData);
+    //printf("Free destData\n");
+    clReleaseMemObject(destData);
     destData = NULL;
-    printf("Free filterData\n");
-    clReleaseMemObject(filterData);
-    filterData = NULL;
-    printf("Done freeing\n");
-
-    // Wait for the command queue to finish
-    clFinish(commands);
+    //printf("Done freeing\n");
 
     //Return a success code
     return EXIT_SUCCESS;
-}
-
-/**
- * 
- */
-void cl_destroy() {
-
-    //Release the objects that we've allocated on the GPU
-    clReleaseProgram(program);
-    clReleaseKernel(kernel);
-    clReleaseCommandQueue(commands);
-    clReleaseContext(context);
-
-    cl_initialized = 0;
-
-    return;
 }
 
 #define BLOCK_HEIGHT_WIDTH 4
@@ -388,10 +399,15 @@ void vp8_filter_block2d_second_pass_cl
         unsigned int output_width,
         const short *vp8_filter
         ) {
-    unsigned int i;
-    int out_offset, src_offset;
+#define NESTED_FILTER 1
+#if NESTED_FILTER
+	unsigned int i, j;
+#else
+	unsigned int i;
+	int out_offset,src_offset;
+#endif
 
-    int Temp;
+	int  Temp;
 
 #if REGISTER_FILTER
     short filter0 = vp8_filter[0];
@@ -403,31 +419,55 @@ void vp8_filter_block2d_second_pass_cl
 #endif
 
 #if PRE_CALC_PIXEL_STEPS
-    int two_pixel_steps = ((int) pixel_step) << 1;
-    int three_pixel_steps = two_pixel_steps + (int) pixel_step;
+    int two_pixel_steps = ((int)pixel_step) << 1;
+    int three_pixel_steps = two_pixel_steps + (int)pixel_step;
 #endif
 
 #if PRE_CALC_SRC_INCREMENT
     unsigned int src_increment = src_pixels_per_line - output_width;
 #endif
-    for (i = 0; i < output_height * output_width; i++) {
-        out_offset = src_offset = i / output_width;
-        out_offset = (i - out_offset * output_width) + (out_offset * output_pitch);
-        src_offset = i + (src_offset * SRC_INCREMENT);
-        /* Apply filter */
-        Temp = ((int) src_ptr[src_offset - PS2] * FILTER0) +
-                ((int) src_ptr[src_offset - (int) pixel_step] * FILTER1) +
-                ((int) src_ptr[src_offset] * FILTER2) +
-                ((int) src_ptr[src_offset + pixel_step] * FILTER3) +
-                ((int) src_ptr[src_offset + PS2] * FILTER4) +
-                ((int) src_ptr[src_offset + PS3] * FILTER5) +
-                (VP8_FILTER_WEIGHT >> 1); /* Rounding */
+#if NESTED_FILTER
+    for (i = 0; i < output_height; i++)
+    {
+        for (j = 0; j < output_width; j++)
+        {
+            /* Apply filter */
+            Temp = ((int)src_ptr[-1*PS2] * FILTER0) +
+                   ((int)src_ptr[-1*(int)pixel_step] * FILTER1) +
+                   ((int)src_ptr[0]                  * FILTER2) +
+                   ((int)src_ptr[pixel_step]         * FILTER3) +
+                   ((int)src_ptr[PS2]       * FILTER4) +
+                   ((int)src_ptr[PS3]       * FILTER5) +
+                   (VP8_FILTER_WEIGHT >> 1);   /* Rounding */
+#else
+	for (i = 0; i < output_height * output_width; i++){
+            src_offset = out_offset = i/output_width;
+            src_offset = i + (src_offset * SRC_INCREMENT);
+            out_offset = i%output_width + (out_offset * output_pitch);
+            /* Apply filter */
+            Temp = ((int)src_ptr[src_offset - PS2] * FILTER0) +
+               ((int)src_ptr[src_offset -(int)pixel_step] * FILTER1) +
+               ((int)src_ptr[src_offset]                  * FILTER2) +
+               ((int)src_ptr[src_offset + pixel_step]         * FILTER3) +
+               ((int)src_ptr[src_offset + PS2]       * FILTER4) +
+               ((int)src_ptr[src_offset + PS3]       * FILTER5) +
+               (VP8_FILTER_WEIGHT >> 1);   /* Rounding */
+#endif
+            /* Normalize back to 0-255 */
+            Temp = Temp >> VP8_FILTER_SHIFT;
+            CLAMP(Temp, 0, 255);
 
-        /* Normalize back to 0-255 */
-        Temp = Temp >> VP8_FILTER_SHIFT;
-        CLAMP(Temp, 0, 255);
+#if NESTED_FILTER
+            output_ptr[j] = (unsigned char)Temp;
+            src_ptr++;
+        }
 
-        output_ptr[out_offset] = (unsigned char) Temp;
+        /* Start next row */
+        src_ptr    += src_pixels_per_line - output_width;
+        output_ptr += output_pitch;
+#else
+        output_ptr[out_offset] = (unsigned char)Temp;
+#endif
     }
 }
 
