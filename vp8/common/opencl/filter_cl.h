@@ -49,11 +49,10 @@
 #define SRC_INCREMENT (src_pixels_per_line - output_width)
 #endif
 
-#define PAD_SRC 1
 #define CLAMP(x,min,max) if (x < min) x = min; else if ( x > max ) x = max;
 #define STRINGIFY(x) #x
 
-const char *compileOptions = "-DVP8_FILTER_WEIGHT=128 -DVP8_FILTER_SHIFT=7 -DPAD_SRC=1";
+const char *compileOptions = "-DVP8_FILTER_WEIGHT=128 -DVP8_FILTER_SHIFT=7";
 
 const char *vp8_filter_block2d_first_pass_kernel_src = STRINGIFY(
 __kernel void vp8_filter_block2d_first_pass_kernel(
@@ -73,11 +72,7 @@ __kernel void vp8_filter_block2d_first_pass_kernel(
     int PS3 = 3*(int)pixel_step;
 
     if (i < (output_width*output_height)){
-#if PAD_SRC
         src_offset = i + (i/output_width * (src_pixels_per_line - output_width)) + PS2;
-#else
-        src_offset = i + (i/output_width * (src_pixels_per_line - output_width));
-#endif
 
         Temp = ((int)*(src_ptr+src_offset - PS2)      * vp8_filter[0]) +
            ((int)*(src_ptr+src_offset - (int)pixel_step) * vp8_filter[1]) +
@@ -98,24 +93,6 @@ __kernel void vp8_filter_block2d_first_pass_kernel(
     }
 }
 );
-
-//for (i = 0; i < output_height*output_width; i++){
-//	src_offset = i + (i/output_width * SRC_INCREMENT);
-//        Temp = ((int)*(src_ptr+src_offset - PS2)         * FILTER0) +
-//           ((int)*(src_ptr+src_offset - (int)pixel_step) * FILTER1) +
-//           ((int)*(src_ptr+src_offset)                * FILTER2) +
-//           ((int)*(src_ptr+src_offset + pixel_step)       * FILTER3) +
-//           ((int)*(src_ptr+src_offset + PS2)              * FILTER4) +
-//           ((int)*(src_ptr+src_offset + PS3)              * FILTER5) +
-//           (VP8_FILTER_WEIGHT >> 1);      /* Rounding */
-
-        /* Normalize back to 0-255 */
-//        Temp = Temp >> VP8_FILTER_SHIFT;
-//        CLAMP(Temp, 0, 255);
-        //printf("Clamped Temp=%d\n",Temp);
-
-//        output_ptr[i] = Temp;
-
 
 const char *test_kernel_src="\
 __kernel void test_kernel(__global    int *src_ptr,\

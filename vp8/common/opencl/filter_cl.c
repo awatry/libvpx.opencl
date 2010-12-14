@@ -173,12 +173,8 @@ int cl_run(
     //Calculate size of input and output arrays
     int dest_len = output_height * output_width;
     int max_i = dest_len-1;
-#if PAD_SRC
     //Copy the -2*pixel_step bytes because the filter algorithm accesses negative indexes
     int src_len = (dest_len + (max_i/output_width)*(src_pixels_per_line - output_width) + 5 * (int)pixel_step);
-#else
-    int src_len = (max_i + (max_i/output_width)*(src_pixels_per_line - output_width) + 3 * (int)pixel_step);
-#endif
 
     if (!cl_initialized)
         cl_init_filter_block2d_first_pass();
@@ -209,13 +205,8 @@ int cl_run(
     //printf("Created buffers on device\n");
 
     // Copy input and filter data to device
-#if PAD_SRC
     err = clEnqueueWriteBuffer(commands, srcData, CL_TRUE, 0,
             sizeof (unsigned char) * src_len, src_ptr-(2*(int)pixel_step), 0, NULL, NULL);
-#else
-    err = clEnqueueWriteBuffer(commands, srcData, CL_TRUE, 0,
-            sizeof (unsigned char) * src_len, src_ptr, 0, NULL, NULL);
-#endif
 
     err = clEnqueueWriteBuffer(commands, filterData, CL_TRUE, 0,
             sizeof (short) * SIXTAP_FILTER_LEN, vp8_filter, 0, NULL, NULL);
