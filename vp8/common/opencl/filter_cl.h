@@ -76,6 +76,8 @@ static const short sub_pel_filters[8][6] = {
 
 const char *compileOptions = "-DVP8_FILTER_WEIGHT=128 -DVP8_FILTER_SHIFT=7";
 
+const char *filter_cl_file_name = "vp8/common/opencl/filter_cl.cl";
+
 const char *vp8_filter_block2d_first_pass_kernel_src = STRINGIFY(
 __kernel void vp8_filter_block2d_first_pass_kernel(
     __global unsigned char *src_ptr,
@@ -114,7 +116,7 @@ __kernel void vp8_filter_block2d_first_pass_kernel(
         output_ptr[i] = Temp;
     }
 }
-);
+); //end stringify
 
 const char *test_kernel_src="\
 __kernel void test_kernel(__global    int *src_ptr,\

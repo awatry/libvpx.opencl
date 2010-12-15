@@ -24,9 +24,11 @@
 
 #define SIXTAP_FILTER_LEN 6
 #define MAX_NUM_PLATFORMS 4
+#define CL_TRIED_BUT_FAILED 1
+#define CL_NOT_INITIALIZED -1
 #define BLOCK_HEIGHT_WIDTH 4
 
-int cl_initialized = 0;
+int cl_initialized = CL_NOT_INITIALIZED;
 int pass=0;
 cl_device_id device_id; // compute device id
 cl_context context; // compute context
@@ -39,24 +41,55 @@ cl_mem filterData;
 
 #define USE_LOCAL_SIZE 0
 #if USE_LOCAL_SIZE
-    size_t local;
+size_t local;
 #endif
 
+char *read_file(const char* file_name){
+    long pos;
+    char *bytes;
+    size_t amt_read;
+    
+    FILE *f = fopen(file_name, "rb");
+    if (f == NULL)
+        return NULL;
+
+    fseek(f, 0, SEEK_END);
+    pos = ftell(f);
+    fseek(f, 0, SEEK_SET);
+
+    bytes = malloc(pos);
+    if (bytes == NULL){
+        fclose(f);
+        return NULL;
+    }
+
+    amt_read = fread(bytes, pos, 1, f);
+    if (amt_read != 1){
+        free(bytes);
+        fclose(f);
+        return NULL;
+    }
+
+    fclose(f);
+
+    return bytes;
+}
 
 int cl_init_filter_block2d_first_pass() {
     // Connect to a compute device
     int err;
+    char *kernel_src;
     cl_platform_id platform_ids[MAX_NUM_PLATFORMS];
     cl_uint num_found;
     err = clGetPlatformIDs(MAX_NUM_PLATFORMS, platform_ids, &num_found);
 
     if (err != CL_SUCCESS) {
         printf("Couldn't query platform IDs\n");
-        return EXIT_FAILURE;
+        return CL_TRIED_BUT_FAILED;
     }
     if (num_found == 0) {
         printf("No platforms found\n");
-        return EXIT_FAILURE;
+        return CL_TRIED_BUT_FAILED;
     }
     //printf("Found %d platforms\n", num_found);
 
@@ -66,7 +99,7 @@ int cl_init_filter_block2d_first_pass() {
         err = clGetDeviceIDs(platform_ids[0], CL_DEVICE_TYPE_ALL, 1, &device_id, NULL);
         if (err != CL_SUCCESS) {
             printf("Error: Failed to create a device group!\n");
-            return EXIT_FAILURE;
+            return CL_TRIED_BUT_FAILED;
         }
     }
 
@@ -74,22 +107,31 @@ int cl_init_filter_block2d_first_pass() {
     context = clCreateContext(0, 1, &device_id, NULL, NULL, &err);
     if (!context) {
         printf("Error: Failed to create a compute context!\n");
-        return EXIT_FAILURE;
+        return CL_TRIED_BUT_FAILED;
     }
 
     // Create a command queue
     commands = clCreateCommandQueue(context, device_id, 0, &err);
     if (!commands || err != CL_SUCCESS) {
         printf("Error: Failed to create a command queue!\n");
-        return EXIT_FAILURE;
+        return CL_TRIED_BUT_FAILED;
     }
 
-    // Create the compute program from the header defined source code
-    //printf("source: %s\n", vp8_filter_block2d_first_pass_kernel_src);
-    program = clCreateProgramWithSource(context, 1, &vp8_filter_block2d_first_pass_kernel_src, NULL, &err);
+    // Create the compute program from the file-defined source code
+    kernel_src = read_file(filter_cl_file_name);
+    if (kernel_src != NULL){
+        printf("creating kernel from source file\n");
+        program = clCreateProgramWithSource(context, 1, &kernel_src, NULL, &err);
+        free(kernel_src);
+    } else {
+        cl_destroy();
+        printf("Couldn't find OpenCL source files. \nUsing software path.\n");
+        return CL_TRIED_BUT_FAILED;
+    }
+
     if (!program) {
         printf("Error: Couldn't compile program\n");
-        return EXIT_FAILURE;
+        return CL_TRIED_BUT_FAILED;
     }
     //printf("Created Program\n");
 
@@ -97,12 +139,12 @@ int cl_init_filter_block2d_first_pass() {
     err = clBuildProgram(program, 0, NULL, compileOptions, NULL, NULL);
     if (err != CL_SUCCESS) {
         size_t len;
-        char buffer[2048];
+        char buffer[20480];
 
         printf("Error: Failed to build program executable!\n");
-        clGetProgramBuildInfo(program, device_id, CL_PROGRAM_BUILD_LOG, sizeof (buffer), buffer, &len);
+        clGetProgramBuildInfo(program, device_id, CL_PROGRAM_BUILD_LOG, sizeof (buffer), &buffer, &len);
         printf("Compile output: %s\n", buffer);
-        return EXIT_FAILURE;
+        return CL_TRIED_BUT_FAILED;
     }
     //printf("Built executable\n");
 
@@ -111,7 +153,7 @@ int cl_init_filter_block2d_first_pass() {
     //kernel = clCreateKernel(program, "test_kernel", &err);
     if (!kernel || err != CL_SUCCESS) {
         printf("Error: Failed to create compute kernel!\n");
-        return EXIT_FAILURE;
+        return CL_TRIED_BUT_FAILED;
     }
     //printf("Created kernel\n");
 
@@ -120,7 +162,7 @@ int cl_init_filter_block2d_first_pass() {
     err = clGetKernelWorkGroupInfo(kernel, device_id, CL_KERNEL_WORK_GROUP_SIZE, sizeof (local), &local, NULL);
     if (err != CL_SUCCESS) {
         printf("Error: Failed to retrieve kernel work group info! %d\n", err);
-        return EXIT_FAILURE;
+        return CL_TRIED_BUT_FAILED;
     }
     //printf("local=%d\n",local);
 #endif
@@ -130,12 +172,10 @@ int cl_init_filter_block2d_first_pass() {
     filterData = clCreateBuffer(context, CL_MEM_READ_ONLY, sizeof (short) * SIXTAP_FILTER_LEN, NULL, NULL);
     if (!filterData){
         printf("Error: Failed to allocate filter buffer\n");
-        return EXIT_FAILURE;
+        return CL_TRIED_BUT_FAILED;
     }
 
-    cl_initialized = 1;
-
-    return 0;
+    return CL_SUCCESS;
 }
 
 /**
@@ -164,7 +204,7 @@ void cl_destroy() {
     commands = NULL;
     context = NULL;
 
-    cl_initialized = 0;
+    cl_initialized = CL_NOT_INITIALIZED;
 
     return;
 }
@@ -193,9 +233,11 @@ void vp8_filter_block2d_first_pass_cl
     //Copy the -2*pixel_step bytes because the filter algorithm accesses negative indexes
     int src_len = (dest_len + ((dest_len-1)/output_width)*(src_pixels_per_line - output_width) + 5 * (int)pixel_step);
 
-    if (!cl_initialized){
-        cl_init_filter_block2d_first_pass();
-        if (!cl_initialized){
+    if (cl_initialized != CL_SUCCESS){
+        if (cl_initialized == CL_NOT_INITIALIZED){
+            cl_initialized = cl_init_filter_block2d_first_pass();
+        }
+        if (cl_initialized != CL_SUCCESS){
             vp8_filter_block2d_first_pass(src_ptr, output_ptr, src_pixels_per_line, pixel_step, output_height, output_width, vp8_filter);
             return;
         }
@@ -220,6 +262,7 @@ void vp8_filter_block2d_first_pass_cl
         }
 
         cl_destroy();
+        cl_initialized = CL_TRIED_BUT_FAILED;
         vp8_filter_block2d_first_pass(src_ptr, output_ptr, src_pixels_per_line, pixel_step, output_height, output_width, vp8_filter);
     }
     //printf("Created buffers on device\n");
@@ -232,6 +275,8 @@ void vp8_filter_block2d_first_pass_cl
             sizeof (short) * SIXTAP_FILTER_LEN, vp8_filter, 0, NULL, NULL);
     if (err != CL_SUCCESS) {
         clFinish(commands); //Wait for commands to finish so pointers are usable again.
+        cl_destroy();
+        cl_initialized = CL_TRIED_BUT_FAILED;
         printf("Error: Failed to write to source array!\n");
         vp8_filter_block2d_first_pass(src_ptr, output_ptr, src_pixels_per_line, pixel_step, output_height, output_width, vp8_filter);
         return;
@@ -247,7 +292,8 @@ void vp8_filter_block2d_first_pass_cl
     err |= clSetKernelArg(kernel, 5, sizeof (unsigned int), &output_width);
     err |= clSetKernelArg(kernel, 6, sizeof (cl_mem), &filterData);
     if (err != CL_SUCCESS) {
-        clFinish(commands);
+        cl_destroy();
+        cl_initialized=CL_TRIED_BUT_FAILED;
         printf("Error: Failed to set kernel arguments! %d\n", err);
         vp8_filter_block2d_first_pass(src_ptr, output_ptr, src_pixels_per_line, pixel_step, output_height, output_width, vp8_filter);
         return;
@@ -266,6 +312,8 @@ void vp8_filter_block2d_first_pass_cl
 #endif
     if (err) {
         clFinish(commands);
+        cl_destroy();
+        cl_initialized = CL_TRIED_BUT_FAILED;
         printf("Error: Failed to execute kernel!\n");
         vp8_filter_block2d_first_pass(src_ptr, output_ptr, src_pixels_per_line, pixel_step, output_height, output_width, vp8_filter);
         return;
@@ -276,6 +324,8 @@ void vp8_filter_block2d_first_pass_cl
     err = clEnqueueReadBuffer(commands, destData, CL_FALSE, 0, sizeof (int) * dest_len, output_ptr, 0, NULL, NULL);
     if (err != CL_SUCCESS) {
         clFinish(commands);
+        cl_destroy();
+        cl_initialized = CL_TRIED_BUT_FAILED;
         printf("Error: Failed to read output array! %d\n", err);
         vp8_filter_block2d_first_pass(src_ptr, output_ptr, src_pixels_per_line, pixel_step, output_height, output_width, vp8_filter);
         return;
