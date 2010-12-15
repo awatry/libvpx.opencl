@@ -505,9 +505,7 @@ void vp8_sixtap_predict_cl
         int dst_pitch
         ) {
 
-#ifndef FILTER_OFFSET
     const short *HFilter;
-#endif
     const short *VFilter;
 
     HFilter = sub_pel_filters[xoffset]; /* 6 tap */
