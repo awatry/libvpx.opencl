@@ -74,6 +74,13 @@ static const short sub_pel_filters[8][6] = {
     { 0, -1, 12, 123, -6, 0},
 };
 
+//#define FILTER_OFFSET
+#ifdef FILTER_OFFSET
+#define FILTER_REF sub_pel_filters[filter_offset]
+#else
+#define FILTER_REF vp8_filter
+#endif
+
 const char *compileOptions = "-DVP8_FILTER_WEIGHT=128 -DVP8_FILTER_SHIFT=7";
 
 const char *filter_cl_file_name = "vp8/common/opencl/filter_cl.cl";

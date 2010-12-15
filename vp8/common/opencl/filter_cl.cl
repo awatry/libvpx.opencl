@@ -1,3 +1,4 @@
+#ifdef FILTER_OFFSET
 __constant short sub_pel_filters[8][6] = {
     { 0, 0, 128, 0, 0, 0}, /* note that 1/8 pel positions are just as per alpha -0.5 bicubic */
     { 0, -6, 123, 12, -1, 0},
@@ -8,6 +9,7 @@ __constant short sub_pel_filters[8][6] = {
     { 1, -8, 36, 108, -11, 2}, /* New 1/4 pel 6 tap filter */
     { 0, -1, 12, 123, -6, 0},
 };
+#endif
 
 __kernel void vp8_filter_block2d_first_pass_kernel(
     __global unsigned char *src_ptr,
@@ -16,7 +18,11 @@ __kernel void vp8_filter_block2d_first_pass_kernel(
     unsigned int pixel_step,
     unsigned int output_height,
     unsigned int output_width,
+#ifdef FILTER_OFFSET
+    int filter_offset)
+#else
     __global short *vp8_filter)
+#endif
 {
     uint i = get_global_id(0);
 
@@ -24,6 +30,10 @@ __kernel void vp8_filter_block2d_first_pass_kernel(
     int Temp;
     int PS2 = 2*(int)pixel_step;
     int PS3 = 3*(int)pixel_step;
+
+#ifdef FILTER_OFFSET
+    __constant short *vp8_filter = sub_pel_filters[filter_offset];
+#endif
 
     if (i < (output_width*output_height)){
         src_offset = i + (i/output_width * (src_pixels_per_line - output_width)) + PS2;
