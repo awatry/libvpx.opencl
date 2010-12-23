@@ -369,6 +369,7 @@ void vp8_filter_block2d_first_pass_cl
 void vp8_filter_block2d_second_pass_cl
 (
         int *src_ptr,
+        int offset,
         unsigned char *output_ptr,
         int output_pitch,
         unsigned int src_pixels_per_line,
@@ -377,7 +378,7 @@ void vp8_filter_block2d_second_pass_cl
         unsigned int output_width,
         const short *vp8_filter
         ) {
-#define NESTED_FILTER 1
+#define NESTED_FILTER 0
 #if NESTED_FILTER
 	unsigned int i, j;
 #else
@@ -386,7 +387,6 @@ void vp8_filter_block2d_second_pass_cl
 #endif
 
 	int  Temp;
-
 #if REGISTER_FILTER
     short filter0 = vp8_filter[0];
     short filter1 = vp8_filter[1];
@@ -404,6 +404,9 @@ void vp8_filter_block2d_second_pass_cl
 #if PRE_CALC_SRC_INCREMENT
     unsigned int src_increment = src_pixels_per_line - output_width;
 #endif
+
+    src_ptr = &src_ptr[offset];
+
 #if NESTED_FILTER
     for (i = 0; i < output_height; i++)
     {
@@ -436,6 +439,7 @@ void vp8_filter_block2d_second_pass_cl
             CLAMP(Temp, 0, 255);
 
 #if NESTED_FILTER
+            printf("Setting output_ptr(%p)[%d]\n",output_ptr,j);
             output_ptr[j] = (unsigned char)Temp;
             src_ptr++;
         }
@@ -472,7 +476,7 @@ void vp8_filter_block2d_cl
 #endif
     
     /* then filter vertically... */
-    vp8_filter_block2d_second_pass_cl(FData + 8, output_ptr, output_pitch, 4, 4, 4, 4, VFilter);
+    vp8_filter_block2d_second_pass_cl(FData, 8, output_ptr, output_pitch, 4, 4, 4, 4, VFilter);
 }
 
 void vp8_block_variation_cl
@@ -542,7 +546,7 @@ void vp8_sixtap_predict8x8_cl
 #endif
 
     /* then filter vertically... */
-    vp8_filter_block2d_second_pass_cl(FData + 16, dst_ptr, dst_pitch, 8, 8, 8, 8, VFilter);
+    vp8_filter_block2d_second_pass_cl(FData, 16, dst_ptr, dst_pitch, 8, 8, 8, 8, VFilter);
 
 }
 
@@ -570,7 +574,7 @@ void vp8_sixtap_predict8x4_cl
 #endif
 
     /* then filter vertically... */
-    vp8_filter_block2d_second_pass_cl(FData + 16, dst_ptr, dst_pitch, 8, 8, 4, 8, VFilter);
+    vp8_filter_block2d_second_pass_cl(FData, 16, dst_ptr, dst_pitch, 8, 8, 4, 8, VFilter);
 
 }
 
@@ -598,7 +602,7 @@ void vp8_sixtap_predict16x16_cl
 #endif
 
     /* then filter vertically... */
-    vp8_filter_block2d_second_pass_cl(FData + 32, dst_ptr, dst_pitch, 16, 16, 16, 16, VFilter);
+    vp8_filter_block2d_second_pass_cl(FData, 32, dst_ptr, dst_pitch, 16, 16, 16, 16, VFilter);
 
 }
 

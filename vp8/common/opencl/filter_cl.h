@@ -84,7 +84,6 @@ const char *compileOptions = "-DVP8_FILTER_WEIGHT=128 -DVP8_FILTER_SHIFT=7";
 #endif
 
 
-
 const char *filter_cl_file_name = "vp8/common/opencl/filter_cl.cl";
 
 #endif /* FILTER_CL_H_ */

@@ -56,3 +56,51 @@ __kernel void vp8_filter_block2d_first_pass_kernel(
         output_ptr[i] = Temp;
     }
 }
+
+__kernel void vp8_filter_block2d_second_pass_cl_kernel
+(
+    __global int *src_ptr,
+    unsigned int offset,
+    __global unsigned char *output_ptr,
+    int output_pitch,
+    unsigned int src_pixels_per_line,
+    unsigned int pixel_step,
+    unsigned int output_height,
+    unsigned int output_width,
+    __global const short *vp8_filter
+) {
+
+    int out_offset,src_offset;
+    int Temp;
+    int PS2 = 2*(int)pixel_step;
+    int PS3 = 3*(int)pixel_step;
+
+    unsigned int src_increment = src_pixels_per_line - output_width;
+
+    uint i = get_global_id(0);
+    if (i < output_height * output_width){
+        src_ptr = &src_ptr[offset];
+
+        src_offset = out_offset = i/output_width;
+        src_offset = i + (src_offset * src_increment);
+        out_offset = i%output_width + (out_offset * output_pitch);
+
+        /* Apply filter */
+        Temp = ((int)src_ptr[src_offset - PS2] * vp8_filter[0]) +
+           ((int)src_ptr[src_offset -(int)pixel_step] * vp8_filter[1]) +
+           ((int)src_ptr[src_offset]                  * vp8_filter[2]) +
+           ((int)src_ptr[src_offset + pixel_step]     * vp8_filter[3]) +
+           ((int)src_ptr[src_offset + PS2]       * vp8_filter[4]) +
+           ((int)src_ptr[src_offset + PS3]       * vp8_filter[5]) +
+           (VP8_FILTER_WEIGHT >> 1);   /* Rounding */
+
+        /* Normalize back to 0-255 */
+        Temp = Temp >> VP8_FILTER_SHIFT;
+        if (Temp < 0)
+            Temp = 0;
+        else if (Temp > 255)
+            Temp = 255;
+
+        output_ptr[out_offset] = (unsigned char)Temp;
+    }
+}
