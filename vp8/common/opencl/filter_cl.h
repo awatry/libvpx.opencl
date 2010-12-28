@@ -11,6 +11,12 @@
 #ifndef FILTER_CL_H_
 #define FILTER_CL_H_
 
+#ifdef __APPLE__
+#include <OpenCL/cl.h>
+#else
+#include <CL/cl.h>
+#endif
+
 #define VP8_FILTER_WEIGHT 128
 #define VP8_FILTER_SHIFT  7
 
@@ -82,6 +88,20 @@ const char *compileOptions = "-DVP8_FILTER_WEIGHT=128 -DVP8_FILTER_SHIFT=7 -DFIL
 const char *compileOptions = "-DVP8_FILTER_WEIGHT=128 -DVP8_FILTER_SHIFT=7";
 #define FILTER_REF vp8_filter
 #endif
+
+typedef struct VP8_COMMON_CL
+{
+    cl_device_id device_id; // compute device id
+    cl_context context; // compute context
+    cl_command_queue commands; // compute command queue
+    cl_program program; // compute program
+    cl_kernel filter_block2d_first_pass_kernel; // compute kernel
+    cl_kernel filter_block2d_second_pass_kernel; // compute kernel
+    cl_mem srcData; //Source frame data
+    cl_mem intData; //Intermediate data passed from 1st to 2nd pass
+    cl_mem destData; //Destination data for 2nd pass.
+    cl_mem filterData; //vp8_filter row
+} VP8_COMMON_CL;
 
 
 const char *filter_cl_file_name = "vp8/common/opencl/filter_cl.cl";

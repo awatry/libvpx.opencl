@@ -1,3 +1,5 @@
+#pragma OPENCL EXTENSION cl_khr_byte_addressable_store : enable
+
 #ifdef FILTER_OFFSET
 __constant short sub_pel_filters[8][6] = {
     { 0, 0, 128, 0, 0, 0}, /* note that 1/8 pel positions are just as per alpha -0.5 bicubic */
@@ -57,7 +59,7 @@ __kernel void vp8_filter_block2d_first_pass_kernel(
     }
 }
 
-__kernel void vp8_filter_block2d_second_pass_cl_kernel
+__kernel void vp8_filter_block2d_second_pass_kernel
 (
     __global int *src_ptr,
     unsigned int offset,
@@ -70,7 +72,8 @@ __kernel void vp8_filter_block2d_second_pass_cl_kernel
     __global const short *vp8_filter
 ) {
 
-    int out_offset,src_offset;
+    int out_offset;
+    int src_offset;
     int Temp;
     int PS2 = 2*(int)pixel_step;
     int PS3 = 3*(int)pixel_step;
@@ -78,10 +81,11 @@ __kernel void vp8_filter_block2d_second_pass_cl_kernel
     unsigned int src_increment = src_pixels_per_line - output_width;
 
     uint i = get_global_id(0);
-    if (i < output_height * output_width){
-        src_ptr = &src_ptr[offset];
+    if (i < output_width +(output_pitch*(output_height-1))){
 
-        src_offset = out_offset = i/output_width;
+        src_ptr = &src_ptr[offset];
+        src_offset = i/output_width;
+        out_offset = src_offset;
         src_offset = i + (src_offset * src_increment);
         out_offset = i%output_width + (out_offset * output_pitch);
 
