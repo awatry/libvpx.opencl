@@ -55,6 +55,17 @@
 #define SRC_INCREMENT (src_pixels_per_line - output_width)
 #endif
 
+#define CL_ALLOC_COPY(x)
+
+#define CL_CHECK_SUCCESS(cond,msg,alt) \
+    if (cond){ \
+        printf(msg);  \
+        cl_destroy(); \
+        cl_initialized = CL_TRIED_BUT_FAILED; \
+        alt; \
+        return;\
+    }
+
 #define CLAMP(x,min,max) if (x < min) x = min; else if ( x > max ) x = max;
 #define STRINGIFY(x) #x
 

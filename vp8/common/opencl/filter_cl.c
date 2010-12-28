@@ -90,6 +90,10 @@ char *read_file(const char* file_name){
  *
  */
 void cl_destroy() {
+
+    //Wait on any pending operations to complete... frees up all of our pointers
+    clFinish(cl_data.commands);
+
     if (cl_data.filterData){
         clReleaseMemObject(cl_data.filterData);
         cl_data.filterData = NULL;
@@ -280,33 +284,24 @@ void vp8_filter_block2d_first_pass_cl
     // Create input/output buffers in device memory
     cl_data.intData = clCreateBuffer(cl_data.context, CL_MEM_READ_WRITE, sizeof (int) * dest_len, NULL, NULL);
     cl_data.srcData = clCreateBuffer(cl_data.context, CL_MEM_READ_ONLY|CL_MEM_USE_HOST_PTR, sizeof (unsigned char) * src_len, src_ptr-(2*(int)pixel_step), &err);
-    if (err != CL_SUCCESS){
-        printf("Error copying source data to device! Using CPU path!\n");
-        cl_destroy();
-        cl_initialized = CL_TRIED_BUT_FAILED;
-        vp8_filter_block2d_first_pass(src_ptr, output_ptr, src_pixels_per_line, pixel_step, output_height, output_width, FILTER_REF);
-        return;
-    }
-    if (!cl_data.srcData || !cl_data.intData) {
-        printf("Error: Failed to allocate device memory. Using CPU path!\n");
-        cl_destroy();
-        cl_initialized = CL_TRIED_BUT_FAILED;
-        vp8_filter_block2d_first_pass(src_ptr, output_ptr, src_pixels_per_line, pixel_step, output_height, output_width, FILTER_REF);
-        return;
-    }
+    CL_CHECK_SUCCESS(
+            err != CL_SUCCESS,
+            "Error copying source data to device! Using CPU path!\n",
+            vp8_filter_block2d_first_pass(src_ptr, output_ptr, src_pixels_per_line, pixel_step, output_height, output_width, FILTER_REF);
+    );
+    CL_CHECK_SUCCESS(!cl_data.srcData || !cl_data.intData,
+            "Error: Failed to allocate device memory. Using CPU path!\n",
+            vp8_filter_block2d_first_pass(src_ptr, output_ptr, src_pixels_per_line, pixel_step, output_height, output_width, FILTER_REF)
+    );
 
 #ifndef FILTER_OFFSET
     err = clEnqueueWriteBuffer(cl_data.commands, cl_data.filterData, CL_FALSE, 0,
             sizeof (short) * SIXTAP_FILTER_LEN, vp8_filter, 0, NULL, NULL);
 #endif
-    if (err != CL_SUCCESS) {
-        clFinish(cl_data.commands); //Wait for commands to finish so pointers are usable again.
-        cl_destroy();
-        cl_initialized = CL_TRIED_BUT_FAILED;
-        printf("Error: Failed to write to source array!\n");
-        vp8_filter_block2d_first_pass(src_ptr, output_ptr, src_pixels_per_line, pixel_step, output_height, output_width, FILTER_REF);
-        return;
-    }
+    CL_CHECK_SUCCESS( err != CL_SUCCESS,
+            "Error: Failed to write to source array!\n",
+            vp8_filter_block2d_first_pass(src_ptr, output_ptr, src_pixels_per_line, pixel_step, output_height, output_width, FILTER_REF)
+    );
 
     // Set kernel arguments
     err = 0;
@@ -321,13 +316,10 @@ void vp8_filter_block2d_first_pass_cl
 #else
     err |= clSetKernelArg(cl_data.filter_block2d_first_pass_kernel, 6, sizeof (cl_mem), &cl_data.filterData);
 #endif
-    if (err != CL_SUCCESS) {
-        cl_destroy();
-        cl_initialized=CL_TRIED_BUT_FAILED;
-        printf("Error: Failed to set kernel arguments! %d\n", err);
+    CL_CHECK_SUCCESS( err != CL_SUCCESS,
+        "Error: Failed to set kernel arguments!\n",
         vp8_filter_block2d_first_pass(src_ptr, output_ptr, src_pixels_per_line, pixel_step, output_height, output_width, FILTER_REF);
-        return;
-    }
+    );
     //printf("Set kernel arguments\n");
 
     // Execute the kernel
@@ -340,27 +332,20 @@ void vp8_filter_block2d_first_pass_cl
 #else
     err = clEnqueueNDRangeKernel(cl_data.commands, cl_data.filter_block2d_first_pass_kernel, 1, NULL, &global, NULL , 0, NULL, NULL);
 #endif
-    if (err) {
-        clFinish(cl_data.commands);
-        cl_destroy();
-        cl_initialized = CL_TRIED_BUT_FAILED;
-        printf("Error: Failed to execute kernel!\n");
+    CL_CHECK_SUCCESS( err != CL_SUCCESS,
+        "Error: Failed to execute kernel!\n",
         vp8_filter_block2d_first_pass(src_ptr, output_ptr, src_pixels_per_line, pixel_step, output_height, output_width, FILTER_REF);
-        return;
-    }
+    );
     //printf("Kernel queued\n");
 
     // Read back the result data from the device
     err = clEnqueueReadBuffer(cl_data.commands, cl_data.intData, CL_FALSE, 0, sizeof (int) * dest_len, output_ptr, 0, NULL, NULL);
-    if (err != CL_SUCCESS) {
-        clFinish(cl_data.commands);
-        cl_destroy();
-        cl_initialized = CL_TRIED_BUT_FAILED;
-        printf("Error: Failed to read output array! %d\n", err);
-        vp8_filter_block2d_first_pass(src_ptr, output_ptr, src_pixels_per_line, pixel_step, output_height, output_width, FILTER_REF);
-        return;
-    }
+    CL_CHECK_SUCCESS( err != CL_SUCCESS,
+            "Error: Failed to read output array!\n",
+            vp8_filter_block2d_first_pass(src_ptr, output_ptr, src_pixels_per_line, pixel_step, output_height, output_width, FILTER_REF);
+    );
 
+    //wait for output copy to finish
     clFinish(cl_data.commands);
     
 #if SHOW_OUTPUT_1ST
@@ -427,33 +412,36 @@ void vp8_filter_block2d_second_pass_cl
 
     if (cl_initialized != CL_SUCCESS){
             vp8_filter_block2d_second_pass(&src_ptr[offset], output_ptr, output_pitch, src_pixels_per_line, pixel_step, output_height, output_width, FILTER_REF);
+            return;
     }
 
     // Create input/output buffers in device memory
     cl_data.destData = clCreateBuffer(cl_data.context, CL_MEM_WRITE_ONLY, sizeof (unsigned char) * dest_len, NULL, NULL);
 
-    if (!cl_data.destData) {
-        printf("Error: Failed to allocate device memory. Using CPU path!\n");
-        cl_initialized = CL_TRIED_BUT_FAILED;
-        vp8_filter_block2d_second_pass(&src_ptr[offset], output_ptr, output_pitch, src_pixels_per_line, pixel_step, output_height, output_width, FILTER_REF);
-    }
+    CL_CHECK_SUCCESS( !cl_data.destData,
+        "Error: Failed to allocate device memory. Using CPU path!\n",
+        vp8_filter_block2d_second_pass(&src_ptr[offset], output_ptr, output_pitch, src_pixels_per_line, pixel_step, output_height, output_width, FILTER_REF)
+    );
     //printf("Created buffers on device\n");
 
     // Copy input and filter data to device
     //err = clEnqueueWriteBuffer(cl_data.commands, cl_data.intData, CL_FALSE, 0,
     //        sizeof (int) * src_len, src_ptr, 0, NULL, NULL);
+    //clFinish(cl_data.commands);
     err = clEnqueueReadBuffer(cl_data.commands, cl_data.intData, CL_FALSE, 0, sizeof (int) * src_len, src_bak, 0, NULL, NULL);
     clFinish(cl_data.commands);
-    printf("Checking src_bak\n");
+    
 /*
+    printf("Checking src_bak\n");
     for (j=0; j < src_len; j++){
         printf("j=%d\n",j);
         if (src_ptr[j] != src_bak[j]){
-            printf("src copy doesn't match\n");
+            printf("src copy doesn't match: input=%d, cl=%d\n", src_ptr[j],src_bak[j]);
             exit(1);
         }
     }
 */
+
     free(src_bak);
 
     //err = clEnqueueWriteBuffer(cl_data.commands, cl_data.intData, CL_FALSE, 0,
@@ -463,14 +451,10 @@ void vp8_filter_block2d_second_pass_cl
     err = clEnqueueWriteBuffer(cl_data.commands, cl_data.filterData, CL_FALSE, 0,
             sizeof (short) * SIXTAP_FILTER_LEN, vp8_filter, 0, NULL, NULL);
 #endif
-    if (err != CL_SUCCESS) {
-        clFinish(cl_data.commands); //Wait for commands to finish so pointers are usable again.
-        cl_destroy();
-        cl_initialized = CL_TRIED_BUT_FAILED;
-        printf("Error: Failed to write to source array!\n");
-        vp8_filter_block2d_second_pass(&src_ptr[offset], output_ptr, output_pitch, src_pixels_per_line, pixel_step, output_height, output_width, FILTER_REF);
-        return;
-    }
+    CL_CHECK_SUCCESS( err != CL_SUCCESS,
+        "Error: Failed to write to source array!\n",
+        vp8_filter_block2d_second_pass(&src_ptr[offset], output_ptr, output_pitch, src_pixels_per_line, pixel_step, output_height, output_width, FILTER_REF)
+    );
 
     // Set kernel arguments
     err = 0;
@@ -487,13 +471,10 @@ void vp8_filter_block2d_second_pass_cl
 #else
     err |= clSetKernelArg(cl_data.filter_block2d_second_pass_kernel, 8, sizeof (cl_mem), &cl_data.filterData);
 #endif
-    if (err != CL_SUCCESS) {
-        cl_destroy();
-        cl_initialized=CL_TRIED_BUT_FAILED;
-        printf("Error: Failed to set kernel arguments! %d\n", err);
+    CL_CHECK_SUCCESS(err != CL_SUCCESS,
+        "Error: Failed to set kernel arguments!\n",
         vp8_filter_block2d_second_pass(&src_ptr[offset], output_ptr, output_pitch, src_pixels_per_line, pixel_step, output_height, output_width, FILTER_REF);
-        return;
-    }
+    );
     //printf("Set kernel arguments\n");
 
     // Execute the kernel
@@ -506,14 +487,10 @@ void vp8_filter_block2d_second_pass_cl
 #else
     err = clEnqueueNDRangeKernel(cl_data.commands, cl_data.filter_block2d_second_pass_kernel, 1, NULL, &global, NULL , 0, NULL, NULL);
 #endif
-    if (err) {
-        clFinish(cl_data.commands);
-        cl_destroy();
-        cl_initialized = CL_TRIED_BUT_FAILED;
-        printf("Error: Failed to execute kernel!\n");
+    CL_CHECK_SUCCESS(err != CL_SUCCESS,
+        "Error: Failed to execute kernel!\n",
         vp8_filter_block2d_second_pass(&src_ptr[offset], output_ptr, output_pitch, src_pixels_per_line, pixel_step, output_height, output_width, FILTER_REF);
-        return;
-    }
+    );
 
     printf("Kernel enqueued %d\n", pass++);
     clFinish(cl_data.commands);
@@ -524,14 +501,10 @@ void vp8_filter_block2d_second_pass_cl
     printf("Reading memory\n");
     // Read back the result data from the device
     err = clEnqueueReadBuffer(cl_data.commands, cl_data.destData, CL_FALSE, 0, sizeof (unsigned char) * dest_len, output_ptr, 0, NULL, NULL);
-    if (err != CL_SUCCESS) {
-        clFinish(cl_data.commands);
-        cl_destroy();
-        cl_initialized = CL_TRIED_BUT_FAILED;
-        printf("Error: Failed to read output array! %d\n", err);
+    CL_CHECK_SUCCESS(err != CL_SUCCESS,
+        "Error: Failed to read output array!\n",
         vp8_filter_block2d_second_pass(&src_ptr[offset], output_ptr, output_pitch, src_pixels_per_line, pixel_step, output_height, output_width, FILTER_REF);
-        return;
-    }
+    );
 
     clFinish(cl_data.commands);
     printf("done reading memory\n");
