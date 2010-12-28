@@ -110,6 +110,7 @@ typedef struct VP8_COMMON_CL
     cl_kernel filter_block2d_second_pass_kernel; // compute kernel
     cl_mem srcData; //Source frame data
     cl_mem intData; //Intermediate data passed from 1st to 2nd pass
+    size_t intSize; //Size of intermediate data.
     cl_mem destData; //Destination data for 2nd pass.
     cl_mem filterData; //vp8_filter row
 } VP8_COMMON_CL;

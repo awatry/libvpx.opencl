@@ -109,6 +109,12 @@ void cl_destroy() {
         cl_data.destData = NULL;
     }
 
+    if (cl_data.intData){
+        clReleaseMemObject(cl_data.intData);
+        cl_data.intData = NULL;
+        cl_data.intSize = 0;
+    }
+
     //Release the objects that we've allocated on the GPU
     if (cl_data.program)
         clReleaseProgram(cl_data.program);
@@ -235,9 +241,11 @@ int cl_init_filter_block2d() {
         return CL_TRIED_BUT_FAILED;
     }
 
-    //Initialize these to null pointers
+    //Initialize other memory objects to null pointers
     cl_data.srcData = NULL;
     cl_data.destData = NULL;
+    cl_data.intData = NULL;
+    cl_data.intSize = 0;
 
     return CL_SUCCESS;
 }
@@ -261,6 +269,7 @@ void vp8_filter_block2d_first_pass_cl
 #define SHOW_OUTPUT_1ST 0
 #define SHOW_OUTPUT_2ND 1
 #if SHOW_OUTPUT_1ST
+    int c_output[output_height*output_width];
     int j;
 #endif
     size_t global;
@@ -282,7 +291,9 @@ void vp8_filter_block2d_first_pass_cl
     }
 
     // Create input/output buffers in device memory
-    cl_data.intData = clCreateBuffer(cl_data.context, CL_MEM_READ_WRITE, sizeof (int) * dest_len, NULL, NULL);
+    cl_data.intSize = sizeof (int) * dest_len;
+    cl_data.intData = clCreateBuffer(cl_data.context, CL_MEM_READ_WRITE, cl_data.intSize, NULL, NULL);
+    
     cl_data.srcData = clCreateBuffer(cl_data.context, CL_MEM_READ_ONLY|CL_MEM_USE_HOST_PTR, sizeof (unsigned char) * src_len, src_ptr-(2*(int)pixel_step), &err);
     CL_CHECK_SUCCESS(
             err != CL_SUCCESS,
@@ -339,7 +350,7 @@ void vp8_filter_block2d_first_pass_cl
     //printf("Kernel queued\n");
 
     // Read back the result data from the device
-    err = clEnqueueReadBuffer(cl_data.commands, cl_data.intData, CL_FALSE, 0, sizeof (int) * dest_len, output_ptr, 0, NULL, NULL);
+    err = clEnqueueReadBuffer(cl_data.commands, cl_data.intData, CL_FALSE, 0, cl_data.intSize, output_ptr, 0, NULL, NULL);
     CL_CHECK_SUCCESS( err != CL_SUCCESS,
             "Error: Failed to read output array!\n",
             vp8_filter_block2d_first_pass(src_ptr, output_ptr, src_pixels_per_line, pixel_step, output_height, output_width, FILTER_REF);
@@ -351,10 +362,8 @@ void vp8_filter_block2d_first_pass_cl
 #if SHOW_OUTPUT_1ST
 
     //Run C code so that we can compare output for correctness.
-    int c_output[output_height*output_width];
     pass++;
     vp8_filter_block2d_first_pass(src_ptr, c_output, src_pixels_per_line, pixel_step, output_height, output_width, vp8_filter);
-
 
     for (j=0; j < dest_len; j++){
         if (output_ptr[j] != c_output[j]){
@@ -369,7 +378,6 @@ void vp8_filter_block2d_first_pass_cl
     cl_data.srcData = NULL;
 
     return;
-
 }
 
 void vp8_filter_block2d_second_pass_cl
@@ -391,24 +399,28 @@ void vp8_filter_block2d_second_pass_cl
         ) {
 
     int err;
-    int *src_bak = malloc(sizeof(int)*src_len);
+
+    //Calculate size of input and output arrays
+    int dest_len = output_width+(output_pitch*output_height);
+
+    int *src_bak = malloc(cl_data.intSize);
+
 #if SHOW_OUTPUT_2ND
     //Run C code so that we can compare output for correctness.
-    unsigned char c_output[output_pitch*output_width];
+    unsigned char c_output[dest_len];
     int j;
 #endif
     size_t global;
 
-    //Calculate size of input and output arrays
-    //int dest_len = output_width-1+(output_pitch*(output_height-1));
-    int dest_len = output_width+(output_pitch*output_height);
-
     //Copy the -2*pixel_step bytes because the filter algorithm accesses negative indexes
     //int src_len = (dest_len + ((dest_len-1)/output_width)*(src_pixels_per_line - output_width) + 5 * (int)pixel_step);
+#if SHOW_OUTPUT_2ND
+    printf("2nd pass input = %p\n",src_ptr);
     if (!src_bak){
         printf("Couldn't allocate src_bak");
         exit(1);
     }
+#endif
 
     if (cl_initialized != CL_SUCCESS){
             vp8_filter_block2d_second_pass(&src_ptr[offset], output_ptr, output_pitch, src_pixels_per_line, pixel_step, output_height, output_width, FILTER_REF);
@@ -425,15 +437,15 @@ void vp8_filter_block2d_second_pass_cl
     //printf("Created buffers on device\n");
 
     // Copy input and filter data to device
-    //err = clEnqueueWriteBuffer(cl_data.commands, cl_data.intData, CL_FALSE, 0,
-    //        sizeof (int) * src_len, src_ptr, 0, NULL, NULL);
-    //clFinish(cl_data.commands);
-    err = clEnqueueReadBuffer(cl_data.commands, cl_data.intData, CL_FALSE, 0, sizeof (int) * src_len, src_bak, 0, NULL, NULL);
-    clFinish(cl_data.commands);
-    
+    err = clEnqueueReadBuffer(cl_data.commands, cl_data.intData, CL_TRUE, 0, cl_data.intSize, src_bak, 0, NULL, NULL);
+    CL_CHECK_SUCCESS(err != CL_SUCCESS,
+        "Error reading intData\n",
+        1;
+    );
+
 /*
     printf("Checking src_bak\n");
-    for (j=0; j < src_len; j++){
+    for (j=0; j < cl_data.intSize/sizeof(int); j++){
         printf("j=%d\n",j);
         if (src_ptr[j] != src_bak[j]){
             printf("src copy doesn't match: input=%d, cl=%d\n", src_ptr[j],src_bak[j]);
@@ -526,6 +538,7 @@ void vp8_filter_block2d_second_pass_cl
     clReleaseMemObject(cl_data.intData);
     clReleaseMemObject(cl_data.destData);
     cl_data.intData = NULL;
+    cl_data.intSize = 0;
     cl_data.destData = NULL;
     
     printf("done releasing\n");
