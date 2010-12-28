@@ -278,20 +278,22 @@ void vp8_filter_block2d_first_pass_cl
     }
 
     // Create input/output buffers in device memory
-    cl_data.srcData = clCreateBuffer(cl_data.context, CL_MEM_READ_ONLY, sizeof (unsigned char) * src_len, NULL, NULL);
     cl_data.intData = clCreateBuffer(cl_data.context, CL_MEM_READ_WRITE, sizeof (int) * dest_len, NULL, NULL);
-
-    //printf("srcData=%p\tdestData=%p\tfilterData=%p\n",srcData,destData,filterData);
+    cl_data.srcData = clCreateBuffer(cl_data.context, CL_MEM_READ_ONLY|CL_MEM_USE_HOST_PTR, sizeof (unsigned char) * src_len, src_ptr-(2*(int)pixel_step), &err);
+    if (err != CL_SUCCESS){
+        printf("Error copying source data to device! Using CPU path!\n");
+        cl_destroy();
+        cl_initialized = CL_TRIED_BUT_FAILED;
+        vp8_filter_block2d_first_pass(src_ptr, output_ptr, src_pixels_per_line, pixel_step, output_height, output_width, FILTER_REF);
+        return;
+    }
     if (!cl_data.srcData || !cl_data.intData) {
         printf("Error: Failed to allocate device memory. Using CPU path!\n");
         cl_destroy();
         cl_initialized = CL_TRIED_BUT_FAILED;
         vp8_filter_block2d_first_pass(src_ptr, output_ptr, src_pixels_per_line, pixel_step, output_height, output_width, FILTER_REF);
+        return;
     }
-
-    // Copy input and filter data to device
-    err = clEnqueueWriteBuffer(cl_data.commands, cl_data.srcData, CL_FALSE, 0,
-            sizeof (unsigned char) * src_len, src_ptr-(2*(int)pixel_step), 0, NULL, NULL);
 
 #ifndef FILTER_OFFSET
     err = clEnqueueWriteBuffer(cl_data.commands, cl_data.filterData, CL_FALSE, 0,
