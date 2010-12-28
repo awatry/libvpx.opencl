@@ -452,6 +452,7 @@ void vp8_filter_block2d_second_pass_cl
         }
     }
 */
+    free(src_bak);
 
     //err = clEnqueueWriteBuffer(cl_data.commands, cl_data.intData, CL_FALSE, 0,
     //        sizeof (int) * src_len, (&src_ptr[offset])-(2*(int)pixel_step), 0, NULL, NULL);
@@ -539,7 +540,7 @@ void vp8_filter_block2d_second_pass_cl
 
     for (j=0; j < dest_len; j++){
         if (output_ptr[j] != c_output[j]){
-            printf("pass %d, dest_len %d, output_width %d, output_height %d, output_pitch %d, output_ptr[%d] = %c, c[%d]=%c\n", pass, dest_len, output_width, output_height, output_pitch, j, output_ptr[j], j, c_output[j]);
+            printf("pass %d, dest_len %d, output_width %d, output_height %d, output_pitch %d, output_ptr[%d] = %d, c[%d]=%d\n", pass, dest_len, output_width, output_height, output_pitch, j, output_ptr[j], j, c_output[j]);
             //exit(1);
         }
     }

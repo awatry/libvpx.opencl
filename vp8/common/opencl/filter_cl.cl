@@ -83,9 +83,11 @@ __kernel void vp8_filter_block2d_second_pass_kernel
     uint i = get_global_id(0);
     if (i < output_width +(output_pitch*(output_height-1))){
 
-        src_ptr = &src_ptr[offset];
-        src_offset = i/output_width;
-        out_offset = src_offset;
+        out_offset = i/output_width;
+        src_offset = out_offset + offset;
+        //src_ptr = &src_ptr[offset];
+        //src_offset = out_offset;
+
         src_offset = i + (src_offset * src_increment);
         out_offset = i%output_width + (out_offset * output_pitch);
 
