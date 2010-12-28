@@ -415,7 +415,6 @@ void vp8_filter_block2d_second_pass_cl
     //Copy the -2*pixel_step bytes because the filter algorithm accesses negative indexes
     //int src_len = (dest_len + ((dest_len-1)/output_width)*(src_pixels_per_line - output_width) + 5 * (int)pixel_step);
 #if SHOW_OUTPUT_2ND
-    printf("2nd pass input = %p\n",src_ptr);
     if (!src_bak){
         printf("Couldn't allocate src_bak");
         exit(1);
@@ -499,13 +498,13 @@ void vp8_filter_block2d_second_pass_cl
 #else
     err = clEnqueueNDRangeKernel(cl_data.commands, cl_data.filter_block2d_second_pass_kernel, 1, NULL, &global, NULL , 0, NULL, NULL);
 #endif
+    clFinish(cl_data.commands);
     CL_CHECK_SUCCESS(err != CL_SUCCESS,
         "Error: Failed to execute kernel!\n",
         vp8_filter_block2d_second_pass(&src_ptr[offset], output_ptr, output_pitch, src_pixels_per_line, pixel_step, output_height, output_width, FILTER_REF);
     );
 
     printf("Kernel enqueued %d\n", pass++);
-    clFinish(cl_data.commands);
 
     vp8_filter_block2d_second_pass(&src_ptr[offset], output_ptr, output_pitch, src_pixels_per_line, pixel_step, output_height, output_width, FILTER_REF);
     return;
