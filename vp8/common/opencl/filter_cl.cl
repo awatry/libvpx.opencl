@@ -81,12 +81,9 @@ __kernel void vp8_filter_block2d_second_pass_kernel
     unsigned int src_increment = src_pixels_per_line - output_width;
 
     uint i = get_global_id(0);
-    if (i < output_width +(output_pitch*(output_height-1))){
-
+    if (i < (output_width * output_height)){
         out_offset = i/output_width;
         src_offset = out_offset;
-        //src_ptr = &src_ptr[offset];
-        //src_offset = out_offset;
 
         src_offset = i + (src_offset * src_increment) + offset;
         out_offset = i%output_width + (out_offset * output_pitch);
