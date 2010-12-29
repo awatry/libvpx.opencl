@@ -402,23 +402,14 @@ void vp8_filter_block2d_second_pass_cl
 
     //Calculate size of input and output arrays
     int dest_len = output_width+(output_pitch*output_height);
+    //int dest_len = output_width*output_height;
 
-    int *src_bak = malloc(cl_data.intSize);
+    size_t global;
 
 #if SHOW_OUTPUT_2ND
     //Run C code so that we can compare output for correctness.
     unsigned char c_output[dest_len];
     int j;
-#endif
-    size_t global;
-
-    //Copy the -2*pixel_step bytes because the filter algorithm accesses negative indexes
-    //int src_len = (dest_len + ((dest_len-1)/output_width)*(src_pixels_per_line - output_width) + 5 * (int)pixel_step);
-#if SHOW_OUTPUT_2ND
-    if (!src_bak){
-        printf("Couldn't allocate src_bak");
-        exit(1);
-    }
 #endif
 
     if (cl_initialized != CL_SUCCESS){
@@ -433,30 +424,6 @@ void vp8_filter_block2d_second_pass_cl
         "Error: Failed to allocate device memory. Using CPU path!\n",
         vp8_filter_block2d_second_pass(&src_ptr[offset], output_ptr, output_pitch, src_pixels_per_line, pixel_step, output_height, output_width, FILTER_REF)
     );
-    //printf("Created buffers on device\n");
-
-    // Copy input and filter data to device
-    err = clEnqueueReadBuffer(cl_data.commands, cl_data.intData, CL_TRUE, 0, cl_data.intSize, src_bak, 0, NULL, NULL);
-    CL_CHECK_SUCCESS(err != CL_SUCCESS,
-        "Error reading intData\n",
-        1;
-    );
-
-/*
-    printf("Checking src_bak\n");
-    for (j=0; j < cl_data.intSize/sizeof(int); j++){
-        printf("j=%d\n",j);
-        if (src_ptr[j] != src_bak[j]){
-            printf("src copy doesn't match: input=%d, cl=%d\n", src_ptr[j],src_bak[j]);
-            exit(1);
-        }
-    }
-*/
-
-    free(src_bak);
-
-    //err = clEnqueueWriteBuffer(cl_data.commands, cl_data.intData, CL_FALSE, 0,
-    //        sizeof (int) * src_len, (&src_ptr[offset])-(2*(int)pixel_step), 0, NULL, NULL);
 
 #ifndef FILTER_OFFSET
     err = clEnqueueWriteBuffer(cl_data.commands, cl_data.filterData, CL_FALSE, 0,
@@ -498,18 +465,16 @@ void vp8_filter_block2d_second_pass_cl
 #else
     err = clEnqueueNDRangeKernel(cl_data.commands, cl_data.filter_block2d_second_pass_kernel, 1, NULL, &global, NULL , 0, NULL, NULL);
 #endif
-    clFinish(cl_data.commands);
     CL_CHECK_SUCCESS(err != CL_SUCCESS,
         "Error: Failed to execute kernel!\n",
         vp8_filter_block2d_second_pass(&src_ptr[offset], output_ptr, output_pitch, src_pixels_per_line, pixel_step, output_height, output_width, FILTER_REF);
     );
 
-    printf("Kernel enqueued %d\n", pass++);
+    clFinish(cl_data.commands);
 
     vp8_filter_block2d_second_pass(&src_ptr[offset], output_ptr, output_pitch, src_pixels_per_line, pixel_step, output_height, output_width, FILTER_REF);
     return;
 
-    printf("Reading memory\n");
     // Read back the result data from the device
     err = clEnqueueReadBuffer(cl_data.commands, cl_data.destData, CL_FALSE, 0, sizeof (unsigned char) * dest_len, output_ptr, 0, NULL, NULL);
     CL_CHECK_SUCCESS(err != CL_SUCCESS,
@@ -521,10 +486,10 @@ void vp8_filter_block2d_second_pass_cl
     printf("done reading memory\n");
 
 #if SHOW_OUTPUT_2ND
-    //pass++;
+    pass++;
     vp8_filter_block2d_second_pass(&src_ptr[offset], c_output, output_pitch, src_pixels_per_line, pixel_step, output_height, output_width, vp8_filter);
 
-    for (j=0; j < dest_len; j++){
+    for (j=0; j < output_height*output_width; j++){
         if (output_ptr[j] != c_output[j]){
             printf("pass %d, dest_len %d, output_width %d, output_height %d, output_pitch %d, output_ptr[%d] = %d, c[%d]=%d\n", pass, dest_len, output_width, output_height, output_pitch, j, output_ptr[j], j, c_output[j]);
             //exit(1);
@@ -539,8 +504,6 @@ void vp8_filter_block2d_second_pass_cl
     cl_data.intData = NULL;
     cl_data.intSize = 0;
     cl_data.destData = NULL;
-    
-    printf("done releasing\n");
 
     return;
 
