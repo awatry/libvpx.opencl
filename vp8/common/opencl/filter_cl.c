@@ -13,15 +13,11 @@
 
 //ACW: Remove me after debugging.
 #include <stdio.h>
+#include <string.h>
 
 #include "filter_cl.h"
 
 #define SIXTAP_FILTER_LEN 6
-#define MAX_NUM_PLATFORMS 4
-#define CL_TRIED_BUT_FAILED 1
-#define CL_NOT_INITIALIZED -1
-#define BLOCK_HEIGHT_WIDTH 4
-
 
 int cl_initialized = CL_NOT_INITIALIZED;
 VP8_COMMON_CL cl_data;
@@ -267,7 +263,6 @@ void vp8_filter_block2d_first_pass_cl
 
     int err;
 #define SHOW_OUTPUT_1ST 0
-#define SHOW_OUTPUT_2ND 1
 #if SHOW_OUTPUT_1ST
     int c_output[output_height*output_width];
     int j;
@@ -398,18 +393,19 @@ void vp8_filter_block2d_second_pass_cl
 #endif
         ) {
 
-    int err;
+    int err; //capture CL error/return codes
 
-    //Calculate size of input and output arrays
+    //Calculate size of output array
     int dest_len = output_width+(output_pitch*output_height);
-    //int dest_len = output_width*output_height;
 
     size_t global;
 
+#define SHOW_OUTPUT_2ND 0
 #if SHOW_OUTPUT_2ND
     //Run C code so that we can compare output for correctness.
     unsigned char c_output[dest_len];
     int j;
+    memcpy(c_output,output_ptr, dest_len*sizeof(unsigned char));
 #endif
 
     if (cl_initialized != CL_SUCCESS){
@@ -417,10 +413,9 @@ void vp8_filter_block2d_second_pass_cl
             return;
     }
 
-    // Create input/output buffers in device memory
-    cl_data.destData = clCreateBuffer(cl_data.context, CL_MEM_WRITE_ONLY, sizeof (unsigned char) * dest_len, NULL, NULL);
-
-    CL_CHECK_SUCCESS( !cl_data.destData,
+    // Create output buffer in device memory and copy existing values
+    cl_data.destData = clCreateBuffer(cl_data.context, CL_MEM_WRITE_ONLY | CL_MEM_COPY_HOST_PTR, sizeof (unsigned char) * dest_len, output_ptr, &err);
+    CL_CHECK_SUCCESS( !cl_data.destData || err != CL_SUCCESS,
         "Error: Failed to allocate device memory. Using CPU path!\n",
         vp8_filter_block2d_second_pass(&src_ptr[offset], output_ptr, output_pitch, src_pixels_per_line, pixel_step, output_height, output_width, FILTER_REF)
     );
@@ -470,11 +465,6 @@ void vp8_filter_block2d_second_pass_cl
         vp8_filter_block2d_second_pass(&src_ptr[offset], output_ptr, output_pitch, src_pixels_per_line, pixel_step, output_height, output_width, FILTER_REF);
     );
 
-    clFinish(cl_data.commands);
-
-    vp8_filter_block2d_second_pass(&src_ptr[offset], output_ptr, output_pitch, src_pixels_per_line, pixel_step, output_height, output_width, FILTER_REF);
-    return;
-
     // Read back the result data from the device
     err = clEnqueueReadBuffer(cl_data.commands, cl_data.destData, CL_FALSE, 0, sizeof (unsigned char) * dest_len, output_ptr, 0, NULL, NULL);
     CL_CHECK_SUCCESS(err != CL_SUCCESS,
@@ -483,20 +473,18 @@ void vp8_filter_block2d_second_pass_cl
     );
 
     clFinish(cl_data.commands);
-    printf("done reading memory\n");
 
 #if SHOW_OUTPUT_2ND
     pass++;
     vp8_filter_block2d_second_pass(&src_ptr[offset], c_output, output_pitch, src_pixels_per_line, pixel_step, output_height, output_width, vp8_filter);
 
-    for (j=0; j < output_height*output_width; j++){
+    for (j=0; j < dest_len; j++){
         if (output_ptr[j] != c_output[j]){
             printf("pass %d, dest_len %d, output_width %d, output_height %d, output_pitch %d, output_ptr[%d] = %d, c[%d]=%d\n", pass, dest_len, output_width, output_height, output_pitch, j, output_ptr[j], j, c_output[j]);
             //exit(1);
         }
     }
 #endif
-    printf("releasing memory\n");
 
     // Release memory that is only used once
     clReleaseMemObject(cl_data.intData);

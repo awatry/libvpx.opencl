@@ -17,6 +17,10 @@
 #include <CL/cl.h>
 #endif
 
+#define MAX_NUM_PLATFORMS 4
+#define CL_TRIED_BUT_FAILED 1
+#define CL_NOT_INITIALIZED -1
+
 #define VP8_FILTER_WEIGHT 128
 #define VP8_FILTER_SHIFT  7
 
