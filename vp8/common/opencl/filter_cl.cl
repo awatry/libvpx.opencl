@@ -20,12 +20,15 @@ __kernel void vp8_filter_block2d_first_pass_kernel(
     unsigned int pixel_step,
     unsigned int output_height,
     unsigned int output_width,
-#ifdef FILTER_OFFSET
-    int filter_offset)
+#if defined(FILTER_OFFSET_BUF)
+    int filter_offset,
+    __global short *sub_pel_filters
+#elif defined(FILTER_OFFSET)
+    int filter_offset
 #else
-    __global short *vp8_filter)
+    __global short *vp8_filter
 #endif
-{
+){
     uint i = get_global_id(0);
 
     int src_offset;
@@ -33,7 +36,9 @@ __kernel void vp8_filter_block2d_first_pass_kernel(
     int PS2 = 2*(int)pixel_step;
     int PS3 = 3*(int)pixel_step;
 
-#ifdef FILTER_OFFSET
+#if defined(FILTER_OFFSET_BUF)
+    __global short *vp8_filter = &sub_pel_filters[filter_offset*6];
+#elif defined(FILTER_OFFSET)
     __constant short *vp8_filter = sub_pel_filters[filter_offset];
 #endif
 
@@ -69,7 +74,10 @@ __kernel void vp8_filter_block2d_second_pass_kernel
     unsigned int pixel_step,
     unsigned int output_height,
     unsigned int output_width,
-#ifdef FILTER_OFFSET
+#if defined(FILTER_OFFSET_BUF)
+    int filter_offset,
+    __global short *sub_pel_filters
+#elif defined(FILTER_OFFSET)
     int filter_offset
 #else
     __global short *vp8_filter
@@ -86,9 +94,12 @@ __kernel void vp8_filter_block2d_second_pass_kernel
 
     uint i = get_global_id(0);
 
-#ifdef FILTER_OFFSET
+#if defined(FILTER_OFFSET_BUF)
+    __global short *vp8_filter = &sub_pel_filters[filter_offset*6];
+#elif defined(FILTER_OFFSET)
     __constant short *vp8_filter = sub_pel_filters[filter_offset];
 #endif
+
     if (i < (output_width * output_height)){
         out_offset = i/output_width;
         src_offset = out_offset;
