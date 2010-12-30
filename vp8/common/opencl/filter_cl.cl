@@ -69,7 +69,11 @@ __kernel void vp8_filter_block2d_second_pass_kernel
     unsigned int pixel_step,
     unsigned int output_height,
     unsigned int output_width,
-    __global const short *vp8_filter
+#ifdef FILTER_OFFSET
+    int filter_offset
+#else
+    __global short *vp8_filter
+#endif
 ) {
 
     int out_offset;
@@ -81,6 +85,10 @@ __kernel void vp8_filter_block2d_second_pass_kernel
     unsigned int src_increment = src_pixels_per_line - output_width;
 
     uint i = get_global_id(0);
+
+#ifdef FILTER_OFFSET
+    __constant short *vp8_filter = sub_pel_filters[filter_offset];
+#endif
     if (i < (output_width * output_height)){
         out_offset = i/output_width;
         src_offset = out_offset;

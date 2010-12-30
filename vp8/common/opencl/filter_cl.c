@@ -505,10 +505,11 @@ void vp8_filter_block2d_cl
         int output_pitch,
 #ifdef FILTER_OFFSET
         int xoffset,
+        int yoffset
 #else
         const short *HFilter,
-#endif
         const short *VFilter
+#endif
         ) {
     int FData[9 * 4]; /* Temp data buffer used in filtering */
 
@@ -520,7 +521,11 @@ void vp8_filter_block2d_cl
 #endif
     
     /* then filter vertically... */
+#ifdef FILTER_OFFSET
+    vp8_filter_block2d_second_pass_cl(FData, 9*4, 8, output_ptr, output_pitch, 4, 4, 4, 4, yoffset);
+#else
     vp8_filter_block2d_second_pass_cl(FData, 9*4, 8, output_ptr, output_pitch, 4, 4, 4, 4, VFilter);
+#endif
 }
 
 void vp8_block_variation_cl
@@ -553,15 +558,15 @@ void vp8_sixtap_predict_cl
         int dst_pitch
         ) {
 
+#ifdef FILTER_OFFSET
+    vp8_filter_block2d_cl(src_ptr, dst_ptr, src_pixels_per_line, dst_pitch, xoffset, yoffset);
+#else
     const short *HFilter;
     const short *VFilter;
 
     HFilter = sub_pel_filters[xoffset]; /* 6 tap */
     VFilter = sub_pel_filters[yoffset]; /* 6 tap */
 
-#ifdef FILTER_OFFSET
-    vp8_filter_block2d_cl(src_ptr, dst_ptr, src_pixels_per_line, dst_pitch, xoffset, VFilter);
-#else
     vp8_filter_block2d_cl(src_ptr, dst_ptr, src_pixels_per_line, dst_pitch, HFilter, VFilter);
 #endif
 }
@@ -575,12 +580,12 @@ void vp8_sixtap_predict8x8_cl
         unsigned char *dst_ptr,
         int dst_pitch
         ) {
-    const short *HFilter;
-    const short *VFilter;
     int FData[13 * 16]; /* Temp data buffer used in filtering */
 
-    HFilter = sub_pel_filters[xoffset]; /* 6 tap */
-    VFilter = sub_pel_filters[yoffset]; /* 6 tap */
+#ifndef FILTER_OFFSET
+    const short *HFilter = sub_pel_filters[xoffset]; /* 6 tap */
+    const short *VFilter = sub_pel_filters[yoffset]; /* 6 tap */
+#endif
 
     /* First filter 1-D horizontally... */
 #ifdef FILTER_OFFSET
@@ -590,8 +595,11 @@ void vp8_sixtap_predict8x8_cl
 #endif
 
     /* then filter vertically... */
+#ifdef FILTER_OFFSET
+    vp8_filter_block2d_second_pass_cl(FData, 13*16, 16, dst_ptr, dst_pitch, 8, 8, 8, 8, yoffset);
+#else
     vp8_filter_block2d_second_pass_cl(FData, 13*16, 16, dst_ptr, dst_pitch, 8, 8, 8, 8, VFilter);
-
+#endif
 }
 
 void vp8_sixtap_predict8x4_cl
@@ -603,12 +611,13 @@ void vp8_sixtap_predict8x4_cl
         unsigned char *dst_ptr,
         int dst_pitch
         ) {
-    const short *HFilter;
-    const short *VFilter;
+
     int FData[13 * 16]; /* Temp data buffer used in filtering */
 
-    HFilter = sub_pel_filters[xoffset]; /* 6 tap */
-    VFilter = sub_pel_filters[yoffset]; /* 6 tap */
+#ifndef FILTER_OFFSET
+    const short *HFilter = sub_pel_filters[xoffset]; /* 6 tap */
+    const short *VFilter = sub_pel_filters[yoffset]; /* 6 tap */
+#endif
 
     /* First filter 1-D horizontally... */
 #ifdef FILTER_OFFSET
@@ -618,7 +627,11 @@ void vp8_sixtap_predict8x4_cl
 #endif
 
     /* then filter vertically... */
+#ifdef FILTER_OFFSET
+    vp8_filter_block2d_second_pass_cl(FData, 13*16, 16, dst_ptr, dst_pitch, 8, 8, 4, 8, yoffset);
+#else
     vp8_filter_block2d_second_pass_cl(FData, 13*16, 16, dst_ptr, dst_pitch, 8, 8, 4, 8, VFilter);
+#endif
 
 }
 
@@ -631,12 +644,12 @@ void vp8_sixtap_predict16x16_cl
         unsigned char *dst_ptr,
         int dst_pitch
         ) {
-    const short *HFilter;
-    const short *VFilter;
     int FData[21 * 24]; /* Temp data buffer used in filtering */
 
-    HFilter = sub_pel_filters[xoffset]; /* 6 tap */
-    VFilter = sub_pel_filters[yoffset]; /* 6 tap */
+#ifndef FILTER_OFFSET
+    const short *HFilter = sub_pel_filters[xoffset]; /* 6 tap */
+    const short *VFilter = sub_pel_filters[yoffset]; /* 6 tap */
+#endif
 
     /* First filter 1-D horizontally... */
 #ifdef FILTER_OFFSET
@@ -646,7 +659,11 @@ void vp8_sixtap_predict16x16_cl
 #endif
 
     /* then filter vertically... */
+#ifdef FILTER_OFFSET
+    vp8_filter_block2d_second_pass_cl(FData, 21*24, 32, dst_ptr, dst_pitch, 16, 16, 16, 16, yoffset);
+#else
     vp8_filter_block2d_second_pass_cl(FData, 21*24, 32, dst_ptr, dst_pitch, 16, 16, 16, 16, VFilter);
+#endif
 
 }
 
