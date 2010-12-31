@@ -70,6 +70,38 @@
         return;\
     }
 
+#define CL_ENSURE_BUF_SIZE(bufRef, bufType, needSize, curSize, dataPtr, altPath) \
+    if ( bufRef == NULL || needSize > curSize){ \
+        if (bufRef != NULL) \
+            clReleaseMemObject(bufRef); \
+        if (dataPtr != NULL){ \
+            bufRef = clCreateBuffer(cl_data.context, bufType, needSize, dataPtr, &err); \
+            CL_CHECK_SUCCESS( \
+                err != CL_SUCCESS, \
+                "Error copying data to buffer! Using CPU path!\n", \
+                altPath \
+            ); \
+        } else {\
+            bufRef = clCreateBuffer(cl_data.context, bufType, needSize, NULL, NULL);\
+        } \
+        CL_CHECK_SUCCESS(!bufRef, \
+            "Error: Failed to allocate buffer. Using CPU path!\n", \
+            altPath \
+        ); \
+        curSize = needSize; \
+    } else { \
+        if (dataPtr != NULL){\
+            err = clEnqueueWriteBuffer(cl_data.commands, bufRef, CL_FALSE, 0, \
+                needSize, dataPtr, 0, NULL, NULL); \
+            \
+            CL_CHECK_SUCCESS( err != CL_SUCCESS, \
+                "Error: Failed to write to buffer!\n", \
+                printf("srcData = %p, intData = %p, destData = %p, bufRef = %p\n", cl_data.srcData, cl_data.intData, cl_data.destData, bufRef);\
+                altPath \
+            ); \
+        }\
+    }
+
 #define CLAMP(x,min,max) if (x < min) x = min; else if ( x > max ) x = max;
 #define STRINGIFY(x) #x
 
@@ -96,9 +128,9 @@ static const short sub_pel_filters[8][6] = {
 };
 
 
-#define FILTER_OFFSET_BUF //Filter offset using a CL buffer and int offset
+//#define FILTER_OFFSET_BUF //Filter offset using a CL buffer and int offset
 #ifndef FILTER_OFFSET_BUF
-#define FILTER_OFFSET //Filter data stored as CL constant memory
+//#define FILTER_OFFSET //Filter data stored as CL constant memory
 #ifdef FILTER_OFFSET
 #define FILTER_REF sub_pel_filters[filter_offset]
 const char *compileOptions = "-DVP8_FILTER_WEIGHT=128 -DVP8_FILTER_SHIFT=7 -DFILTER_OFFSET";
@@ -120,9 +152,12 @@ typedef struct VP8_COMMON_CL
     cl_kernel filter_block2d_first_pass_kernel; // compute kernel
     cl_kernel filter_block2d_second_pass_kernel; // compute kernel
     cl_mem srcData; //Source frame data
+    size_t srcAlloc; //Amount of allocated CL memory for srcData
     cl_mem intData; //Intermediate data passed from 1st to 2nd pass
+    size_t intAlloc; //Amount of allocated CL memory for intData
     size_t intSize; //Size of intermediate data.
     cl_mem destData; //Destination data for 2nd pass.
+    size_t destAlloc; //Amount of allocated CL memory for destData
     cl_mem filterData; //vp8_filter row
 } VP8_COMMON_CL;
 

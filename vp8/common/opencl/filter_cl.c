@@ -55,36 +55,7 @@ extern void vp8_filter_block2d_second_pass
     const short *vp8_filter
 );
 
-char *read_file(const char* file_name){
-    long pos;
-    char *bytes;
-    size_t amt_read;
-    
-    FILE *f = fopen(file_name, "rb");
-    if (f == NULL)
-        return NULL;
-
-    fseek(f, 0, SEEK_END);
-    pos = ftell(f);
-    fseek(f, 0, SEEK_SET);
-
-    bytes = malloc(pos);
-    if (bytes == NULL){
-        fclose(f);
-        return NULL;
-    }
-
-    amt_read = fread(bytes, pos, 1, f);
-    if (amt_read != 1){
-        free(bytes);
-        fclose(f);
-        return NULL;
-    }
-
-    fclose(f);
-
-    return bytes;
-}
+char *read_file(const char* file_name);
 
 /**
  *
@@ -102,16 +73,19 @@ void cl_destroy() {
     if (cl_data.srcData){
         clReleaseMemObject(cl_data.srcData);
         cl_data.srcData = NULL;
+        cl_data.srcAlloc = 0;
     }
 
     if (cl_data.destData){
         clReleaseMemObject(cl_data.destData);
         cl_data.destData = NULL;
+        cl_data.destAlloc = 0;
     }
 
     if (cl_data.intData){
         clReleaseMemObject(cl_data.intData);
         cl_data.intData = NULL;
+        cl_data.intAlloc = 0;
         cl_data.intSize = 0;
     }
 
@@ -137,7 +111,6 @@ void cl_destroy() {
 
     return;
 }
-
 
 int cl_init_filter_block2d() {
     // Connect to a compute device
@@ -248,8 +221,11 @@ int cl_init_filter_block2d() {
 
     //Initialize other memory objects to null pointers
     cl_data.srcData = NULL;
+    cl_data.srcAlloc = 0;
     cl_data.destData = NULL;
+    cl_data.destAlloc = 0;
     cl_data.intData = NULL;
+    cl_data.intAlloc = 0;
     cl_data.intSize = 0;
 
     return CL_SUCCESS;
@@ -294,19 +270,18 @@ void vp8_filter_block2d_first_pass_cl
         }
     }
 
-    // Create input/output buffers in device memory
+    // Create source/intermediate buffers in device memory
+    //First, make space for the output of the first pass filter
     cl_data.intSize = sizeof (int) * dest_len;
-    cl_data.intData = clCreateBuffer(cl_data.context, CL_MEM_READ_WRITE, cl_data.intSize, NULL, NULL);
-    
-    cl_data.srcData = clCreateBuffer(cl_data.context, CL_MEM_READ_ONLY|CL_MEM_USE_HOST_PTR, sizeof (unsigned char) * src_len, src_ptr-(2*(int)pixel_step), &err);
-    CL_CHECK_SUCCESS(
-            err != CL_SUCCESS,
-            "Error copying source data to device! Using CPU path!\n",
-            vp8_filter_block2d_first_pass(src_ptr, output_ptr, src_pixels_per_line, pixel_step, output_height, output_width, FILTER_REF);
+    CL_ENSURE_BUF_SIZE(cl_data.intData, CL_MEM_READ_WRITE, cl_data.intSize,
+        cl_data.intAlloc, NULL,
+        vp8_filter_block2d_first_pass(src_ptr, output_ptr, src_pixels_per_line, pixel_step, output_height, output_width, FILTER_REF)
     );
-    CL_CHECK_SUCCESS(!cl_data.srcData || !cl_data.intData,
-            "Error: Failed to allocate device memory. Using CPU path!\n",
-            vp8_filter_block2d_first_pass(src_ptr, output_ptr, src_pixels_per_line, pixel_step, output_height, output_width, FILTER_REF)
+
+    //Make space for kernel input data. Initialize the buffer as well.
+    CL_ENSURE_BUF_SIZE(cl_data.srcData, CL_MEM_READ_ONLY|CL_MEM_COPY_HOST_PTR,
+        sizeof (unsigned char) * src_len, cl_data.srcAlloc, src_ptr-(2*(int)pixel_step),
+        vp8_filter_block2d_first_pass(src_ptr, output_ptr, src_pixels_per_line, pixel_step, output_height, output_width, FILTER_REF)
     );
 
 #if !defined(FILTER_OFFSET) && !defined(FILTER_OFFSET_BUF)
@@ -380,10 +355,6 @@ void vp8_filter_block2d_first_pass_cl
     }
 #endif
 
-    // Release memory that is only used once
-    clReleaseMemObject(cl_data.srcData);
-    cl_data.srcData = NULL;
-
     return;
 }
 
@@ -425,10 +396,8 @@ void vp8_filter_block2d_second_pass_cl
             return;
     }
 
-    // Create output buffer in device memory and copy existing values
-    cl_data.destData = clCreateBuffer(cl_data.context, CL_MEM_WRITE_ONLY | CL_MEM_COPY_HOST_PTR, sizeof (unsigned char) * dest_len, output_ptr, &err);
-    CL_CHECK_SUCCESS( !cl_data.destData || err != CL_SUCCESS,
-        "Error: Failed to allocate device memory. Using CPU path!\n",
+    CL_ENSURE_BUF_SIZE(cl_data.destData, CL_MEM_WRITE_ONLY|CL_MEM_COPY_HOST_PTR,
+        sizeof (unsigned char) * dest_len, cl_data.destAlloc, output_ptr,
         vp8_filter_block2d_second_pass(&src_ptr[offset], output_ptr, output_pitch, src_pixels_per_line, pixel_step, output_height, output_width, FILTER_REF)
     );
 
@@ -501,15 +470,7 @@ void vp8_filter_block2d_second_pass_cl
     }
 #endif
 
-    // Release memory that is only used once
-    clReleaseMemObject(cl_data.intData);
-    clReleaseMemObject(cl_data.destData);
-    cl_data.intData = NULL;
-    cl_data.intSize = 0;
-    cl_data.destData = NULL;
-
     return;
-
 }
 
 void vp8_filter_block2d_cl
@@ -909,4 +870,35 @@ void vp8_bilinear_predict16x16_cl
     VFilter = bilinear_filters[yoffset];
 
     vp8_filter_block2d_bil_cl(src_ptr, dst_ptr, src_pixels_per_line, dst_pitch, HFilter, VFilter, 16, 16);
+}
+
+char *read_file(const char* file_name){
+    long pos;
+    char *bytes;
+    size_t amt_read;
+
+    FILE *f = fopen(file_name, "rb");
+    if (f == NULL)
+        return NULL;
+
+    fseek(f, 0, SEEK_END);
+    pos = ftell(f);
+    fseek(f, 0, SEEK_SET);
+
+    bytes = malloc(pos);
+    if (bytes == NULL){
+        fclose(f);
+        return NULL;
+    }
+
+    amt_read = fread(bytes, pos, 1, f);
+    if (amt_read != 1){
+        free(bytes);
+        fclose(f);
+        return NULL;
+    }
+
+    fclose(f);
+
+    return bytes;
 }
