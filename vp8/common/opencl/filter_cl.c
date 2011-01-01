@@ -23,8 +23,6 @@
 #define SIXTAP_FILTER_LEN 6
 #endif
 
-int cl_initialized = CL_NOT_INITIALIZED;
-VP8_COMMON_CL cl_data;
 int pass=0;
 
 #define USE_LOCAL_SIZE 0
@@ -55,104 +53,13 @@ extern void vp8_filter_block2d_second_pass
     const short *vp8_filter
 );
 
-char *cl_read_file(const char* file_name);
-
-/**
- *
- */
-void cl_destroy() {
-
-    //Wait on any pending operations to complete... frees up all of our pointers
-    clFinish(cl_data.commands);
-
-    if (cl_data.filterData){
-        clReleaseMemObject(cl_data.filterData);
-        cl_data.filterData = NULL;
-    }
-
-    if (cl_data.srcData){
-        clReleaseMemObject(cl_data.srcData);
-        cl_data.srcData = NULL;
-        cl_data.srcAlloc = 0;
-    }
-
-    if (cl_data.destData){
-        clReleaseMemObject(cl_data.destData);
-        cl_data.destData = NULL;
-        cl_data.destAlloc = 0;
-    }
-
-    if (cl_data.intData){
-        clReleaseMemObject(cl_data.intData);
-        cl_data.intData = NULL;
-        cl_data.intAlloc = 0;
-        cl_data.intSize = 0;
-    }
-
-    //Release the objects that we've allocated on the GPU
-    if (cl_data.program)
-        clReleaseProgram(cl_data.program);
-    if (cl_data.filter_block2d_first_pass_kernel)
-        clReleaseKernel(cl_data.filter_block2d_first_pass_kernel);
-    if (cl_data.filter_block2d_second_pass_kernel)
-        clReleaseKernel(cl_data.filter_block2d_second_pass_kernel);
-    if (cl_data.commands)
-        clReleaseCommandQueue(cl_data.commands);
-    if (cl_data.context)
-        clReleaseContext(cl_data.context);
-
-    cl_data.program = NULL;
-    cl_data.filter_block2d_first_pass_kernel = NULL;
-    cl_data.filter_block2d_second_pass_kernel = NULL;
-    cl_data.commands = NULL;
-    cl_data.context = NULL;
-
-    cl_initialized = CL_NOT_INITIALIZED;
-
-    return;
-}
-
 int cl_init_filter_block2d() {
-    // Connect to a compute device
-    int err;
     char *kernel_src;
-    cl_platform_id platform_ids[MAX_NUM_PLATFORMS];
-    cl_uint num_found;
-    err = clGetPlatformIDs(MAX_NUM_PLATFORMS, platform_ids, &num_found);
+    int err;
 
-    if (err != CL_SUCCESS) {
-        printf("Couldn't query platform IDs\n");
+    //Initialize the CL context
+    if (cl_init() != CL_SUCCESS)
         return CL_TRIED_BUT_FAILED;
-    }
-    if (num_found == 0) {
-        printf("No platforms found\n");
-        return CL_TRIED_BUT_FAILED;
-    }
-    //printf("Found %d platforms\n", num_found);
-
-    //Favor the GPU, but fall back to any other available device if necessary
-    err = clGetDeviceIDs(platform_ids[0], CL_DEVICE_TYPE_GPU, 1, &cl_data.device_id, NULL);
-    if (err != CL_SUCCESS) {
-        err = clGetDeviceIDs(platform_ids[0], CL_DEVICE_TYPE_ALL, 1, &cl_data.device_id, NULL);
-        if (err != CL_SUCCESS) {
-            printf("Error: Failed to create a device group!\n");
-            return CL_TRIED_BUT_FAILED;
-        }
-    }
-
-    // Create the compute context
-    cl_data.context = clCreateContext(0, 1, &cl_data.device_id, NULL, NULL, &err);
-    if (!cl_data.context) {
-        printf("Error: Failed to create a compute context!\n");
-        return CL_TRIED_BUT_FAILED;
-    }
-
-    // Create a command queue
-    cl_data.commands = clCreateCommandQueue(cl_data.context, cl_data.device_id, 0, &err);
-    if (!cl_data.commands || err != CL_SUCCESS) {
-        printf("Error: Failed to create a command queue!\n");
-        return CL_TRIED_BUT_FAILED;
-    }
 
     // Create the compute program from the file-defined source code
     kernel_src = cl_read_file(filter_cl_file_name);
@@ -170,7 +77,6 @@ int cl_init_filter_block2d() {
         printf("Error: Couldn't compile program\n");
         return CL_TRIED_BUT_FAILED;
     }
-    //printf("Created Program\n");
 
     // Build the program executable
     err = clBuildProgram(cl_data.program, 0, NULL, compileOptions, NULL, NULL);
@@ -183,7 +89,6 @@ int cl_init_filter_block2d() {
         printf("Compile output: %s\n", buffer);
         return CL_TRIED_BUT_FAILED;
     }
-    //printf("Built executable\n");
 
     // Create the compute kernel in the program we wish to run
     cl_data.filter_block2d_first_pass_kernel = clCreateKernel(cl_data.program, "vp8_filter_block2d_first_pass_kernel", &err);
@@ -194,7 +99,6 @@ int cl_init_filter_block2d() {
         printf("Error: Failed to create compute kernel!\n");
         return CL_TRIED_BUT_FAILED;
     }
-    //printf("Created kernel\n");
 
 #if USE_LOCAL_SIZE
     // Get the maximum work group size for executing the kernel on the device
@@ -203,7 +107,6 @@ int cl_init_filter_block2d() {
         printf("Error: Failed to retrieve kernel work group info! %d\n", err);
         return CL_TRIED_BUT_FAILED;
     }
-    //printf("local=%d\n",local);
 #endif
 
     //Filter size doesn't change. Allocate buffer once, and just replace contents

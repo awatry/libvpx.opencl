@@ -13,10 +13,19 @@
 #include <stdio.h>
 
 CL_FUNCTIONS cl;
+void *dll = NULL;
+
+int close_cl(){
+    int ret = dlclose(dll);
+
+    if (ret != 0)
+        fprintf(stderr, "Error closing OpenCL library: %s", dlerror());
+
+    return ret;
+}
 
 int load_cl(char *lib_name){
     int i;
-    void *dll;
 
     printf("Loading OpenCL library\n");
     dll = dlopen(lib_name, RTLD_NOW|RTLD_LOCAL);

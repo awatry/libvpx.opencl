@@ -11,15 +11,7 @@
 #ifndef FILTER_CL_H_
 #define FILTER_CL_H_
 
-#ifdef __APPLE__
-#include <OpenCL/cl.h>
-#else
-#include <CL/cl.h>
-#endif
-
-#define MAX_NUM_PLATFORMS 4
-#define CL_TRIED_BUT_FAILED 1
-#define CL_NOT_INITIALIZED -1
+#include "vp8_opencl.h"
 
 #define VP8_FILTER_WEIGHT 128
 #define VP8_FILTER_SHIFT  7
@@ -59,51 +51,6 @@
 #define SRC_INCREMENT (src_pixels_per_line - output_width)
 #endif
 
-#define CL_ALLOC_COPY(x)
-
-#define CL_CHECK_SUCCESS(cond,msg,alt) \
-    if (cond){ \
-        printf(msg);  \
-        cl_destroy(); \
-        cl_initialized = CL_TRIED_BUT_FAILED; \
-        alt; \
-        return;\
-    }
-
-#define CL_ENSURE_BUF_SIZE(bufRef, bufType, needSize, curSize, dataPtr, altPath) \
-    if ( bufRef == NULL || needSize > curSize){ \
-        if (bufRef != NULL) \
-            clReleaseMemObject(bufRef); \
-        if (dataPtr != NULL){ \
-            bufRef = clCreateBuffer(cl_data.context, bufType, needSize, dataPtr, &err); \
-            CL_CHECK_SUCCESS( \
-                err != CL_SUCCESS, \
-                "Error copying data to buffer! Using CPU path!\n", \
-                altPath \
-            ); \
-        } else {\
-            bufRef = clCreateBuffer(cl_data.context, bufType, needSize, NULL, NULL);\
-        } \
-        CL_CHECK_SUCCESS(!bufRef, \
-            "Error: Failed to allocate buffer. Using CPU path!\n", \
-            altPath \
-        ); \
-        curSize = needSize; \
-    } else { \
-        if (dataPtr != NULL){\
-            err = clEnqueueWriteBuffer(cl_data.commands, bufRef, CL_FALSE, 0, \
-                needSize, dataPtr, 0, NULL, NULL); \
-            \
-            CL_CHECK_SUCCESS( err != CL_SUCCESS, \
-                "Error: Failed to write to buffer!\n", \
-                printf("srcData = %p, intData = %p, destData = %p, bufRef = %p\n", cl_data.srcData, cl_data.intData, cl_data.destData, bufRef);\
-                altPath \
-            ); \
-        }\
-    }
-
-#define CLAMP(x,min,max) if (x < min) x = min; else if ( x > max ) x = max;
-#define STRINGIFY(x) #x
 
 static const int bilinear_filters[8][2] = {
     { 128, 0},
@@ -142,25 +89,6 @@ const char *compileOptions = "-DVP8_FILTER_WEIGHT=128 -DVP8_FILTER_SHIFT=7";
 #define FILTER_REF sub_pel_filters[filter_offset]
 const char *compileOptions = "-DVP8_FILTER_WEIGHT=128 -DVP8_FILTER_SHIFT=7 -DFILTER_OFFSET_BUF";
 #endif
-
-typedef struct VP8_COMMON_CL
-{
-    cl_device_id device_id; // compute device id
-    cl_context context; // compute context
-    cl_command_queue commands; // compute command queue
-    cl_program program; // compute program
-    cl_kernel filter_block2d_first_pass_kernel; // compute kernel
-    cl_kernel filter_block2d_second_pass_kernel; // compute kernel
-    cl_mem srcData; //Source frame data
-    size_t srcAlloc; //Amount of allocated CL memory for srcData
-    cl_mem intData; //Intermediate data passed from 1st to 2nd pass
-    size_t intAlloc; //Amount of allocated CL memory for intData
-    size_t intSize; //Size of intermediate data.
-    cl_mem destData; //Destination data for 2nd pass.
-    size_t destAlloc; //Amount of allocated CL memory for destData
-    cl_mem filterData; //vp8_filter row
-} VP8_COMMON_CL;
-
 
 const char *filter_cl_file_name = "vp8/common/opencl/filter_cl.cl";
 

@@ -24,6 +24,7 @@ extern "C" {
 #include <dlfcn.h>
 
 int load_cl(char *lib_name);
+int close_cl();
 
 typedef cl_int(*fn_clGetPlatformIDs)(cl_uint, cl_platform_id *, cl_uint *);
 typedef cl_int(*fn_clGetPlatformInfo)(cl_platform_id, cl_platform_info, size_t, void *, size_t *);
