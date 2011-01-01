@@ -55,7 +55,7 @@ extern void vp8_filter_block2d_second_pass
     const short *vp8_filter
 );
 
-char *read_file(const char* file_name);
+char *cl_read_file(const char* file_name);
 
 /**
  *
@@ -155,7 +155,7 @@ int cl_init_filter_block2d() {
     }
 
     // Create the compute program from the file-defined source code
-    kernel_src = read_file(filter_cl_file_name);
+    kernel_src = cl_read_file(filter_cl_file_name);
     if (kernel_src != NULL){
         printf("creating program from source file\n");
         cl_data.program = clCreateProgramWithSource(cl_data.context, 1, &kernel_src, NULL, &err);
@@ -872,7 +872,7 @@ void vp8_bilinear_predict16x16_cl
     vp8_filter_block2d_bil_cl(src_ptr, dst_ptr, src_pixels_per_line, dst_pitch, HFilter, VFilter, 16, 16);
 }
 
-char *read_file(const char* file_name){
+char *cl_read_file(const char* file_name){
     long pos;
     char *bytes;
     size_t amt_read;
