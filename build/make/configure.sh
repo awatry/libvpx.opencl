@@ -937,6 +937,12 @@ process_common_toolchain() {
     
     if enabled opencl; then
     	enable runtime_cpu_detect
+	
+        #Use dlopen() to load OpenCL when possible.
+        if check_header dlfcn.h; then
+            add_extralibs -ldl 
+            enable dlopen
+        fi
         case ${toolchain} in
             *-win32-gcc)
                 add_extralibs --library OpenCL

@@ -182,3 +182,5 @@ VP8_COMMON_SRCS-$(CONFIG_OPENCL) += common/opencl/filter_cl.cl
 VP8_COMMON_SRCS-$(CONFIG_OPENCL) += common/opencl/subpixel_cl.h
 VP8_COMMON_SRCS-$(CONFIG_OPENCL) += common/opencl/opencl_systemdependent.c
 VP8_COMMON_SRCS-$(CONFIG_OPENCL) += common/opencl/filter_cl.c
+VP8_COMMON_SRCS-$(HAVE_DLOPEN) += common/opencl/dynamic_cl.c
+VP8_COMMON_SRCS-$(HAVE_DLOPEN) += common/opencl/dynamic_cl.h
