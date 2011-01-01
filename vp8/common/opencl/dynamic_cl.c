@@ -49,7 +49,6 @@ int load_cl(char *lib_name){
     CL_LOAD_FN("clReleaseCommandQueue", cl.releaseCommandQueue);
     CL_LOAD_FN("clGetCommandQueueInfo", cl.getCommandQueue);
     CL_LOAD_FN("clCreateBuffer", cl.createBuffer);
-    CL_LOAD_FN("clCreateSubBuffer", cl.createSubBuffer);
     CL_LOAD_FN("clCreateImage2D", cl.createImage2D);
     CL_LOAD_FN("clCreateImage3D", cl.createImage3D);
     CL_LOAD_FN("clRetainMemObject", cl.retainMemObject);
@@ -57,7 +56,6 @@ int load_cl(char *lib_name){
     CL_LOAD_FN("clGetSupportedImageFormats", cl.getSupportedImageFormats);
     CL_LOAD_FN("clGetMemObjectInfo", cl.getMemObjectInfo);
     CL_LOAD_FN("clGetImageInfo", cl.getImageInfo);
-    CL_LOAD_FN("clSetMemObjectDestructorCallback", cl.setMemObjectDestructorCallback);
     CL_LOAD_FN("clCreateSampler", cl.createSampler);
     CL_LOAD_FN("clRetainSampler", cl.retainSampler);
     CL_LOAD_FN("clReleaseSampler", cl.releaseSampler);
@@ -79,20 +77,14 @@ int load_cl(char *lib_name){
     CL_LOAD_FN("clGetKernelWorkGroupInfo", cl.getKernelWorkGroupInfo);
     CL_LOAD_FN("clWaitForEvents", cl.waitForEvents);
     CL_LOAD_FN("clGetEventInfo", cl.getEventInfo);
-    CL_LOAD_FN("clCreateUserEvent", cl.createUserEvent);
     CL_LOAD_FN("clRetainEvent", cl.retainEvent);
     CL_LOAD_FN("clReleaseEvent", cl.releaseEvent);
-    CL_LOAD_FN("clSetUserEventStatus", cl.setUserEventStatus);
-    CL_LOAD_FN("clSetEventCallback", cl.setEventCallback);
     CL_LOAD_FN("clGetEventProfilingInfo", cl.getEventProfilingInfo);
     CL_LOAD_FN("clFlush", cl.flush);
     CL_LOAD_FN("clFinish", cl.finish);
     CL_LOAD_FN("clEnqueueReadBuffer", cl.enqueueReadBuffer);
-    CL_LOAD_FN("clEnqueueReadBufferRect", cl.enqueueReadBufferRect);
     CL_LOAD_FN("clEnqueueWriteBuffer", cl.enqueueWriteBuffer);
-    CL_LOAD_FN("clEnqueueWriteBufferRect", cl.enqueueWriteBufferRect);
     CL_LOAD_FN("clEnqueueCopyBuffer", cl.enqueueCopyBuffer);
-    CL_LOAD_FN("clEnqueueCopyBufferRect", cl.enqueueCopyBufferRect);
     CL_LOAD_FN("clEnqueueReadImage", cl.enqueueReadImage);
     CL_LOAD_FN("clEnqueueWriteImage", cl.enqueueWriteImage);
     CL_LOAD_FN("clEnqueueCopyImage", cl.enqueueCopyImage);
