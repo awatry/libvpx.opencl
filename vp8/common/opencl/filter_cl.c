@@ -774,34 +774,3 @@ void vp8_bilinear_predict16x16_cl
 
     vp8_filter_block2d_bil_cl(src_ptr, dst_ptr, src_pixels_per_line, dst_pitch, HFilter, VFilter, 16, 16);
 }
-
-char *cl_read_file(const char* file_name){
-    long pos;
-    char *bytes;
-    size_t amt_read;
-
-    FILE *f = fopen(file_name, "rb");
-    if (f == NULL)
-        return NULL;
-
-    fseek(f, 0, SEEK_END);
-    pos = ftell(f);
-    fseek(f, 0, SEEK_SET);
-
-    bytes = malloc(pos);
-    if (bytes == NULL){
-        fclose(f);
-        return NULL;
-    }
-
-    amt_read = fread(bytes, pos, 1, f);
-    if (amt_read != 1){
-        free(bytes);
-        fclose(f);
-        return NULL;
-    }
-
-    fclose(f);
-
-    return bytes;
-}
