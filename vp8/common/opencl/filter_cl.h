@@ -77,7 +77,7 @@ static const short sub_pel_filters[8][6] = {
 
 //#define FILTER_OFFSET_BUF //Filter offset using a CL buffer and int offset
 #ifndef FILTER_OFFSET_BUF
-//#define FILTER_OFFSET //Filter data stored as CL constant memory
+#define FILTER_OFFSET //Filter data stored as CL constant memory
 #ifdef FILTER_OFFSET
 #define FILTER_REF sub_pel_filters[filter_offset]
 const char *compileOptions = "-DVP8_FILTER_WEIGHT=128 -DVP8_FILTER_SHIFT=7 -DFILTER_OFFSET";

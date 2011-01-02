@@ -31,23 +31,34 @@ extern char *cl_read_file(const char* file_name);
 extern int cl_init();
 extern void cl_destroy();
 
+extern void vp8_sixtap_predict16x16_c
+(
+    unsigned char  *src_ptr,
+    int  src_pixels_per_line,
+    int  xoffset,
+    int  yoffset,
+    unsigned char *dst_ptr,
+    int  dst_pitch
+);
+
+
 #define MAX_NUM_PLATFORMS 4
 
 #define CL_TRIED_BUT_FAILED 1
 #define CL_NOT_INITIALIZED -1
 extern int cl_initialized;
 
-#define CL_CHECK_SUCCESS(cond,msg,alt) \
-    if (cond){ \
+#define CL_CHECK_SUCCESS(cond,msg,alt,retCode) \
+    if ( cond ){ \
         printf(msg);  \
         cl_destroy(); \
         cl_initialized = CL_TRIED_BUT_FAILED; \
         alt; \
-        return;\
+        return retCode; \
     }
 
 #define CL_ENSURE_BUF_SIZE(bufRef, bufType, needSize, curSize, dataPtr, altPath) \
-    if ( bufRef == NULL || needSize > curSize){ \
+    if ( needSize > curSize || bufRef == NULL){ \
         if (bufRef != NULL) \
             clReleaseMemObject(bufRef); \
         if (dataPtr != NULL){ \
@@ -55,14 +66,16 @@ extern int cl_initialized;
             CL_CHECK_SUCCESS( \
                 err != CL_SUCCESS, \
                 "Error copying data to buffer! Using CPU path!\n", \
-                altPath \
+                altPath, \
+                CL_TRIED_BUT_FAILED \
             ); \
         } else {\
             bufRef = clCreateBuffer(cl_data.context, bufType, needSize, NULL, NULL);\
         } \
         CL_CHECK_SUCCESS(!bufRef, \
             "Error: Failed to allocate buffer. Using CPU path!\n", \
-            altPath \
+            altPath, \
+            CL_TRIED_BUT_FAILED \
         ); \
         curSize = needSize; \
     } else { \
@@ -73,7 +86,8 @@ extern int cl_initialized;
             CL_CHECK_SUCCESS( err != CL_SUCCESS, \
                 "Error: Failed to write to buffer!\n", \
                 printf("srcData = %p, intData = %p, destData = %p, bufRef = %p\n", cl_data.srcData, cl_data.intData, cl_data.destData, bufRef);\
-                altPath \
+                altPath, \
+                CL_TRIED_BUT_FAILED \
             ); \
         }\
     }
