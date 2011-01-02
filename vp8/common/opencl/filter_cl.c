@@ -135,7 +135,6 @@ int vp8_filter_block2d_first_pass_cl
             cl_initialized = cl_init_filter_block2d();
         }
         if (cl_initialized != CL_SUCCESS){
-            //vp8_filter_block2d_first_pass(src_ptr, output_ptr, src_pixels_per_line, pixel_step, output_height, output_width, FILTER_REF);
             return CL_TRIED_BUT_FAILED;
         }
     }
@@ -145,13 +144,11 @@ int vp8_filter_block2d_first_pass_cl
     cl_data.intSize = sizeof (int) * dest_len;
     CL_ENSURE_BUF_SIZE(cl_data.intData, CL_MEM_READ_WRITE, cl_data.intSize,
         cl_data.intAlloc, NULL,
-        1 //vp8_filter_block2d_first_pass(src_ptr, output_ptr, src_pixels_per_line, pixel_step, output_height, output_width, FILTER_REF)
     );
 
     //Make space for kernel input data. Initialize the buffer as well.
     CL_ENSURE_BUF_SIZE(cl_data.srcData, CL_MEM_READ_ONLY|CL_MEM_COPY_HOST_PTR,
         sizeof (unsigned char) * src_len, cl_data.srcAlloc, src_ptr-(2*(int)pixel_step),
-        1 //vp8_filter_block2d_first_pass(src_ptr, output_ptr, src_pixels_per_line, pixel_step, output_height, output_width, FILTER_REF)
     );
 
     // Set kernel arguments
@@ -170,7 +167,7 @@ int vp8_filter_block2d_first_pass_cl
 #endif
     CL_CHECK_SUCCESS( err != CL_SUCCESS,
         "Error: Failed to set kernel arguments!\n",
-        ,//vp8_filter_block2d_first_pass(src_ptr, output_ptr, src_pixels_per_line, pixel_step, output_height, output_width, FILTER_REF);
+        ,
         CL_TRIED_BUT_FAILED
     );
     //printf("Set kernel arguments\n");
@@ -187,7 +184,7 @@ int vp8_filter_block2d_first_pass_cl
 #endif
     CL_CHECK_SUCCESS( err != CL_SUCCESS,
         "Error: Failed to execute kernel!\n",
-        , //vp8_filter_block2d_first_pass(src_ptr, output_ptr, src_pixels_per_line, pixel_step, output_height, output_width, FILTER_REF);
+        ,
         CL_TRIED_BUT_FAILED
     );
 
@@ -212,14 +209,6 @@ int vp8_filter_block2d_second_pass_cl
     int dest_len = output_width+(output_pitch*output_height);
 
     size_t global;
-
-#define SHOW_OUTPUT_2ND 0
-#if SHOW_OUTPUT_2ND
-    //Run C code so that we can compare output for correctness.
-    unsigned char c_output[dest_len];
-    int j;
-    memcpy(c_output,output_ptr, dest_len*sizeof(unsigned char));
-#endif
 
     if (cl_initialized != CL_SUCCESS){
         return CL_TRIED_BUT_FAILED;
