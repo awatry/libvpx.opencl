@@ -15,6 +15,8 @@
 extern "C" {
 #endif
 
+#include "vpx_config.h"
+
 #ifdef __APPLE__
 #include <OpenCL/cl.h>
 #else

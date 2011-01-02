@@ -942,15 +942,16 @@ process_common_toolchain() {
         if check_header dlfcn.h; then
             add_extralibs -ldl 
             enable dlopen
+        else
+            case ${toolchain} in
+                *-win32-gcc)
+                    add_extralibs --library OpenCL
+                    ;;
+                *)
+                    add_extralibs -lOpenCL
+                    ;;
+            esac
         fi
-        case ${toolchain} in
-            *-win32-gcc)
-                add_extralibs --library OpenCL
-                ;;
-            *)
-                add_extralibs -lOpenCL
-                ;;
-        esac
     fi
 
     # Position Independant Code (PIC) support, for building relocatable
