@@ -114,7 +114,6 @@ int cl_init_filter_block2d() {
 int vp8_filter_block2d_first_pass_cl
 (
         unsigned char *src_ptr,
-        int *output_ptr,
         unsigned int src_pixels_per_line,
         unsigned int pixel_step,
         unsigned int output_height,
@@ -197,7 +196,6 @@ int vp8_filter_block2d_first_pass_cl
 
 int vp8_filter_block2d_second_pass_cl
 (
-        int *src_ptr,
         int offset,
         unsigned char *output_ptr,
         int output_pitch,
@@ -292,11 +290,10 @@ void vp8_filter_block2d_cl
         int yoffset
         ) {
     
-    int FData[9 * 4]; /* Temp data buffer used in filtering */
     int ret;
 
     /* First filter 1-D horizontally... */
-    ret = vp8_filter_block2d_first_pass_cl(src_ptr - (2 * src_pixels_per_line), FData, src_pixels_per_line, 1, 9, 4, xoffset);
+    ret = vp8_filter_block2d_first_pass_cl(src_ptr - (2 * src_pixels_per_line), src_pixels_per_line, 1, 9, 4, xoffset);
 
     if (ret != CL_SUCCESS){
         vp8_filter_block2d(src_ptr, output_ptr, src_pixels_per_line,
@@ -305,7 +302,7 @@ void vp8_filter_block2d_cl
     }
 
     /* then filter vertically... */
-    ret = vp8_filter_block2d_second_pass_cl(FData, 8, output_ptr, output_pitch, 4, 4, 4, 4, yoffset);
+    ret = vp8_filter_block2d_second_pass_cl(8, output_ptr, output_pitch, 4, 4, 4, 4, yoffset);
 
     if (ret != CL_SUCCESS){
         vp8_filter_block2d(src_ptr, output_ptr, src_pixels_per_line,
@@ -356,11 +353,11 @@ void vp8_sixtap_predict8x8_cl
         unsigned char *dst_ptr,
         int dst_pitch
         ) {
-    int FData[13 * 16]; /* Temp data buffer used in filtering */
+
     int ret;
 
     /* First filter 1-D horizontally... */
-    ret = vp8_filter_block2d_first_pass_cl(src_ptr - (2 * src_pixels_per_line), FData, src_pixels_per_line, 1, 13, 8, xoffset);
+    ret = vp8_filter_block2d_first_pass_cl(src_ptr - (2 * src_pixels_per_line), src_pixels_per_line, 1, 13, 8, xoffset);
 
     if (ret != CL_SUCCESS){
         vp8_sixtap_predict8x8_c(src_ptr, src_pixels_per_line, xoffset, yoffset,
@@ -369,7 +366,7 @@ void vp8_sixtap_predict8x8_cl
     }
 
     /* then filter vertically... */
-    ret = vp8_filter_block2d_second_pass_cl(FData, 16, dst_ptr, dst_pitch, 8, 8, 8, 8, yoffset);
+    ret = vp8_filter_block2d_second_pass_cl(16, dst_ptr, dst_pitch, 8, 8, 8, 8, yoffset);
 
     if (ret != CL_SUCCESS){
         vp8_sixtap_predict8x8_c(src_ptr, src_pixels_per_line, xoffset, yoffset,
@@ -388,11 +385,10 @@ void vp8_sixtap_predict8x4_cl
         int dst_pitch
         ) {
 
-    int FData[13 * 16]; /* Temp data buffer used in filtering */
     int ret;
 
     /* First filter 1-D horizontally... */
-    ret = vp8_filter_block2d_first_pass_cl(src_ptr - (2 * src_pixels_per_line), FData, src_pixels_per_line, 1, 9, 8, xoffset);
+    ret = vp8_filter_block2d_first_pass_cl(src_ptr - (2 * src_pixels_per_line), src_pixels_per_line, 1, 9, 8, xoffset);
 
     if (ret != CL_SUCCESS){
         vp8_sixtap_predict8x4_c(src_ptr, src_pixels_per_line, xoffset, yoffset,
@@ -401,7 +397,7 @@ void vp8_sixtap_predict8x4_cl
     }
 
     /* then filter vertically... */
-    ret = vp8_filter_block2d_second_pass_cl(FData, 16, dst_ptr, dst_pitch, 8, 8, 4, 8, yoffset);
+    ret = vp8_filter_block2d_second_pass_cl(16, dst_ptr, dst_pitch, 8, 8, 4, 8, yoffset);
 
     if (ret != CL_SUCCESS){
         vp8_sixtap_predict8x4_c(src_ptr, src_pixels_per_line, xoffset, yoffset,
@@ -420,11 +416,10 @@ void vp8_sixtap_predict16x16_cl
         unsigned char *dst_ptr,
         int dst_pitch
         ) {
-    int FData[21 * 24]; /* Temp data buffer used in filtering */
     int ret;
 
     /* First filter 1-D horizontally... */
-    ret = vp8_filter_block2d_first_pass_cl(src_ptr - (2 * src_pixels_per_line), FData, src_pixels_per_line, 1, 21, 16, xoffset);
+    ret = vp8_filter_block2d_first_pass_cl(src_ptr - (2 * src_pixels_per_line), src_pixels_per_line, 1, 21, 16, xoffset);
 
     if (ret != CL_SUCCESS){
         vp8_sixtap_predict16x16_c(src_ptr, src_pixels_per_line, xoffset, yoffset,
@@ -433,7 +428,7 @@ void vp8_sixtap_predict16x16_cl
     }
 
     /* then filter vertically... */
-    ret = vp8_filter_block2d_second_pass_cl(FData, 32, dst_ptr, dst_pitch, 16, 16, 16, 16, yoffset);
+    ret = vp8_filter_block2d_second_pass_cl(32, dst_ptr, dst_pitch, 16, 16, 16, 16, yoffset);
 
     if (ret != CL_SUCCESS){
         vp8_sixtap_predict16x16_c(src_ptr, src_pixels_per_line, xoffset, yoffset,
