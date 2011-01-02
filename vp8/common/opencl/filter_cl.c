@@ -223,7 +223,7 @@ int vp8_filter_block2d_first_pass_cl
     );
     //printf("Kernel queued\n");
 
-    clEnqueueBarrier(cl_data.commands);
+    //clEnqueueBarrier(cl_data.commands);
 
     // Read back the result data from the device
     //err = clEnqueueReadBuffer(cl_data.commands, cl_data.intData, CL_FALSE, 0, cl_data.intSize, output_ptr, 0, NULL, NULL);
