@@ -31,17 +31,6 @@ extern char *cl_read_file(const char* file_name);
 extern int cl_init();
 extern void cl_destroy();
 
-extern void vp8_sixtap_predict16x16_c
-(
-    unsigned char  *src_ptr,
-    int  src_pixels_per_line,
-    int  xoffset,
-    int  yoffset,
-    unsigned char *dst_ptr,
-    int  dst_pitch
-);
-
-
 #define MAX_NUM_PLATFORMS 4
 
 #define CL_TRIED_BUT_FAILED 1

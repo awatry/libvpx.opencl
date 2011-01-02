@@ -30,31 +30,6 @@ int pass=0;
 size_t local;
 #endif
 
-/*
-extern void vp8_filter_block2d_first_pass
-(
-    unsigned char *src_ptr,
-    int *output_ptr,
-    unsigned int src_pixels_per_line,
-    unsigned int pixel_step,
-    unsigned int output_height,
-    unsigned int output_width,
-    const short *vp8_filter
-);
-
-extern void vp8_filter_block2d_second_pass
-(
-    int *src_ptr,
-    unsigned char *output_ptr,
-    int output_pitch,
-    unsigned int src_pixels_per_line,
-    unsigned int pixel_step,
-    unsigned int output_height,
-    unsigned int output_width,
-    const short *vp8_filter
-);
-*/
-
 int cl_init_filter_block2d() {
     char *kernel_src;
     int err;
@@ -148,11 +123,6 @@ int vp8_filter_block2d_first_pass_cl
 ) {
 
     int err;
-#define SHOW_OUTPUT_1ST 0
-#if SHOW_OUTPUT_1ST
-    int c_output[output_height*output_width];
-    int j;
-#endif
     size_t global;
 
     //Calculate size of input and output arrays
@@ -221,34 +191,6 @@ int vp8_filter_block2d_first_pass_cl
         , //vp8_filter_block2d_first_pass(src_ptr, output_ptr, src_pixels_per_line, pixel_step, output_height, output_width, FILTER_REF);
         CL_TRIED_BUT_FAILED
     );
-    //printf("Kernel queued\n");
-
-    //clEnqueueBarrier(cl_data.commands);
-
-    // Read back the result data from the device
-    //err = clEnqueueReadBuffer(cl_data.commands, cl_data.intData, CL_FALSE, 0, cl_data.intSize, output_ptr, 0, NULL, NULL);
-    //CL_CHECK_SUCCESS( err != CL_SUCCESS,
-    //        "Error: Failed to read output array!\n",
-    //        ,//vp8_filter_block2d_first_pass(src_ptr, output_ptr, src_pixels_per_line, pixel_step, output_height, output_width, FILTER_REF);
-    //        CL_TRIED_BUT_FAILED
-    //);
-
-    //wait for output copy to finish
-    //clFinish(cl_data.commands);
-    
-#if SHOW_OUTPUT_1ST
-
-    //Run C code so that we can compare output for correctness.
-    pass++;
-    vp8_filter_block2d_first_pass(src_ptr, c_output, src_pixels_per_line, pixel_step, output_height, output_width, vp8_filter);
-
-    for (j=0; j < dest_len; j++){
-        if (output_ptr[j] != c_output[j]){
-            printf("pass %d, dest_len %d, output_ptr[%d] = %d, c[%d]=%d\n", pass, dest_len, j, output_ptr[j], j, c_output[j]);
-            //exit(1);
-        }
-    }
-#endif
 
     return CL_SUCCESS;
 }
@@ -282,13 +224,11 @@ int vp8_filter_block2d_second_pass_cl
 #endif
 
     if (cl_initialized != CL_SUCCESS){
-            //vp8_filter_block2d_second_pass(&src_ptr[offset], output_ptr, output_pitch, src_pixels_per_line, pixel_step, output_height, output_width, FILTER_REF);
-            return CL_TRIED_BUT_FAILED;
+        return CL_TRIED_BUT_FAILED;
     }
 
     CL_ENSURE_BUF_SIZE(cl_data.destData, CL_MEM_WRITE_ONLY|CL_MEM_COPY_HOST_PTR,
         sizeof (unsigned char) * dest_len, cl_data.destAlloc, output_ptr,
-        1 //vp8_filter_block2d_second_pass(&src_ptr[offset], output_ptr, output_pitch, src_pixels_per_line, pixel_step, output_height, output_width, FILTER_REF)
     );
 
     // Set kernel arguments
@@ -309,10 +249,9 @@ int vp8_filter_block2d_second_pass_cl
 #endif
     CL_CHECK_SUCCESS(err != CL_SUCCESS,
         "Error: Failed to set kernel arguments!\n",
-        1, //vp8_filter_block2d_second_pass(&src_ptr[offset], output_ptr, output_pitch, src_pixels_per_line, pixel_step, output_height, output_width, FILTER_REF);
-            CL_TRIED_BUT_FAILED
+        ,
+        CL_TRIED_BUT_FAILED
     );
-    //printf("Set kernel arguments\n");
 
     // Execute the kernel
     global = output_width*output_height; //How many threads do we need?
@@ -326,31 +265,19 @@ int vp8_filter_block2d_second_pass_cl
 #endif
     CL_CHECK_SUCCESS(err != CL_SUCCESS,
         "Error: Failed to execute kernel!\n",
-        , //vp8_filter_block2d_second_pass(&src_ptr[offset], output_ptr, output_pitch, src_pixels_per_line, pixel_step, output_height, output_width, FILTER_REF);
-            CL_TRIED_BUT_FAILED
+        ,
+        CL_TRIED_BUT_FAILED
     );
 
     // Read back the result data from the device
     err = clEnqueueReadBuffer(cl_data.commands, cl_data.destData, CL_FALSE, 0, sizeof (unsigned char) * dest_len, output_ptr, 0, NULL, NULL);
     CL_CHECK_SUCCESS(err != CL_SUCCESS,
         "Error: Failed to read output array!\n",
-        , //vp8_filter_block2d_second_pass(&src_ptr[offset], output_ptr, output_pitch, src_pixels_per_line, pixel_step, output_height, output_width, FILTER_REF);
-            CL_TRIED_BUT_FAILED
+        , 
+        CL_TRIED_BUT_FAILED
     );
 
     clFinish(cl_data.commands);
-
-#if SHOW_OUTPUT_2ND
-    pass++;
-    vp8_filter_block2d_second_pass(&src_ptr[offset], c_output, output_pitch, src_pixels_per_line, pixel_step, output_height, output_width, vp8_filter);
-
-    for (j=0; j < dest_len; j++){
-        if (output_ptr[j] != c_output[j]){
-            printf("pass %d, dest_len %d, output_width %d, output_height %d, output_pitch %d, output_ptr[%d] = %d, c[%d]=%d\n", pass, dest_len, output_width, output_height, output_pitch, j, output_ptr[j], j, c_output[j]);
-            //exit(1);
-        }
-    }
-#endif
 
     return CL_SUCCESS;
 }
@@ -374,8 +301,6 @@ void vp8_filter_block2d_cl
     if (ret != CL_SUCCESS){
         vp8_filter_block2d(src_ptr, output_ptr, src_pixels_per_line,
                 output_pitch, sub_pel_filters[xoffset], sub_pel_filters[yoffset]);
-        //vp8_filter_block2d_first_pass(src_ptr, FData, src_pixels_per_line, 1, 9, 4, sub_pel_filters[xoffset]);
-        //vp8_filter_block2d_second_pass(FData, output_ptr, output_pitch, 4, 4, 4, 4, sub_pel_filters[yoffset]);
         return;
     }
 
@@ -385,8 +310,6 @@ void vp8_filter_block2d_cl
     if (ret != CL_SUCCESS){
         vp8_filter_block2d(src_ptr, output_ptr, src_pixels_per_line,
                 output_pitch, sub_pel_filters[xoffset], sub_pel_filters[yoffset]);
-        //vp8_filter_block2d_first_pass(src_ptr, FData, src_pixels_per_line, 1, 9, 4, sub_pel_filters[xoffset]);
-        //vp8_filter_block2d_second_pass(FData, output_ptr, output_pitch, 4, 4, 4, 4, sub_pel_filters[yoffset]);
         return;
     }
 }
@@ -442,8 +365,6 @@ void vp8_sixtap_predict8x8_cl
     if (ret != CL_SUCCESS){
         vp8_sixtap_predict8x8_c(src_ptr, src_pixels_per_line, xoffset, yoffset,
                 dst_ptr, dst_pitch);
-        //vp8_filter_block2d_first_pass(src_ptr, FData, src_pixels_per_line, 1, 13, 8, sub_pel_filters[xoffset]);
-        //vp8_filter_block2d_second_pass(FData, dst_ptr, dst_pitch, 8, 8, 8, 8, sub_pel_filters[yoffset]);
         return;
     }
 
@@ -453,8 +374,6 @@ void vp8_sixtap_predict8x8_cl
     if (ret != CL_SUCCESS){
         vp8_sixtap_predict8x8_c(src_ptr, src_pixels_per_line, xoffset, yoffset,
                 dst_ptr, dst_pitch);
-        //vp8_filter_block2d_first_pass(src_ptr, FData, src_pixels_per_line, 1, 13, 8, sub_pel_filters[xoffset]);
-        //vp8_filter_block2d_second_pass(FData, dst_ptr, dst_pitch, 8, 8, 8, 8, sub_pel_filters[yoffset]);
         return;
     }
 }
@@ -478,8 +397,6 @@ void vp8_sixtap_predict8x4_cl
     if (ret != CL_SUCCESS){
         vp8_sixtap_predict8x4_c(src_ptr, src_pixels_per_line, xoffset, yoffset,
                 dst_ptr, dst_pitch);
-        //vp8_filter_block2d_first_pass(src_ptr, FData, src_pixels_per_line, 1, 9, 8, sub_pel_filters[xoffset]);
-        //vp8_filter_block2d_second_pass(FData, dst_ptr, dst_pitch, 8, 8, 4, 8, sub_pel_filters[yoffset]);
         return;
     }
 
@@ -489,8 +406,6 @@ void vp8_sixtap_predict8x4_cl
     if (ret != CL_SUCCESS){
         vp8_sixtap_predict8x4_c(src_ptr, src_pixels_per_line, xoffset, yoffset,
                 dst_ptr, dst_pitch);
-        //vp8_filter_block2d_first_pass(src_ptr, FData, src_pixels_per_line, 1, 9, 8, sub_pel_filters[xoffset]);
-        //vp8_filter_block2d_second_pass(FData, dst_ptr, dst_pitch, 8, 8, 4, 8, sub_pel_filters[yoffset]);
         return;
     }
 
@@ -514,8 +429,6 @@ void vp8_sixtap_predict16x16_cl
     if (ret != CL_SUCCESS){
         vp8_sixtap_predict16x16_c(src_ptr, src_pixels_per_line, xoffset, yoffset,
                 dst_ptr, dst_pitch);
-        //vp8_filter_block2d_first_pass(src_ptr, FData, src_pixels_per_line, 1, 21, 16, sub_pel_filters[xoffset]);
-        //vp8_filter_block2d_second_pass(FData, dst_ptr, dst_pitch, 16, 16, 16, 16, sub_pel_filters[yoffset]);
         return;
     }
 
@@ -525,8 +438,6 @@ void vp8_sixtap_predict16x16_cl
     if (ret != CL_SUCCESS){
         vp8_sixtap_predict16x16_c(src_ptr, src_pixels_per_line, xoffset, yoffset,
                 dst_ptr, dst_pitch);
-        //vp8_filter_block2d_first_pass(src_ptr, FData, src_pixels_per_line, 1, 21, 16, sub_pel_filters[xoffset]);
-        //vp8_filter_block2d_second_pass(FData, dst_ptr, dst_pitch, 16, 16, 16, 16, sub_pel_filters[yoffset]);
         return;
     }
 
