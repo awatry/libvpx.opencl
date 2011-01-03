@@ -37,6 +37,8 @@ extern void cl_destroy();
 #define CL_NOT_INITIALIZED -1
 extern int cl_initialized;
 
+extern const char *vpx_codec_lib_dir(void);
+
 #define CL_CHECK_SUCCESS(cond,msg,alt,retCode) \
     if ( cond ){ \
         printf(msg);  \
