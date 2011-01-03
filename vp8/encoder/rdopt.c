@@ -36,6 +36,10 @@
 #include "dct.h"
 #include "systemdependent.h"
 
+#if CONFIG_OPENCL
+#include "vp8/common/opencl/vp8_opencl.h"
+#endif
+
 #define DIAMONDSEARCH 1
 #if CONFIG_RUNTIME_CPU_DETECT
 #define IF_RTCD(x)  (x)
@@ -1042,6 +1046,10 @@ static unsigned int vp8_encode_inter_mb_segment(MACROBLOCK *x, int const *labels
 
 
             vp8_build_inter_predictors_b(bd, 16, x->e_mbd.subpixel_predict);
+#if CONFIG_OPENCL
+            if (cl_initialized == CL_SUCCESS)
+                clFinish(cl_data.commands);
+#endif
             ENCODEMB_INVOKE(rtcd, subb)(be, bd, 16);
             x->vp8_short_fdct4x4(be->src_diff, be->coeff, 32);
 
@@ -1949,6 +1957,12 @@ int vp8_rd_pick_inter_mode(VP8_COMP *cpi, MACROBLOCK *x, int recon_yoffset, int 
 
             vp8_set_mbmode_and_mvs(x, this_mode, &mode_mv[this_mode]);
             vp8_build_inter_predictors_mby(&x->e_mbd);
+#if CONFIG_OPENCL
+        if ( cl_initialized == CL_SUCCESS ){
+            //Wait for kernels to finish.
+            clFinish(cl_data.commands);
+        }
+#endif
             VARIANCE_INVOKE(&cpi->rtcd.variance, get16x16var)(x->src.y_buffer, x->src.y_stride, x->e_mbd.predictor, 16, (unsigned int *)(&sse), &sum);
 
             if (cpi->active_map_enabled && x->active_ptr[0] == 0)

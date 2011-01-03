@@ -264,7 +264,8 @@ int vp8_filter_block2d_second_pass_cl
         CL_TRIED_BUT_FAILED
     );
 
-    clFinish(cl_data.commands);
+    //clEnqueueBarrier(cl_data.commands);
+    //clFinish(cl_data.commands);
 
     return CL_SUCCESS;
 }

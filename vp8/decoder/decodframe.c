@@ -38,6 +38,10 @@
 #include <assert.h>
 #include <stdio.h>
 
+#if CONFIG_OPENCL
+#include "opencl/vp8_opencl.h"
+#endif
+
 void vp8cx_init_de_quantizer(VP8D_COMP *pbi)
 {
     int i;
@@ -212,7 +216,12 @@ void vp8_decode_macroblock(VP8D_COMP *pbi, MACROBLOCKD *xd)
     if (xd->frame_type == KEY_FRAME  ||  xd->mode_info_context->mbmi.ref_frame == INTRA_FRAME)
     {
         vp8_build_intra_predictors_mbuv(xd);
-
+#if CONFIG_OPENCL
+    if ( cl_initialized == CL_SUCCESS ){
+        //Wait for kernels to finish.
+        clFinish(cl_data.commands);
+    }
+#endif
         if (xd->mode_info_context->mbmi.mode != B_PRED)
         {
             vp8_build_intra_predictors_mby_ptr(xd);
@@ -224,6 +233,13 @@ void vp8_decode_macroblock(VP8D_COMP *pbi, MACROBLOCKD *xd)
     {
         vp8_build_inter_predictors_mb(xd);
     }
+
+#if CONFIG_OPENCL
+    if ( cl_initialized == CL_SUCCESS ){
+        //Wait for kernels to finish.
+        clFinish(cl_data.commands);
+    }
+#endif
 
     /* dequantization and idct */
     if (xd->mode_info_context->mbmi.mode != B_PRED && xd->mode_info_context->mbmi.mode != SPLITMV)
