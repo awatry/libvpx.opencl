@@ -43,7 +43,7 @@ int load_cl(char *lib_name){
 //    CL_LOAD_FN("clCreateContextFromType", cl.createContextFromType);
 //    CL_LOAD_FN("clRetainContext", cl.retainContext);
     CL_LOAD_FN("clReleaseContext", cl.releaseContext);
-    CL_LOAD_FN("clGetContextInfo", cl.getContextInfo);
+//    CL_LOAD_FN("clGetContextInfo", cl.getContextInfo);
     CL_LOAD_FN("clCreateCommandQueue", cl.createCommandQueue);
 //    CL_LOAD_FN("clRetainCommandQueue", cl.retainCommandQueue);
     CL_LOAD_FN("clReleaseCommandQueue", cl.releaseCommandQueue);
@@ -84,7 +84,7 @@ int load_cl(char *lib_name){
     CL_LOAD_FN("clFinish", cl.finish);
     CL_LOAD_FN("clEnqueueReadBuffer", cl.enqueueReadBuffer);
     CL_LOAD_FN("clEnqueueWriteBuffer", cl.enqueueWriteBuffer);
-    CL_LOAD_FN("clEnqueueCopyBuffer", cl.enqueueCopyBuffer);
+//    CL_LOAD_FN("clEnqueueCopyBuffer", cl.enqueueCopyBuffer);
 //    CL_LOAD_FN("clEnqueueReadImage", cl.enqueueReadImage);
 //    CL_LOAD_FN("clEnqueueWriteImage", cl.enqueueWriteImage);
 //    CL_LOAD_FN("clEnqueueCopyImage", cl.enqueueCopyImage);
