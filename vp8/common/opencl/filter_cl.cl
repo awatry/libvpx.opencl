@@ -126,3 +126,23 @@ __kernel void vp8_filter_block2d_second_pass_kernel
         output_ptr[out_offset] = (unsigned char)Temp;
     }
 }
+
+
+//__kernel void vp8_filter_block2d_kernel
+//(
+//        __global unsigned char *src_ptr,
+//        __global unsigned char *output_ptr,
+//        unsigned int src_pixels_per_line,
+//        int output_pitch,
+//        int xoffset,
+//        int yoffset
+//        ) {
+//
+//        int FData[9*4]; /* Temp data buffer used in filtering */
+//
+//    /* First filter 1-D horizontally... */
+//    vp8_filter_block2d_first_pass_kernel(src_ptr - (2 * src_pixels_per_line), FData, src_pixels_per_line, 1, 9, 4, xoffset);
+//
+//    /* then filter verticaly... */
+//    vp8_filter_block2d_second_pass_kernel(FData + 8, output_ptr, output_pitch, 4, 4, 4, 4, yoffset);
+//}
