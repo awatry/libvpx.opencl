@@ -239,12 +239,9 @@ extern CL_FUNCTIONS cl;
 #define CL_LOAD_FN(name, ref) \
     ref = dlsym(dll,name); \
     if (ref == NULL){ \
-        fprintf(stderr, "Couldn't find %s\n", name); \
         dlclose(dll); \
         return 0; \
-    } else { \
-        printf("Found CL function %s at %p\n",name,ref); \
-    } \
+    }
 
 
 
