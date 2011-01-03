@@ -9,6 +9,7 @@
  */
 
 #include <stdio.h>
+#include <string.h>
 #include "vp8_opencl.h"
 
 int cl_initialized = CL_NOT_INITIALIZED;
@@ -121,12 +122,49 @@ int cl_init(){
 
 char *cl_read_file(const char* file_name){
     long pos;
+    char *fullpath,*bak;
     char *bytes;
     size_t amt_read;
 
-    FILE *f = fopen(file_name, "rb");
-    if (f == NULL)
-        return NULL;
+    FILE *f;
+
+    f = fopen(file_name, "rb");
+    //Disable until this no longer crashes on free()
+    if (0 && f == NULL){
+    
+        bak = fullpath = malloc (strlen(vpx_codec_lib_dir()+strlen(file_name)+2));
+        if (fullpath == NULL){
+            return NULL;
+        }
+
+        fullpath = strcpy(fullpath, vpx_codec_lib_dir());
+        if (fullpath == NULL){
+            free(bak);
+            return NULL;
+        }
+        
+        fullpath = strcat(fullpath, "/");
+        if (fullpath == NULL){
+            free(bak);
+            return NULL;
+        }
+
+        fullpath = strcat(fullpath, file_name);
+        if (fullpath == NULL){
+            free(bak);
+            return NULL;
+        }
+
+        f = fopen(fullpath, "rb");
+        if (f == NULL){
+            printf("Couldn't find CL kernel at %s or %s\n",file_name,fullpath);
+            free(fullpath);
+            return NULL;
+        }
+
+        printf("Found cl kernel at %s\n", fullpath);
+        free(fullpath);
+    }
 
     fseek(f, 0, SEEK_END);
     pos = ftell(f);
