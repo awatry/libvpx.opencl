@@ -24,11 +24,6 @@ void cl_destroy() {
     //Wait on any pending operations to complete... frees up all of our pointers
     clFinish(cl_data.commands);
 
-    if (cl_data.filterData){
-        clReleaseMemObject(cl_data.filterData);
-        cl_data.filterData = NULL;
-    }
-
     if (cl_data.srcData){
         clReleaseMemObject(cl_data.srcData);
         cl_data.srcData = NULL;
@@ -41,28 +36,34 @@ void cl_destroy() {
         cl_data.destAlloc = 0;
     }
 
-    if (cl_data.intData){
-        clReleaseMemObject(cl_data.intData);
-        cl_data.intData = NULL;
-        cl_data.intAlloc = 0;
-        cl_data.intSize = 0;
-    }
-
     //Release the objects that we've allocated on the GPU
     if (cl_data.program)
         clReleaseProgram(cl_data.program);
-    if (cl_data.filter_block2d_first_pass_kernel)
-        clReleaseKernel(cl_data.filter_block2d_first_pass_kernel);
-    if (cl_data.filter_block2d_second_pass_kernel)
-        clReleaseKernel(cl_data.filter_block2d_second_pass_kernel);
+
+    if (cl_data.vp8_sixtap_predict_kernel)
+        clReleaseKernel(cl_data.vp8_sixtap_predict_kernel);
+    if (cl_data.vp8_block_variation_kernel)
+        clReleaseKernel(cl_data.vp8_block_variation_kernel);
+    if (cl_data.vp8_sixtap_predict8x8_kernel)
+        clReleaseKernel(cl_data.vp8_sixtap_predict8x8_kernel);
+    if (cl_data.vp8_sixtap_predict8x4_kernel)
+        clReleaseKernel(cl_data.vp8_sixtap_predict8x4_kernel);
+    if (cl_data.vp8_sixtap_predict16x16_kernel)
+        clReleaseKernel(cl_data.vp8_sixtap_predict16x16_kernel);
+
     if (cl_data.commands)
         clReleaseCommandQueue(cl_data.commands);
     if (cl_data.context)
         clReleaseContext(cl_data.context);
 
     cl_data.program = NULL;
-    cl_data.filter_block2d_first_pass_kernel = NULL;
-    cl_data.filter_block2d_second_pass_kernel = NULL;
+
+    cl_data.vp8_sixtap_predict_kernel = NULL;
+    cl_data.vp8_block_variation_kernel = NULL;
+    cl_data.vp8_sixtap_predict8x8_kernel = NULL;
+    cl_data.vp8_sixtap_predict8x4_kernel = NULL;
+    cl_data.vp8_sixtap_predict16x16_kernel = NULL;
+
     cl_data.commands = NULL;
     cl_data.context = NULL;
 
@@ -91,7 +92,6 @@ int cl_init(){
         printf("No platforms found\n");
         return CL_TRIED_BUT_FAILED;
     }
-    //printf("Found %d platforms\n", num_found);
 
     //Favor the GPU, but fall back to any other available device if necessary
     err = clGetDeviceIDs(platform_ids[0], CL_DEVICE_TYPE_GPU, 1, &cl_data.device_id, NULL);
