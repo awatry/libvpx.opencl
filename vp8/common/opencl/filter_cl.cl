@@ -24,14 +24,15 @@ __constant short sub_pel_filters[8][6] = {
 
 void vp8_filter_block2d_first_pass(
     __global unsigned char *src_ptr,
-    int *output_ptr,
+    __local int *output_ptr,
     unsigned int src_pixels_per_line,
     unsigned int pixel_step,
     unsigned int output_height,
     unsigned int output_width,
     int filter_offset
 ){
-    uint i = get_global_id(0);
+    uint tid = get_global_id(0);
+    uint i = tid;
 
     int src_offset;
     int Temp;
@@ -40,25 +41,29 @@ void vp8_filter_block2d_first_pass(
 
     __constant short *vp8_filter = sub_pel_filters[filter_offset];
 
-    if (i < (output_width*output_height)){
-        src_offset = i + (i/output_width * (src_pixels_per_line - output_width)) + PS2;
+    if (tid < (output_width*output_height)){
+        for (i=0; i < output_width*output_height; i++){
+            src_offset = i + (i/output_width * (src_pixels_per_line - output_width)) + PS2;
 
-        Temp = ((int)*(src_ptr+src_offset - PS2)      * vp8_filter[0]) +
-           ((int)*(src_ptr+src_offset - (int)pixel_step) * vp8_filter[1]) +
-           ((int)*(src_ptr+src_offset)                * vp8_filter[2]) +
-           ((int)*(src_ptr+src_offset + pixel_step)   * vp8_filter[3]) +
-           ((int)*(src_ptr+src_offset + PS2)          * vp8_filter[4]) +
-           ((int)*(src_ptr+src_offset + PS3)          * vp8_filter[5]) +
-           (VP8_FILTER_WEIGHT >> 1);      /* Rounding */
+            Temp = (int)(src_ptr[src_offset - PS2]      * vp8_filter[0]) +
+               (int)(src_ptr[src_offset - (int)pixel_step] * vp8_filter[1]) +
+               (int)(src_ptr[src_offset]                * vp8_filter[2]) +
+               (int)(src_ptr[src_offset + pixel_step]   * vp8_filter[3]) +
+               (int)(src_ptr[src_offset + PS2]          * vp8_filter[4]) +
+               (int)(src_ptr[src_offset + PS3]          * vp8_filter[5]) +
+               (VP8_FILTER_WEIGHT >> 1);      /* Rounding */
 
-        /* Normalize back to 0-255 */
-        Temp = Temp >> VP8_FILTER_SHIFT;
-        if (Temp < 0)
-            Temp = 0;
-        else if ( Temp > 255 )
-            Temp = 255;
+            /* Normalize back to 0-255 */
+            Temp = Temp >> VP8_FILTER_SHIFT;
 
-        output_ptr[i] = Temp;
+            //Temp = (int)src_ptr[2];
+            if (Temp < 0)
+                Temp = 0;
+            else if ( Temp > 255 )
+                Temp = 255;
+
+            output_ptr[i] = Temp;
+        }
     }
 
     //Add a fence/barrier so that no 2nd pass stuff starts before 1st pass is done.
@@ -68,7 +73,7 @@ void vp8_filter_block2d_first_pass(
 
 void vp8_filter_block2d_second_pass
 (
-    int *src_ptr,
+    __local int *src_ptr,
     __global unsigned char *output_ptr,
     int output_pitch,
     unsigned int src_pixels_per_line,
@@ -114,6 +119,7 @@ void vp8_filter_block2d_second_pass
             Temp = 255;
 
         output_ptr[out_offset] = (unsigned char)Temp;
+        //output_ptr[i] = (unsigned char)out_offset;
     }
 }
 
@@ -151,13 +157,13 @@ __kernel void vp8_sixtap_predict_kernel
     int  dst_pitch
         ) {
 
-        int FData[9*4]; /* Temp data buffer used in filtering */
+    __local int FData[9*4]; /* Temp data buffer used in filtering */
 
     /* First filter 1-D horizontally... */
-    vp8_filter_block2d_first_pass(&src_ptr[ -2 * src_pixels_per_line], FData, src_pixels_per_line, 1, 9, 4, xoffset);
+    vp8_filter_block2d_first_pass(src_ptr, FData, src_pixels_per_line, 1, 9, 4, xoffset);
 
     /* then filter verticaly... */
-    vp8_filter_block2d_second_pass(FData + 8, dst_ptr, dst_pitch, 4, 4, 4, 4, yoffset);
+    vp8_filter_block2d_second_pass(&FData[8], dst_ptr, dst_pitch, 4, 4, 4, 4, yoffset);
 }
 
 __kernel void vp8_sixtap_predict8x8_kernel
@@ -170,13 +176,13 @@ __kernel void vp8_sixtap_predict8x8_kernel
     int  dst_pitch
 )
 {
-    int FData[13*16];   /* Temp data bufffer used in filtering */
+    __local int FData[13*16];   /* Temp data bufffer used in filtering */
 
     /* First filter 1-D horizontally... */
-    vp8_filter_block2d_first_pass(&src_ptr[ -2 * src_pixels_per_line], FData, src_pixels_per_line, 1, 13, 8, xoffset);
+    vp8_filter_block2d_first_pass(src_ptr, FData, src_pixels_per_line, 1, 13, 8, xoffset);
 
     /* then filter verticaly... */
-    vp8_filter_block2d_second_pass(FData + 16, dst_ptr, dst_pitch, 8, 8, 8, 8, yoffset);
+    vp8_filter_block2d_second_pass(&FData[16], dst_ptr, dst_pitch, 8, 8, 8, 8, yoffset);
 
 }
 
@@ -190,13 +196,13 @@ __kernel void vp8_sixtap_predict8x4_kernel
     int  dst_pitch
 )
 {
-    int FData[13*16];   /* Temp data buffer used in filtering */
+    __local int FData[13*16];   /* Temp data buffer used in filtering */
 
     /* First filter 1-D horizontally... */
-    vp8_filter_block2d_first_pass(&src_ptr [-2 * src_pixels_per_line], FData, src_pixels_per_line, 1, 9, 8, xoffset);
+    vp8_filter_block2d_first_pass(src_ptr, FData, src_pixels_per_line, 1, 9, 8, xoffset);
 
     /* then filter verticaly... */
-    vp8_filter_block2d_second_pass(FData + 16, dst_ptr, dst_pitch, 8, 8, 4, 8, yoffset);
+    vp8_filter_block2d_second_pass(&FData[16], dst_ptr, dst_pitch, 8, 8, 4, 8, yoffset);
 
 }
 
@@ -210,12 +216,12 @@ __kernel void vp8_sixtap_predict16x16_kernel
     int  dst_pitch
 )
 {
-    int FData[21*24];   /* Temp data buffer used in filtering */
+    __local int FData[21*24];   /* Temp data buffer used in filtering */
 
     /* First filter 1-D horizontally... */
-    vp8_filter_block2d_first_pass(&src_ptr[-2 * src_pixels_per_line], FData, src_pixels_per_line, 1, 21, 16, xoffset);
+    vp8_filter_block2d_first_pass(src_ptr, FData, src_pixels_per_line, 1, 21, 16, xoffset);
 
     /* then filter verticaly... */
-    vp8_filter_block2d_second_pass(FData + 32, dst_ptr, dst_pitch, 16, 16, 16, 16, yoffset);
+    vp8_filter_block2d_second_pass(&FData[32], dst_ptr, dst_pitch, 16, 16, 16, 16, yoffset);
 
 }

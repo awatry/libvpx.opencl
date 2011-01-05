@@ -51,14 +51,14 @@
 #define SRC_INCREMENT (src_pixels_per_line - output_width)
 #endif
 
-extern void vp8_filter_block2d
+extern void vp8_sixtap_predict_c
 (
     unsigned char  *src_ptr,
-    unsigned char  *output_ptr,
-    unsigned int src_pixels_per_line,
-    int output_pitch,
-    const short  *HFilter,
-    const short  *VFilter
+    int  src_pixels_per_line,
+    int  xoffset,
+    int  yoffset,
+    unsigned char *dst_ptr,
+    int  dst_pitch
 );
 
 extern void vp8_sixtap_predict8x8_c
