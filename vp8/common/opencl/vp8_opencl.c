@@ -49,8 +49,8 @@ void cl_destroy() {
     }
 
     //Release the objects that we've allocated on the GPU
-    if (cl_data.program)
-        clReleaseProgram(cl_data.program);
+    if (cl_data.filter_program)
+        clReleaseProgram(cl_data.filter_program);
     if (cl_data.filter_block2d_first_pass_kernel)
         clReleaseKernel(cl_data.filter_block2d_first_pass_kernel);
     if (cl_data.filter_block2d_second_pass_kernel)
@@ -60,9 +60,10 @@ void cl_destroy() {
     if (cl_data.context)
         clReleaseContext(cl_data.context);
 
-    cl_data.program = NULL;
+    cl_data.filter_program = NULL;
     cl_data.filter_block2d_first_pass_kernel = NULL;
     cl_data.filter_block2d_second_pass_kernel = NULL;
+
     cl_data.commands = NULL;
     cl_data.context = NULL;
 

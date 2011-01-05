@@ -38,11 +38,11 @@ int cl_init_filter_block2d() {
     if (cl_init() != CL_SUCCESS)
         return CL_TRIED_BUT_FAILED;
 
-    // Create the compute program from the file-defined source code
+    // Create the filter compute program from the file-defined source code
     kernel_src = cl_read_file(filter_cl_file_name);
     if (kernel_src != NULL){
         printf("creating program from source file\n");
-        cl_data.program = clCreateProgramWithSource(cl_data.context, 1, &kernel_src, NULL, &err);
+        cl_data.filter_program = clCreateProgramWithSource(cl_data.context, 1, &kernel_src, NULL, &err);
         free(kernel_src);
     } else {
         cl_destroy();
@@ -50,26 +50,26 @@ int cl_init_filter_block2d() {
         return CL_TRIED_BUT_FAILED;
     }
 
-    if (!cl_data.program) {
+    if (!cl_data.filter_program) {
         printf("Error: Couldn't compile program\n");
         return CL_TRIED_BUT_FAILED;
     }
 
     // Build the program executable
-    err = clBuildProgram(cl_data.program, 0, NULL, compileOptions, NULL, NULL);
+    err = clBuildProgram(cl_data.filter_program, 0, NULL, compileOptions, NULL, NULL);
     if (err != CL_SUCCESS) {
         size_t len;
         char buffer[20480];
 
         printf("Error: Failed to build program executable!\n");
-        clGetProgramBuildInfo(cl_data.program, cl_data.device_id, CL_PROGRAM_BUILD_LOG, sizeof (buffer), &buffer, &len);
+        clGetProgramBuildInfo(cl_data.filter_program, cl_data.device_id, CL_PROGRAM_BUILD_LOG, sizeof (buffer), &buffer, &len);
         printf("Compile output: %s\n", buffer);
         return CL_TRIED_BUT_FAILED;
     }
 
     // Create the compute kernel in the program we wish to run
-    cl_data.filter_block2d_first_pass_kernel = clCreateKernel(cl_data.program, "vp8_filter_block2d_first_pass_kernel", &err);
-    cl_data.filter_block2d_second_pass_kernel = clCreateKernel(cl_data.program, "vp8_filter_block2d_second_pass_kernel", &err);
+    cl_data.filter_block2d_first_pass_kernel = clCreateKernel(cl_data.filter_program, "vp8_filter_block2d_first_pass_kernel", &err);
+    cl_data.filter_block2d_second_pass_kernel = clCreateKernel(cl_data.filter_program, "vp8_filter_block2d_second_pass_kernel", &err);
     if (!cl_data.filter_block2d_first_pass_kernel || 
             !cl_data.filter_block2d_second_pass_kernel ||
             err != CL_SUCCESS) {

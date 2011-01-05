@@ -87,7 +87,8 @@ typedef struct VP8_COMMON_CL {
     cl_device_id device_id; // compute device id
     cl_context context; // compute context
     cl_command_queue commands; // compute command queue
-    cl_program program; // compute program
+
+    cl_program filter_program; // compute program
     cl_kernel filter_block2d_first_pass_kernel; // compute kernel
     cl_kernel filter_block2d_second_pass_kernel; // compute kernel
     cl_mem srcData; //Source frame data
