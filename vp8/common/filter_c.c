@@ -218,30 +218,6 @@ void vp8_filter_block2d_second_pass
     }
 }
 
-void vp8_sixtap_predict_c
-(
-    unsigned char  *src_ptr,
-    int   src_pixels_per_line,
-    int  xoffset,
-    int  yoffset,
-    unsigned char *dst_ptr,
-    int dst_pitch
-)
-{
-    const short  *HFilter;
-    const short  *VFilter;
-    int FData[9*4]; /* Temp data buffer used in filtering */
-    
-    HFilter = sub_pel_filters[xoffset];   /* 6 tap */
-    VFilter = sub_pel_filters[yoffset];   /* 6 tap */
-    
-    /* First filter 1-D horizontally... */
-    vp8_filter_block2d_first_pass(src_ptr - (2 * src_pixels_per_line), FData, src_pixels_per_line, 1, 9, 4, HFilter);
-
-    /* then filter verticaly... */
-    vp8_filter_block2d_second_pass(FData + 8, dst_ptr, dst_pitch, 4, 4, 4, 4, VFilter);
-
-}
 
 void vp8_filter_block2d
 (
@@ -253,10 +229,13 @@ void vp8_filter_block2d
     const short  *VFilter
 )
 {
-    int xoffset = HFilter - &sub_pel_filters[0][0];
-    int yoffset = VFilter - &sub_pel_filters[0][0];
+    int FData[9*4]; /* Temp data buffer used in filtering */
 
-    vp8_sixtap_predict_c(src_ptr,src_pixels_per_line,xoffset,yoffset,output_ptr,output_pitch);
+    /* First filter 1-D horizontally... */
+    vp8_filter_block2d_first_pass(src_ptr - (2 * src_pixels_per_line), FData, src_pixels_per_line, 1, 9, 4, HFilter);
+
+    /* then filter verticaly... */
+    vp8_filter_block2d_second_pass(FData + 8, output_ptr, output_pitch, 4, 4, 4, 4, VFilter);
 }
 
 void vp8_block_variation_c
@@ -280,6 +259,25 @@ void vp8_block_variation_c
 
         Ptr += src_pixels_per_line;
     }
+}
+
+void vp8_sixtap_predict_c
+(
+    unsigned char  *src_ptr,
+    int   src_pixels_per_line,
+    int  xoffset,
+    int  yoffset,
+    unsigned char *dst_ptr,
+    int dst_pitch
+)
+{
+    const short  *HFilter;
+    const short  *VFilter;
+
+    HFilter = sub_pel_filters[xoffset];   /* 6 tap */
+    VFilter = sub_pel_filters[yoffset];   /* 6 tap */
+
+    vp8_filter_block2d(src_ptr, dst_ptr, src_pixels_per_line, dst_pitch, HFilter, VFilter);
 }
 
 void vp8_sixtap_predict8x8_c
