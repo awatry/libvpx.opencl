@@ -17,11 +17,7 @@
 
 #include "filter_cl.h"
 
-#ifdef FILTER_OFFSET_BUF
-#define SIXTAP_FILTER_LEN 48
-#else
 #define SIXTAP_FILTER_LEN 6
-#endif
 
 int pass=0;
 
@@ -88,11 +84,7 @@ int cl_init_filter_block2d() {
 
     //Filter size doesn't change. Allocate buffer once, and just replace contents
     //on each kernel execution.
-#ifdef FILTER_OFFSET_BUF
-    cl_data.filterData = clCreateBuffer(cl_data.context, CL_MEM_READ_ONLY|CL_MEM_USE_HOST_PTR, sizeof (short) * SIXTAP_FILTER_LEN, sub_pel_filters, &err);
-#else
     cl_data.filterData = clCreateBuffer(cl_data.context, CL_MEM_READ_ONLY, sizeof (short) * SIXTAP_FILTER_LEN, NULL, NULL);
-#endif
 
     if (!cl_data.filterData){
         printf("Error: Failed to allocate filter buffer\n");
@@ -159,12 +151,7 @@ int vp8_filter_block2d_first_pass_cl
     err |= clSetKernelArg(cl_data.filter_block2d_first_pass_kernel, 3, sizeof (unsigned int), &pixel_step);
     err |= clSetKernelArg(cl_data.filter_block2d_first_pass_kernel, 4, sizeof (unsigned int), &output_height);
     err |= clSetKernelArg(cl_data.filter_block2d_first_pass_kernel, 5, sizeof (unsigned int), &output_width);
-#ifdef FILTER_OFFSET_BUF
     err |= clSetKernelArg(cl_data.filter_block2d_first_pass_kernel, 6, sizeof (int), &filter_offset);
-    err |= clSetKernelArg(cl_data.filter_block2d_first_pass_kernel, 7, sizeof (cl_mem), &cl_data.filterData);
-#else
-    err |= clSetKernelArg(cl_data.filter_block2d_first_pass_kernel, 6, sizeof (int), &filter_offset);
-#endif
     CL_CHECK_SUCCESS( err != CL_SUCCESS,
         "Error: Failed to set kernel arguments!\n",
         ,
@@ -228,12 +215,7 @@ int vp8_filter_block2d_second_pass_cl
     err |= clSetKernelArg(cl_data.filter_block2d_second_pass_kernel, 5, sizeof (unsigned int), &pixel_step);
     err |= clSetKernelArg(cl_data.filter_block2d_second_pass_kernel, 6, sizeof (unsigned int), &output_height);
     err |= clSetKernelArg(cl_data.filter_block2d_second_pass_kernel, 7, sizeof (unsigned int), &output_width);
-#if defined(FILTER_OFFSET_BUF)
     err |= clSetKernelArg(cl_data.filter_block2d_second_pass_kernel, 8, sizeof (int), &filter_offset);
-    err |= clSetKernelArg(cl_data.filter_block2d_second_pass_kernel, 9, sizeof (cl_mem), &cl_data.filterData);
-#else
-    err |= clSetKernelArg(cl_data.filter_block2d_second_pass_kernel, 8, sizeof (int), &filter_offset);
-#endif
     CL_CHECK_SUCCESS(err != CL_SUCCESS,
         "Error: Failed to set kernel arguments!\n",
         ,
