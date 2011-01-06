@@ -100,26 +100,26 @@ void vp8_sixtap_predict_cl
     //int src_len = SRC_LEN(output1_width,output1_height,src_pixels_per_line);
     int src_len = SRC_LEN(4,9,src_pixels_per_line);
 
-    size_t i;
-    unsigned char c_output[src_len];
+    //size_t i;
+    //unsigned char c_output[src_len];
 
     //printf("4x4: src_ptr = %p, src_len = %d, dst_ptr = %p, dst_len = %d\n",src_ptr,src_len,dst_ptr,dst_len);
-    memcpy(c_output,dst_ptr,dst_len);
-    vp8_sixtap_predict_c(src_ptr,src_pixels_per_line,xoffset,yoffset,c_output,dst_pitch);
+    //memcpy(c_output,dst_ptr,dst_len);
+    //vp8_sixtap_predict_c(src_ptr,src_pixels_per_line,xoffset,yoffset,c_output,dst_pitch);
 
     CL_SIXTAP_PREDICT_EXEC(cl_data.vp8_sixtap_predict_kernel,(src_ptr-2*src_pixels_per_line),src_len,
             src_pixels_per_line, xoffset,yoffset,dst_ptr,dst_pitch,global,
             dst_len,
             vp8_sixtap_predict_c(src_ptr,src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch)
     );
-    clFinish(cl_data.commands);
+    //clFinish(cl_data.commands);
 
-    for (i=0; i < dst_len; i++){
-        if (c_output[i] != dst_ptr[i]){
-            printf("c_output[%d] (%d) != dst_ptr[%d] (%d)\n",i,c_output[i],i,dst_ptr[i]);
-            exit(1);
-        }
-    }
+    //for (i=0; i < dst_len; i++){
+    //    if (c_output[i] != dst_ptr[i]){
+    //        printf("c_output[%d] (%d) != dst_ptr[%d] (%d)\n",i,c_output[i],i,dst_ptr[i]);
+    //        exit(1);
+    //    }
+    //}
 
     return;
 }
@@ -158,25 +158,25 @@ void vp8_sixtap_predict8x8_cl
     //int src_len = SRC_LEN(output1_width,output1_height,src_pixels_per_line);
     int src_len = SRC_LEN(8,13,src_pixels_per_line);
 
-    size_t i;
-    unsigned char c_output[src_len];
+    //size_t i;
+    //unsigned char c_output[src_len];
 
     //printf("8x8: src_ptr = %p, src_len = %d, dst_ptr = %p, dst_len = %d\n",src_ptr,src_len,dst_ptr,dst_len);
-    memcpy(c_output,dst_ptr,dst_len);
-    vp8_sixtap_predict8x8_c(src_ptr,src_pixels_per_line,xoffset,yoffset,c_output,dst_pitch);
+    //memcpy(c_output,dst_ptr,dst_len);
+    //vp8_sixtap_predict8x8_c(src_ptr,src_pixels_per_line,xoffset,yoffset,c_output,dst_pitch);
 
     CL_SIXTAP_PREDICT_EXEC(cl_data.vp8_sixtap_predict8x8_kernel,(src_ptr-2*src_pixels_per_line),src_len,
             src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch,global,dst_len,
             vp8_sixtap_predict8x8_c(src_ptr,src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch)
     );
-    clFinish(cl_data.commands);
+    //clFinish(cl_data.commands);
 
-    for (i=0; i < dst_len; i++){
-        if (c_output[i] != dst_ptr[i]){
-            printf("c_output[%d] (%d) != dst_ptr[%d] (%d)\n",i,c_output[i],i,dst_ptr[i]);
-            exit(1);
-        }
-    }
+    //for (i=0; i < dst_len; i++){
+    //    if (c_output[i] != dst_ptr[i]){
+    //        printf("c_output[%d] (%d) != dst_ptr[%d] (%d)\n",i,c_output[i],i,dst_ptr[i]);
+    //        exit(1);
+    //    }
+    //}
 
     return;
 }
@@ -202,8 +202,8 @@ void vp8_sixtap_predict8x4_cl
     //int src_len = SRC_LEN(output1_width,output1_height,src_pixels_per_line);
     int src_len = SRC_LEN(8,9,src_pixels_per_line);
 
-    size_t i;
-    unsigned char c_output[src_len];
+    //size_t i;
+    //unsigned char c_output[src_len];
 
     //printf("8x4: src_ptr = %p, src_len = %d, dst_ptr = %p, dst_len = %d\n",src_ptr,src_len,dst_ptr,dst_len);
     //for (i=0; i < src_len; i++){
@@ -212,22 +212,22 @@ void vp8_sixtap_predict8x4_cl
     //for (i = 0; i < dst_len; i++){
     //    printf("initial dst_ptr[%d] = %d\n",i,dst_ptr[i]);
     //}
-    memcpy(c_output,dst_ptr,dst_len);
-    vp8_sixtap_predict8x4_c(src_ptr,src_pixels_per_line,xoffset,yoffset,c_output,dst_pitch);
+    //memcpy(c_output,dst_ptr,dst_len);
+    //vp8_sixtap_predict8x4_c(src_ptr,src_pixels_per_line,xoffset,yoffset,c_output,dst_pitch);
 
     CL_SIXTAP_PREDICT_EXEC(cl_data.vp8_sixtap_predict8x4_kernel,(src_ptr-2*src_pixels_per_line),src_len,
             src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch,global,dst_len,
             vp8_sixtap_predict8x4_c(src_ptr,src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch)
     );
 
-    clFinish(cl_data.commands);
+    //clFinish(cl_data.commands);
 
-    for (i=0; i < dst_len; i++){
-        if (c_output[i] != dst_ptr[i]){
-            printf("c_output[%d] (%d) != dst_ptr[%d] (%d)\n",i,c_output[i],i,dst_ptr[i]);
-            exit(1);
-        }
-    }
+    //for (i=0; i < dst_len; i++){
+    //    if (c_output[i] != dst_ptr[i]){
+    //        printf("c_output[%d] (%d) != dst_ptr[%d] (%d)\n",i,c_output[i],i,dst_ptr[i]);
+    //        exit(1);
+    //    }
+    //}
 
     return;
 }
@@ -252,25 +252,26 @@ void vp8_sixtap_predict16x16_cl
     //int output1_width=16,output1_height=21;
     //int src_len = SRC_LEN(output1_width,output1_height,src_pixels_per_line);
     int src_len = SRC_LEN(16,21,src_pixels_per_line);
-    size_t i;
-    unsigned char c_output[src_len];
+
+    //size_t i;
+    //unsigned char c_output[src_len];
 
     //printf("16x16: src_ptr = %p, src_len = %d, dst_ptr = %p, dst_len = %d\n",src_ptr,src_len,dst_ptr,dst_len);
-    memcpy(c_output,dst_ptr,dst_len);
-    vp8_sixtap_predict16x16_c(src_ptr,src_pixels_per_line,xoffset,yoffset,c_output,dst_pitch);
+    //memcpy(c_output,dst_ptr,dst_len);
+    //vp8_sixtap_predict16x16_c(src_ptr,src_pixels_per_line,xoffset,yoffset,c_output,dst_pitch);
 
     CL_SIXTAP_PREDICT_EXEC(cl_data.vp8_sixtap_predict16x16_kernel,(src_ptr-2*src_pixels_per_line),src_len,
             src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch,global,dst_len,
             vp8_sixtap_predict16x16_c(src_ptr,src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch)
     );
-    clFinish(cl_data.commands);
+    //clFinish(cl_data.commands);
 
-    for (i=0; i < dst_len; i++){
-        if (c_output[i] != dst_ptr[i]){
-            printf("c_output[%d] (%d) != dst_ptr[%d] (%d)\n",i,c_output[i],i,dst_ptr[i]);
-            exit(1);
-        }
-    }
+    //for (i=0; i < dst_len; i++){
+    //    if (c_output[i] != dst_ptr[i]){
+    //        printf("c_output[%d] (%d) != dst_ptr[%d] (%d)\n",i,c_output[i],i,dst_ptr[i]);
+    //        exit(1);
+    //    }
+    //}
 
     return;
 

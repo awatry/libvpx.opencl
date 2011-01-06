@@ -42,7 +42,7 @@ void vp8_filter_block2d_first_pass(
     __constant short *vp8_filter = sub_pel_filters[filter_offset];
 
     if (tid < (output_width*output_height)){
-        for (i=0; i < output_width*output_height; i++){
+        //for (i=0; i < output_width*output_height; i++){
             src_offset = i + (i/output_width * (src_pixels_per_line - output_width)) + PS2;
 
             Temp = (int)(src_ptr[src_offset - PS2]      * vp8_filter[0]) +
@@ -63,7 +63,7 @@ void vp8_filter_block2d_first_pass(
                 Temp = 255;
 
             output_ptr[i] = Temp;
-        }
+        //}
     }
 
     //Add a fence/barrier so that no 2nd pass stuff starts before 1st pass is done.
