@@ -114,8 +114,9 @@ static const short sub_pel_filters[8][6] = {
     { 0, -1, 12, 123, -6, 0},
 };
 
+#define FILTER_OFFSET //Filter data stored as CL constant memory
 #define FILTER_REF sub_pel_filters[filter_offset]
-const char *compileOptions = "-DVP8_FILTER_WEIGHT=128 -DVP8_FILTER_SHIFT=7 -DFILTER_OFFSET";
+const char *filterCompileOptions = "-Ivp8/common/opencl -DVP8_FILTER_WEIGHT=128 -DVP8_FILTER_SHIFT=7 -DFILTER_OFFSET";
 
 const char *filter_cl_file_name = "vp8/common/opencl/filter_cl.cl";
 

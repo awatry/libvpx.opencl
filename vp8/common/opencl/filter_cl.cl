@@ -123,7 +123,6 @@ void vp8_filter_block2d_second_pass
     }
 }
 
-
 __kernel void vp8_block_variation_kernel
 (
     __global unsigned char  *src_ptr,
@@ -224,4 +223,32 @@ __kernel void vp8_sixtap_predict16x16_kernel
     /* then filter verticaly... */
     vp8_filter_block2d_second_pass(&FData[32], dst_ptr, dst_pitch, 16, 16, 16, 16, yoffset);
 
+    return;
+}
+
+__kernel void vp8_filter_block2d_bil_first_pass_kernel(
+    __global unsigned char *src_ptr,
+    __global int *output_ptr,
+    unsigned int src_pixels_per_line,
+    unsigned int pixel_step,
+    unsigned int output_height,
+    unsigned int output_width,
+    int filter_offset
+){
+    uint i = get_global_id(0);
+}
+
+__kernel void vp8_filter_block2d_bil_second_pass_kernel
+(
+    __global int *src_ptr,
+    unsigned int offset,
+    __global unsigned char *output_ptr,
+    int output_pitch,
+    unsigned int src_pixels_per_line,
+    unsigned int pixel_step,
+    unsigned int output_height,
+    unsigned int output_width,
+    int filter_offset
+) {
+    uint i = get_global_id(0);
 }

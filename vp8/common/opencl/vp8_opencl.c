@@ -37,8 +37,8 @@ void cl_destroy() {
     }
 
     //Release the objects that we've allocated on the GPU
-    if (cl_data.program)
-        clReleaseProgram(cl_data.program);
+    if (cl_data.filter_program)
+        clReleaseProgram(cl_data.filter_program);
 
     if (cl_data.vp8_sixtap_predict_kernel)
         clReleaseKernel(cl_data.vp8_sixtap_predict_kernel);
@@ -51,18 +51,23 @@ void cl_destroy() {
     if (cl_data.vp8_sixtap_predict16x16_kernel)
         clReleaseKernel(cl_data.vp8_sixtap_predict16x16_kernel);
 
+    if (cl_data.filter_block2d_first_pass_kernel)
+        clReleaseKernel(cl_data.filter_block2d_first_pass_kernel);
+    if (cl_data.filter_block2d_second_pass_kernel)
+        clReleaseKernel(cl_data.filter_block2d_second_pass_kernel);
     if (cl_data.commands)
         clReleaseCommandQueue(cl_data.commands);
     if (cl_data.context)
         clReleaseContext(cl_data.context);
-
-    cl_data.program = NULL;
 
     cl_data.vp8_sixtap_predict_kernel = NULL;
     cl_data.vp8_block_variation_kernel = NULL;
     cl_data.vp8_sixtap_predict8x8_kernel = NULL;
     cl_data.vp8_sixtap_predict8x4_kernel = NULL;
     cl_data.vp8_sixtap_predict16x16_kernel = NULL;
+    cl_data.filter_program = NULL;
+    cl_data.filter_block2d_first_pass_kernel = NULL;
+    cl_data.filter_block2d_second_pass_kernel = NULL;
 
     cl_data.commands = NULL;
     cl_data.context = NULL;
