@@ -214,11 +214,26 @@ void vp8_filter_block2d_cl
         int xoffset,
         int yoffset
         ) {
-    
-    clFinish(cl_data.commands);
 
-    vp8_filter_block2d(src_ptr, output_ptr, src_pixels_per_line,
+    int ret;
+
+    //clFinish(cl_data.commands);
+    //vp8_filter_block2d(src_ptr, output_ptr, src_pixels_per_line,
+    //            output_pitch, sub_pel_filters[xoffset], sub_pel_filters[yoffset]);
+
+    /* First filter 1-D horizontally... */
+    ret = vp8_filter_block2d_first_pass_cl(src_ptr - (2 * src_pixels_per_line), src_pixels_per_line, 1, 9, 4, xoffset);
+
+    /* then filter vertically... */
+    ret |= vp8_filter_block2d_second_pass_cl(8, output_ptr, output_pitch, 4, 4, 4, 4, yoffset);
+
+    if (ret != CL_SUCCESS){
+        vp8_filter_block2d(src_ptr, output_ptr, src_pixels_per_line,
                 output_pitch, sub_pel_filters[xoffset], sub_pel_filters[yoffset]);
+        return;
+    }
+
+
     return;
 }
 
@@ -291,9 +306,23 @@ void vp8_sixtap_predict8x4_cl
         int dst_pitch
         ) {
 
-    clFinish(cl_data.commands);
-    vp8_sixtap_predict8x4_c(src_ptr, src_pixels_per_line, xoffset, yoffset,
+    int ret;
+
+    //clFinish(cl_data.commands);
+    //vp8_sixtap_predict8x4_c(src_ptr, src_pixels_per_line, xoffset, yoffset,
+    //            dst_ptr, dst_pitch);
+
+    /* First filter 1-D horizontally... */
+    ret = vp8_filter_block2d_first_pass_cl(src_ptr - (2 * src_pixels_per_line), src_pixels_per_line, 1, 9, 8, xoffset);
+
+    /* then filter vertically... */
+    ret |= vp8_filter_block2d_second_pass_cl(16, dst_ptr, dst_pitch, 8, 8, 4, 8, yoffset);
+
+    if (ret != CL_SUCCESS){
+        vp8_sixtap_predict8x4_c(src_ptr, src_pixels_per_line, xoffset, yoffset,
                 dst_ptr, dst_pitch);
+        return;
+    }
 
     return;
 }
