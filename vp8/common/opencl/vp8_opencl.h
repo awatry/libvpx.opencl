@@ -83,14 +83,58 @@ extern const char *vpx_codec_lib_dir(void);
         }\
     }
 
+#define CL_LOAD_PROGRAM(prog_ref, file_name, opts) \
+    kernel_src = cl_read_file(file_name); \
+    prog_ref = NULL; \
+    if (kernel_src != NULL){ \
+        printf("creating program from source file\n"); \
+        prog_ref = clCreateProgramWithSource(cl_data.context, 1, &kernel_src, NULL, &err); \
+        printf("Created program\n"); \
+        free(kernel_src); \
+    } else { \
+        cl_destroy(); \
+        printf("Couldn't find OpenCL source files. \nUsing software path.\n"); \
+        return CL_TRIED_BUT_FAILED; \
+    } \
+\
+    if (prog_ref == NULL) { \
+        printf("Error: Couldn't create program\n"); \
+        return CL_TRIED_BUT_FAILED; \
+    } \
+\
+    if (err != CL_SUCCESS){ \
+        printf("Error creating program: %d\n", err); \
+    } \
+\
+    /* Build the program executable */ \
+    printf("Building program\n"); \
+    err = clBuildProgram(prog_ref, 0, NULL, opts, NULL, NULL); \
+    printf("Program built\n"); \
+    if (err != CL_SUCCESS) { \
+        size_t len; \
+        char buffer[2048]; \
+\
+        printf("Error: Failed to build program executable!\n"); \
+        clGetProgramBuildInfo(prog_ref, cl_data.device_id, CL_PROGRAM_BUILD_LOG, sizeof (buffer), buffer, &len); \
+        printf("Compile output: %s\n", buffer);\
+        return CL_TRIED_BUT_FAILED; \
+    } \
+
+
 typedef struct VP8_COMMON_CL {
     cl_device_id device_id; // compute device id
     cl_context context; // compute context
     cl_command_queue commands; // compute command queue
 
-    cl_program filter_program; // compute program
+    cl_program filter_program; // compute program for subpixel/bilinear filters
+    cl_program idct_program;
+
     cl_kernel filter_block2d_first_pass_kernel; // compute kernel
     cl_kernel filter_block2d_second_pass_kernel; // compute kernel
+
+    cl_kernel filter_block2d_bil_first_pass_kernel;
+    cl_kernel filter_block2d_bil_second_pass_kernel;
+
     cl_mem srcData; //Source frame data
     size_t srcAlloc; //Amount of allocated CL memory for srcData
     cl_mem intData; //Intermediate data passed from 1st to 2nd pass

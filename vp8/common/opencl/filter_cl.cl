@@ -116,3 +116,39 @@ __kernel void vp8_filter_block2d_second_pass_kernel
         output_ptr[out_offset] = (unsigned char)Temp;
     }
 }
+
+__kernel void vp8_filter_block2d_bil_first_pass_kernel(
+    __global unsigned char *src_ptr,
+    __global int *output_ptr,
+    unsigned int src_pixels_per_line,
+    unsigned int pixel_step,
+    unsigned int output_height,
+    unsigned int output_width,
+#if defined(FILTER_OFFSET)
+    int filter_offset
+#else
+    __global short *vp8_filter
+#endif
+){
+    uint i = get_global_id(0);
+}
+
+__kernel void vp8_filter_block2d_bil_second_pass_kernel
+(
+    __global int *src_ptr,
+    unsigned int offset,
+    __global unsigned char *output_ptr,
+    int output_pitch,
+    unsigned int src_pixels_per_line,
+    unsigned int pixel_step,
+    unsigned int output_height,
+    unsigned int output_width,
+#if defined(FILTER_OFFSET)
+    int filter_offset
+#else
+    __global short *vp8_filter
+#endif
+) {
+
+    uint i = get_global_id(0);
+}
