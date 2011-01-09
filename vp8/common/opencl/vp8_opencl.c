@@ -92,7 +92,6 @@ int cl_init(){
         printf("No platforms found\n");
         return CL_TRIED_BUT_FAILED;
     }
-    //printf("Found %d platforms\n", num_found);
 
     //Favor the GPU, but fall back to any other available device if necessary
     err = clGetDeviceIDs(platform_ids[0], CL_DEVICE_TYPE_GPU, 1, &cl_data.device_id, NULL);
@@ -158,12 +157,12 @@ char *cl_read_file(const char* file_name){
 
         f = fopen(fullpath, "rb");
         if (f == NULL){
-            printf("Couldn't find CL kernel at %s or %s\n",file_name,fullpath);
+            printf("Couldn't find CL source at %s or %s\n",file_name,fullpath);
             free(fullpath);
             return NULL;
         }
 
-        printf("Found cl kernel at %s\n", fullpath);
+        printf("Found cl source at %s\n", fullpath);
         free(fullpath);
     }
 
