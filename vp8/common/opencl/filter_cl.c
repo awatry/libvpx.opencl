@@ -450,9 +450,10 @@ void vp8_bilinear_predict4x4_cl
         int dst_pitch
         ) {
 
+#define CL_BILINEAR 1
+#if CL_BILINEAR
     int err;
 
-#if CL_BILINEAR
     //global is the max of width*height for 1st and 2nd pass filters
     size_t global = 20; //5*4
 
@@ -500,6 +501,8 @@ void vp8_bilinear_predict8x8_cl
         ) {
 
 #if CL_BILINEAR
+    int err;
+    
     //global is the max of width*height for 1st and 2nd pass filters
     size_t global = 72; //9*8
 
@@ -533,6 +536,8 @@ void vp8_bilinear_predict8x4_cl
         ) {
 
 #if CL_BILINEAR
+    int err;
+
     //global is the max of width*height for 1st and 2nd pass filters
     size_t global = 9*4;
 
@@ -566,6 +571,8 @@ void vp8_bilinear_predict16x16_cl
         ) {
 
 #if CL_BILINEAR
+    int err;
+
     //global is the max of width*height for 1st and 2nd pass filters
     size_t global = 17*16;
 
