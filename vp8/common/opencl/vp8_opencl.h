@@ -139,6 +139,11 @@ typedef struct VP8_COMMON_CL {
     cl_kernel vp8_sixtap_predict8x8_kernel;
     cl_kernel vp8_sixtap_predict16x16_kernel;
 
+    cl_kernel vp8_bilinear_predict4x4_kernel;
+    cl_kernel vp8_bilinear_predict8x4_kernel;
+    cl_kernel vp8_bilinear_predict8x8_kernel;
+    cl_kernel vp8_bilinear_predict16x16_kernel;
+
     cl_program idct_program;
 
     cl_kernel filter_block2d_first_pass_kernel; // compute kernel

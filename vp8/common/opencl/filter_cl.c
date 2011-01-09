@@ -39,6 +39,12 @@ int cl_init_filter() {
     CL_CREATE_KERNEL(cl_data,filter_program,vp8_sixtap_predict8x8_kernel,"vp8_sixtap_predict8x8_kernel");
     CL_CREATE_KERNEL(cl_data,filter_program,vp8_sixtap_predict8x4_kernel,"vp8_sixtap_predict8x4_kernel");
     CL_CREATE_KERNEL(cl_data,filter_program,vp8_sixtap_predict16x16_kernel,"vp8_sixtap_predict16x16_kernel");
+    CL_CREATE_KERNEL(cl_data,filter_program,vp8_bilinear_predict4x4_kernel,"vp8_bilinear_predict4x4_kernel");
+    CL_CREATE_KERNEL(cl_data,filter_program,vp8_bilinear_predict4x4_kernel,"vp8_bilinear_predict8x4_kernel");
+    CL_CREATE_KERNEL(cl_data,filter_program,vp8_bilinear_predict4x4_kernel,"vp8_bilinear_predict8x8_kernel");
+    CL_CREATE_KERNEL(cl_data,filter_program,vp8_bilinear_predict4x4_kernel,"vp8_bilinear_predict16x16_kernel");
+
+
 
     //cl_data.filter_block2d_first_pass_kernel = clCreateKernel(cl_data.filter_program, "vp8_filter_block2d_first_pass_kernel", &err);
     //cl_data.filter_block2d_second_pass_kernel = clCreateKernel(cl_data.filter_program, "vp8_filter_block2d_second_pass_kernel", &err);
@@ -98,7 +104,7 @@ void vp8_sixtap_predict_cl
 
     //int output1_width=4,output1_height=9;
     //int src_len = SRC_LEN(output1_width,output1_height,src_pixels_per_line);
-    int src_len = SRC_LEN(4,9,src_pixels_per_line);
+    int src_len = SIXTAP_SRC_LEN(4,9,src_pixels_per_line);
 
     //size_t i;
     //unsigned char c_output[src_len];
@@ -156,7 +162,7 @@ void vp8_sixtap_predict8x8_cl
 
     //int output1_width=8,output1_height=13;
     //int src_len = SRC_LEN(output1_width,output1_height,src_pixels_per_line);
-    int src_len = SRC_LEN(8,13,src_pixels_per_line);
+    int src_len = SIXTAP_SRC_LEN(8,13,src_pixels_per_line);
 
     //size_t i;
     //unsigned char c_output[src_len];
@@ -200,7 +206,7 @@ void vp8_sixtap_predict8x4_cl
 
     //int output1_width=8,output1_height=9;
     //int src_len = SRC_LEN(output1_width,output1_height,src_pixels_per_line);
-    int src_len = SRC_LEN(8,9,src_pixels_per_line);
+    int src_len = SIXTAP_SRC_LEN(8,9,src_pixels_per_line);
 
     //size_t i;
     //unsigned char c_output[src_len];
@@ -251,7 +257,7 @@ void vp8_sixtap_predict16x16_cl
 
     //int output1_width=16,output1_height=21;
     //int src_len = SRC_LEN(output1_width,output1_height,src_pixels_per_line);
-    int src_len = SRC_LEN(16,21,src_pixels_per_line);
+    int src_len = SIXTAP_SRC_LEN(16,21,src_pixels_per_line);
 
     //size_t i;
     //unsigned char c_output[src_len];
@@ -443,20 +449,44 @@ void vp8_bilinear_predict4x4_cl
         unsigned char *dst_ptr,
         int dst_pitch
         ) {
-    //const int *HFilter;
-    //const int *VFilter;
 
-    //HFilter = bilinear_filters[xoffset];
-    //VFilter = bilinear_filters[yoffset];
+    int err;
 
-    //vp8_filter_block2d_bil_cl(src_ptr, dst_ptr, src_pixels_per_line, dst_pitch, HFilter, VFilter, 4, 4);
-    unsigned short FData[17 * 16]; /* Temp data buffer used in filtering */
+#if CL_BILINEAR
+    //global is the max of width*height for 1st and 2nd pass filters
+    size_t global = 20; //5*4
 
-    /* First filter 1-D horizontally... */
-    vp8_filter_block2d_bil_first_pass_cl(src_ptr, FData, src_pixels_per_line, 1, 4 + 1, 4, xoffset);
+    //Size of output data
+    int dst_len = DST_LEN(dst_pitch,4,4);
 
-    /* then 1-D vertically... */
-    vp8_filter_block2d_bil_second_pass_cl(FData, dst_ptr, dst_pitch, 4, 4, 4, 4, yoffset);
+    //int output1_width=16,output1_height=21;
+    //int src_len = SRC_LEN(output1_width,output1_height,src_pixels_per_line);
+    int src_len = BIL_SRC_LEN(4,5,src_pixels_per_line);
+
+    size_t i;
+    unsigned char c_output[src_len];
+
+    printf("bilinear 4x4: src_ptr = %p, src_len = %d, dst_ptr = %p, dst_len = %d\n",src_ptr,src_len,dst_ptr,dst_len);
+    memcpy(c_output,dst_ptr,dst_len);
+    vp8_bilinear_predict4x4_c(src_ptr,src_pixels_per_line,xoffset,yoffset,c_output,dst_pitch);
+
+    CL_BILINEAR_EXEC(cl_data.vp8_bilinear_predict4x4_kernel,src_ptr,src_len,
+            src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch,global,dst_len,
+            vp8_bilinear_predict4x4_c(src_ptr,src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch)
+    );
+
+    //clFinish(cl_data.commands);
+
+    for (i=0; i < dst_len; i++){
+        if (c_output[i] != dst_ptr[i]){
+            printf("c_output[%d] (%d) != dst_ptr[%d] (%d)\n",i,c_output[i],i,dst_ptr[i]);
+            exit(1);
+        }
+    }
+#else
+    vp8_bilinear_predict4x4_c(src_ptr,src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch);
+#endif
+
 }
 
 void vp8_bilinear_predict8x8_cl
@@ -468,20 +498,28 @@ void vp8_bilinear_predict8x8_cl
         unsigned char *dst_ptr,
         int dst_pitch
         ) {
-    //const int *HFilter;
-    //const int *VFilter;
 
-    //HFilter = bilinear_filters[xoffset];
-    //VFilter = bilinear_filters[yoffset];
+#if CL_BILINEAR
+    //global is the max of width*height for 1st and 2nd pass filters
+    size_t global = 72; //9*8
 
-    //vp8_filter_block2d_bil_cl(src_ptr, dst_ptr, src_pixels_per_line, dst_pitch, HFilter, VFilter, 8, 8);
-    unsigned short FData[17 * 16]; /* Temp data buffer used in filtering */
+    //Size of output data
+    int dst_len = DST_LEN(dst_pitch,8,8);
 
-    /* First filter 1-D horizontally... */
-    vp8_filter_block2d_bil_first_pass_cl(src_ptr, FData, src_pixels_per_line, 1, 8 + 1, 8, xoffset);
+    //int output1_width=16,output1_height=21;
+    //int src_len = SRC_LEN(output1_width,output1_height,src_pixels_per_line);
+    int src_len = BIL_SRC_LEN(8,9,src_pixels_per_line);
 
-    /* then 1-D vertically... */
-    vp8_filter_block2d_bil_second_pass_cl(FData, dst_ptr, dst_pitch, 8, 8, 8, 8, yoffset);
+    CL_BILINEAR_EXEC(cl_data.vp8_bilinear_predict8x8_kernel,src_ptr,src_len,
+            src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch,global,dst_len,
+            vp8_bilinear_predict8x8_c(src_ptr,src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch)
+    );
+
+    //clFinish(cl_data.commands);
+
+#else
+    vp8_bilinear_predict8x8_c(src_ptr,src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch);
+#endif
 }
 
 void vp8_bilinear_predict8x4_cl
@@ -493,21 +531,28 @@ void vp8_bilinear_predict8x4_cl
         unsigned char *dst_ptr,
         int dst_pitch
         ) {
-    //const int *HFilter;
-    //const int *VFilter;
 
-    //HFilter = bilinear_filters[xoffset];
-    //VFilter = bilinear_filters[yoffset];
+#if CL_BILINEAR
+    //global is the max of width*height for 1st and 2nd pass filters
+    size_t global = 9*4;
 
-    //vp8_filter_block2d_bil_cl(src_ptr, dst_ptr, src_pixels_per_line, dst_pitch, HFilter, VFilter, 8, 4);
-    unsigned short FData[17 * 16]; /* Temp data buffer used in filtering */
+    //Size of output data
+    int dst_len = DST_LEN(dst_pitch,8,4);
 
-    /* First filter 1-D horizontally... */
-    vp8_filter_block2d_bil_first_pass_cl(src_ptr, FData, src_pixels_per_line, 1, 4 + 1, 8, xoffset);
+    int src_len = BIL_SRC_LEN(4,9,src_pixels_per_line);
 
-    /* then 1-D vertically... */
-    vp8_filter_block2d_bil_second_pass_cl(FData, dst_ptr, dst_pitch, 8, 8, 4, 4, yoffset);
+    printf("8x4 bilinear\n");
 
+    CL_BILINEAR_EXEC(cl_data.vp8_bilinear_predict8x4_kernel,src_ptr,src_len,
+            src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch,global,dst_len,
+            vp8_bilinear_predict8x4_c(src_ptr,src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch)
+    );
+
+    //clFinish(cl_data.commands);
+
+#else
+    vp8_bilinear_predict8x4_c(src_ptr,src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch);
+#endif
 }
 
 void vp8_bilinear_predict16x16_cl
@@ -519,19 +564,26 @@ void vp8_bilinear_predict16x16_cl
         unsigned char *dst_ptr,
         int dst_pitch
         ) {
-    //const int *HFilter;
-    //const int *VFilter;
 
-    //HFilter = bilinear_filters[xoffset];
-    //VFilter = bilinear_filters[yoffset];
+#if CL_BILINEAR
+    //global is the max of width*height for 1st and 2nd pass filters
+    size_t global = 17*16;
 
-    //vp8_filter_block2d_bil_cl(src_ptr, dst_ptr, src_pixels_per_line, dst_pitch, HFilter, VFilter, 16, 16);
-    unsigned short FData[17 * 16]; /* Temp data buffer used in filtering */
+    //Size of output data
+    int dst_len = DST_LEN(dst_pitch,16,16);
 
-    /* First filter 1-D horizontally... */
-    vp8_filter_block2d_bil_first_pass_cl(src_ptr, FData, src_pixels_per_line, 1, 16 + 1, 16, xoffset);
+    int src_len = BIL_SRC_LEN(16,17,src_pixels_per_line);
 
-    /* then 1-D vertically... */
-    vp8_filter_block2d_bil_second_pass_cl(FData, dst_ptr, dst_pitch, 16, 16, 16, 16, yoffset);
+    printf("16x16 bilinear\n");
 
+    CL_BILINEAR_EXEC(cl_data.vp8_bilinear_predict16x16_kernel,src_ptr,src_len,
+            src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch,global,dst_len,
+            vp8_bilinear_predict16x16_c(src_ptr,src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch)
+    );
+
+    //clFinish(cl_data.commands);
+
+#else
+    vp8_bilinear_predict16x16_c(src_ptr,src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch);
+#endif
 }

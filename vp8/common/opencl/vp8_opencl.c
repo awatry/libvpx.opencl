@@ -51,10 +51,22 @@ void cl_destroy() {
     if (cl_data.vp8_sixtap_predict16x16_kernel)
         clReleaseKernel(cl_data.vp8_sixtap_predict16x16_kernel);
 
+    if (cl_data.vp8_bilinear_predict4x4_kernel)
+        clReleaseKernel(cl_data.vp8_bilinear_predict4x4_kernel);
+    if (cl_data.vp8_bilinear_predict8x4_kernel)
+        clReleaseKernel(cl_data.vp8_bilinear_predict8x4_kernel);
+    if (cl_data.vp8_bilinear_predict8x8_kernel)
+        clReleaseKernel(cl_data.vp8_bilinear_predict8x8_kernel);
+    if (cl_data.vp8_bilinear_predict16x16_kernel)
+        clReleaseKernel(cl_data.vp8_bilinear_predict16x16_kernel);
+
+
+    //Older kernels that probably aren't used anymore... remove eventually.
     if (cl_data.filter_block2d_first_pass_kernel)
         clReleaseKernel(cl_data.filter_block2d_first_pass_kernel);
     if (cl_data.filter_block2d_second_pass_kernel)
         clReleaseKernel(cl_data.filter_block2d_second_pass_kernel);
+
     if (cl_data.commands)
         clReleaseCommandQueue(cl_data.commands);
     if (cl_data.context)
@@ -65,6 +77,11 @@ void cl_destroy() {
     cl_data.vp8_sixtap_predict8x8_kernel = NULL;
     cl_data.vp8_sixtap_predict8x4_kernel = NULL;
     cl_data.vp8_sixtap_predict16x16_kernel = NULL;
+    cl_data.vp8_bilinear_predict4x4_kernel = NULL;
+    cl_data.vp8_bilinear_predict8x4_kernel = NULL;
+    cl_data.vp8_bilinear_predict8x8_kernel = NULL;
+    cl_data.vp8_bilinear_predict16x16_kernel = NULL;
+
     cl_data.filter_program = NULL;
     cl_data.filter_block2d_first_pass_kernel = NULL;
     cl_data.filter_block2d_second_pass_kernel = NULL;
