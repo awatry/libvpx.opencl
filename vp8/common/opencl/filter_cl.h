@@ -51,14 +51,14 @@
 #define SRC_INCREMENT (src_pixels_per_line - output_width)
 #endif
 
-extern void vp8_filter_block2d
+extern void vp8_sixtap_predict_c
 (
     unsigned char  *src_ptr,
-    unsigned char  *output_ptr,
-    unsigned int src_pixels_per_line,
-    int output_pitch,
-    const short  *HFilter,
-    const short  *VFilter
+    int  src_pixels_per_line,
+    int  xoffset,
+    int  yoffset,
+    unsigned char *dst_ptr,
+    int  dst_pitch
 );
 
 extern void vp8_sixtap_predict8x8_c
@@ -114,16 +114,121 @@ static const short sub_pel_filters[8][6] = {
     { 0, -1, 12, 123, -6, 0},
 };
 
-
 #define FILTER_OFFSET //Filter data stored as CL constant memory
-#ifdef FILTER_OFFSET
 #define FILTER_REF sub_pel_filters[filter_offset]
 const char *filterCompileOptions = "-Ivp8/common/opencl -DVP8_FILTER_WEIGHT=128 -DVP8_FILTER_SHIFT=7 -DFILTER_OFFSET";
-#else
-const char *compileOptions = "-DVP8_FILTER_WEIGHT=128 -DVP8_FILTER_SHIFT=7";
-#define FILTER_REF vp8_filter
-#endif
 
 const char *filter_cl_file_name = "vp8/common/opencl/filter_cl.cl";
+
+//Copy the -2*pixel_step (and ps*3) bytes because the filter algorithm
+//accesses negative indexes
+#define SIXTAP_SRC_LEN(out_width,out_height,src_px) (out_width*out_height + ((out_width*out_height-1)/out_width)*(src_px - out_width) + 5)
+#define BIL_SRC_LEN(out_width,out_height,src_px) (out_width+1 + (out_height-1)*(src_px-out_width))
+#define DST_LEN(dst_pitch,dst_height,dst_width) (dst_pitch*dst_height + dst_width)
+
+#define CL_SIXTAP_PREDICT_EXEC(kernel,src_ptr,src_len, src_pixels_per_line, \
+xoffset,yoffset,dst_ptr,dst_pitch,thread_count,dst_len,altPath) \
+    if (cl_initialized != CL_SUCCESS){ \
+        if (cl_initialized == CL_NOT_INITIALIZED){ \
+            cl_initialized = cl_init_filter(); \
+        } \
+        if (cl_initialized != CL_SUCCESS){ \
+            altPath; \
+            return; \
+        } \
+    } \
+\
+    /*Make space for kernel input/output data. Initialize the buffer as well if needed. */ \
+    CL_ENSURE_BUF_SIZE(cl_data.srcData, CL_MEM_READ_ONLY|CL_MEM_COPY_HOST_PTR, \
+        sizeof (unsigned char) * src_len, cl_data.srcAlloc, src_ptr-2, \
+    ); \
+\
+    CL_ENSURE_BUF_SIZE(cl_data.destData, CL_MEM_WRITE_ONLY|CL_MEM_COPY_HOST_PTR, \
+        sizeof (unsigned char) * dst_len, cl_data.destAlloc, dst_ptr, \
+    ); \
+\
+    /* Set kernel arguments */ \
+    err = 0; \
+    err = clSetKernelArg(kernel, 0, sizeof (cl_mem), &cl_data.srcData); \
+    err |= clSetKernelArg(kernel, 1, sizeof (int), &src_pixels_per_line); \
+    err |= clSetKernelArg(kernel, 2, sizeof (int), &xoffset); \
+    err |= clSetKernelArg(kernel, 3, sizeof (int), &yoffset); \
+    err |= clSetKernelArg(kernel, 4, sizeof (cl_mem), &cl_data.destData); \
+    err |= clSetKernelArg(kernel, 5, sizeof (int), &dst_pitch); \
+    CL_CHECK_SUCCESS( err != CL_SUCCESS, \
+        "Error: Failed to set kernel arguments!\n", \
+        altPath, \
+    ); \
+\
+    /* Execute the kernel */ \
+    err = clEnqueueNDRangeKernel(cl_data.commands, kernel, 1, NULL, &global, NULL , 0, NULL, NULL); \
+    CL_CHECK_SUCCESS( err != CL_SUCCESS, \
+        "Error: Failed to execute kernel!\n", \
+        printf("err = %d\n",err);altPath, \
+    ); \
+\
+    /* Read back the result data from the device */ \
+    err = clEnqueueReadBuffer(cl_data.commands, cl_data.destData, CL_FALSE, 0, sizeof (unsigned char) * dst_len, dst_ptr, 0, NULL, NULL); \
+    CL_CHECK_SUCCESS(err != CL_SUCCESS, \
+        "Error: Failed to read output array!\n", \
+        altPath, \
+    );
+
+//#end define CL_SIXTAP_PREDICT_EXEC
+
+#define CL_BILINEAR_EXEC(kernel,src_ptr,src_len, src_pixels_per_line, \
+xoffset,yoffset,dst_ptr,dst_pitch,thread_count,dst_len,altPath) \
+    if (cl_initialized != CL_SUCCESS){ \
+        if (cl_initialized == CL_NOT_INITIALIZED){ \
+            cl_initialized = cl_init_filter(); \
+        } \
+        if (cl_initialized != CL_SUCCESS){ \
+            altPath; \
+            return; \
+        } \
+    } \
+\
+    /*Make space for kernel input/output data. Initialize the buffer as well if needed. */ \
+    CL_ENSURE_BUF_SIZE(cl_data.srcData, CL_MEM_READ_ONLY|CL_MEM_COPY_HOST_PTR, \
+        sizeof (unsigned char) * src_len, cl_data.srcAlloc, src_ptr, \
+    ); \
+\
+    CL_ENSURE_BUF_SIZE(cl_data.destData, CL_MEM_WRITE_ONLY|CL_MEM_COPY_HOST_PTR, \
+        sizeof (unsigned char) * dst_len, cl_data.destAlloc, dst_ptr, \
+    ); \
+\
+    /* Set kernel arguments */ \
+    err = 0; \
+    err = clSetKernelArg(kernel, 0, sizeof (cl_mem), &cl_data.srcData); \
+    err |= clSetKernelArg(kernel, 1, sizeof (int), &src_pixels_per_line); \
+    err |= clSetKernelArg(kernel, 2, sizeof (int), &xoffset); \
+    err |= clSetKernelArg(kernel, 3, sizeof (int), &yoffset); \
+    err |= clSetKernelArg(kernel, 4, sizeof (cl_mem), &cl_data.destData); \
+    err |= clSetKernelArg(kernel, 5, sizeof (int), &dst_pitch); \
+    CL_CHECK_SUCCESS( err != CL_SUCCESS, \
+        "Error: Failed to set kernel arguments!\n", \
+        altPath, \
+    ); \
+\
+    /* Execute the kernel */ \
+    err = clEnqueueNDRangeKernel(cl_data.commands, kernel, 1, NULL, &global, NULL , 0, NULL, NULL); \
+    CL_CHECK_SUCCESS( err != CL_SUCCESS, \
+        "Error: Failed to execute kernel!\n", \
+        printf("err = %d\n",err);altPath, \
+    ); \
+\
+    /* Read back the result data from the device */ \
+    err = clEnqueueReadBuffer(cl_data.commands, cl_data.destData, CL_FALSE, 0, sizeof (unsigned char) * dst_len, dst_ptr, 0, NULL, NULL); \
+    CL_CHECK_SUCCESS(err != CL_SUCCESS, \
+        "Error: Failed to read output array!\n", \
+        altPath, \
+    );
+
+//#end define CL_BILINEAR_EXEC
+
+
+
+
+
 
 #endif /* FILTER_CL_H_ */
