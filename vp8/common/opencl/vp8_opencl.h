@@ -44,9 +44,19 @@ extern const char *vpx_codec_lib_dir(void);
         printf(msg);  \
         cl_destroy(); \
         cl_initialized = CL_TRIED_BUT_FAILED; \
+        printf("CL operation failed.\n");\
         alt; \
         return retCode; \
     }
+
+#define CL_CREATE_KERNEL(data,program,name,str_name) \
+    data.name = clCreateKernel(data.program, str_name , &err); \
+    CL_CHECK_SUCCESS(err != CL_SUCCESS || !data.name, \
+        "Error: Failed to create compute kernel!\n", \
+        ,\
+        CL_TRIED_BUT_FAILED \
+    );
+
 
 #define CL_ENSURE_BUF_SIZE(bufRef, bufType, needSize, curSize, dataPtr, altPath) \
     if ( needSize > curSize || bufRef == NULL){ \
@@ -58,7 +68,6 @@ extern const char *vpx_codec_lib_dir(void);
                 err != CL_SUCCESS, \
                 "Error copying data to buffer! Using CPU path!\n", \
                 altPath, \
-                CL_TRIED_BUT_FAILED \
             ); \
         } else {\
             bufRef = clCreateBuffer(cl_data.context, bufType, needSize, NULL, NULL);\
@@ -66,7 +75,6 @@ extern const char *vpx_codec_lib_dir(void);
         CL_CHECK_SUCCESS(!bufRef, \
             "Error: Failed to allocate buffer. Using CPU path!\n", \
             altPath, \
-            CL_TRIED_BUT_FAILED \
         ); \
         curSize = needSize; \
     } else { \
@@ -76,9 +84,7 @@ extern const char *vpx_codec_lib_dir(void);
             \
             CL_CHECK_SUCCESS( err != CL_SUCCESS, \
                 "Error: Failed to write to buffer!\n", \
-                printf("srcData = %p, intData = %p, destData = %p, bufRef = %p\n", cl_data.srcData, cl_data.intData, cl_data.destData, bufRef);\
                 altPath, \
-                CL_TRIED_BUT_FAILED \
             ); \
         }\
     }
@@ -127,6 +133,17 @@ typedef struct VP8_COMMON_CL {
     cl_command_queue commands; // compute command queue
 
     cl_program filter_program; // compute program for subpixel/bilinear filters
+    cl_kernel vp8_block_variation_kernel;
+    cl_kernel vp8_sixtap_predict_kernel;
+    cl_kernel vp8_sixtap_predict8x4_kernel;
+    cl_kernel vp8_sixtap_predict8x8_kernel;
+    cl_kernel vp8_sixtap_predict16x16_kernel;
+
+    cl_kernel vp8_bilinear_predict4x4_kernel;
+    cl_kernel vp8_bilinear_predict8x4_kernel;
+    cl_kernel vp8_bilinear_predict8x8_kernel;
+    cl_kernel vp8_bilinear_predict16x16_kernel;
+
     cl_program idct_program;
 
     cl_kernel filter_block2d_first_pass_kernel; // compute kernel
@@ -137,12 +154,8 @@ typedef struct VP8_COMMON_CL {
 
     cl_mem srcData; //Source frame data
     size_t srcAlloc; //Amount of allocated CL memory for srcData
-    cl_mem intData; //Intermediate data passed from 1st to 2nd pass
-    size_t intAlloc; //Amount of allocated CL memory for intData
-    size_t intSize; //Size of intermediate data.
     cl_mem destData; //Destination data for 2nd pass.
     size_t destAlloc; //Amount of allocated CL memory for destData
-    cl_mem filterData; //vp8_filter row
 } VP8_COMMON_CL;
 
 extern VP8_COMMON_CL cl_data;
