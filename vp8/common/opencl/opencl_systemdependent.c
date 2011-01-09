@@ -43,11 +43,11 @@ void vp8_arch_opencl_common_init(VP8_COMMON *ctx)
     if (load_cl("libOpenCL.so")){
 #endif
         /* Override default functions with OpenCL accelerated ones. */
-        //rtcd->idct.idct1        = vp8_short_idct4x4llm_1_cl;
-        //rtcd->idct.idct16       = vp8_short_idct4x4llm_cl;
-        //rtcd->idct.idct1_scalar_add = vp8_dc_only_idct_add_cl;
-        //rtcd->idct.iwalsh1      = vp8_short_inv_walsh4x4_1_cl;
-        //rtcd->idct.iwalsh16     = vp8_short_inv_walsh4x4_cl;
+        rtcd->idct.idct1        = vp8_short_idct4x4llm_1_cl;
+        rtcd->idct.idct16       = vp8_short_idct4x4llm_cl;
+        rtcd->idct.idct1_scalar_add = vp8_dc_only_idct_add_cl;
+        rtcd->idct.iwalsh1      = vp8_short_inv_walsh4x4_1_cl;
+        rtcd->idct.iwalsh16     = vp8_short_inv_walsh4x4_cl;
 
         //rtcd->recon.copy16x16   = vp8_copy_mem16x16_cl;
         //rtcd->recon.copy8x8     = vp8_copy_mem8x8_cl;
