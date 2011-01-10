@@ -26,6 +26,10 @@ int cl_init_filter() {
     char *kernel_src;
     int err;
 
+    //Don't allow re-initialization without proper teardown first.
+    if (cl_data.filter_program != NULL)
+        return CL_SUCCESS;
+
     //Initialize the CL context
     if (cl_init() != CL_SUCCESS)
         return CL_TRIED_BUT_FAILED;
@@ -40,11 +44,9 @@ int cl_init_filter() {
     CL_CREATE_KERNEL(cl_data,filter_program,vp8_sixtap_predict8x4_kernel,"vp8_sixtap_predict8x4_kernel");
     CL_CREATE_KERNEL(cl_data,filter_program,vp8_sixtap_predict16x16_kernel,"vp8_sixtap_predict16x16_kernel");
     CL_CREATE_KERNEL(cl_data,filter_program,vp8_bilinear_predict4x4_kernel,"vp8_bilinear_predict4x4_kernel");
-    CL_CREATE_KERNEL(cl_data,filter_program,vp8_bilinear_predict4x4_kernel,"vp8_bilinear_predict8x4_kernel");
-    CL_CREATE_KERNEL(cl_data,filter_program,vp8_bilinear_predict4x4_kernel,"vp8_bilinear_predict8x8_kernel");
-    CL_CREATE_KERNEL(cl_data,filter_program,vp8_bilinear_predict4x4_kernel,"vp8_bilinear_predict16x16_kernel");
-
-
+    CL_CREATE_KERNEL(cl_data,filter_program,vp8_bilinear_predict8x4_kernel,"vp8_bilinear_predict8x4_kernel");
+    CL_CREATE_KERNEL(cl_data,filter_program,vp8_bilinear_predict8x8_kernel,"vp8_bilinear_predict8x8_kernel");
+    CL_CREATE_KERNEL(cl_data,filter_program,vp8_bilinear_predict16x16_kernel,"vp8_bilinear_predict16x16_kernel");
 
     //cl_data.filter_block2d_first_pass_kernel = clCreateKernel(cl_data.filter_program, "vp8_filter_block2d_first_pass_kernel", &err);
     //cl_data.filter_block2d_second_pass_kernel = clCreateKernel(cl_data.filter_program, "vp8_filter_block2d_second_pass_kernel", &err);
@@ -439,7 +441,6 @@ void vp8_filter_block2d_bil_second_pass_cl
 //    vp8_filter_block2d_bil_second_pass_cl(FData, output_ptr, dst_pitch, Width, Width, Height, Width, VFilter);
 //}
 
-
 void vp8_bilinear_predict4x4_cl
 (
         unsigned char *src_ptr,
@@ -513,6 +514,8 @@ void vp8_bilinear_predict8x8_cl
     //int src_len = SRC_LEN(output1_width,output1_height,src_pixels_per_line);
     int src_len = BIL_SRC_LEN(8,9,src_pixels_per_line);
 
+    printf("8x8 bilinear\n");
+
     CL_BILINEAR_EXEC(cl_data.vp8_bilinear_predict8x8_kernel,src_ptr,src_len,
             src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch,global,dst_len,
             vp8_bilinear_predict8x8_c(src_ptr,src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch)
@@ -577,9 +580,9 @@ void vp8_bilinear_predict16x16_cl
     size_t global = 17*16;
 
     //Size of output data
-    int dst_len = DST_LEN(dst_pitch,16,16);
+    int dst_len = DST_LEN(dst_pitch,16,16) * sizeof(unsigned char);
 
-    int src_len = BIL_SRC_LEN(16,17,src_pixels_per_line);
+    int src_len = BIL_SRC_LEN(16,17,src_pixels_per_line) * sizeof(unsigned char);
 
     printf("16x16 bilinear\n");
 
