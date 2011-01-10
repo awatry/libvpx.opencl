@@ -12,4 +12,6 @@
 
 #define CLAMP(x,min,max) if (x < min) x = min; else if ( x > max ) x = max;
 
+const char *idctCompileOptions = "-Ivp8/common/opencl";
 const char *idctllm_cl_file_name = "vp8/common/opencl/idctllm_cl.cl";
+

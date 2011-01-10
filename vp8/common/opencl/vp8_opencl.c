@@ -40,51 +40,35 @@ void cl_destroy() {
     if (cl_data.filter_program)
         clReleaseProgram(cl_data.filter_program);
 
-    if (cl_data.vp8_sixtap_predict_kernel)
-        clReleaseKernel(cl_data.vp8_sixtap_predict_kernel);
-    if (cl_data.vp8_block_variation_kernel)
-        clReleaseKernel(cl_data.vp8_block_variation_kernel);
-    if (cl_data.vp8_sixtap_predict8x8_kernel)
-        clReleaseKernel(cl_data.vp8_sixtap_predict8x8_kernel);
-    if (cl_data.vp8_sixtap_predict8x4_kernel)
-        clReleaseKernel(cl_data.vp8_sixtap_predict8x4_kernel);
-    if (cl_data.vp8_sixtap_predict16x16_kernel)
-        clReleaseKernel(cl_data.vp8_sixtap_predict16x16_kernel);
+    if (cl_data.idct_program)
+        clReleaseProgram(cl_data.idct_program);
 
-    if (cl_data.vp8_bilinear_predict4x4_kernel)
-        clReleaseKernel(cl_data.vp8_bilinear_predict4x4_kernel);
-    if (cl_data.vp8_bilinear_predict8x4_kernel)
-        clReleaseKernel(cl_data.vp8_bilinear_predict8x4_kernel);
-    if (cl_data.vp8_bilinear_predict8x8_kernel)
-        clReleaseKernel(cl_data.vp8_bilinear_predict8x8_kernel);
-    if (cl_data.vp8_bilinear_predict16x16_kernel)
-        clReleaseKernel(cl_data.vp8_bilinear_predict16x16_kernel);
-
+    CL_RELEASE_KERNEL(cl_data.vp8_sixtap_predict_kernel);
+    CL_RELEASE_KERNEL(cl_data.vp8_block_variation_kernel);
+    CL_RELEASE_KERNEL(cl_data.vp8_sixtap_predict8x8_kernel);
+    CL_RELEASE_KERNEL(cl_data.vp8_sixtap_predict8x4_kernel);
+    CL_RELEASE_KERNEL(cl_data.vp8_sixtap_predict16x16_kernel);
+    CL_RELEASE_KERNEL(cl_data.vp8_bilinear_predict4x4_kernel);
+    CL_RELEASE_KERNEL(cl_data.vp8_bilinear_predict8x4_kernel);
+    CL_RELEASE_KERNEL(cl_data.vp8_bilinear_predict8x8_kernel);
+    CL_RELEASE_KERNEL(cl_data.vp8_bilinear_predict16x16_kernel);
 
     //Older kernels that probably aren't used anymore... remove eventually.
     if (cl_data.filter_block2d_first_pass_kernel)
         clReleaseKernel(cl_data.filter_block2d_first_pass_kernel);
     if (cl_data.filter_block2d_second_pass_kernel)
         clReleaseKernel(cl_data.filter_block2d_second_pass_kernel);
+    cl_data.filter_block2d_first_pass_kernel = NULL;
+    cl_data.filter_block2d_second_pass_kernel = NULL;
+
 
     if (cl_data.commands)
         clReleaseCommandQueue(cl_data.commands);
     if (cl_data.context)
         clReleaseContext(cl_data.context);
 
-    cl_data.vp8_sixtap_predict_kernel = NULL;
-    cl_data.vp8_block_variation_kernel = NULL;
-    cl_data.vp8_sixtap_predict8x8_kernel = NULL;
-    cl_data.vp8_sixtap_predict8x4_kernel = NULL;
-    cl_data.vp8_sixtap_predict16x16_kernel = NULL;
-    cl_data.vp8_bilinear_predict4x4_kernel = NULL;
-    cl_data.vp8_bilinear_predict8x4_kernel = NULL;
-    cl_data.vp8_bilinear_predict8x8_kernel = NULL;
-    cl_data.vp8_bilinear_predict16x16_kernel = NULL;
-
     cl_data.filter_program = NULL;
-    cl_data.filter_block2d_first_pass_kernel = NULL;
-    cl_data.filter_block2d_second_pass_kernel = NULL;
+    cl_data.idct_program = NULL;
 
     cl_data.commands = NULL;
     cl_data.context = NULL;
@@ -138,6 +122,17 @@ int cl_init(){
         printf("Error: Failed to create a command queue!\n");
         return CL_TRIED_BUT_FAILED;
     }
+
+    //Initialize other memory objects to null pointers
+    cl_data.srcData = NULL;
+    cl_data.srcAlloc = 0;
+    cl_data.destData = NULL;
+    cl_data.destAlloc = 0;
+
+    //Initialize programs to null value
+    //Enables detection of if they've been initialized as well.
+    cl_data.filter_program = NULL;
+    cl_data.idct_program = NULL;
 
     return CL_SUCCESS;
 }

@@ -126,6 +126,10 @@ extern const char *vpx_codec_lib_dir(void);
         return CL_TRIED_BUT_FAILED; \
     } \
 
+#define CL_RELEASE_KERNEL(kernel) \
+    if (kernel) \
+        clReleaseKernel(kernel); \
+    kernel = NULL;
 
 typedef struct VP8_COMMON_CL {
     cl_device_id device_id; // compute device id
@@ -138,13 +142,18 @@ typedef struct VP8_COMMON_CL {
     cl_kernel vp8_sixtap_predict8x4_kernel;
     cl_kernel vp8_sixtap_predict8x8_kernel;
     cl_kernel vp8_sixtap_predict16x16_kernel;
-
     cl_kernel vp8_bilinear_predict4x4_kernel;
     cl_kernel vp8_bilinear_predict8x4_kernel;
     cl_kernel vp8_bilinear_predict8x8_kernel;
     cl_kernel vp8_bilinear_predict16x16_kernel;
 
     cl_program idct_program;
+    cl_kernel vp8_short_inv_walsh4x4_1_kernel;
+    cl_kernel vp8_short_inv_walsh4x4_kernel;
+    cl_kernel vp8_dc_only_idct_add_kernel;
+    cl_kernel vp8_short_idct4x4llm_1_kernel;
+    cl_kernel vp8_short_idct4x4llm_kernel;
+
 
     cl_kernel filter_block2d_first_pass_kernel; // compute kernel
     cl_kernel filter_block2d_second_pass_kernel; // compute kernel

@@ -21,65 +21,77 @@ static const int cospi8sqrt2minus1 = 20091;
 static const int sinpi8sqrt2      = 35468;
 static const int rounding = 0;
 
+int cl_init_idct() {
+    char *kernel_src;
+    int err;
+
+    //Prevent erroneous re-initializations
+    if (cl_data.idct_program != NULL)
+        return CL_SUCCESS;
+
+    //Initialize the CL context
+    if (cl_init() != CL_SUCCESS)
+        return CL_TRIED_BUT_FAILED;
+
+    // Create the filter compute program from the file-defined source code
+    CL_LOAD_PROGRAM(cl_data.idct_program, idctllm_cl_file_name, idctCompileOptions);
+
+    // Create the compute kernel in the program we wish to run
+    CL_CREATE_KERNEL(cl_data,idct_program,vp8_short_inv_walsh4x4_1_kernel,"vp8_short_inv_walsh4x4_1_kernel");
+    CL_CREATE_KERNEL(cl_data,idct_program,vp8_short_inv_walsh4x4_kernel,"vp8_short_inv_walsh4x4_kernel");
+    CL_CREATE_KERNEL(cl_data,idct_program,vp8_dc_only_idct_add_kernel,"vp8_dc_only_idct_add_kernel");
+    CL_CREATE_KERNEL(cl_data,idct_program,vp8_short_idct4x4llm_1_kernel,"vp8_short_idct4x4llm_1_kernel");
+    CL_CREATE_KERNEL(cl_data,idct_program,vp8_short_idct4x4llm_kernel,"vp8_short_idct4x4llm_kernel");
+
+    return CL_SUCCESS;
+}
+
+#define max(x,y) (x > y ? x: y)
+
 void vp8_short_idct4x4llm_cl(short *input, short *output, int pitch)
 {
-    int i;
-    int a1, b1, c1, d1;
+    int err;
+    size_t global = 1; //1 instance for now
 
-    short *ip = input;
-    short *op = output;
-    int temp1, temp2;
-    int shortpitch = pitch >> 1;
+    CL_ENSURE_BUF_SIZE(cl_data.srcData, CL_MEM_READ_ONLY|CL_MEM_COPY_HOST_PTR,
+            sizeof(short)*16, cl_data.srcAlloc, input,
+            vp8_short_idct4x4llm_c(input,output,pitch)
+    );
 
-    for (i = 0; i < 4; i++)
-    {
-        a1 = ip[0] + ip[8];
-        b1 = ip[0] - ip[8];
+    CL_ENSURE_BUF_SIZE(cl_data.destData,CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,
+            sizeof(short)*(4+(pitch/2)*3), cl_data.destAlloc, output,
+            vp8_short_idct4x4llm_c(input,output,pitch)
+    );
 
-        temp1 = (ip[4] * sinpi8sqrt2 + rounding) >> 16;
-        temp2 = ip[12] + ((ip[12] * cospi8sqrt2minus1 + rounding) >> 16);
-        c1 = temp1 - temp2;
+    //Set arguments and run kernel
+    err = 0;
+    err = clSetKernelArg(cl_data.vp8_short_idct4x4llm_kernel, 0, sizeof (cl_mem), &cl_data.srcData);
+    err |= clSetKernelArg(cl_data.vp8_short_idct4x4llm_kernel, 1, sizeof (cl_mem), &cl_data.destData);
+    err |= clSetKernelArg(cl_data.vp8_short_idct4x4llm_kernel, 2, sizeof (int), &pitch);
+    CL_CHECK_SUCCESS( err != CL_SUCCESS,
+        "Error: Failed to set kernel arguments!\n",
+        vp8_short_idct4x4llm_c(input,output,pitch),
+    );
+    
+    /* Execute the kernel */
+    err = clEnqueueNDRangeKernel(cl_data.commands, cl_data.vp8_short_idct4x4llm_kernel, 1, NULL, &global, NULL , 0, NULL, NULL);
+    CL_CHECK_SUCCESS( err != CL_SUCCESS,
+        "Error: Failed to execute kernel!\n",
+        printf("err = %d\n",err);
+        vp8_short_idct4x4llm_c(input,output,pitch),
+    );
 
-        temp1 = ip[4] + ((ip[4] * cospi8sqrt2minus1 + rounding) >> 16);
-        temp2 = (ip[12] * sinpi8sqrt2 + rounding) >> 16;
-        d1 = temp1 + temp2;
+    /* Read back the result data from the device */
+    err = clEnqueueReadBuffer(cl_data.commands, cl_data.destData, CL_FALSE, 0, sizeof(short)*(4+pitch/2*3), output, 0, NULL, NULL);
+    CL_CHECK_SUCCESS(err != CL_SUCCESS,
+        "Error: Failed to read output array!\n",
+        vp8_short_idct4x4llm_c(input,output,pitch),
+    );
 
-        op[shortpitch*0] = a1 + d1;
-        op[shortpitch*3] = a1 - d1;
+    printf("Ran 4x4 IDCT kernel\n");
 
-        op[shortpitch*1] = b1 + c1;
-        op[shortpitch*2] = b1 - c1;
-
-        ip++;
-        op++;
-    }
-
-    ip = output;
-    op = output;
-
-    for (i = 0; i < 4; i++)
-    {
-        a1 = ip[0] + ip[2];
-        b1 = ip[0] - ip[2];
-
-        temp1 = (ip[1] * sinpi8sqrt2 + rounding) >> 16;
-        temp2 = ip[3] + ((ip[3] * cospi8sqrt2minus1 + rounding) >> 16);
-        c1 = temp1 - temp2;
-
-        temp1 = ip[1] + ((ip[1] * cospi8sqrt2minus1 + rounding) >> 16);
-        temp2 = (ip[3] * sinpi8sqrt2 + rounding) >> 16;
-        d1 = temp1 + temp2;
-
-
-        op[0] = (a1 + d1 + 4) >> 3;
-        op[3] = (a1 - d1 + 4) >> 3;
-
-        op[1] = (b1 + c1 + 4) >> 3;
-        op[2] = (b1 - c1 + 4) >> 3;
-
-        ip += shortpitch;
-        op += shortpitch;
-    }
+    //vp8_short_idct4x4llm_c(input,output,pitch);
+    return;
 }
 
 void vp8_short_idct4x4llm_1_cl(short *input, short *output, int pitch)
