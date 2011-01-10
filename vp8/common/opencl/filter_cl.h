@@ -232,6 +232,7 @@ xoffset,yoffset,dst_ptr,dst_pitch,thread_count,dst_len,altPath) \
     CL_ENSURE_BUF_SIZE(cl_data.destData, CL_MEM_WRITE_ONLY|CL_MEM_COPY_HOST_PTR, \
         sizeof (unsigned char) * dst_len, cl_data.destAlloc, dst_ptr, \
     ); \
+printf("copied %d bytes to destData\n",sizeof(unsigned char)*dst_len); \
 \
     /* Set kernel arguments */ \
     err = 0; \
