@@ -156,6 +156,9 @@ typedef struct VP8_COMMON_CL {
     size_t srcAlloc; //Amount of allocated CL memory for srcData
     cl_mem destData; //Destination data for 2nd pass.
     size_t destAlloc; //Amount of allocated CL memory for destData
+    cl_mem intData; //Intermediate data pointer. Used as scratch data
+    size_t intAlloc; //Size of intData
+
 } VP8_COMMON_CL;
 
 extern VP8_COMMON_CL cl_data;
