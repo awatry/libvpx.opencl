@@ -36,6 +36,12 @@ void cl_destroy() {
         cl_data.destAlloc = 0;
     }
 
+    if (cl_data.intData){
+        clReleaseMemObject(cl_data.intData);
+        cl_data.intData = NULL;
+        cl_data.destAlloc = 0;
+    }
+
     //Release the objects that we've allocated on the GPU
     if (cl_data.filter_program)
         clReleaseProgram(cl_data.filter_program);
@@ -138,6 +144,14 @@ int cl_init(){
         printf("Error: Failed to create a command queue!\n");
         return CL_TRIED_BUT_FAILED;
     }
+
+    //Initialize other memory objects to null pointers
+    cl_data.srcData = NULL;
+    cl_data.srcAlloc = 0;
+    cl_data.destData = NULL;
+    cl_data.destAlloc = 0;
+    cl_data.intData = NULL;
+    cl_data.intAlloc = 0;
 
     return CL_SUCCESS;
 }
