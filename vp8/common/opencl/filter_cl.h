@@ -91,6 +91,42 @@ extern void vp8_sixtap_predict16x16_c
     int  dst_pitch
 );
 
+extern void vp8_bilinear_predict4x4_c(
+    unsigned char  *src_ptr,
+    int  src_pixels_per_line,
+    int  xoffset,
+    int  yoffset,
+    unsigned char *dst_ptr,
+    int  dst_pitch
+);
+
+extern void vp8_bilinear_predict8x8_c(
+    unsigned char  *src_ptr,
+    int  src_pixels_per_line,
+    int  xoffset,
+    int  yoffset,
+    unsigned char *dst_ptr,
+    int  dst_pitch
+);
+
+extern void vp8_bilinear_predict8x4_c(
+    unsigned char  *src_ptr,
+    int  src_pixels_per_line,
+    int  xoffset,
+    int  yoffset,
+    unsigned char *dst_ptr,
+    int  dst_pitch
+);
+
+
+extern void vp8_bilinear_predict16x16_c(
+    unsigned char  *src_ptr,
+    int  src_pixels_per_line,
+    int  xoffset,
+    int  yoffset,
+    unsigned char *dst_ptr,
+    int  dst_pitch
+);
 
 static const int bilinear_filters[8][2] = {
     { 128, 0},
@@ -123,8 +159,8 @@ const char *filter_cl_file_name = "vp8/common/opencl/filter_cl.cl";
 //Copy the -2*pixel_step (and ps*3) bytes because the filter algorithm
 //accesses negative indexes
 #define SIXTAP_SRC_LEN(out_width,out_height,src_px) (out_width*out_height + ((out_width*out_height-1)/out_width)*(src_px - out_width) + 5)
-#define BIL_SRC_LEN(out_width,out_height,src_px) (out_width+1 + (out_height-1)*(src_px-out_width))
-#define DST_LEN(dst_pitch,dst_height,dst_width) (dst_pitch*dst_height + dst_width)
+#define BIL_SRC_LEN(out_width,out_height,src_px) (out_height * src_px + out_width)
+#define DST_LEN(dst_pitch,dst_height,dst_width) (dst_pitch * dst_height + dst_width)
 
 #define CL_SIXTAP_PREDICT_EXEC(kernel,src_ptr,src_len, src_pixels_per_line, \
 xoffset,yoffset,dst_ptr,dst_pitch,thread_count,dst_len,altPath) \
@@ -190,12 +226,15 @@ xoffset,yoffset,dst_ptr,dst_pitch,thread_count,dst_len,altPath) \
 \
     /*Make space for kernel input/output data. Initialize the buffer as well if needed. */ \
     CL_ENSURE_BUF_SIZE(cl_data.srcData, CL_MEM_READ_ONLY|CL_MEM_COPY_HOST_PTR, \
-        sizeof (unsigned char) * src_len, cl_data.srcAlloc, src_ptr, \
+        sizeof (unsigned char) * src_len, cl_data.srcAlloc, src_ptr, altPath\
     ); \
 \
     CL_ENSURE_BUF_SIZE(cl_data.destData, CL_MEM_WRITE_ONLY|CL_MEM_COPY_HOST_PTR, \
-        sizeof (unsigned char) * dst_len, cl_data.destAlloc, dst_ptr, \
+        sizeof (unsigned char) * dst_len, cl_data.destAlloc, dst_ptr, altPath\
     ); \
+    \
+    CL_ENSURE_BUF_SIZE(cl_data.intData,CL_MEM_READ_WRITE, \
+        sizeof(cl_int)*17*16, cl_data.intAlloc, NULL, altPath); \
 \
     /* Set kernel arguments */ \
     err = 0; \
@@ -205,6 +244,7 @@ xoffset,yoffset,dst_ptr,dst_pitch,thread_count,dst_len,altPath) \
     err |= clSetKernelArg(kernel, 3, sizeof (int), &yoffset); \
     err |= clSetKernelArg(kernel, 4, sizeof (cl_mem), &cl_data.destData); \
     err |= clSetKernelArg(kernel, 5, sizeof (int), &dst_pitch); \
+    err |= clSetKernelArg(kernel, 6, sizeof (cl_mem), &cl_data.intData); \
     CL_CHECK_SUCCESS( err != CL_SUCCESS, \
         "Error: Failed to set kernel arguments!\n", \
         altPath, \

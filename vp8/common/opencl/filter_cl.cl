@@ -67,7 +67,7 @@ void vp8_filter_block2d_first_pass(
     }
 
     //Add a fence/barrier so that no 2nd pass stuff starts before 1st pass is done.
-    //write_mem_fence(CLK_GLOBAL_MEM_FENCE);
+    write_mem_fence(CLK_GLOBAL_MEM_FENCE);
     //barrier(CLK_GLOBAL_MEM_FENCE);
 }
 
@@ -228,7 +228,7 @@ __kernel void vp8_sixtap_predict16x16_kernel
 
 void vp8_filter_block2d_bil_first_pass(
     __global unsigned char *src_ptr,
-    __local int *output_ptr,
+    __global int *output_ptr,
     unsigned int src_pixels_per_line,
     unsigned int pixel_step,
     unsigned int output_height,
@@ -240,29 +240,38 @@ void vp8_filter_block2d_bil_first_pass(
     unsigned int i, j;
     __constant int *vp8_filter = bilinear_filters[filter_offset];
 
+    unsigned int out_row,out_offset;
+    unsigned int src_offset;
     int src_increment = src_pixels_per_line - output_width;
 
-    if (tid < output_height * output_width){
-        for (i = 0; i < output_height; i++) {
-            for (j = 0; j < output_width; j++) {
-                /* Apply bilinear filter */
-                output_ptr[j] = (((int) src_ptr[0] * vp8_filter[0]) +
-                        ((int) src_ptr[pixel_step] * vp8_filter[1]) +
-                        (VP8_FILTER_WEIGHT / 2)) >> VP8_FILTER_SHIFT;
-                src_ptr++;
-            }
+    for (i = 0; i < output_height; i++)
+    {
+        src_offset = i*(output_width+src_increment);
+        out_row = output_width * i;
+        for (j = 0; j < output_width; j++)
+        {
+            out_offset = out_row + j;
 
-            /* Next row... */
-            src_ptr += src_increment;
-            output_ptr += output_width;
+            /* Apply bilinear filter */
+            output_ptr[out_offset] = (((int)src_ptr[src_offset]          * vp8_filter[0]) +
+                             ((int)src_ptr[src_offset+pixel_step] * vp8_filter[1]) +
+                             (VP8_FILTER_WEIGHT / 2)) >> VP8_FILTER_SHIFT;
+            //src_ptr++;
+            src_offset++;
         }
+
+        /* Next row... */
+        //src_ptr    += src_pixels_per_line - output_width;
+        //output_ptr += output_width;
     }
+
+    //write_mem_fence(CLK_GLOBAL_MEM_FENCE);
+    //barrier(CLK_GLOBAL_MEM_FENCE);
 }
 
 void vp8_filter_block2d_bil_second_pass
 (
-    __local int *src_ptr,
-//    unsigned int offset,
+    __global int *src_ptr,
     __global unsigned char *output_ptr,
     int output_pitch,
     unsigned int src_pixels_per_line,
@@ -277,23 +286,52 @@ void vp8_filter_block2d_bil_second_pass
     int Temp;
     __constant int *vp8_filter = bilinear_filters[filter_offset];
 
-    if (tid < output_height * output_width){
-        for (i = 0; i < output_height; i++) {
-            for (j = 0; j < output_width; j++) {
-                /* Apply filter */
-                Temp = ((int) src_ptr[0] * vp8_filter[0]) +
-                        ((int) src_ptr[pixel_step] * vp8_filter[1]) +
-                        (VP8_FILTER_WEIGHT / 2);
-                output_ptr[j] = (unsigned int) (Temp >> VP8_FILTER_SHIFT);
-                src_ptr++;
-            }
+    int out_offset;
+    int src_offset;
+    int src_increment = src_pixels_per_line - output_width;
 
-            /* Next row... */
-            src_ptr += src_pixels_per_line - output_width;
-            output_ptr += output_pitch;
+    if (tid < output_width*output_height){
+        for (i = 0; i < output_height; i++)
+        {
+            src_offset = i*(output_width+src_increment);
+            out_offset = i*output_pitch;
+            for (j = 0; j < output_width; j++)
+            {
+                /* Apply filter */
+                Temp = ((int)src_ptr[src_offset]         * vp8_filter[0]) +
+                       ((int)src_ptr[src_offset+pixel_step] * vp8_filter[1]) +
+                       (VP8_FILTER_WEIGHT / 2);
+                output_ptr[out_offset++] = (unsigned int)(Temp >> VP8_FILTER_SHIFT);
+                //printf("output[%d]=%d\n",out_offset-1, Temp>>VP8_FILTER_SHIFT);
+                src_offset++;
+            }
         }
     }
 }
+
+void vp8_filter_block2d_bil
+(
+    __global unsigned char *src_ptr,
+    __global unsigned char *output_ptr,
+    unsigned int   src_pixels_per_line,
+    unsigned int   dst_pitch,
+    int      xoffset,
+    int      yoffset,
+    int            Width,
+    int            Height,
+    __global int *FData
+)
+{
+
+    //__private unsigned short FData[17*16];    /* Temp data buffer used in filtering */
+
+    /* First filter 1-D horizontally... */
+    vp8_filter_block2d_bil_first_pass(src_ptr, FData, src_pixels_per_line, 1, Height + 1, Width, xoffset);
+
+    /* then 1-D vertically... */
+    vp8_filter_block2d_bil_second_pass(FData, output_ptr, dst_pitch, Width, Width, Height, Width, yoffset);
+}
+
 
 __kernel void vp8_bilinear_predict4x4_kernel
 (
@@ -302,16 +340,11 @@ __kernel void vp8_bilinear_predict4x4_kernel
         int xoffset,
         int yoffset,
         __global unsigned char *dst_ptr,
-        int dst_pitch
+        int dst_pitch,
+        __global int *FData
  ) {
-    __local unsigned short FData[17 * 16]; /* Temp data buffer used in filtering */
 
-    /* First filter 1-D horizontally... */
-    vp8_filter_block2d_bil_first_pass(src_ptr, FData, src_pixels_per_line, 1, 4 + 1, 4, xoffset);
-
-    /* then 1-D vertically... */
-    vp8_filter_block2d_bil_second_pass(FData, dst_ptr, dst_pitch, 4, 4, 4, 4, yoffset);
-
+    vp8_filter_block2d_bil(src_ptr, dst_ptr, src_pixels_per_line, dst_pitch, xoffset, yoffset, 4, 4, FData);
 }
 
 __kernel void vp8_bilinear_predict8x8_kernel
@@ -321,16 +354,12 @@ __kernel void vp8_bilinear_predict8x8_kernel
         int xoffset,
         int yoffset,
         __global unsigned char *dst_ptr,
-        int dst_pitch
+        int dst_pitch,
+        __global int *FData
         ) {
 
-    __local unsigned short FData[17 * 16]; /* Temp data buffer used in filtering */
+    vp8_filter_block2d_bil(src_ptr, dst_ptr, src_pixels_per_line, dst_pitch, xoffset, yoffset, 8, 8, FData);
 
-    /* First filter 1-D horizontally... */
-    vp8_filter_block2d_bil_first_pass(src_ptr, FData, src_pixels_per_line, 1, 8 + 1, 8, xoffset);
-
-    /* then 1-D vertically... */
-    vp8_filter_block2d_bil_second_pass(FData, dst_ptr, dst_pitch, 8, 8, 8, 8, yoffset);
 }
 
 __kernel void vp8_bilinear_predict8x4_kernel
@@ -340,17 +369,11 @@ __kernel void vp8_bilinear_predict8x4_kernel
         int xoffset,
         int yoffset,
         __global unsigned char *dst_ptr,
-        int dst_pitch
+        int dst_pitch,
+        __global int *FData
         ) {
 
-    __local unsigned short FData[17 * 16]; /* Temp data buffer used in filtering */
-
-    /* First filter 1-D horizontally... */
-    vp8_filter_block2d_bil_first_pass(src_ptr, FData, src_pixels_per_line, 1, 4 + 1, 8, xoffset);
-
-    /* then 1-D vertically... */
-    vp8_filter_block2d_bil_second_pass(FData, dst_ptr, dst_pitch, 8, 8, 4, 4, yoffset);
-
+    vp8_filter_block2d_bil(src_ptr, dst_ptr, src_pixels_per_line, dst_pitch, xoffset, yoffset, 8, 4, FData);
 }
 
 __kernel void vp8_bilinear_predict16x16_kernel
@@ -360,15 +383,9 @@ __kernel void vp8_bilinear_predict16x16_kernel
         int xoffset,
         int yoffset,
         __global unsigned char *dst_ptr,
-        int dst_pitch
+        int dst_pitch,
+        __global int *FData
         ) {
 
-    __local unsigned short FData[17 * 16]; /* Temp data buffer used in filtering */
-
-    /* First filter 1-D horizontally... */
-    vp8_filter_block2d_bil_first_pass(src_ptr, FData, src_pixels_per_line, 1, 16 + 1, 16, xoffset);
-
-    /* then 1-D vertically... */
-    vp8_filter_block2d_bil_second_pass(FData, dst_ptr, dst_pitch, 16, 16, 16, 16, yoffset);
-
+    vp8_filter_block2d_bil(src_ptr, dst_ptr, src_pixels_per_line, dst_pitch, xoffset, yoffset, 16, 16, FData);
 }

@@ -36,6 +36,12 @@ void cl_destroy() {
         cl_data.destAlloc = 0;
     }
 
+    if (cl_data.intData){
+        clReleaseMemObject(cl_data.intData);
+        cl_data.intData = NULL;
+        cl_data.destAlloc = 0;
+    }
+
     //Release the objects that we've allocated on the GPU
     if (cl_data.filter_program)
         clReleaseProgram(cl_data.filter_program);
@@ -133,6 +139,9 @@ int cl_init(){
     //Enables detection of if they've been initialized as well.
     cl_data.filter_program = NULL;
     cl_data.idct_program = NULL;
+
+    cl_data.intData = NULL;
+    cl_data.intAlloc = 0;
 
     return CL_SUCCESS;
 }
