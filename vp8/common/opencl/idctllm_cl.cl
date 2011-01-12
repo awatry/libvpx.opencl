@@ -102,12 +102,15 @@ __kernel void vp8_dc_only_idct_add_kernel(
 {
     int a1 = ((input_dc + 4) >> 3);
     int r, c;
+    int pred_offset,dst_offset;
 
     for (r = 0; r < 4; r++)
     {
+        pred_offset = r * pitch;
+        dst_offset = r * stride;
         for (c = 0; c < 4; c++)
         {
-            int a = a1 + pred_ptr[c] ;
+            int a = a1 + pred_ptr[pred_offset + c] ;
 
             if (a < 0)
                 a = 0;
@@ -115,11 +118,8 @@ __kernel void vp8_dc_only_idct_add_kernel(
             if (a > 255)
                 a = 255;
 
-            dst_ptr[c] = (unsigned char) a ;
+            dst_ptr[dst_offset + c] = (unsigned char) a ;
         }
-
-        dst_ptr += stride;
-        pred_ptr += pitch;
     }
 }
 
