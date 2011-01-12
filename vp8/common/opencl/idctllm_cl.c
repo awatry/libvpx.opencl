@@ -95,14 +95,14 @@ void vp8_short_idct4x4llm_cl(short *input, short *output, int pitch)
 void vp8_short_idct4x4llm_1_cl(short *input, short *output, int pitch)
 {
     int err;
-    size_t global = 1; //1 instance for now
+    size_t global = 4;
+
+    printf("short_idct4x4llm_1\n");
 
     if (cl_initialized != CL_SUCCESS){
         vp8_short_idct4x4llm_1_c(input,output,pitch);
         return;
     }
-
-    printf("short_idct4x4llm_1\n");
 
     CL_ENSURE_BUF_SIZE(cl_data.srcData, CL_MEM_READ_ONLY|CL_MEM_COPY_HOST_PTR,
             sizeof(short), cl_data.srcAlloc, input,
@@ -150,7 +150,7 @@ void vp8_dc_only_idct_add_cl(short input_dc, unsigned char *pred_ptr, unsigned c
 {
     
     int err;
-    size_t global = 16; //1 instance for now
+    size_t global = 16;
 
     if (cl_initialized != CL_SUCCESS){
         vp8_dc_only_idct_add_cl(input_dc, pred_ptr, dst_ptr, pitch, stride);

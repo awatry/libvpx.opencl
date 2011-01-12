@@ -76,19 +76,20 @@ __kernel void vp8_short_idct4x4llm_1_kernel(
     int pitch
 )
 {
-    int i;
+    //int i;
     int a1;
-    __global short *op = output;
+    int out_offset;
+    //__global short *op = output;
     int shortpitch = pitch >> 1;
     a1 = ((input[0] + 4) >> 3);
 
-    for (i = 0; i < 4; i++)
-    {
-        op[0] = a1;
-        op[1] = a1;
-        op[2] = a1;
-        op[3] = a1;
-        op += shortpitch;
+    int tid = get_global_id(0);
+    if (tid < 4){
+        out_offset = shortpitch * tid;
+        output[out_offset] = a1;
+        output[out_offset+1] = a1;
+        output[out_offset+2] = a1;
+        output[out_offset+3] = a1;
     }
 }
 
@@ -104,22 +105,21 @@ __kernel void vp8_dc_only_idct_add_kernel(
     int r, c;
     int pred_offset,dst_offset;
 
-    for (r = 0; r < 4; r++)
-    {
+    int tid = get_global_id(0);
+    if (tid < 16){
+        r = tid / 4;
+        c = tid % 4;
+
         pred_offset = r * pitch;
         dst_offset = r * stride;
-        for (c = 0; c < 4; c++)
-        {
-            int a = a1 + pred_ptr[pred_offset + c] ;
+        int a = a1 + pred_ptr[pred_offset + c] ;
 
-            if (a < 0)
-                a = 0;
+        if (a < 0)
+            a = 0;
+        else if (a > 255)
+            a = 255;
 
-            if (a > 255)
-                a = 255;
-
-            dst_ptr[dst_offset + c] = (unsigned char) a ;
-        }
+        dst_ptr[dst_offset + c] = (unsigned char) a ;
     }
 }
 
@@ -186,7 +186,6 @@ __kernel void vp8_short_inv_walsh4x4_1_kernel(
 
     if (tid < 16)
     {
-        //a1 = ((input[0] + 3) >> 3);
         a1 = ((input + 3) >> 3);
         output[tid] = (short)a1;
     }
