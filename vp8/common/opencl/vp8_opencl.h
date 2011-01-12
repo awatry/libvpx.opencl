@@ -29,7 +29,8 @@ extern "C" {
 
 extern char *cl_read_file(const char* file_name);
 extern int cl_init();
-extern void cl_destroy();
+extern void cl_destroy(int new_status);
+extern int cl_load_program(cl_program *prog_ref, const char *file_name, const char *opts);
 
 #define MAX_NUM_PLATFORMS 4
 
@@ -42,9 +43,8 @@ extern const char *vpx_codec_lib_dir(void);
 #define CL_CHECK_SUCCESS(cond,msg,alt,retCode) \
     if ( cond ){ \
         printf(msg);  \
-        cl_destroy(); \
-        cl_initialized = CL_TRIED_BUT_FAILED; \
         printf("CL operation failed.\n");\
+        cl_destroy(CL_TRIED_BUT_FAILED); \
         alt; \
         return retCode; \
     }
@@ -56,7 +56,6 @@ extern const char *vpx_codec_lib_dir(void);
         ,\
         CL_TRIED_BUT_FAILED \
     );
-
 
 #define CL_ENSURE_BUF_SIZE(bufRef, bufType, needSize, curSize, dataPtr, altPath) \
     if ( needSize > curSize || bufRef == NULL){ \
@@ -88,43 +87,6 @@ extern const char *vpx_codec_lib_dir(void);
             ); \
         }\
     }
-
-#define CL_LOAD_PROGRAM(prog_ref, file_name, opts) \
-    kernel_src = cl_read_file(file_name); \
-    prog_ref = NULL; \
-    if (kernel_src != NULL){ \
-        printf("creating program from source file\n"); \
-        prog_ref = clCreateProgramWithSource(cl_data.context, 1, &kernel_src, NULL, &err); \
-        printf("Created program\n"); \
-        free(kernel_src); \
-    } else { \
-        cl_destroy(); \
-        printf("Couldn't find OpenCL source files. \nUsing software path.\n"); \
-        return CL_TRIED_BUT_FAILED; \
-    } \
-\
-    if (prog_ref == NULL) { \
-        printf("Error: Couldn't create program\n"); \
-        return CL_TRIED_BUT_FAILED; \
-    } \
-\
-    if (err != CL_SUCCESS){ \
-        printf("Error creating program: %d\n", err); \
-    } \
-\
-    /* Build the program executable */ \
-    printf("Building program\n"); \
-    err = clBuildProgram(prog_ref, 0, NULL, opts, NULL, NULL); \
-    printf("Program built\n"); \
-    if (err != CL_SUCCESS) { \
-        size_t len; \
-        char buffer[2048]; \
-\
-        printf("Error: Failed to build program executable!\n"); \
-        clGetProgramBuildInfo(prog_ref, cl_data.device_id, CL_PROGRAM_BUILD_LOG, sizeof (buffer), buffer, &len); \
-        printf("Compile output: %s\n", buffer);\
-        return CL_TRIED_BUT_FAILED; \
-    } \
 
 #define CL_RELEASE_KERNEL(kernel) \
     if (kernel) \

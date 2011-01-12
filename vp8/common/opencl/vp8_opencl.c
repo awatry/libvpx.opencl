@@ -15,28 +15,31 @@
 int cl_initialized = CL_NOT_INITIALIZED;
 VP8_COMMON_CL cl_data;
 
+//Initialization functions for various CL programs.
+extern int cl_init_filter();
+extern int cl_init_idct();
 
 /**
  *
  */
-void cl_destroy() {
+void cl_destroy(int new_status) {
 
     //Wait on any pending operations to complete... frees up all of our pointers
     clFinish(cl_data.commands);
 
-    if (cl_data.srcData){
+    if (cl_data.srcData) {
         clReleaseMemObject(cl_data.srcData);
         cl_data.srcData = NULL;
         cl_data.srcAlloc = 0;
     }
 
-    if (cl_data.destData){
+    if (cl_data.destData) {
         clReleaseMemObject(cl_data.destData);
         cl_data.destData = NULL;
         cl_data.destAlloc = 0;
     }
 
-    if (cl_data.intData){
+    if (cl_data.intData) {
         clReleaseMemObject(cl_data.intData);
         cl_data.intData = NULL;
         cl_data.destAlloc = 0;
@@ -79,12 +82,12 @@ void cl_destroy() {
     cl_data.commands = NULL;
     cl_data.context = NULL;
 
-    cl_initialized = CL_NOT_INITIALIZED;
+    cl_initialized = new_status;
 
     return;
 }
 
-int cl_init(){
+int cl_init() {
     int err;
     cl_platform_id platform_ids[MAX_NUM_PLATFORMS];
     cl_uint num_found;
@@ -134,21 +137,28 @@ int cl_init(){
     cl_data.srcAlloc = 0;
     cl_data.destData = NULL;
     cl_data.destAlloc = 0;
+    cl_data.intData = NULL;
+    cl_data.intAlloc = 0;
 
     //Initialize programs to null value
     //Enables detection of if they've been initialized as well.
     cl_data.filter_program = NULL;
     cl_data.idct_program = NULL;
 
-    cl_data.intData = NULL;
-    cl_data.intAlloc = 0;
+    err = cl_init_filter();
+    if (err != CL_SUCCESS)
+        return err;
+
+    err = cl_init_idct();
+    if (err != CL_SUCCESS)
+        return err;
 
     return CL_SUCCESS;
 }
 
-char *cl_read_file(const char* file_name){
+char *cl_read_file(const char* file_name) {
     long pos;
-    char *fullpath,*bak;
+    char *fullpath, *bak;
     char *bytes;
     size_t amt_read;
 
@@ -156,34 +166,34 @@ char *cl_read_file(const char* file_name){
 
     f = fopen(file_name, "rb");
     //Disable until this no longer crashes on free()
-    if (0 && f == NULL){
-    
-        bak = fullpath = malloc (strlen(vpx_codec_lib_dir()+strlen(file_name)+2));
-        if (fullpath == NULL){
+    if (0 && f == NULL) {
+
+        bak = fullpath = malloc(strlen(vpx_codec_lib_dir() + strlen(file_name) + 2));
+        if (fullpath == NULL) {
             return NULL;
         }
 
         fullpath = strcpy(fullpath, vpx_codec_lib_dir());
-        if (fullpath == NULL){
+        if (fullpath == NULL) {
             free(bak);
             return NULL;
         }
-        
+
         fullpath = strcat(fullpath, "/");
-        if (fullpath == NULL){
+        if (fullpath == NULL) {
             free(bak);
             return NULL;
         }
 
         fullpath = strcat(fullpath, file_name);
-        if (fullpath == NULL){
+        if (fullpath == NULL) {
             free(bak);
             return NULL;
         }
 
         f = fopen(fullpath, "rb");
-        if (f == NULL){
-            printf("Couldn't find CL source at %s or %s\n",file_name,fullpath);
+        if (f == NULL) {
+            printf("Couldn't find CL source at %s or %s\n", file_name, fullpath);
             free(fullpath);
             return NULL;
         }
@@ -197,13 +207,13 @@ char *cl_read_file(const char* file_name){
     fseek(f, 0, SEEK_SET);
 
     bytes = malloc(pos);
-    if (bytes == NULL){
+    if (bytes == NULL) {
         fclose(f);
         return NULL;
     }
 
     amt_read = fread(bytes, pos, 1, f);
-    if (amt_read != 1){
+    if (amt_read != 1) {
         free(bytes);
         fclose(f);
         return NULL;
@@ -212,4 +222,60 @@ char *cl_read_file(const char* file_name){
     fclose(f);
 
     return bytes;
+}
+
+int cl_load_program(cl_program *prog_ref, const char *file_name, const char *opts) {
+
+    int err;
+    char *buffer;
+    size_t len;
+    char *kernel_src = cl_read_file(file_name);
+    
+    *prog_ref = NULL;
+    if (kernel_src != NULL) {
+        *prog_ref = clCreateProgramWithSource(cl_data.context, 1, &kernel_src, NULL, &err);
+        free(kernel_src);
+    } else {
+        cl_destroy(CL_TRIED_BUT_FAILED);
+        printf("Couldn't find OpenCL source files. \nUsing software path.\n");
+        return CL_TRIED_BUT_FAILED;
+    }
+
+    if (*prog_ref == NULL) {
+        printf("Error: Couldn't create program\n");
+        return CL_TRIED_BUT_FAILED;
+    }
+
+    if (err != CL_SUCCESS) {
+        printf("Error creating program: %d\n", err);
+    }
+
+    /* Build the program executable */
+    err = clBuildProgram(*prog_ref, 0, NULL, opts, NULL, NULL);
+    if (err != CL_SUCCESS) {
+        printf("Error: Failed to build program executable!\n");
+        err = clGetProgramBuildInfo(*prog_ref, cl_data.device_id, CL_PROGRAM_BUILD_LOG, 0, NULL, &len);
+        printf("Got log size\n");
+        if (err != CL_SUCCESS) {
+            printf("Error: Could not get length of CL build log\n");
+            return CL_TRIED_BUT_FAILED;
+        }
+        buffer = (char*) malloc(len);
+        if (buffer == NULL) {
+            printf("Error: Couldn't allocate compile output buffer memory\n");
+            return CL_TRIED_BUT_FAILED;
+        }
+        printf("Fetching build log\n");
+        err = clGetProgramBuildInfo(*prog_ref, cl_data.device_id, CL_PROGRAM_BUILD_LOG, len, buffer, NULL);
+        printf("Got build log\n");
+        if (err != CL_SUCCESS) {
+            printf("Error: Could not get CL build log\n");
+        } else {
+            printf("didn't crash in clGetProgramBuildInfo\n");
+            printf("Compile output: %s\n", buffer);
+        }
+        free(buffer);
+        return CL_TRIED_BUT_FAILED;
+    }
+    return CL_SUCCESS;
 }

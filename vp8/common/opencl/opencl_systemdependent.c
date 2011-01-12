@@ -18,6 +18,7 @@
 //#include "idct.h"
 #include "subpixel_cl.h"
 #include "onyxc_int.h"
+#include "vp8_opencl.h"
 
 #if HAVE_DLOPEN
 #include "dynamic_cl.h"
@@ -35,13 +36,16 @@ extern void vp8_build_intra_predictors_mby_s_neon(MACROBLOCKD *x);
 
 void vp8_arch_opencl_common_init(VP8_COMMON *ctx)
 {
-//#if CONFIG_RUNTIME_CPU_DETECT
-
+//#if CONFIG_RUNTIME_CPU_DETECT    
     VP8_COMMON_RTCD *rtcd = &ctx->rtcd;
 
 #if HAVE_DLOPEN
     if (load_cl("libOpenCL.so")){
 #endif
+        cl_initialized = cl_init();
+        if ( cl_initialized != CL_SUCCESS)
+            return;
+
         /* Override default functions with OpenCL accelerated ones. */
         rtcd->idct.idct1        = vp8_short_idct4x4llm_1_cl;
         rtcd->idct.idct16       = vp8_short_idct4x4llm_cl;

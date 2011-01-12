@@ -23,19 +23,12 @@
 int pass=0;
 
 int cl_init_filter() {
-    char *kernel_src;
     int err;
 
-    //Don't allow re-initialization without proper teardown first.
-    if (cl_data.filter_program != NULL)
-        return CL_SUCCESS;
-
-    //Initialize the CL context
-    if (cl_init() != CL_SUCCESS)
-        return CL_TRIED_BUT_FAILED;
-
     // Create the filter compute program from the file-defined source code
-    CL_LOAD_PROGRAM(cl_data.filter_program, filter_cl_file_name, filterCompileOptions);
+    if ( cl_load_program(&cl_data.filter_program, filter_cl_file_name,
+            filterCompileOptions) != CL_SUCCESS )
+        return CL_TRIED_BUT_FAILED;
 
     // Create the compute kernel in the program we wish to run
     CL_CREATE_KERNEL(cl_data,filter_program,vp8_sixtap_predict_kernel,"vp8_sixtap_predict_kernel");
@@ -71,26 +64,16 @@ void vp8_sixtap_predict_cl
     //int src_len = SRC_LEN(output1_width,output1_height,src_pixels_per_line);
     int src_len = SIXTAP_SRC_LEN(4,9,src_pixels_per_line);
 
-    //size_t i;
-    //unsigned char c_output[src_len];
-
-    //printf("4x4: src_ptr = %p, src_len = %d, dst_ptr = %p, dst_len = %d\n",src_ptr,src_len,dst_ptr,dst_len);
-    //memcpy(c_output,dst_ptr,dst_len);
-    //vp8_sixtap_predict_c(src_ptr,src_pixels_per_line,xoffset,yoffset,c_output,dst_pitch);
+    if (cl_initialized != CL_SUCCESS){
+        vp8_sixtap_predict_c(src_ptr,src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch);
+        return;
+    }
 
     CL_SIXTAP_PREDICT_EXEC(cl_data.vp8_sixtap_predict_kernel,(src_ptr-2*src_pixels_per_line),src_len,
             src_pixels_per_line, xoffset,yoffset,dst_ptr,dst_pitch,global,
             dst_len,
             vp8_sixtap_predict_c(src_ptr,src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch)
     );
-    //clFinish(cl_data.commands);
-
-    //for (i=0; i < dst_len; i++){
-    //    if (c_output[i] != dst_ptr[i]){
-    //        printf("c_output[%d] (%d) != dst_ptr[%d] (%d)\n",i,c_output[i],i,dst_ptr[i]);
-    //        exit(1);
-    //    }
-    //}
 
     return;
 }
@@ -115,25 +98,15 @@ void vp8_sixtap_predict8x8_cl
     //int src_len = SRC_LEN(output1_width,output1_height,src_pixels_per_line);
     int src_len = SIXTAP_SRC_LEN(8,13,src_pixels_per_line);
 
-    //size_t i;
-    //unsigned char c_output[src_len];
-
-    //printf("8x8: src_ptr = %p, src_len = %d, dst_ptr = %p, dst_len = %d\n",src_ptr,src_len,dst_ptr,dst_len);
-    //memcpy(c_output,dst_ptr,dst_len);
-    //vp8_sixtap_predict8x8_c(src_ptr,src_pixels_per_line,xoffset,yoffset,c_output,dst_pitch);
+    if (cl_initialized != CL_SUCCESS){
+        vp8_sixtap_predict8x8_c(src_ptr,src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch);
+        return;
+    }
 
     CL_SIXTAP_PREDICT_EXEC(cl_data.vp8_sixtap_predict8x8_kernel,(src_ptr-2*src_pixels_per_line),src_len,
             src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch,global,dst_len,
             vp8_sixtap_predict8x8_c(src_ptr,src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch)
     );
-    //clFinish(cl_data.commands);
-
-    //for (i=0; i < dst_len; i++){
-    //    if (c_output[i] != dst_ptr[i]){
-    //        printf("c_output[%d] (%d) != dst_ptr[%d] (%d)\n",i,c_output[i],i,dst_ptr[i]);
-    //        exit(1);
-    //    }
-    //}
 
     return;
 }
@@ -159,32 +132,15 @@ void vp8_sixtap_predict8x4_cl
     //int src_len = SRC_LEN(output1_width,output1_height,src_pixels_per_line);
     int src_len = SIXTAP_SRC_LEN(8,9,src_pixels_per_line);
 
-    //size_t i;
-    //unsigned char c_output[src_len];
-
-    //printf("8x4: src_ptr = %p, src_len = %d, dst_ptr = %p, dst_len = %d\n",src_ptr,src_len,dst_ptr,dst_len);
-    //for (i=0; i < src_len; i++){
-    //    printf("initial src[%d] = %d\n",i,src_ptr[i]);
-    //}
-    //for (i = 0; i < dst_len; i++){
-    //    printf("initial dst_ptr[%d] = %d\n",i,dst_ptr[i]);
-    //}
-    //memcpy(c_output,dst_ptr,dst_len);
-    //vp8_sixtap_predict8x4_c(src_ptr,src_pixels_per_line,xoffset,yoffset,c_output,dst_pitch);
+    if (cl_initialized != CL_SUCCESS){
+        vp8_sixtap_predict8x4_c(src_ptr,src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch);
+        return;
+    }
 
     CL_SIXTAP_PREDICT_EXEC(cl_data.vp8_sixtap_predict8x4_kernel,(src_ptr-2*src_pixels_per_line),src_len,
             src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch,global,dst_len,
             vp8_sixtap_predict8x4_c(src_ptr,src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch)
     );
-
-    //clFinish(cl_data.commands);
-
-    //for (i=0; i < dst_len; i++){
-    //    if (c_output[i] != dst_ptr[i]){
-    //        printf("c_output[%d] (%d) != dst_ptr[%d] (%d)\n",i,c_output[i],i,dst_ptr[i]);
-    //        exit(1);
-    //    }
-    //}
 
     return;
 }
@@ -210,25 +166,15 @@ void vp8_sixtap_predict16x16_cl
     //int src_len = SRC_LEN(output1_width,output1_height,src_pixels_per_line);
     int src_len = SIXTAP_SRC_LEN(16,21,src_pixels_per_line);
 
-    //size_t i;
-    //unsigned char c_output[src_len];
-
-    //printf("16x16: src_ptr = %p, src_len = %d, dst_ptr = %p, dst_len = %d\n",src_ptr,src_len,dst_ptr,dst_len);
-    //memcpy(c_output,dst_ptr,dst_len);
-    //vp8_sixtap_predict16x16_c(src_ptr,src_pixels_per_line,xoffset,yoffset,c_output,dst_pitch);
+    if (cl_initialized != CL_SUCCESS){
+        vp8_sixtap_predict16x16_c(src_ptr,src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch);
+        return;
+    }
 
     CL_SIXTAP_PREDICT_EXEC(cl_data.vp8_sixtap_predict16x16_kernel,(src_ptr-2*src_pixels_per_line),src_len,
             src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch,global,dst_len,
             vp8_sixtap_predict16x16_c(src_ptr,src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch)
     );
-    //clFinish(cl_data.commands);
-
-    //for (i=0; i < dst_len; i++){
-    //    if (c_output[i] != dst_ptr[i]){
-    //        printf("c_output[%d] (%d) != dst_ptr[%d] (%d)\n",i,c_output[i],i,dst_ptr[i]);
-    //        exit(1);
-    //    }
-    //}
 
     return;
 
@@ -258,26 +204,15 @@ void vp8_bilinear_predict4x4_cl
     //int src_len = SRC_LEN(output1_width,output1_height,src_pixels_per_line);
     int src_len = BIL_SRC_LEN(4,5,src_pixels_per_line);
 
-//    size_t i;
-//    unsigned char c_output[dst_len];
-
-//    printf("bilinear 4x4: src_ptr = %p, src_len = %d, dst_ptr = %p, dst_len = %d\n",src_ptr,src_len,dst_ptr,dst_len);
-//    memcpy(c_output,dst_ptr,dst_len*sizeof(unsigned char));
-//    vp8_bilinear_predict4x4_c(src_ptr,src_pixels_per_line,xoffset,yoffset,c_output,dst_pitch);
+    if (cl_initialized != CL_SUCCESS){
+        vp8_bilinear_predict4x4_c(src_ptr,src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch);
+        return;
+    }
 
     CL_BILINEAR_EXEC(cl_data.vp8_bilinear_predict4x4_kernel,src_ptr,src_len,
             src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch,global,dst_len,
             vp8_bilinear_predict4x4_c(src_ptr,src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch)
     );
-
-//    clFinish(cl_data.commands);
-
-//    for (i=0; i < dst_len; i++){
-//        if (c_output[i] != dst_ptr[i]){
-//            printf("4x4 c_output[%d] (%d) != dst_ptr[%d] (%d)\n",i,c_output[i],i,dst_ptr[i]);
-//            exit(1);
-//        }
-//    }
 #else
     vp8_bilinear_predict4x4_c(src_ptr,src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch);
 #endif
@@ -307,27 +242,15 @@ void vp8_bilinear_predict8x8_cl
     //int src_len = SRC_LEN(output1_width,output1_height,src_pixels_per_line);
     int src_len = BIL_SRC_LEN(8,9,src_pixels_per_line);
 
-//    size_t i;
-//    unsigned char c_output[dst_len];
-
-//    printf("bilinear 8x8: src_ptr = %p, src_len = %d, dst_ptr = %p, dst_len = %d\n",src_ptr,src_len,dst_ptr,dst_len);
-//    memcpy(c_output,dst_ptr,dst_len*sizeof(unsigned char));
-//    vp8_bilinear_predict8x8_c(src_ptr,src_pixels_per_line,xoffset,yoffset,c_output,dst_pitch);
-
+    if (cl_initialized != CL_SUCCESS){
+        vp8_bilinear_predict8x8_c(src_ptr,src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch);
+        return;
+    }
+    
     CL_BILINEAR_EXEC(cl_data.vp8_bilinear_predict8x8_kernel,src_ptr,src_len,
             src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch,global,dst_len,
             vp8_bilinear_predict8x8_c(src_ptr,src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch)
     );
-
-//    clFinish(cl_data.commands);
-
-//    for (i=0; i < dst_len; i++){
-//        if (c_output[i] != dst_ptr[i]){
-//            printf("8x8 c_output[%d] (%d) != dst_ptr[%d] (%d)\n",i,c_output[i],i,dst_ptr[i]);
-//            exit(1);
-//        }
-//    }
-
 #else
     vp8_bilinear_predict8x8_c(src_ptr,src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch);
 #endif
@@ -354,27 +277,15 @@ void vp8_bilinear_predict8x4_cl
 
     int src_len = BIL_SRC_LEN(4,9,src_pixels_per_line);
 
-//    size_t i;
-//    unsigned char c_output[dst_len];
-
-//    printf("bilinear 8x4: src_ptr = %p, src_len = %d, dst_ptr = %p, dst_len = %d\n",src_ptr,src_len,dst_ptr,dst_len);
-//    memcpy(c_output,dst_ptr,dst_len*sizeof(unsigned char));
-//    vp8_bilinear_predict8x4_c(src_ptr,src_pixels_per_line,xoffset,yoffset,c_output,dst_pitch);
+    if (cl_initialized != CL_SUCCESS){
+        vp8_bilinear_predict8x4_c(src_ptr,src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch);
+        return;
+    }
 
     CL_BILINEAR_EXEC(cl_data.vp8_bilinear_predict8x4_kernel,src_ptr,src_len,
             src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch,global,dst_len,
             vp8_bilinear_predict8x4_c(src_ptr,src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch)
     );
-
-//    clFinish(cl_data.commands);
-
-//    for (i=0; i < dst_len; i++){
-//        if (c_output[i] != dst_ptr[i]){
-//            printf("c_output[%d] (%d) != dst_ptr[%d] (%d)\n",i,c_output[i],i,dst_ptr[i]);
-//            exit(1);
-//        }
-//    }
-
 #else
     vp8_bilinear_predict8x4_c(src_ptr,src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch);
 #endif
@@ -400,36 +311,15 @@ void vp8_bilinear_predict16x16_cl
     int dst_len = DST_LEN(dst_pitch,16,16);
     int src_len = BIL_SRC_LEN(16,17,src_pixels_per_line);
 
-//    size_t i;
-//    unsigned char c_output[dst_len*sizeof(unsigned char)];
-//    unsigned char orig_dst[dst_len*sizeof(unsigned char)];
-
-//    printf("bilinear 16x16: src_ptr = %p, src_len = %d, dst_ptr = %p, dst_len = %d, pitch = %d\n",src_ptr,src_len,dst_ptr,dst_len,dst_pitch);
-//    clFinish(cl_data.commands);
-//    memcpy(c_output,dst_ptr,dst_len*sizeof(unsigned char));
-//    memcpy(orig_dst,dst_ptr,dst_len*sizeof(unsigned char));
-//    printf("memcpy done\n");
-//    vp8_bilinear_predict16x16_c(src_ptr,src_pixels_per_line,xoffset,yoffset,c_output,dst_pitch);
-//    printf("C version complete\n");
+    if (cl_initialized != CL_SUCCESS){
+        vp8_bilinear_predict16x16_c(src_ptr,src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch);
+        return;
+    }
 
     CL_BILINEAR_EXEC(cl_data.vp8_bilinear_predict16x16_kernel,src_ptr,src_len,
             src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch,global,dst_len,
             vp8_bilinear_predict16x16_c(src_ptr,src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch)
     );
-
-//    clFinish(cl_data.commands);
-
-//    printf("16x16 compare\n");
-//    printf("dst_ptr[%d] = %d\n", dst_len-1,dst_ptr[dst_len-1]);
-//    printf("c_output[%d] = %d\n", dst_len-1,c_output[dst_len-1]);
-
-//    for (i=0; i < dst_len; i++){
-//        if (c_output[i] != dst_ptr[i]){
-//            printf("16x16 c_output[%d] (%d) != dst_ptr[%d] (%d), orig_dst[%d] = %d\n",i,c_output[i],i,dst_ptr[i], i, orig_dst[i]);
-//            exit(1);
-//        }
-//    }
-//    printf("16x16 compare completed\n");
 #else
     vp8_bilinear_predict16x16_c(src_ptr,src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch);
 #endif

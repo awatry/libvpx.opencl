@@ -164,16 +164,6 @@ const char *filter_cl_file_name = "vp8/common/opencl/filter_cl.cl";
 
 #define CL_SIXTAP_PREDICT_EXEC(kernel,src_ptr,src_len, src_pixels_per_line, \
 xoffset,yoffset,dst_ptr,dst_pitch,thread_count,dst_len,altPath) \
-    if (cl_initialized != CL_SUCCESS){ \
-        if (cl_initialized == CL_NOT_INITIALIZED){ \
-            cl_initialized = cl_init_filter(); \
-        } \
-        if (cl_initialized != CL_SUCCESS){ \
-            altPath; \
-            return; \
-        } \
-    } \
-\
     /*Make space for kernel input/output data. Initialize the buffer as well if needed. */ \
     CL_ENSURE_BUF_SIZE(cl_data.srcData, CL_MEM_READ_ONLY|CL_MEM_COPY_HOST_PTR, \
         sizeof (unsigned char) * src_len, cl_data.srcAlloc, src_ptr-2, \
@@ -214,16 +204,6 @@ xoffset,yoffset,dst_ptr,dst_pitch,thread_count,dst_len,altPath) \
 
 #define CL_BILINEAR_EXEC(kernel,src_ptr,src_len, src_pixels_per_line, \
 xoffset,yoffset,dst_ptr,dst_pitch,thread_count,dst_len,altPath) \
-    if (cl_initialized != CL_SUCCESS){ \
-        if (cl_initialized == CL_NOT_INITIALIZED){ \
-            cl_initialized = cl_init_filter(); \
-        } \
-        if (cl_initialized != CL_SUCCESS){ \
-            altPath; \
-            return; \
-        } \
-    } \
-\
     /*Make space for kernel input/output data. Initialize the buffer as well if needed. */ \
     CL_ENSURE_BUF_SIZE(cl_data.srcData, CL_MEM_READ_ONLY|CL_MEM_COPY_HOST_PTR, \
         sizeof (unsigned char) * src_len, cl_data.srcAlloc, src_ptr, altPath\

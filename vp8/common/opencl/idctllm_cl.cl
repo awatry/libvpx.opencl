@@ -13,8 +13,8 @@ __kernel void vp8_short_idct4x4llm_kernel(
     int i;
     int a1, b1, c1, d1;
 
-    short *ip = input;
-    short *op = output;
+    __global short *ip = input;
+    __global short *op = output;
     int temp1, temp2;
     int shortpitch = pitch >> 1;
 
@@ -67,6 +67,7 @@ __kernel void vp8_short_idct4x4llm_kernel(
         ip += shortpitch;
         op += shortpitch;
     }
+
 }
 
 __kernel void vp8_short_idct4x4llm_1_kernel(
@@ -120,7 +121,6 @@ __kernel void vp8_dc_only_idct_add_kernel(
         dst_ptr += stride;
         pred_ptr += pitch;
     }
-
 }
 
 __kernel void vp8_short_inv_walsh4x4_kernel(
@@ -172,25 +172,22 @@ __kernel void vp8_short_inv_walsh4x4_kernel(
         ip += 4;
         op += 4;
     }
+
 }
 
 __kernel void vp8_short_inv_walsh4x4_1_kernel(
-    __global short *input,
+//    __global short *input,
+    short input,
     __global short *output
-)
-{
-    int i;
+){
     int a1;
-    __global short *op = output;
+    int tid;
+    tid = get_global_id(0);
 
-    a1 = ((input[0] + 3) >> 3);
-
-    for (i = 0; i < 4; i++)
+    if (tid < 16)
     {
-        op[0] = a1;
-        op[1] = a1;
-        op[2] = a1;
-        op[3] = a1;
-        op += 4;
+        //a1 = ((input[0] + 3) >> 3);
+        a1 = ((input + 3) >> 3);
+        output[tid] = (short)a1;
     }
 }
