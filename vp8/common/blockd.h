@@ -193,7 +193,6 @@ typedef struct
     short *dqcoeff;
     unsigned char  *predictor;
     short *diff;
-    short *reference;
 
     short *dequant;
 
@@ -216,7 +215,6 @@ typedef struct
 {
     DECLARE_ALIGNED(16, short, diff[400]);      /* from idct diff */
     DECLARE_ALIGNED(16, unsigned char,  predictor[384]);
-/* not used    DECLARE_ALIGNED(16, short, reference[384]); */
     DECLARE_ALIGNED(16, short, qcoeff[400]);
     DECLARE_ALIGNED(16, short, dqcoeff[400]);
     DECLARE_ALIGNED(16, char,  eobs[25]);
