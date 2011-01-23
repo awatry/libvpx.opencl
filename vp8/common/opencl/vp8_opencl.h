@@ -40,6 +40,18 @@ extern int cl_initialized;
 
 extern const char *vpx_codec_lib_dir(void);
 
+#define CL_FINISH \
+    if (cl_initialized == CL_SUCCESS){ \
+        /* //Wait for kernels to finish. */ \
+        clFinish(cl_data.commands); \
+    }
+
+#define CL_BARRIER \
+    if (cl_initialized == CL_SUCCESS){ \
+        /* Insert a barrier into the command queue. */ \
+        clEnqueueBarrier(cl_data.commands); \
+    }
+
 #define CL_CHECK_SUCCESS(cond,msg,alt,retCode) \
     if ( cond ){ \
         printf(msg);  \

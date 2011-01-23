@@ -47,16 +47,17 @@ void vp8_short_idct4x4llm_cl(short *input, short *output, int pitch)
     int err;
     size_t global = 1; //1 instance for now
 
+    if (cl_initialized != CL_SUCCESS){
+        vp8_short_idct4x4llm_c(input,output,pitch);
+        return;
+    }
+
+    printf("vp8_short_idct4x4llm_cl\n");
     clFinish(cl_data.commands);
 #ifdef NO_CL
     vp8_short_idct4x4llm_c(input,output,pitch);
     return;
 #endif
-
-    if (cl_initialized != CL_SUCCESS){
-        vp8_short_idct4x4llm_c(input,output,pitch);
-        return;
-    }
 
     CL_ENSURE_BUF_SIZE(cl_data.srcData, CL_MEM_READ_ONLY|CL_MEM_COPY_HOST_PTR,
             sizeof(short)*16, cl_data.srcAlloc, input,
@@ -94,7 +95,6 @@ void vp8_short_idct4x4llm_cl(short *input, short *output, int pitch)
     );
 
     clFinish(cl_data.commands);
-    printf("Ran 4x4 IDCT kernel\n");
 
     return;
 }
@@ -104,18 +104,17 @@ void vp8_short_idct4x4llm_1_cl(short *input, short *output, int pitch)
     int err;
     size_t global = 4;
 
+    if (cl_initialized != CL_SUCCESS){
+        vp8_short_idct4x4llm_1_c(input,output,pitch);
+        return;
+    }
+
+    printf("vp8_short_idct4x4llm_1_cl\n");
     clFinish(cl_data.commands);
 #ifdef NO_CL
     vp8_short_idct4x4llm_1_c(input,output,pitch);
     return;
 #endif
-
-    printf("short_idct4x4llm_1\n");
-
-    if (cl_initialized != CL_SUCCESS){
-        vp8_short_idct4x4llm_1_c(input,output,pitch);
-        return;
-    }
 
     CL_ENSURE_BUF_SIZE(cl_data.srcData, CL_MEM_READ_ONLY|CL_MEM_COPY_HOST_PTR,
             sizeof(short), cl_data.srcAlloc, input,
@@ -153,7 +152,6 @@ void vp8_short_idct4x4llm_1_cl(short *input, short *output, int pitch)
     );
 
     clFinish(cl_data.commands);
-    printf("Ran idct4x4llm_1 kernel\n");
 
     return;
 
@@ -165,18 +163,10 @@ void vp8_dc_only_idct_add_cl(short input_dc, unsigned char *pred_ptr, unsigned c
     int err;
     size_t global = 16;
 
-    clFinish(cl_data.commands);
-//#ifdef NO_CL
-//    vp8_dc_only_idct_add_c(input_dc, pred_ptr, dst_ptr, pitch, stride);
-//    return;
-//#endif
-
     if (cl_initialized != CL_SUCCESS){
         vp8_dc_only_idct_add_c(input_dc, pred_ptr, dst_ptr, pitch, stride);
         return;
     }
-
-    //printf("dc_only_idct_add_cl\n");
 
     CL_ENSURE_BUF_SIZE(cl_data.srcData, CL_MEM_READ_ONLY|CL_MEM_COPY_HOST_PTR,
             sizeof(unsigned char)*(4*pitch+4), cl_data.srcAlloc, pred_ptr,
@@ -216,27 +206,19 @@ void vp8_dc_only_idct_add_cl(short input_dc, unsigned char *pred_ptr, unsigned c
         vp8_dc_only_idct_add_c(input_dc, pred_ptr, dst_ptr, pitch, stride),
     );
 
-    clFinish(cl_data.commands);
-
     return;
 }
 
 void vp8_short_inv_walsh4x4_cl(short *input, short *output)
 {
     int err;
-    size_t global = 16;
-
-    clFinish(cl_data.commands);
-#ifdef NO_CL
-    vp8_short_inv_walsh4x4_c(input,output);
-    return;
-#endif
+    size_t global = 1;
 
     if (cl_initialized != CL_SUCCESS){
         vp8_short_inv_walsh4x4_c(input,output);
         return;
     }
-    
+
     CL_ENSURE_BUF_SIZE(cl_data.srcData,CL_MEM_READ_ONLY|CL_MEM_COPY_HOST_PTR,
             sizeof(cl_short)*16, cl_data.srcAlloc, input,
             vp8_short_inv_walsh4x4_c(input, output)
@@ -270,35 +252,27 @@ void vp8_short_inv_walsh4x4_cl(short *input, short *output)
         "Error: Failed to read output array!\n",
         vp8_short_inv_walsh4x4_c(input, output),
     );
-    
-    clFinish(cl_data.commands);
+
+    return;
 }
 
 void vp8_short_inv_walsh4x4_1_cl(short *input, short *output)
 {
     
     int err;
-    size_t global = 16;
-
-    //printf("short_inv_walsh4x4_1\n");
-
-    clFinish(cl_data.commands);
-#ifdef NO_CL
-    vp8_short_inv_walsh4x4_1_c(input,output);
-    return;
-#endif
+    size_t global = 1;
+    cl_int input_offset = 0;
+    cl_int output_offset = 0;
 
     if (cl_initialized != CL_SUCCESS){
         vp8_short_inv_walsh4x4_1_c(input,output);
         return;
     }
 
-/*
     CL_ENSURE_BUF_SIZE(cl_data.srcData,CL_MEM_READ_ONLY|CL_MEM_COPY_HOST_PTR,
             sizeof(short), cl_data.srcAlloc, input,
             vp8_short_inv_walsh4x4_1_c(input,output)
     );
-*/
 
     CL_ENSURE_BUF_SIZE(cl_data.destData,CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,
             sizeof(short)*16, cl_data.destAlloc, output,
@@ -307,9 +281,10 @@ void vp8_short_inv_walsh4x4_1_cl(short *input, short *output)
 
     //Set arguments and run kernel
     err = 0;
-//    err = clSetKernelArg(cl_data.vp8_short_inv_walsh4x4_1_kernel, 0, sizeof (cl_mem), &cl_data.srcData);
-    err = clSetKernelArg(cl_data.vp8_short_inv_walsh4x4_1_kernel, 0, sizeof (cl_short), &input[0]);
-    err |= clSetKernelArg(cl_data.vp8_short_inv_walsh4x4_1_kernel, 1, sizeof (cl_mem), &cl_data.destData);
+    err = clSetKernelArg(cl_data.vp8_short_inv_walsh4x4_1_kernel, 0, sizeof (cl_mem), &cl_data.srcData);
+    err |= clSetKernelArg(cl_data.vp8_short_inv_walsh4x4_1_kernel, 1, sizeof (cl_int), &input_offset);
+    err |= clSetKernelArg(cl_data.vp8_short_inv_walsh4x4_1_kernel, 2, sizeof (cl_mem), &cl_data.destData);
+    err |= clSetKernelArg(cl_data.vp8_short_inv_walsh4x4_1_kernel, 3, sizeof (cl_int), &output_offset);
     CL_CHECK_SUCCESS( err != CL_SUCCESS,
         "Error: Failed to set kernel arguments!\n",
         vp8_short_inv_walsh4x4_1_c(input,output),
@@ -329,5 +304,6 @@ void vp8_short_inv_walsh4x4_1_cl(short *input, short *output)
         "Error: Failed to read output array!\n",
         vp8_short_inv_walsh4x4_1_c(input,output),
     );
-    clFinish(cl_data.commands);
+
+    return;
 }
