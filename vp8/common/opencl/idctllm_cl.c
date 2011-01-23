@@ -40,11 +40,18 @@ int cl_init_idct() {
 }
 
 #define max(x,y) (x > y ? x: y)
+#define NO_CL
 
 void vp8_short_idct4x4llm_cl(short *input, short *output, int pitch)
 {
     int err;
     size_t global = 1; //1 instance for now
+
+    clFinish(cl_data.commands);
+#ifdef NO_CL
+    vp8_short_idct4x4llm_c(input,output,pitch);
+    return;
+#endif
 
     if (cl_initialized != CL_SUCCESS){
         vp8_short_idct4x4llm_c(input,output,pitch);
@@ -96,6 +103,12 @@ void vp8_short_idct4x4llm_1_cl(short *input, short *output, int pitch)
 {
     int err;
     size_t global = 4;
+
+    clFinish(cl_data.commands);
+#ifdef NO_CL
+    vp8_short_idct4x4llm_1_c(input,output,pitch);
+    return;
+#endif
 
     printf("short_idct4x4llm_1\n");
 
@@ -152,21 +165,27 @@ void vp8_dc_only_idct_add_cl(short input_dc, unsigned char *pred_ptr, unsigned c
     int err;
     size_t global = 16;
 
+    clFinish(cl_data.commands);
+//#ifdef NO_CL
+//    vp8_dc_only_idct_add_c(input_dc, pred_ptr, dst_ptr, pitch, stride);
+//    return;
+//#endif
+
     if (cl_initialized != CL_SUCCESS){
-        vp8_dc_only_idct_add_cl(input_dc, pred_ptr, dst_ptr, pitch, stride);
+        vp8_dc_only_idct_add_c(input_dc, pred_ptr, dst_ptr, pitch, stride);
         return;
     }
 
-    printf("dc_only_idct_add_cl\n");
+    //printf("dc_only_idct_add_cl\n");
 
     CL_ENSURE_BUF_SIZE(cl_data.srcData, CL_MEM_READ_ONLY|CL_MEM_COPY_HOST_PTR,
             sizeof(unsigned char)*(4*pitch+4), cl_data.srcAlloc, pred_ptr,
-            vp8_dc_only_idct_add_cl(input_dc, pred_ptr, dst_ptr, pitch, stride)
+            vp8_dc_only_idct_add_c(input_dc, pred_ptr, dst_ptr, pitch, stride)
     );
 
     CL_ENSURE_BUF_SIZE(cl_data.destData,CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,
             sizeof(unsigned char) * ( 4 * stride + 4), cl_data.destAlloc, dst_ptr,
-            vp8_dc_only_idct_add_cl(input_dc, pred_ptr, dst_ptr, pitch, stride)
+            vp8_dc_only_idct_add_c(input_dc, pred_ptr, dst_ptr, pitch, stride)
     );
 
     //Set arguments and run kernel
@@ -178,7 +197,7 @@ void vp8_dc_only_idct_add_cl(short input_dc, unsigned char *pred_ptr, unsigned c
     err |= clSetKernelArg(cl_data.vp8_dc_only_idct_add_kernel, 4, sizeof (int), &stride);
     CL_CHECK_SUCCESS( err != CL_SUCCESS,
         "Error: Failed to set kernel arguments!\n",
-        vp8_dc_only_idct_add_cl(input_dc, pred_ptr, dst_ptr, pitch, stride),
+        vp8_dc_only_idct_add_c(input_dc, pred_ptr, dst_ptr, pitch, stride),
     );
 
     /* Execute the kernel */
@@ -186,7 +205,7 @@ void vp8_dc_only_idct_add_cl(short input_dc, unsigned char *pred_ptr, unsigned c
     CL_CHECK_SUCCESS( err != CL_SUCCESS,
         "Error: Failed to execute kernel!\n",
         printf("err = %d\n",err);
-        vp8_dc_only_idct_add_cl(input_dc, pred_ptr, dst_ptr, pitch, stride),
+        vp8_dc_only_idct_add_c(input_dc, pred_ptr, dst_ptr, pitch, stride),
     );
 
     /* Read back the result data from the device */
@@ -194,7 +213,7 @@ void vp8_dc_only_idct_add_cl(short input_dc, unsigned char *pred_ptr, unsigned c
             sizeof(unsigned char) * ( 4 * stride + 4), dst_ptr, 0, NULL, NULL);
     CL_CHECK_SUCCESS(err != CL_SUCCESS,
         "Error: Failed to read output array!\n",
-        vp8_dc_only_idct_add_cl(input_dc, pred_ptr, dst_ptr, pitch, stride),
+        vp8_dc_only_idct_add_c(input_dc, pred_ptr, dst_ptr, pitch, stride),
     );
 
     clFinish(cl_data.commands);
@@ -206,6 +225,12 @@ void vp8_short_inv_walsh4x4_cl(short *input, short *output)
 {
     int err;
     size_t global = 16;
+
+    clFinish(cl_data.commands);
+#ifdef NO_CL
+    vp8_short_inv_walsh4x4_c(input,output);
+    return;
+#endif
 
     if (cl_initialized != CL_SUCCESS){
         vp8_short_inv_walsh4x4_c(input,output);
@@ -254,6 +279,14 @@ void vp8_short_inv_walsh4x4_1_cl(short *input, short *output)
     
     int err;
     size_t global = 16;
+
+    //printf("short_inv_walsh4x4_1\n");
+
+    clFinish(cl_data.commands);
+#ifdef NO_CL
+    vp8_short_inv_walsh4x4_1_c(input,output);
+    return;
+#endif
 
     if (cl_initialized != CL_SUCCESS){
         vp8_short_inv_walsh4x4_1_c(input,output);
