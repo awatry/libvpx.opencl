@@ -33,6 +33,7 @@ extern void cl_destroy(int new_status);
 extern int cl_load_program(cl_program *prog_ref, const char *file_name, const char *opts);
 
 #define MAX_NUM_PLATFORMS 4
+#define MAX_NUM_DEVICES 10
 
 #define CL_TRIED_BUT_FAILED 1
 #define CL_NOT_INITIALIZED -1

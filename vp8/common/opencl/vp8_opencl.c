@@ -89,9 +89,10 @@ void cl_destroy(int new_status) {
 }
 
 int cl_init() {
-    int err;
+    int err,i;
     cl_platform_id platform_ids[MAX_NUM_PLATFORMS];
-    cl_uint num_found;
+    cl_uint num_found, num_devices;
+    cl_device_id devices[MAX_NUM_DEVICES];
 
     //Don't allow multiple CL contexts..
     if (cl_initialized != CL_NOT_INITIALIZED)
@@ -104,19 +105,44 @@ int cl_init() {
         printf("Couldn't query platform IDs\n");
         return CL_TRIED_BUT_FAILED;
     }
+
     if (num_found == 0) {
         printf("No platforms found\n");
         return CL_TRIED_BUT_FAILED;
     }
 
-    //Favor the GPU, but fall back to any other available device if necessary
-    err = clGetDeviceIDs(platform_ids[0], CL_DEVICE_TYPE_GPU, 1, &cl_data.device_id, NULL);
-    if (err != CL_SUCCESS) {
-        err = clGetDeviceIDs(platform_ids[0], CL_DEVICE_TYPE_ALL, 1, &cl_data.device_id, NULL);
+#if 1
+//    printf("Enumerating platforms\n");
+    //Enumerate the platforms found
+    for (i = 0; i < num_found; i++){
+    	char buf[2048];
+    	size_t len;
+    	err = clGetPlatformInfo( platform_ids[i], CL_PLATFORM_VENDOR, 2048, &buf, &len);
+    	if (err != CL_SUCCESS){
+    		printf("Error retrieving platform vendor for platform %d",i);
+    		return CL_TRIED_BUT_FAILED;
+    	}
+//    	printf("Platform %d: %s\n",i,buf);
+
+    	//Try to find a valid compute device
+    	//Favor the GPU, but fall back to any other available device if necessary
+        err = clGetDeviceIDs(platform_ids[0], CL_DEVICE_TYPE_GPU, MAX_NUM_DEVICES, devices, &num_devices);
+//        printf("found %d GPU devices\n", num_devices);
         if (err != CL_SUCCESS) {
-            printf("Error: Failed to create a device group!\n");
-            return CL_TRIED_BUT_FAILED;
+            err = clGetDeviceIDs(platform_ids[0], CL_DEVICE_TYPE_ALL, MAX_NUM_DEVICES, devices, &num_devices);
+            if (err != CL_SUCCESS) {
+                printf("Error: Failed to create a device group!\n");
+                return CL_TRIED_BUT_FAILED;
+            }
+//            printf("found %d generic devices\n", num_devices);
         }
+        cl_data.device_id = devices[0];
+    }
+//    printf("Done enumerating\n");
+#endif
+    if (cl_data.device_id == NULL){
+    	printf("Error: Failed to find a valid OpenCL device. Using CPU paths\n");
+    	return CL_TRIED_BUT_FAILED;
     }
 
     // Create the compute context
