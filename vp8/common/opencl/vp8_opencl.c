@@ -205,8 +205,8 @@ char *cl_read_file(const char* file_name) {
     fseek(f, 0, SEEK_END);
     pos = ftell(f);
     fseek(f, 0, SEEK_SET);
+    bytes = malloc(pos+1);
 
-    bytes = malloc(pos);
     if (bytes == NULL) {
         fclose(f);
         return NULL;
@@ -219,7 +219,9 @@ char *cl_read_file(const char* file_name) {
         return NULL;
     }
 
+    bytes[pos] = '\0'; //null terminate the source string
     fclose(f);
+
 
     return bytes;
 }

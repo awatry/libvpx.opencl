@@ -162,15 +162,15 @@ __kernel void vp8_short_inv_walsh4x4_kernel(
         c1t = (short4)(output[2], output[6], output[10], output[14]);
         d1t = (short4)(output[3], output[7], output[11], output[15]);
 
-        a = a + a1t + 3;
+        a = a + a1t + (short)3;
         b = b + b1t;
         c = c - c1t;
-        d = d - d1t + 3;
+        d = d - d1t + (short)3;
 
-        a2v = (a + b) >> 3;
-        b2v = (c + d) >> 3;
-        c2v = (a - b) >> 3;
-        d2v = (d - c) >> 3;
+        a2v = (a + b) >> (short)3;
+        b2v = (c + d) >> (short)3;
+        c2v = (a - b) >> (short)3;
+        d2v = (d - c) >> (short)3;
 
         output[0] = a2v.x;
         output[1] = b2v.x;
