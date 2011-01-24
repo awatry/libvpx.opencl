@@ -14,6 +14,10 @@
 #include "vpx_mem/vpx_mem.h"
 #include "reconintra.h"
 
+#if CONFIG_OPENCL
+#include "opencl/vp8_opencl.h"
+#endif
+
 void vp8_predict_intra4x4(BLOCKD *x,
                           int b_mode,
                           unsigned char *predictor)

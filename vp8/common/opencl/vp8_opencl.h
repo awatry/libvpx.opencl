@@ -29,7 +29,8 @@ extern "C" {
 
 extern char *cl_read_file(const char* file_name);
 extern int cl_init();
-extern void cl_destroy();
+extern void cl_destroy(int new_status);
+extern int cl_load_program(cl_program *prog_ref, const char *file_name, const char *opts);
 
 #define MAX_NUM_PLATFORMS 4
 
@@ -39,14 +40,34 @@ extern int cl_initialized;
 
 extern const char *vpx_codec_lib_dir(void);
 
+#define CL_FINISH \
+    if (cl_initialized == CL_SUCCESS){ \
+        /* //Wait for kernels to finish. */ \
+        clFinish(cl_data.commands); \
+    }
+
+#define CL_BARRIER \
+    if (cl_initialized == CL_SUCCESS){ \
+        /* Insert a barrier into the command queue. */ \
+        clEnqueueBarrier(cl_data.commands); \
+    }
+
 #define CL_CHECK_SUCCESS(cond,msg,alt,retCode) \
     if ( cond ){ \
         printf(msg);  \
-        cl_destroy(); \
-        cl_initialized = CL_TRIED_BUT_FAILED; \
+        printf("CL operation failed.\n");\
+        cl_destroy(CL_TRIED_BUT_FAILED); \
         alt; \
         return retCode; \
     }
+
+#define CL_CREATE_KERNEL(data,program,name,str_name) \
+    data.name = clCreateKernel(data.program, str_name , &err); \
+    CL_CHECK_SUCCESS(err != CL_SUCCESS || !data.name, \
+        "Error: Failed to create compute kernel!\n", \
+        ,\
+        CL_TRIED_BUT_FAILED \
+    );
 
 #define CL_ENSURE_BUF_SIZE(bufRef, bufType, needSize, curSize, dataPtr, altPath) \
     if ( needSize > curSize || bufRef == NULL){ \
@@ -58,7 +79,6 @@ extern const char *vpx_codec_lib_dir(void);
                 err != CL_SUCCESS, \
                 "Error copying data to buffer! Using CPU path!\n", \
                 altPath, \
-                CL_TRIED_BUT_FAILED \
             ); \
         } else {\
             bufRef = clCreateBuffer(cl_data.context, bufType, needSize, NULL, NULL);\
@@ -66,7 +86,6 @@ extern const char *vpx_codec_lib_dir(void);
         CL_CHECK_SUCCESS(!bufRef, \
             "Error: Failed to allocate buffer. Using CPU path!\n", \
             altPath, \
-            CL_TRIED_BUT_FAILED \
         ); \
         curSize = needSize; \
     } else { \
@@ -76,50 +95,15 @@ extern const char *vpx_codec_lib_dir(void);
             \
             CL_CHECK_SUCCESS( err != CL_SUCCESS, \
                 "Error: Failed to write to buffer!\n", \
-                printf("srcData = %p, intData = %p, destData = %p, bufRef = %p\n", cl_data.srcData, cl_data.intData, cl_data.destData, bufRef);\
                 altPath, \
-                CL_TRIED_BUT_FAILED \
             ); \
         }\
     }
 
-#define CL_LOAD_PROGRAM(prog_ref, file_name, opts) \
-    kernel_src = cl_read_file(file_name); \
-    prog_ref = NULL; \
-    if (kernel_src != NULL){ \
-        printf("creating program from source file\n"); \
-        prog_ref = clCreateProgramWithSource(cl_data.context, 1, &kernel_src, NULL, &err); \
-        printf("Created program\n"); \
-        free(kernel_src); \
-    } else { \
-        cl_destroy(); \
-        printf("Couldn't find OpenCL source files. \nUsing software path.\n"); \
-        return CL_TRIED_BUT_FAILED; \
-    } \
-\
-    if (prog_ref == NULL) { \
-        printf("Error: Couldn't create program\n"); \
-        return CL_TRIED_BUT_FAILED; \
-    } \
-\
-    if (err != CL_SUCCESS){ \
-        printf("Error creating program: %d\n", err); \
-    } \
-\
-    /* Build the program executable */ \
-    printf("Building program\n"); \
-    err = clBuildProgram(prog_ref, 0, NULL, opts, NULL, NULL); \
-    printf("Program built\n"); \
-    if (err != CL_SUCCESS) { \
-        size_t len; \
-        char buffer[2048]; \
-\
-        printf("Error: Failed to build program executable!\n"); \
-        clGetProgramBuildInfo(prog_ref, cl_data.device_id, CL_PROGRAM_BUILD_LOG, sizeof (buffer), buffer, &len); \
-        printf("Compile output: %s\n", buffer);\
-        return CL_TRIED_BUT_FAILED; \
-    } \
-
+#define CL_RELEASE_KERNEL(kernel) \
+    if (kernel) \
+        clReleaseKernel(kernel); \
+    kernel = NULL;
 
 typedef struct VP8_COMMON_CL {
     cl_device_id device_id; // compute device id
@@ -127,7 +111,23 @@ typedef struct VP8_COMMON_CL {
     cl_command_queue commands; // compute command queue
 
     cl_program filter_program; // compute program for subpixel/bilinear filters
+    cl_kernel vp8_block_variation_kernel;
+    cl_kernel vp8_sixtap_predict_kernel;
+    cl_kernel vp8_sixtap_predict8x4_kernel;
+    cl_kernel vp8_sixtap_predict8x8_kernel;
+    cl_kernel vp8_sixtap_predict16x16_kernel;
+    cl_kernel vp8_bilinear_predict4x4_kernel;
+    cl_kernel vp8_bilinear_predict8x4_kernel;
+    cl_kernel vp8_bilinear_predict8x8_kernel;
+    cl_kernel vp8_bilinear_predict16x16_kernel;
+
     cl_program idct_program;
+    cl_kernel vp8_short_inv_walsh4x4_1_kernel;
+    cl_kernel vp8_short_inv_walsh4x4_kernel;
+    cl_kernel vp8_dc_only_idct_add_kernel;
+    cl_kernel vp8_short_idct4x4llm_1_kernel;
+    cl_kernel vp8_short_idct4x4llm_kernel;
+
 
     cl_kernel filter_block2d_first_pass_kernel; // compute kernel
     cl_kernel filter_block2d_second_pass_kernel; // compute kernel
@@ -137,12 +137,11 @@ typedef struct VP8_COMMON_CL {
 
     cl_mem srcData; //Source frame data
     size_t srcAlloc; //Amount of allocated CL memory for srcData
-    cl_mem intData; //Intermediate data passed from 1st to 2nd pass
-    size_t intAlloc; //Amount of allocated CL memory for intData
-    size_t intSize; //Size of intermediate data.
     cl_mem destData; //Destination data for 2nd pass.
     size_t destAlloc; //Amount of allocated CL memory for destData
-    cl_mem filterData; //vp8_filter row
+    cl_mem intData; //Intermediate data pointer. Used as scratch data
+    size_t intAlloc; //Size of intData
+
 } VP8_COMMON_CL;
 
 extern VP8_COMMON_CL cl_data;

@@ -11,6 +11,9 @@
 
 #include "invtrans.h"
 
+#if CONFIG_OPENCL
+#include "opencl/vp8_opencl.h"
+#endif
 
 
 static void recon_dcblock(MACROBLOCKD *x)
@@ -31,6 +34,11 @@ void vp8_inverse_transform_b(const vp8_idct_rtcd_vtable_t *rtcd, BLOCKD *b, int 
         IDCT_INVOKE(rtcd, idct16)(b->dqcoeff, b->diff, pitch);
     else
         IDCT_INVOKE(rtcd, idct1)(b->dqcoeff, b->diff, pitch);
+
+#if CONFIG_OPENCL
+    CL_FINISH;
+#endif
+
 }
 
 
@@ -41,6 +49,10 @@ void vp8_inverse_transform_mby(const vp8_idct_rtcd_vtable_t *rtcd, MACROBLOCKD *
     /* do 2nd order transform on the dc block */
     IDCT_INVOKE(rtcd, iwalsh16)(x->block[24].dqcoeff, x->block[24].diff);
 
+#if CONFIG_OPENCL
+    CL_FINISH;
+#endif
+    
     recon_dcblock(x);
 
     for (i = 0; i < 16; i++)
@@ -71,6 +83,10 @@ void vp8_inverse_transform_mb(const vp8_idct_rtcd_vtable_t *rtcd, MACROBLOCKD *x
         /* do 2nd order transform on the dc block */
 
         IDCT_INVOKE(rtcd, iwalsh16)(&x->block[24].dqcoeff[0], x->block[24].diff);
+#if CONFIG_OPENCL
+        CL_FINISH;
+#endif
+
         recon_dcblock(x);
     }
 

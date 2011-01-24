@@ -179,10 +179,18 @@ endif
 #Append OpenCL source files to source listing if needed
 VP8_COMMON_SRCS-$(CONFIG_OPENCL) += common/opencl/vp8_opencl.c
 VP8_COMMON_SRCS-$(CONFIG_OPENCL) += common/opencl/vp8_opencl.h
+
 VP8_COMMON_SRCS-$(CONFIG_OPENCL) += common/opencl/filter_cl.h
+VP8_COMMON_SRCS-$(CONFIG_OPENCL) += common/opencl/filter_cl.c
 VP8_COMMON_SRCS-$(CONFIG_OPENCL) += common/opencl/filter_cl.cl
 VP8_COMMON_SRCS-$(CONFIG_OPENCL) += common/opencl/subpixel_cl.h
+
+VP8_COMMON_SRCS-$(CONFIG_OPENCL) += common/opencl/idctllm_cl.h
+VP8_COMMON_SRCS-$(CONFIG_OPENCL) += common/opencl/idctllm_cl.c
+VP8_COMMON_SRCS-$(CONFIG_OPENCL) += common/opencl/idctllm_cl.cl
+VP8_COMMON_SRCS-$(CONFIG_OPENCL) += common/opencl/idct_cl.h
+
+
 VP8_COMMON_SRCS-$(CONFIG_OPENCL) += common/opencl/opencl_systemdependent.c
-VP8_COMMON_SRCS-$(CONFIG_OPENCL) += common/opencl/filter_cl.c
 VP8_COMMON_SRCS-$(HAVE_DLOPEN) += common/opencl/dynamic_cl.c
 VP8_COMMON_SRCS-$(HAVE_DLOPEN) += common/opencl/dynamic_cl.h
