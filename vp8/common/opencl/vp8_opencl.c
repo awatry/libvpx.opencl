@@ -10,6 +10,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 #include "vp8_opencl.h"
 
 int cl_initialized = CL_NOT_INITIALIZED;
