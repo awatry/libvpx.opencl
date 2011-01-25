@@ -112,17 +112,17 @@ int cl_init() {
     }
 
 #if 1
-//    printf("Enumerating platforms\n");
+    //printf("Enumerating %d platform(s)\n", num_found);
     //Enumerate the platforms found
     for (i = 0; i < num_found; i++){
     	char buf[2048];
     	size_t len;
-    	err = clGetPlatformInfo( platform_ids[i], CL_PLATFORM_VENDOR, 2048, &buf, &len);
+    	err = clGetPlatformInfo( platform_ids[i], CL_PLATFORM_VENDOR, sizeof(buf), buf, &len);
     	if (err != CL_SUCCESS){
     		printf("Error retrieving platform vendor for platform %d",i);
     		return CL_TRIED_BUT_FAILED;
     	}
-//    	printf("Platform %d: %s\n",i,buf);
+//   	printf("Platform %d: %s\n",i,buf);
 
     	//Try to find a valid compute device
     	//Favor the GPU, but fall back to any other available device if necessary
