@@ -949,23 +949,24 @@ process_common_toolchain() {
     	enable runtime_cpu_detect
 	
         #Use dlopen() to load OpenCL when possible.
-        case ${toolchain} in
+		case ${toolchain} in
             *darwin10*)
                 add_extralibs -framework OpenCL
                 ;;
-            *)
-                if check_header dlfcn.h; then
+            *-win32-gcc)
+				if check_header dlfcn.h; then
                     add_extralibs -ldl 
                     enable dlopen
                 else
-                    case ${toolchain} in
-                        *-win32-gcc)
-                            add_extralibs --library OpenCL
-                            ;;
-                        *)
-                            add_extralibs -lOpenCL
-                            ;;
-                    esac
+                    add_extralibs -L/cygdrive/c/Windows/System32 -lOpenCL
+                fi
+                ;;
+            *)
+				if check_header dlfcn.h; then
+                    add_extralibs -ldl 
+                    enable dlopen
+                else
+                    add_extralibs -lOpenCL
                 fi
                 ;;
         esac

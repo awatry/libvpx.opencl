@@ -40,7 +40,11 @@ void vp8_arch_opencl_common_init(VP8_COMMON *ctx)
     VP8_COMMON_RTCD *rtcd = &ctx->rtcd;
 
 #if HAVE_DLOPEN
-    if (load_cl("libOpenCL.so")){
+#if WIN32 //Windows .dll has no lib prefix and no extension
+    	if (load_cl("OpenCL")){
+#else   //But *nix needs full name
+    	if (load_cl("libOpenCL.so")){
+#endif
 #endif
         cl_initialized = cl_init();
         if ( cl_initialized != CL_SUCCESS)
