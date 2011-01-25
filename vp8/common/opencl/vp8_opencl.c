@@ -127,19 +127,24 @@ int cl_init() {
 
     	//Try to find a valid compute device
     	//Favor the GPU, but fall back to any other available device if necessary
+#ifdef __APPLE__
+    	printf("Apple system. Running CL as CPU-only for now...\n");
+        err = clGetDeviceIDs(platform_ids[0], CL_DEVICE_TYPE_CPU, MAX_NUM_DEVICES, devices, &num_devices);
+#else
         err = clGetDeviceIDs(platform_ids[0], CL_DEVICE_TYPE_GPU, MAX_NUM_DEVICES, devices, &num_devices);
-//        printf("found %d GPU devices\n", num_devices);
-        if (err != CL_SUCCESS) {
-            err = clGetDeviceIDs(platform_ids[0], CL_DEVICE_TYPE_ALL, MAX_NUM_DEVICES, devices, &num_devices);
-            if (err != CL_SUCCESS) {
-                printf("Error: Failed to create a device group!\n");
-                return CL_TRIED_BUT_FAILED;
-            }
-//            printf("found %d generic devices\n", num_devices);
-        }
-        cl_data.device_id = devices[0];
-    }
-//    printf("Done enumerating\n");
+#endif //__APPLE__
+    	//        printf("found %d GPU devices\n", num_devices);
+    	        if (err != CL_SUCCESS) {
+    	            err = clGetDeviceIDs(platform_ids[0], CL_DEVICE_TYPE_ALL, MAX_NUM_DEVICES, devices, &num_devices);
+    	            if (err != CL_SUCCESS) {
+    	                printf("Error: Failed to create a device group!\n");
+    	                return CL_TRIED_BUT_FAILED;
+    	            }
+    	//            printf("found %d generic devices\n", num_devices);
+    	        }
+    	        cl_data.device_id = devices[0];
+    	    }
+    	//    printf("Done enumerating\n");
 #endif
     if (cl_data.device_id == NULL){
     	printf("Error: Failed to find a valid OpenCL device. Using CPU paths\n");

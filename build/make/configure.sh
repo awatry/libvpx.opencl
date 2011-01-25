@@ -951,6 +951,7 @@ process_common_toolchain() {
         #Use dlopen() to load OpenCL when possible.
         case ${toolchain} in
             *darwin10*)
+				check_add_cflags -D__APPLE__
                 add_extralibs -framework OpenCL
                 ;;
             *-win32-gcc)
