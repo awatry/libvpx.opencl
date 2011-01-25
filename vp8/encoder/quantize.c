@@ -29,7 +29,7 @@ void vp8_fast_quantize_b_c(BLOCK *b, BLOCKD *d)
     short *quant_ptr       = b->quant;
     short *quant_shift_ptr = b->quant_shift;
     short *qcoeff_ptr      = d->qcoeff_base + d->qcoeff_offset;
-    short *dqcoeff_ptr     = d->dqcoeff;
+    short *dqcoeff_ptr     = d->dqcoeff_base + d->dqcoeff_offset;
     short *dequant_ptr     = d->dequant;
 
     vpx_memset(qcoeff_ptr, 0, 32);
@@ -76,7 +76,7 @@ void vp8_regular_quantize_b(BLOCK *b, BLOCKD *d)
     short *quant_ptr       = b->quant;
     short *quant_shift_ptr = b->quant_shift;
     short *qcoeff_ptr      = d->qcoeff_base + d->qcoeff_offset;
-    short *dqcoeff_ptr     = d->dqcoeff;
+    short *dqcoeff_ptr     = d->dqcoeff_base + d->dqcoeff_offset;
     short *dequant_ptr     = d->dequant;
     short zbin_oq_value    = b->zbin_extra;
 
@@ -140,7 +140,7 @@ void vp8_strict_quantize_b(BLOCK *b, BLOCKD *d)
     quant_ptr       = b->quant;
     quant_shift_ptr = b->quant_shift;
     qcoeff_ptr      = d->qcoeff_base + d->qcoeff_offset;
-    dqcoeff_ptr     = d->dqcoeff;
+    dqcoeff_ptr     = d->dqcoeff_base + d->dqcoeff_offset;
     dequant_ptr     = d->dequant;
     eob = - 1;
     vpx_memset(qcoeff_ptr, 0, 32);
@@ -187,7 +187,7 @@ void vp8_fast_quantize_b_c(BLOCK *b, BLOCKD *d)
     short *round_ptr   = b->round;
     short *quant_ptr   = b->quant;
     short *qcoeff_ptr  = d->qcoeff_base + d->qcoeff_offset;
-    short *dqcoeff_ptr = d->dqcoeff;
+    short *dqcoeff_ptr = d->dqcoeff_base + d->dqcoeff_offset;
     short *dequant_ptr = d->dequant;
 
     eob = -1;
@@ -223,7 +223,7 @@ void vp8_regular_quantize_b(BLOCK *b, BLOCKD *d)
     short *round_ptr      = b->round;
     short *quant_ptr      = b->quant;
     short *qcoeff_ptr     = d->qcoeff_base + d->qcoeff_offset;
-    short *dqcoeff_ptr    = d->dqcoeff;
+    short *dqcoeff_ptr    = d->dqcoeff_base + d->dqcoeff_offset;
     short *dequant_ptr    = d->dequant;
     short zbin_oq_value   = b->zbin_extra;
 

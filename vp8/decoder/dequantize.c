@@ -22,7 +22,7 @@ extern void vp8_short_idct4x4llm_1_c(short *input, short *output, int pitch);
 void vp8_dequantize_b_c(BLOCKD *d)
 {
     int i;
-    short *DQ  = d->dqcoeff;
+    short *DQ  = d->dqcoeff_base + d->dqcoeff_offset;
     short *Q   = d->qcoeff_base + d->qcoeff_offset;
     short *DQC = d->dequant;
 

@@ -23,7 +23,7 @@ static void recon_dcblock(MACROBLOCKD *x)
 
     for (i = 0; i < 16; i++)
     {
-        x->block[i].dqcoeff[0] = b->diff[i];
+        *(x->block[i].dqcoeff_base+x->block[i].dqcoeff_offset) = b->diff[i];
     }
 
 }
@@ -31,9 +31,9 @@ static void recon_dcblock(MACROBLOCKD *x)
 void vp8_inverse_transform_b(const vp8_idct_rtcd_vtable_t *rtcd, BLOCKD *b, int pitch)
 {
     if (b->eob > 1)
-        IDCT_INVOKE(rtcd, idct16)(b->dqcoeff, b->diff, pitch);
+        IDCT_INVOKE(rtcd, idct16)(b->dqcoeff_base + b->dqcoeff_offset, b->diff, pitch);
     else
-        IDCT_INVOKE(rtcd, idct1)(b->dqcoeff, b->diff, pitch);
+        IDCT_INVOKE(rtcd, idct1)(b->dqcoeff_base + b->dqcoeff_offset, b->diff, pitch);
 
 #if CONFIG_OPENCL
     CL_FINISH;
@@ -47,7 +47,7 @@ void vp8_inverse_transform_mby(const vp8_idct_rtcd_vtable_t *rtcd, MACROBLOCKD *
     int i;
 
     /* do 2nd order transform on the dc block */
-    IDCT_INVOKE(rtcd, iwalsh16)(x->block[24].dqcoeff, x->block[24].diff);
+    IDCT_INVOKE(rtcd, iwalsh16)(x->block[24].dqcoeff_base + x->block[23].dqcoeff_offset, x->block[24].diff);
 
 #if CONFIG_OPENCL
     CL_FINISH;
@@ -81,8 +81,8 @@ void vp8_inverse_transform_mb(const vp8_idct_rtcd_vtable_t *rtcd, MACROBLOCKD *x
         x->mode_info_context->mbmi.mode != SPLITMV)
     {
         /* do 2nd order transform on the dc block */
-
-        IDCT_INVOKE(rtcd, iwalsh16)(&x->block[24].dqcoeff[0], x->block[24].diff);
+        BLOCKD b = x->block[24];
+        IDCT_INVOKE(rtcd, iwalsh16)(b.dqcoeff_base+b.dqcoeff_offset, b.diff);
 #if CONFIG_OPENCL
         CL_FINISH;
 #endif

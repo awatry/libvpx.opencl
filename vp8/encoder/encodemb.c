@@ -304,7 +304,7 @@ void vp8_optimize_b(MACROBLOCK *mb, int ib, int type,
     dequant_ptr = d->dequant;
     coeff_ptr = b->coeff;
     qcoeff_ptr = d->qcoeff_base + d->qcoeff_offset;
-    dqcoeff_ptr = d->dqcoeff;
+    dqcoeff_ptr = d->dqcoeff_base + d->qcoeff_offset;
     i0 = !type;
     eob = d->eob;
 

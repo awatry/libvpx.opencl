@@ -35,7 +35,7 @@ void vp8_fast_quantize_b_mmx(BLOCK *b, BLOCKD *d)
     short *round_ptr   = b->round;
     short *quant_ptr   = b->quant;
     short *qcoeff_ptr  = d->qcoeff_base + d->qcoeff_offset;
-    short *dqcoeff_ptr = d->dqcoeff;
+    short *dqcoeff_ptr = d->dqcoeff_base + d->dqcoeff_offset;
     short *dequant_ptr = d->dequant;
 
     d->eob = vp8_fast_quantize_b_impl_mmx(
@@ -55,7 +55,7 @@ int vp8_mbblock_error_mmx_impl(short *coeff_ptr, short *dcoef_ptr, int dc);
 int vp8_mbblock_error_mmx(MACROBLOCK *mb, int dc)
 {
     short *coeff_ptr =  mb->block[0].coeff;
-    short *dcoef_ptr =  mb->e_mbd.block[0].dqcoeff;
+    short *dcoef_ptr =  mb->e_mbd.block[0].dqcoeff_base + mb->e_mbd.block[0].dqcoeff_offset;
     return vp8_mbblock_error_mmx_impl(coeff_ptr, dcoef_ptr, dc);
 }
 
@@ -99,7 +99,7 @@ void vp8_fast_quantize_b_sse2(BLOCK *b, BLOCKD *d)
     short *round_ptr   = b->round;
     short *quant_ptr   = b->quant;
     short *qcoeff_ptr  = d->qcoeff_base + d->qcoeff_offset;
-    short *dqcoeff_ptr = d->dqcoeff;
+    short *dqcoeff_ptr = d->dqcoeff_base + d->dqcoeff_offset;
     short *dequant_ptr = d->dequant;
 
     d->eob = vp8_fast_quantize_b_impl_sse2(
@@ -130,7 +130,7 @@ void vp8_regular_quantize_b_sse2(BLOCK *b,BLOCKD *d)
     short *round_ptr      = b->round;
     short *quant_ptr      = b->quant;
     short *qcoeff_ptr     = d->qcoeff_base + d->qcoeff_offset;
-    short *dqcoeff_ptr    = d->dqcoeff;
+    short *dqcoeff_ptr    = d->dqcoeff_base + d->dqcoeff_offset;
     short *dequant_ptr    = d->dequant;
     short zbin_oq_value   = b->zbin_extra;
 
@@ -153,7 +153,7 @@ int vp8_mbblock_error_xmm_impl(short *coeff_ptr, short *dcoef_ptr, int dc);
 int vp8_mbblock_error_xmm(MACROBLOCK *mb, int dc)
 {
     short *coeff_ptr =  mb->block[0].coeff;
-    short *dcoef_ptr =  mb->e_mbd.block[0].dqcoeff;
+    short *dcoef_ptr =  mb->e_mbd.block[0].dqcoeff_base + mb->e_mbd.block[0].dqcoeff_offset;
     return vp8_mbblock_error_xmm_impl(coeff_ptr, dcoef_ptr, dc);
 }
 

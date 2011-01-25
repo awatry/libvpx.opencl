@@ -245,7 +245,7 @@ void vp8_decode_macroblock(VP8D_COMP *pbi, MACROBLOCKD *xd)
         /* do 2nd order transform on the dc block */
         if (xd->eobs[24] > 1)
         {
-            IDCT_INVOKE(RTCD_VTABLE(idct), iwalsh16)(&b->dqcoeff[0], b->diff);
+            IDCT_INVOKE(RTCD_VTABLE(idct), iwalsh16)(b->dqcoeff_base + b->dqcoeff_offset, b->diff);
 #if CONFIG_OPENCL
                 CL_FINISH;
 #endif
@@ -260,7 +260,7 @@ void vp8_decode_macroblock(VP8D_COMP *pbi, MACROBLOCKD *xd)
         }
         else
         {
-            IDCT_INVOKE(RTCD_VTABLE(idct), iwalsh1)(&b->dqcoeff[0], b->diff);
+            IDCT_INVOKE(RTCD_VTABLE(idct), iwalsh1)(b->dqcoeff_base + b->dqcoeff_offset, b->diff);
 #if CONFIG_OPENCL
             CL_FINISH;
 #endif

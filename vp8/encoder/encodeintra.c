@@ -68,7 +68,7 @@ void vp8_encode_intra4x4block_rd(const VP8_ENCODER_RTCD *rtcd, MACROBLOCK *x, BL
 
     x->quantize_b(be, b);
 
-    IDCT_INVOKE(&rtcd->common->idct, idct16)(b->dqcoeff, b->diff, 32);
+    IDCT_INVOKE(&rtcd->common->idct, idct16)(b->dqcoeff_base+b->dqcoeff_offset, b->diff, 32);
 
     RECON_INVOKE(&rtcd->common->recon, recon)(b->predictor, b->diff, *(b->base_dst) + b->dst, b->dst_stride);
 }
