@@ -115,7 +115,9 @@ void vp8_setup_block_dptrs(MACROBLOCKD *x)
 
     for (r = 0; r < 25; r++)
     {
-        x->block[r].qcoeff  = x->qcoeff  + r * 16;
+    	x->block[r].qcoeff_base = x->qcoeff;
+    	x->block[r].qcoeff_offset = r*16;
+        //x->block[r].qcoeff  = x->qcoeff  + r * 16;
         x->block[r].dqcoeff = x->dqcoeff + r * 16;
     }
 }

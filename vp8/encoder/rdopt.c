@@ -588,7 +588,7 @@ static int cost_coeffs(MACROBLOCK *mb, BLOCKD *b, int type, ENTROPY_CONTEXT *a, 
     int eob = b->eob;
     int pt ;    /* surrounding block/prev coef predictor */
     int cost = 0;
-    short *qcoeff_ptr = b->qcoeff;
+    short *qcoeff_ptr = b->qcoeff_base + b->qcoeff_offset;;
 
     VP8_COMBINEENTROPYCONTEXTS(pt, *a, *l);
 

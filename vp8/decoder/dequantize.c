@@ -23,7 +23,7 @@ void vp8_dequantize_b_c(BLOCKD *d)
 {
     int i;
     short *DQ  = d->dqcoeff;
-    short *Q   = d->qcoeff;
+    short *Q   = d->qcoeff_base + d->qcoeff_offset;
     short *DQC = d->dequant;
 
     for (i = 0; i < 16; i++)

@@ -189,7 +189,11 @@ typedef struct
 
 typedef struct
 {
-    short *qcoeff;
+    //short *qcoeff;
+    short *qcoeff_base;
+    unsigned int qcoeff_offset;
+
+
     short *dqcoeff;
     unsigned char  *predictor;
     short *diff;

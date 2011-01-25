@@ -34,7 +34,7 @@ void vp8_fast_quantize_b_mmx(BLOCK *b, BLOCKD *d)
     short *zbin_ptr    = b->zbin;
     short *round_ptr   = b->round;
     short *quant_ptr   = b->quant;
-    short *qcoeff_ptr  = d->qcoeff;
+    short *qcoeff_ptr  = d->qcoeff_base + d->qcoeff_offset;
     short *dqcoeff_ptr = d->dqcoeff;
     short *dequant_ptr = d->dequant;
 
@@ -98,7 +98,7 @@ void vp8_fast_quantize_b_sse2(BLOCK *b, BLOCKD *d)
     short *coeff_ptr   = b->coeff;
     short *round_ptr   = b->round;
     short *quant_ptr   = b->quant;
-    short *qcoeff_ptr  = d->qcoeff;
+    short *qcoeff_ptr  = d->qcoeff_base + d->qcoeff_offset;
     short *dqcoeff_ptr = d->dqcoeff;
     short *dequant_ptr = d->dequant;
 
@@ -129,7 +129,7 @@ void vp8_regular_quantize_b_sse2(BLOCK *b,BLOCKD *d)
     short *zbin_ptr       = b->zbin;
     short *round_ptr      = b->round;
     short *quant_ptr      = b->quant;
-    short *qcoeff_ptr     = d->qcoeff;
+    short *qcoeff_ptr     = d->qcoeff_base + d->qcoeff_offset;
     short *dqcoeff_ptr    = d->dqcoeff;
     short *dequant_ptr    = d->dequant;
     short zbin_oq_value   = b->zbin_extra;

@@ -162,25 +162,26 @@ void vp8mt_decode_macroblock(VP8D_COMP *pbi, MACROBLOCKD *xd, int mb_row, int mb
     if (xd->mode_info_context->mbmi.mode != B_PRED && xd->mode_info_context->mbmi.mode != SPLITMV)
     {
         BLOCKD *b = &xd->block[24];
+        short *qcoeff = b->qcoeff_base + b->qcoeff_offset;
         DEQUANT_INVOKE(&pbi->dequant, block)(b);
 
         /* do 2nd order transform on the dc block */
         if (xd->eobs[24] > 1)
         {
             IDCT_INVOKE(RTCD_VTABLE(idct), iwalsh16)(&b->dqcoeff[0], b->diff);
-            ((int *)b->qcoeff)[0] = 0;
-            ((int *)b->qcoeff)[1] = 0;
-            ((int *)b->qcoeff)[2] = 0;
-            ((int *)b->qcoeff)[3] = 0;
-            ((int *)b->qcoeff)[4] = 0;
-            ((int *)b->qcoeff)[5] = 0;
-            ((int *)b->qcoeff)[6] = 0;
-            ((int *)b->qcoeff)[7] = 0;
+            ((int *)qcoeff)[0] = 0;
+            ((int *)qcoeff)[1] = 0;
+            ((int *)qcoeff)[2] = 0;
+            ((int *)qcoeff)[3] = 0;
+            ((int *)qcoeff)[4] = 0;
+            ((int *)qcoeff)[5] = 0;
+            ((int *)qcoeff)[6] = 0;
+            ((int *)qcoeff)[7] = 0;
         }
         else
         {
             IDCT_INVOKE(RTCD_VTABLE(idct), iwalsh1)(&b->dqcoeff[0], b->diff);
-            ((int *)b->qcoeff)[0] = 0;
+            ((int *)qcoeff)[0] = 0;
         }
 
         DEQUANT_INVOKE (&pbi->dequant, dc_idct_add_y_block)
@@ -193,20 +194,21 @@ void vp8mt_decode_macroblock(VP8D_COMP *pbi, MACROBLOCKD *xd, int mb_row, int mb
         for (i = 0; i < 16; i++)
         {
             BLOCKD *b = &xd->block[i];
+            short *qcoeff = b->qcoeff_base + b->qcoeff_offset;
             vp8mt_predict_intra4x4(pbi, xd, b->bmi.mode, b->predictor, mb_row, mb_col, i);
 
             if (xd->eobs[i] > 1)
             {
                 DEQUANT_INVOKE(&pbi->dequant, idct_add)
-                    (b->qcoeff, b->dequant,  b->predictor,
+                    (qcoeff, b->dequant,  b->predictor,
                     *(b->base_dst) + b->dst, 16, b->dst_stride);
             }
             else
             {
                 IDCT_INVOKE(RTCD_VTABLE(idct), idct1_scalar_add)
-                    (b->qcoeff[0] * b->dequant[0], b->predictor,
+                    (qcoeff[0] * b->dequant[0], b->predictor,
                     *(b->base_dst) + b->dst, 16, b->dst_stride);
-                ((int *)b->qcoeff)[0] = 0;
+                ((int *)qcoeff)[0] = 0;
             }
         }
     }

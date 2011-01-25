@@ -109,7 +109,7 @@ static void tokenize2nd_order_b
     const int eob = b->eob;     /* one beyond last nonzero coeff */
     TOKENEXTRA *t = *tp;        /* store tokens starting here */
     int x;
-    const short *qcoeff_ptr = b->qcoeff;
+    const short *qcoeff_ptr = b->qcoeff_base + b->qcoeff_offset;
     VP8_COMBINEENTROPYCONTEXTS(pt, *a, *l);
 
     do
@@ -162,7 +162,7 @@ static void tokenize1st_order_b
     const int eob = b->eob;     /* one beyond last nonzero coeff */
     TOKENEXTRA *t = *tp;        /* store tokens starting here */
     int x;
-    const short *qcoeff_ptr = b->qcoeff;
+    const short *qcoeff_ptr = b->qcoeff_base + b->qcoeff_offset;
     VP8_COMBINEENTROPYCONTEXTS(pt, *a, *l);
 
     do

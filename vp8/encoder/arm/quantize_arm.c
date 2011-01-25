@@ -43,7 +43,7 @@ void vp8_fast_quantize_b_neon(BLOCK *b,BLOCKD *d)
     short *zbin_ptr   = &b->Zbin[0][0];
     short *round_ptr  = &b->Round[0][0];
     short *quant_ptr  = &b->Quant[0][0];
-    short *qcoeff_ptr = d->qcoeff;
+    short *qcoeff_ptr = d->qcoeff_base + d->qcoeff_offset;
     short *dqcoeff_ptr= d->dqcoeff;
     short *dequant_ptr= &d->Dequant[0][0];
 

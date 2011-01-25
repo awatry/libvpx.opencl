@@ -239,6 +239,7 @@ void vp8_decode_macroblock(VP8D_COMP *pbi, MACROBLOCKD *xd)
     if (xd->mode_info_context->mbmi.mode != B_PRED && xd->mode_info_context->mbmi.mode != SPLITMV)
     {
         BLOCKD *b = &xd->block[24];
+        short *qcoeff = b->qcoeff_base + b->qcoeff_offset;
         DEQUANT_INVOKE(&pbi->dequant, block)(b);
 
         /* do 2nd order transform on the dc block */
@@ -248,14 +249,14 @@ void vp8_decode_macroblock(VP8D_COMP *pbi, MACROBLOCKD *xd)
 #if CONFIG_OPENCL
                 CL_FINISH;
 #endif
-            ((int *)b->qcoeff)[0] = 0;
-            ((int *)b->qcoeff)[1] = 0;
-            ((int *)b->qcoeff)[2] = 0;
-            ((int *)b->qcoeff)[3] = 0;
-            ((int *)b->qcoeff)[4] = 0;
-            ((int *)b->qcoeff)[5] = 0;
-            ((int *)b->qcoeff)[6] = 0;
-            ((int *)b->qcoeff)[7] = 0;
+            ((int *)qcoeff)[0] = 0;
+            ((int *)qcoeff)[1] = 0;
+            ((int *)qcoeff)[2] = 0;
+            ((int *)qcoeff)[3] = 0;
+            ((int *)qcoeff)[4] = 0;
+            ((int *)qcoeff)[5] = 0;
+            ((int *)qcoeff)[6] = 0;
+            ((int *)qcoeff)[7] = 0;
         }
         else
         {
@@ -263,7 +264,7 @@ void vp8_decode_macroblock(VP8D_COMP *pbi, MACROBLOCKD *xd)
 #if CONFIG_OPENCL
             CL_FINISH;
 #endif
-            ((int *)b->qcoeff)[0] = 0;
+            ((int *)qcoeff)[0] = 0;
         }
         DEQUANT_INVOKE (&pbi->dequant, dc_idct_add_y_block)
                         (xd->qcoeff, xd->block[0].dequant,
@@ -276,6 +277,7 @@ void vp8_decode_macroblock(VP8D_COMP *pbi, MACROBLOCKD *xd)
         {
 
             BLOCKD *b = &xd->block[i];
+            short *qcoeff = b->qcoeff_base + b->qcoeff_offset;
             vp8_predict_intra4x4(b, b->bmi.mode, b->predictor);
 
             if (xd->eobs[i] > 1)
@@ -285,27 +287,28 @@ void vp8_decode_macroblock(VP8D_COMP *pbi, MACROBLOCKD *xd)
 #endif
                 //Need to work on dequant functions
                 DEQUANT_INVOKE(&pbi->dequant, idct_add)
-                    (b->qcoeff, b->dequant,  b->predictor,
+                    (qcoeff, b->dequant,  b->predictor,
                     *(b->base_dst) + b->dst, 16, b->dst_stride);
             }
             else
             {
                 IDCT_INVOKE(RTCD_VTABLE(idct), idct1_scalar_add)
-                    (b->qcoeff[0] * b->dequant[0], b->predictor,
+                    (qcoeff[0] * b->dequant[0], b->predictor,
                     *(b->base_dst) + b->dst, 16, b->dst_stride);
 #if CONFIG_OPENCL
                 CL_FINISH;
 #endif
-                //((int *)b->qcoeff)[0] = 0;
+                //((int *)qcoeff)[0] = 0;
             }
 
         }
         
-        //b->qcoeff[0] must be set for all scalar_add IDCT blocks
+        //qcoeff[0] must be set for all scalar_add IDCT blocks
         for (i=0; i < 16; i++){
             BLOCKD *b = &xd->block[i];
+            short *qcoeff = b->qcoeff_base + b->qcoeff_offset;
             if (xd->eobs[i] <= 1){
-                ((int *)b->qcoeff)[0] = 0;
+                ((int *)qcoeff)[0] = 0;
             }
         }
 #if CONFIG_OPENCL
