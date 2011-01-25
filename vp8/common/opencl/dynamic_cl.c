@@ -101,5 +101,5 @@ int load_cl(char *lib_name){
     CL_LOAD_FN("clEnqueueBarrier", cl.enqueueBarrier);
 //    CL_LOAD_FN("clGetExtensionFunctionAddress", cl.getExtensionFunctionAddress);
 
-    return 1;
+    return CL_SUCCESS;
 }

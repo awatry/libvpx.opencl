@@ -240,7 +240,7 @@ extern CL_FUNCTIONS cl;
     ref = dlsym(dll,name); \
     if (ref == NULL){ \
         dlclose(dll); \
-        return 0; \
+        return CL_INVALID_PLATFORM; \
     }
 
 
