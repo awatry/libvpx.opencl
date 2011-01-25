@@ -262,7 +262,7 @@ int cl_load_program(cl_program *prog_ref, const char *file_name, const char *opt
     
     *prog_ref = NULL;
     if (kernel_src != NULL) {
-        *prog_ref = clCreateProgramWithSource(cl_data.context, 1, &kernel_src, NULL, &err);
+        *prog_ref = clCreateProgramWithSource(cl_data.context, 1, (const char**)&kernel_src, NULL, &err);
         free(kernel_src);
     } else {
         cl_destroy(CL_TRIED_BUT_FAILED);
