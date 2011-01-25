@@ -962,12 +962,12 @@ process_common_toolchain() {
                 fi
                 ;;
             *)
-                #if check_header dlfcn.h; then
-                #    add_extralibs -ldl 
-                #    enable dlopen
-                #else
+                if check_header dlfcn.h; then
+                    add_extralibs -ldl 
+                    enable dlopen
+                else
                     add_extralibs -lOpenCL
-                #fi
+                fi
                 ;;
         esac
     fi
