@@ -13,7 +13,6 @@
 #include <stdlib.h>
 #include "vp8_opencl.h"
 
-int cl_loaded = CL_FALSE;
 int cl_initialized = CL_NOT_INITIALIZED;
 VP8_COMMON_CL cl_data;
 

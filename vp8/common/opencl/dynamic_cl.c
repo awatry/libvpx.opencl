@@ -8,12 +8,13 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#include "dynamic_cl.h"
+#include "vp8_opencl.h"
 
 #include <stdio.h>
 
 CL_FUNCTIONS cl;
 void *dll = NULL;
+int cl_loaded = CL_NOT_INITIALIZED;
 
 int close_cl(){
     int ret = dlclose(dll);
