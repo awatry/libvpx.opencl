@@ -70,6 +70,17 @@ extern const char *vpx_codec_lib_dir(void);
         CL_TRIED_BUT_FAILED \
     );
 
+#define CL_SET_BUF(bufRef, bufSize, dataPtr, altPath) \
+    if (dataPtr != NULL){\
+                err = clEnqueueWriteBuffer(cl_data.commands, bufRef, CL_FALSE, 0, \
+                    bufSize, dataPtr, 0, NULL, NULL); \
+                \
+                CL_CHECK_SUCCESS( err != CL_SUCCESS, \
+                    "Error: Failed to write to buffer!\n", \
+                    altPath, \
+                ); \
+    }\
+
 #define CL_CREATE_BUF(bufRef, bufType, bufSize, dataPtr, altPath) \
     if (dataPtr != NULL){ \
         bufRef = clCreateBuffer(cl_data.context, bufType, bufSize, dataPtr, &err); \
@@ -106,15 +117,7 @@ extern const char *vpx_codec_lib_dir(void);
         ); \
         curSize = needSize; \
     } else { \
-        if (dataPtr != NULL){\
-            err = clEnqueueWriteBuffer(cl_data.commands, bufRef, CL_FALSE, 0, \
-                needSize, dataPtr, 0, NULL, NULL); \
-            \
-            CL_CHECK_SUCCESS( err != CL_SUCCESS, \
-                "Error: Failed to write to buffer!\n", \
-                altPath, \
-            ); \
-        }\
+        CL_SET_BUF(bufRef, needSize, dataPtr, altPath); \
     }
 
 #define CL_RELEASE_KERNEL(kernel) \
