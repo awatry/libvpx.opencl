@@ -34,6 +34,11 @@
 #include "vpx_ports/arm.h"
 #endif
 
+#include "vpx_config.h"
+#if CONFIG_OPENCL
+#include "vp8/common/opencl/vp8_opencl.h"
+#endif
+
 extern void vp8_init_loop_filter(VP8_COMMON *cm);
 extern void vp8cx_init_de_quantizer(VP8D_COMP *pbi);
 
@@ -152,6 +157,26 @@ void vp8dx_remove_decompressor(VP8D_PTR ptr)
 #endif
     vp8_decoder_remove_threads(pbi);
     vp8_remove_common(&pbi->common);
+
+#if CONFIG_OPENCL
+    if (cl_initialized == CL_SUCCESS){
+        //Wait for stuff to finish, just in case
+        clFinish(cl_data.commands);
+
+        //Free CL buffers
+        if (pbi->mb.cl_diff_mem != NULL)
+            clReleaseMemObject(pbi->mb.cl_diff_mem);
+        if (pbi->mb.cl_predictor_mem != NULL)
+            clReleaseMemObject(pbi->mb.cl_predictor_mem);
+        if (pbi->mb.cl_qcoeff_mem != NULL)
+            clReleaseMemObject(pbi->mb.cl_qcoeff_mem);
+        if (pbi->mb.cl_dqcoeff_mem != NULL)
+            clReleaseMemObject(pbi->mb.cl_dqcoeff_mem);
+        if (pbi->mb.cl_eobs_mem != NULL)
+            clReleaseMemObject(pbi->mb.cl_eobs_mem);
+    }
+#endif
+
     vpx_free(pbi);
 }
 

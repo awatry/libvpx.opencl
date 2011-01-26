@@ -123,9 +123,13 @@ void vp8_setup_block_dptrs(MACROBLOCKD *x)
 
     x->block[24].diff_offset = 384;
 
+#if CONFIG_OPENCL
+    x->cl_diff_mem = NULL;
+    x->cl_predictor_mem = NULL;
+    x->cl_qcoeff_mem = NULL;
+    x->cl_dqcoeff_mem = NULL;
+    x->cl_eobs_mem = NULL;
 
-//Disable this until it has been determined where to free the buffers
-#if CONFIG_OPENCL && 0
     /* Set up CL memory buffers if appropriate */
     if (cl_initialized == CL_SUCCESS){
         int err;
@@ -163,7 +167,7 @@ BUF_DONE:
         x->block[r].diff = &x->diff[x->block[r].diff_offset];
 
 //Disabled until buffer freeing is figured out.
-#if CONFIG_OPENCL && 0
+#if CONFIG_OPENCL
         /* Set up CL memory buffers if appropriate */
         if (cl_initialized == CL_SUCCESS){
             x->block[r].cl_diff_mem = x->cl_diff_mem;

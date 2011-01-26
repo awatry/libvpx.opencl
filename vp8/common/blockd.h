@@ -21,6 +21,7 @@ void vpx_log(const char *format, ...);
 #include "subpixel.h"
 #include "vpx_ports/mem.h"
 
+#include "vpx_config.h"
 #if CONFIG_OPENCL
 #include "opencl/vp8_opencl.h"
 #endif
