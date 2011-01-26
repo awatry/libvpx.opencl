@@ -184,6 +184,7 @@ void vp8_decode_macroblock(VP8D_COMP *pbi, MACROBLOCKD *xd)
 {
     int eobtotal = 0;
     int i, do_clamp = xd->mode_info_context->mbmi.need_to_clamp_mvs;
+    int err; //CL return code tracking
 
     if (xd->mode_info_context->mbmi.mb_skip_coeff)
     {
@@ -240,15 +241,13 @@ void vp8_decode_macroblock(VP8D_COMP *pbi, MACROBLOCKD *xd)
     {
         BLOCKD *b = &xd->block[24];
         short *qcoeff = b->qcoeff_base + b->qcoeff_offset;
+        vp8_second_order_fn_t second_order;
+        
         DEQUANT_INVOKE(&pbi->dequant, block)(b);
 
         /* do 2nd order transform on the dc block */
-        if (xd->eobs[24] > 1)
-        {
-            IDCT_INVOKE(RTCD_VTABLE(idct), iwalsh16)(b->dqcoeff_base + b->dqcoeff_offset, b->diff);
-#if CONFIG_OPENCL
-                CL_FINISH;
-#endif
+        if (xd->eobs[24] > 1){
+            second_order = IDCT_INVOKE(RTCD_VTABLE(idct), iwalsh16);
             ((int *)qcoeff)[0] = 0;
             ((int *)qcoeff)[1] = 0;
             ((int *)qcoeff)[2] = 0;
@@ -257,15 +256,31 @@ void vp8_decode_macroblock(VP8D_COMP *pbi, MACROBLOCKD *xd)
             ((int *)qcoeff)[5] = 0;
             ((int *)qcoeff)[6] = 0;
             ((int *)qcoeff)[7] = 0;
-        }
-        else
-        {
-            IDCT_INVOKE(RTCD_VTABLE(idct), iwalsh1)(b->dqcoeff_base + b->dqcoeff_offset, b->diff);
-#if CONFIG_OPENCL
-            CL_FINISH;
-#endif
+        } else {
+            second_order = IDCT_INVOKE(RTCD_VTABLE(idct), iwalsh1);
             ((int *)qcoeff)[0] = 0;
         }
+
+#if CONFIG_OPENCL
+        if (cl_initialized == CL_SUCCESS){
+            CL_ENSURE_BUF_SIZE(cl_data.srcData,CL_MEM_READ_ONLY|CL_MEM_COPY_HOST_PTR,
+                sizeof(cl_short)*400, cl_data.srcAlloc, b->dqcoeff_base,
+                second_order(b->dqcoeff_base + b->dqcoeff_offset, b->diff)
+            );
+        } else {
+            second_order(b->dqcoeff_base + b->dqcoeff_offset, b->diff);
+        }
+        if (xd->eobs[24] > 1)
+        {
+            vp8_short_inv_walsh4x4_cl(cl_data.srcData,b->dqcoeff_offset, b->dqcoeff_base + b->dqcoeff_offset, b->diff);
+        } else {
+            vp8_short_inv_walsh4x4_1_cl(cl_data.srcData,b->dqcoeff_offset, b->dqcoeff_base + b->dqcoeff_offset, b->diff);
+        }
+        CL_FINISH;
+
+#else
+        second_order(b->dqcoeff_base + b->dqcoeff_offset, b->diff);
+#endif
         DEQUANT_INVOKE (&pbi->dequant, dc_idct_add_y_block)
                         (xd->qcoeff, xd->block[0].dequant,
                          xd->predictor, xd->dst.y_buffer,
@@ -871,12 +886,12 @@ int vp8_decode_frame(VP8D_COMP *pbi)
     if (!(pbi->b_multithreaded_rd) || pc->multi_token_partition == ONE_PARTITION || !(pc->filter_level))
         vp8_setup_intra_recon(&pc->yv12_fb[pc->new_fb_idx]);
 
+    /* clear out the coeff buffer */
+    vpx_memset(xd->qcoeff, 0, sizeof(xd->qcoeff));
+
     vp8_setup_block_dptrs(xd);
 
     vp8_build_block_doffsets(xd);
-
-    /* clear out the coeff buffer */
-    vpx_memset(xd->qcoeff, 0, sizeof(xd->qcoeff));
 
     /* Read the mb_no_coeff_skip flag */
     pc->mb_no_coeff_skip = (int)vp8_read_bit(bc);

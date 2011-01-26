@@ -11,6 +11,11 @@
 
 #include "blockd.h"
 
+#include "vpx_config.h"
+#if CONFIG_OPENCL
+#include "opencl/vp8_opencl.h"
+#endif
+
 typedef enum
 {
     PRED = 0,
@@ -81,46 +86,95 @@ void vp8_setup_macroblock(MACROBLOCKD *x, BLOCKSET bs)
 void vp8_setup_block_dptrs(MACROBLOCKD *x)
 {
     int r, c;
+    unsigned int offset;
 
+    /* 16 Y blocks */
     for (r = 0; r < 4; r++)
     {
         for (c = 0; c < 4; c++)
         {
-            x->block[r*4+c].diff      = &x->diff[r * 4 * 16 + c * 4];
-            x->block[r*4+c].predictor = x->predictor + r * 4 * 16 + c * 4;
+            offset = r * 4 * 16 + c * 4;
+            x->block[r*4+c].diff_offset      = offset;
+            x->block[r*4+c].predictor_offset = offset;
         }
     }
 
+    /* 4 U Blocks */
     for (r = 0; r < 2; r++)
     {
         for (c = 0; c < 2; c++)
         {
-            x->block[16+r*2+c].diff      = &x->diff[256 + r * 4 * 8 + c * 4];
-            x->block[16+r*2+c].predictor = x->predictor + 256 + r * 4 * 8 + c * 4;
-
+            offset = 256 + r * 4 * 8 + c * 4;
+            x->block[16+r*2+c].diff_offset      = offset;
+            x->block[16+r*2+c].predictor_offset = offset;
         }
     }
 
+    /* 4 V Blocks */
     for (r = 0; r < 2; r++)
     {
         for (c = 0; c < 2; c++)
         {
-            x->block[20+r*2+c].diff      = &x->diff[320+ r * 4 * 8 + c * 4];
-            x->block[20+r*2+c].predictor = x->predictor + 320 + r * 4 * 8 + c * 4;
-
+            offset = 320+ r * 4 * 8 + c * 4;
+            x->block[20+r*2+c].diff_offset      = offset;
+            x->block[20+r*2+c].predictor_offset = offset;
         }
     }
 
-    x->block[24].diff = &x->diff[384];
+    x->block[24].diff_offset = 384;
+
+
+//Disable this until it has been determined where to free the buffers
+#if CONFIG_OPENCL && 0
+    /* Set up CL memory buffers if appropriate */
+    if (cl_initialized == CL_SUCCESS){
+        int err;
+
+        CL_CREATE_BUF(x->cl_diff_mem, CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,
+                sizeof(cl_short)*400, x->diff, goto BUF_DONE);
+
+        CL_CREATE_BUF(x->cl_predictor_mem, CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,
+                sizeof(cl_uchar)*384, x->dqcoeff, goto BUF_DONE);
+
+        CL_CREATE_BUF(x->cl_qcoeff_mem, CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,
+                sizeof(cl_short)*400, x->qcoeff, goto BUF_DONE);
+
+        CL_CREATE_BUF(x->cl_dqcoeff_mem, CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,
+                sizeof(cl_short)*400, x->dqcoeff, goto BUF_DONE);
+
+        CL_CREATE_BUF(x->cl_eobs_mem, CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,
+                sizeof(cl_char)*25, x->eobs, goto BUF_DONE);
+    }
+BUF_DONE:
+#endif
+
 
     for (r = 0; r < 25; r++)
     {
     	x->block[r].qcoeff_base = x->qcoeff;
-    	x->block[r].qcoeff_offset = r*16;
-        //x->block[r].qcoeff  = x->qcoeff  + r * 16;
+    	x->block[r].qcoeff_offset = r * 16;
         x->block[r].dqcoeff_base = x->dqcoeff;
         x->block[r].dqcoeff_offset = r * 16;
+
+        x->block[r].predictor_base = x->predictor;
+        x->block[r].predictor = x->predictor + x->block[r].predictor_offset;
+
+        x->block[r].diff_base = x->diff;
+        x->block[r].diff = &x->diff[x->block[r].diff_offset];
+
+//Disabled until buffer freeing is figured out.
+#if CONFIG_OPENCL && 0
+        /* Set up CL memory buffers if appropriate */
+        if (cl_initialized == CL_SUCCESS){
+            x->block[r].cl_diff_mem = x->cl_diff_mem;
+            x->block[r].cl_dqcoeff_mem = x->cl_dqcoeff_mem;
+            x->block[r].cl_eobs_mem = x->cl_eobs_mem;
+            x->block[r].cl_predictor_mem = x->cl_predictor_mem;
+            x->block[r].cl_qcoeff_mem = x->cl_qcoeff_mem;
+        }
+#endif
     }
+
 }
 
 void vp8_build_block_doffsets(MACROBLOCKD *x)

@@ -70,6 +70,22 @@ extern const char *vpx_codec_lib_dir(void);
         CL_TRIED_BUT_FAILED \
     );
 
+#define CL_CREATE_BUF(bufRef, bufType, bufSize, dataPtr, altPath) \
+    if (dataPtr != NULL){ \
+        bufRef = clCreateBuffer(cl_data.context, bufType, bufSize, dataPtr, &err); \
+        CL_CHECK_SUCCESS( \
+            err != CL_SUCCESS, \
+            "Error copying data to buffer! Using CPU path!\n", \
+            altPath, \
+        ); \
+    } else {\
+        bufRef = clCreateBuffer(cl_data.context, bufType, bufSize, NULL, NULL);\
+    } \
+    CL_CHECK_SUCCESS(!bufRef, \
+        "Error: Failed to allocate buffer. Using CPU path!\n", \
+        altPath, \
+    ); \
+
 #define CL_ENSURE_BUF_SIZE(bufRef, bufType, needSize, curSize, dataPtr, altPath) \
     if ( needSize > curSize || bufRef == NULL){ \
         if (bufRef != NULL) \

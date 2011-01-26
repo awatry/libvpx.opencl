@@ -13,11 +13,25 @@
 #define IDCT_OPENCL_H
 
 #if CONFIG_OPENCL
+
+#include "vp8_opencl.h"
+
+#define prototype_second_order_cl(sym) \
+    void sym(cl_mem src, int src_offset, short *input, short *output)
+
+#define prototype_idct_cl(sym) \
+    void sym(short *input, short *output, int pitch)
+
+#define prototype_idct_scalar_add_cl(sym) \
+    void sym(short input, \
+             unsigned char *pred, unsigned char *output, \
+             int pitch, int stride)
+
 extern prototype_idct(vp8_short_idct4x4llm_1_cl);
 extern prototype_idct(vp8_short_idct4x4llm_cl);
 extern prototype_idct_scalar_add(vp8_dc_only_idct_add_cl);
-extern prototype_second_order(vp8_short_inv_walsh4x4_1_cl);
-extern prototype_second_order(vp8_short_inv_walsh4x4_cl);
+extern prototype_second_order_cl(vp8_short_inv_walsh4x4_1_cl);
+extern prototype_second_order_cl(vp8_short_inv_walsh4x4_cl);
 
 #if !CONFIG_RUNTIME_CPU_DETECT
 #undef  vp8_idct_idct1
