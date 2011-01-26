@@ -158,25 +158,6 @@ void vp8dx_remove_decompressor(VP8D_PTR ptr)
     vp8_decoder_remove_threads(pbi);
     vp8_remove_common(&pbi->common);
 
-#if CONFIG_OPENCL
-    if (cl_initialized == CL_SUCCESS){
-        //Wait for stuff to finish, just in case
-        clFinish(cl_data.commands);
-
-        //Free CL buffers
-        if (pbi->mb.cl_diff_mem != NULL)
-            clReleaseMemObject(pbi->mb.cl_diff_mem);
-        if (pbi->mb.cl_predictor_mem != NULL)
-            clReleaseMemObject(pbi->mb.cl_predictor_mem);
-        if (pbi->mb.cl_qcoeff_mem != NULL)
-            clReleaseMemObject(pbi->mb.cl_qcoeff_mem);
-        if (pbi->mb.cl_dqcoeff_mem != NULL)
-            clReleaseMemObject(pbi->mb.cl_dqcoeff_mem);
-        if (pbi->mb.cl_eobs_mem != NULL)
-            clReleaseMemObject(pbi->mb.cl_eobs_mem);
-    }
-#endif
-
     vpx_free(pbi);
 }
 

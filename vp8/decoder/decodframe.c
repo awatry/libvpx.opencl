@@ -936,6 +936,25 @@ int vp8_decode_frame(VP8D_COMP *pbi)
         }
     }
 
+#if CONFIG_OPENCL
+    //If using OpenCL, free all of the GPU buffers we've allocated.
+    if (cl_initialized == CL_SUCCESS){
+        //Wait for stuff to finish, just in case
+        clFinish(cl_data.commands);
+
+        //Free CL buffers
+        if (pbi->mb.cl_diff_mem != NULL)
+            clReleaseMemObject(pbi->mb.cl_diff_mem);
+        if (pbi->mb.cl_predictor_mem != NULL)
+            clReleaseMemObject(pbi->mb.cl_predictor_mem);
+        if (pbi->mb.cl_qcoeff_mem != NULL)
+            clReleaseMemObject(pbi->mb.cl_qcoeff_mem);
+        if (pbi->mb.cl_dqcoeff_mem != NULL)
+            clReleaseMemObject(pbi->mb.cl_dqcoeff_mem);
+        if (pbi->mb.cl_eobs_mem != NULL)
+            clReleaseMemObject(pbi->mb.cl_eobs_mem);
+    }
+#endif
 
     stop_token_decoder(pbi);
 

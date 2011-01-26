@@ -153,7 +153,6 @@ void vp8_setup_block_dptrs(MACROBLOCKD *x)
 BUF_DONE:
 #endif
 
-
     for (r = 0; r < 25; r++)
     {
     	x->block[r].qcoeff_base = x->qcoeff;
@@ -167,7 +166,6 @@ BUF_DONE:
         x->block[r].diff_base = x->diff;
         //x->block[r].diff = &x->diff[x->block[r].diff_offset];
 
-//Disabled until buffer freeing is figured out.
 #if CONFIG_OPENCL
         /* Set up CL memory buffers if appropriate */
         if (cl_initialized == CL_SUCCESS){
