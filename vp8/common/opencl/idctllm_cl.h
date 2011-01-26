@@ -8,6 +8,7 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
+#include "vpx_config.h"
 #include "vp8_opencl.h"
 
 #define CLAMP(x,min,max) if (x < min) x = min; else if ( x > max ) x = max;

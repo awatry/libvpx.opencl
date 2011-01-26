@@ -24,7 +24,7 @@ void vp8_subtract_b_neon(BLOCK *be, BLOCKD *bd, int pitch)
 {
     unsigned char *src_ptr = (*(be->base_src) + be->src);
     short *diff_ptr = be->src_diff;
-    unsigned char *pred_ptr = bd->predictor;
+    unsigned char *pred_ptr = bd->predictor_base + bd->predictor_offset;
     int src_stride = be->src_stride;
 
     vp8_subtract_b_neon_func(diff_ptr, src_ptr, pred_ptr, src_stride, pitch);

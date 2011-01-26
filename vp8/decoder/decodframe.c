@@ -263,28 +263,26 @@ void vp8_decode_macroblock(VP8D_COMP *pbi, MACROBLOCKD *xd)
 
 #if CONFIG_OPENCL
         if (cl_initialized == CL_SUCCESS){
-            CL_ENSURE_BUF_SIZE(cl_data.srcData,CL_MEM_READ_ONLY|CL_MEM_COPY_HOST_PTR,
-                sizeof(cl_short)*400, cl_data.srcAlloc, b->dqcoeff_base,
-                second_order(b->dqcoeff_base + b->dqcoeff_offset, b->diff)
-            );
+            CL_SET_BUF(b->cl_dqcoeff_mem, sizeof(cl_short)*400, b->dqcoeff_base,
+                    second_order(b->dqcoeff_base + b->dqcoeff_offset, &b->diff_base[b->diff_offset]));
         } else {
-            second_order(b->dqcoeff_base + b->dqcoeff_offset, b->diff);
+            second_order(b->dqcoeff_base + b->dqcoeff_offset, &b->diff_base[b->diff_offset]);
         }
         if (xd->eobs[24] > 1)
         {
-            vp8_short_inv_walsh4x4_cl(cl_data.srcData,b->dqcoeff_offset, b->dqcoeff_base + b->dqcoeff_offset, b->diff);
+            vp8_short_inv_walsh4x4_cl(b->cl_dqcoeff_mem,b->dqcoeff_offset, b->dqcoeff_base + b->dqcoeff_offset, &b->diff_base[b->diff_offset]);
         } else {
-            vp8_short_inv_walsh4x4_1_cl(cl_data.srcData,b->dqcoeff_offset, b->dqcoeff_base + b->dqcoeff_offset, b->diff);
+            vp8_short_inv_walsh4x4_1_cl(b->cl_dqcoeff_mem,b->dqcoeff_offset, b->dqcoeff_base + b->dqcoeff_offset, &b->diff_base[b->diff_offset]);
         }
         CL_FINISH;
 
 #else
-        second_order(b->dqcoeff_base + b->dqcoeff_offset, b->diff);
+        second_order(b->dqcoeff_base + b->dqcoeff_offset, &b->diff_base[b->diff_offset]);
 #endif
         DEQUANT_INVOKE (&pbi->dequant, dc_idct_add_y_block)
                         (xd->qcoeff, xd->block[0].dequant,
                          xd->predictor, xd->dst.y_buffer,
-                         xd->dst.y_stride, xd->eobs, xd->block[24].diff);
+                         xd->dst.y_stride, xd->eobs, &xd->block[24].diff_base[xd->block[24].diff_offset]);
     }
     else if ((xd->frame_type == KEY_FRAME  ||  xd->mode_info_context->mbmi.ref_frame == INTRA_FRAME) && xd->mode_info_context->mbmi.mode == B_PRED)
     {
@@ -293,7 +291,7 @@ void vp8_decode_macroblock(VP8D_COMP *pbi, MACROBLOCKD *xd)
 
             BLOCKD *b = &xd->block[i];
             short *qcoeff = b->qcoeff_base + b->qcoeff_offset;
-            vp8_predict_intra4x4(b, b->bmi.mode, b->predictor);
+            vp8_predict_intra4x4(b, b->bmi.mode, b->predictor_base + b->predictor_offset);
 
             if (xd->eobs[i] > 1)
             {
@@ -302,13 +300,13 @@ void vp8_decode_macroblock(VP8D_COMP *pbi, MACROBLOCKD *xd)
 #endif
                 //Need to work on dequant functions
                 DEQUANT_INVOKE(&pbi->dequant, idct_add)
-                    (qcoeff, b->dequant,  b->predictor,
+                    (qcoeff, b->dequant,  b->predictor_base + b->predictor_offset,
                     *(b->base_dst) + b->dst, 16, b->dst_stride);
             }
             else
             {
                 IDCT_INVOKE(RTCD_VTABLE(idct), idct1_scalar_add)
-                    (qcoeff[0] * b->dequant[0], b->predictor,
+                    (qcoeff[0] * b->dequant[0], b->predictor_base + b->predictor_offset,
                     *(b->base_dst) + b->dst, 16, b->dst_stride);
 #if CONFIG_OPENCL
                 CL_FINISH;

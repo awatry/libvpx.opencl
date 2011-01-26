@@ -200,11 +200,11 @@ typedef struct
     short *dqcoeff_base;
     unsigned int dqcoeff_offset;
 
-    unsigned char  *predictor;
+    //unsigned char  *predictor;
     unsigned char *predictor_base;
     unsigned int predictor_offset;
 
-    short *diff;
+    //short *diff;
     short *diff_base;
     unsigned int diff_offset;
 

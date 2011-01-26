@@ -11,6 +11,7 @@
 
 #include "blockd.h"
 
+#include "stdio.h"
 #include "vpx_config.h"
 #if CONFIG_OPENCL
 #include "opencl/vp8_opencl.h"
@@ -161,10 +162,10 @@ BUF_DONE:
         x->block[r].dqcoeff_offset = r * 16;
 
         x->block[r].predictor_base = x->predictor;
-        x->block[r].predictor = x->predictor + x->block[r].predictor_offset;
+        //x->block[r].predictor = x->predictor + x->block[r].predictor_offset;
 
         x->block[r].diff_base = x->diff;
-        x->block[r].diff = &x->diff[x->block[r].diff_offset];
+        //x->block[r].diff = &x->diff[x->block[r].diff_offset];
 
 //Disabled until buffer freeing is figured out.
 #if CONFIG_OPENCL

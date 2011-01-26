@@ -75,7 +75,7 @@ void vp8_subtract_b_mmx(BLOCK *be, BLOCKD *bd, int pitch)
     unsigned char *z = *(be->base_src) + be->src;
     unsigned int  src_stride = be->src_stride;
     short *diff = &be->src_diff[0];
-    unsigned char *predictor = &bd->predictor[0];
+    unsigned char *predictor = bd->predictor_base + bd->predictor_offset;
     vp8_subtract_b_mmx_impl(z, src_stride, diff, predictor, pitch);
 }
 
@@ -173,7 +173,7 @@ void vp8_subtract_b_sse2(BLOCK *be, BLOCKD *bd, int pitch)
     unsigned char *z = *(be->base_src) + be->src;
     unsigned int  src_stride = be->src_stride;
     short *diff = &be->src_diff[0];
-    unsigned char *predictor = &bd->predictor[0];
+    unsigned char *predictor = bd->predictor_base + bd->predictor_offset;
     vp8_subtract_b_sse2_impl(z, src_stride, diff, predictor, pitch);
 }
 
