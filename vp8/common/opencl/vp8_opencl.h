@@ -28,7 +28,7 @@ extern "C" {
 #endif
 
 extern char *cl_read_file(const char* file_name);
-extern int cl_init();
+extern int cl_common_init();
 extern void cl_destroy(int new_status);
 extern int cl_load_program(cl_program *prog_ref, const char *file_name, const char *opts);
 
@@ -148,6 +148,10 @@ typedef struct VP8_COMMON_CL {
     cl_kernel vp8_short_idct4x4llm_1_kernel;
     cl_kernel vp8_short_idct4x4llm_kernel;
 
+    cl_program dequant_program;
+    cl_kernel vp8_dequant_dc_idct_add_kernel;
+    cl_kernel vp8_dequant_idct_add_kernel;
+    cl_kernel vp8_dequantize_b_kernel;
 
     cl_kernel filter_block2d_first_pass_kernel; // compute kernel
     cl_kernel filter_block2d_second_pass_kernel; // compute kernel

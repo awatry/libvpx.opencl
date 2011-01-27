@@ -8,9 +8,12 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
+//ACW: Remove me after debugging.
+#include <stdio.h>
+#include <string.h>
 
 #include "dequantize.h"
-#include "vpx_mem/vpx_mem.h"
+#include "dequantize_cl.h"
 
 extern void vp8_short_idct4x4llm_cl(short *input, short *output, int pitch) ;
 
@@ -22,11 +25,27 @@ void cl_memset(short *input, short val, size_t nbytes){
     }
 }
 
+int cl_init_dequant() {
+    int err;
+
+    // Create the compute program from the file-defined source code
+    if (cl_load_program(&cl_data.dequant_program, dequant_cl_file_name,
+            dequantCompileOptions) != CL_SUCCESS)
+        return CL_TRIED_BUT_FAILED;
+
+    // Create the compute kernels in the program we wish to run
+    CL_CREATE_KERNEL(cl_data,dequant_program,vp8_dequant_dc_idct_add_kernel,"cl_kernel vp8_dequant_dc_idct_add_kernel");
+    CL_CREATE_KERNEL(cl_data,dequant_program,vp8_dequant_idct_add_kernel,"cl_kernel vp8_dequant_idct_add_kernel");
+    CL_CREATE_KERNEL(cl_data,dequant_program,vp8_dequantize_b_kernel,"cl_kernel vp8_dequantize_b_kernel");
+
+    printf("Created dequant kernels\n");
+
+    return CL_SUCCESS;
+}
+
+
 void vp8_dequantize_b_cl(BLOCKD *d)
 {
-
-    
-
     int i;
     short *DQ  = d->dqcoeff_base + d->dqcoeff_offset;
     short *Q   = d->qcoeff_base + d->qcoeff_offset;

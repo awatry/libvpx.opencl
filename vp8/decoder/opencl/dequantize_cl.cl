@@ -14,7 +14,8 @@ __constant int cospi8sqrt2minus1 = 20091;
 __constant int sinpi8sqrt2      = 35468;
 __constant int rounding = 0;
 
-__kernel void vp8_short_idct4x4llm_kernel(
+//Note that this kernel has been copied from common/opencl/idctllm_cl.cl
+void vp8_short_idct4x4llm(
     __global short *input,
     __global short *output,
     int pitch
@@ -80,7 +81,6 @@ __kernel void vp8_short_idct4x4llm_kernel(
 
 }
 
-
 void cl_memset(__global short *input, short val, size_t nbytes){
     __global short *cur = input;
     while (cur < input + nbytes){
@@ -112,7 +112,7 @@ __kernel void vp8_dequantize_b_kernel(
     //}
 }
 
-__kernel void vp8_dequant_idct_add_cl(short *input, short *dq, unsigned char *pred,
+__kernel void vp8_dequant_idct_add_kernel(short *input, short *dq, unsigned char *pred,
                             unsigned char *dest, int pitch, int stride)
 {
     short output[16];
@@ -152,7 +152,7 @@ __kernel void vp8_dequant_idct_add_cl(short *input, short *dq, unsigned char *pr
     }
 }
 
-void vp8_dequant_dc_idct_add_kernel(
+__kernel void vp8_dequant_dc_idct_add_kernel(
     __global short *input, 
     __global short *dq,
     __global unsigned char *pred,
@@ -176,7 +176,7 @@ void vp8_dequant_dc_idct_add_kernel(
     //}
 
     /* the idct halves ( >> 1) the pitch */
-    vp8_short_idct4x4llm_kernel(input, output, 4 << 1);
+    vp8_short_idct4x4llm(input, output, 4 << 1);
 
     cl_memset(input, 0, 32);
 

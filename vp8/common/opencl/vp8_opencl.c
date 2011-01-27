@@ -63,6 +63,10 @@ void cl_destroy(int new_status) {
     CL_RELEASE_KERNEL(cl_data.vp8_bilinear_predict8x8_kernel);
     CL_RELEASE_KERNEL(cl_data.vp8_bilinear_predict16x16_kernel);
 
+    printf("Need to release IDCT kernels\n");
+    printf("Need to release Dequant kernels\n");
+
+
     //Older kernels that probably aren't used anymore... remove eventually.
     if (cl_data.filter_block2d_first_pass_kernel)
         clReleaseKernel(cl_data.filter_block2d_first_pass_kernel);
@@ -80,6 +84,8 @@ void cl_destroy(int new_status) {
     cl_data.filter_program = NULL;
     cl_data.idct_program = NULL;
 
+    printf("Need to determine where to destroy encoder/decoder-specific items\n");
+
     cl_data.commands = NULL;
     cl_data.context = NULL;
 
@@ -88,7 +94,7 @@ void cl_destroy(int new_status) {
     return;
 }
 
-int cl_init() {
+int cl_common_init() {
     int err,i;
     cl_platform_id platform_ids[MAX_NUM_PLATFORMS];
     cl_uint num_found, num_devices;
@@ -111,7 +117,6 @@ int cl_init() {
         return CL_TRIED_BUT_FAILED;
     }
 
-#if 1
     //printf("Enumerating %d platform(s)\n", num_found);
     //Enumerate the platforms found
     for (i = 0; i < num_found; i++){
@@ -144,7 +149,7 @@ int cl_init() {
     	        cl_data.device_id = devices[0];
     	    }
     	//    printf("Done enumerating\n");
-#endif
+
     if (cl_data.device_id == NULL){
     	printf("Error: Failed to find a valid OpenCL device. Using CPU paths\n");
     	return CL_TRIED_BUT_FAILED;

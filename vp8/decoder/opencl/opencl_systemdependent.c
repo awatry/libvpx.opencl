@@ -12,8 +12,21 @@
 #include "vpx_ports/config.h"
 #include "onyxd_int.h"
 
+#if CONFIG_OPENCL
+#include "opencl/vp8_opencl.h"
+#endif
+
 void vp8_arch_opencl_decode_init(VP8D_COMP *pbi)
 {
+
+#if CONFIG_OPENCL
+    if (cl_initialized == CL_SUCCESS){
+        printf("CL already initialized\n");
+        cl_decode_init();
+    } else
+        printf("Need to initialize CL\n");
+#endif
+
     /* Override current functions with OpenCL replacements: */
 #if CONFIG_RUNTIME_CPU_DETECT
     //pbi->mb.rtcd                     = &pbi->common.rtcd;

@@ -78,6 +78,9 @@ VP8_DX_SRCS-$(HAVE_MMX) += decoder/x86/dequantize_mmx.asm
 VP8_DX_SRCS-$(HAVE_MMX) += decoder/x86/idct_blk_mmx.c
 VP8_DX_SRCS-$(HAVE_SSE2) += decoder/x86/idct_blk_sse2.c
 
+
+VP8_DX_SRCS-$(CONFIG_OPENCL) += decoder/opencl/vp8_decode_cl.c
+VP8_DX_SRCS-$(CONFIG_OPENCL) += decoder/opencl/vp8_decode_cl.h
 VP8_DX_SRCS-$(CONFIG_OPENCL) += decoder/opencl/opencl_systemdependent.c
 VP8_DX_SRCS-$(CONFIG_OPENCL) += decoder/opencl/dequantize_cl.c
 VP8_DX_SRCS-$(CONFIG_OPENCL) += decoder/opencl/dequantize_cl.h

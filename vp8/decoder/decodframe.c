@@ -340,6 +340,11 @@ void vp8_decode_macroblock(VP8D_COMP *pbi, MACROBLOCKD *xd)
                     (xd->qcoeff+16*16, xd->block[16].dequant,
                      xd->predictor+16*16, xd->dst.u_buffer, xd->dst.v_buffer,
                      xd->dst.uv_stride, xd->eobs+16);
+
+#if CONFIG_OPENCL
+    printf("clFinish in decode_macroblock\n");
+    CL_FINISH;
+#endif
 }
 
 

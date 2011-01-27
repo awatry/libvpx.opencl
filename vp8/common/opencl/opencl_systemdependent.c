@@ -46,9 +46,9 @@ void vp8_arch_opencl_common_init(VP8_COMMON *ctx)
     	cl_loaded = load_cl("libOpenCL.so");
 #endif
         if (cl_loaded == CL_SUCCESS)
-        	cl_initialized = cl_init();
+        	cl_initialized = cl_common_init();
 #else
-        cl_initialized = cl_init();
+        cl_initialized = cl_common_init();
 #endif
         //if ( cl_initialized != CL_SUCCESS)
         //    return;
