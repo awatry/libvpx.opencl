@@ -256,7 +256,7 @@ typedef struct
     BLOCKD block[25];
 
     YV12_BUFFER_CONFIG pre; /* Filtered copy of previous frame reconstruction */
-    YV12_BUFFER_CONFIG dst;
+    YV12_BUFFER_CONFIG dst; /* Destination buffer for current frame */
 
     MODE_INFO *mode_info_context;
     int mode_info_stride;
