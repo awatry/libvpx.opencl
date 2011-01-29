@@ -295,7 +295,6 @@ void vp8_build_inter_predictors_mbuv(MACROBLOCKD *x)
 /*encoder only*/
 void vp8_build_inter_predictors_mby(MACROBLOCKD *x)
 {
-
   if (x->mode_info_context->mbmi.ref_frame != INTRA_FRAME &&
       x->mode_info_context->mbmi.mode != SPLITMV)
     {
@@ -356,10 +355,7 @@ void vp8_build_inter_predictors_mby(MACROBLOCKD *x)
         }
     }
 #if CONFIG_OPENCL
-    if ( cl_initialized == CL_SUCCESS ){
-        //Wait for kernels to finish.
-        clFinish(cl_data.commands);
-    }
+    CL_FINISH;
 #endif
 }
 
@@ -391,10 +387,7 @@ void vp8_build_inter_predictors_mb(MACROBLOCKD *x)
         else
         {
 #if CONFIG_OPENCL
-        if ( cl_initialized == CL_SUCCESS ){
-            //Wait for kernels to finish.
-            clFinish(cl_data.commands);
-        }
+            CL_FINISH;
 #endif
             RECON_INVOKE(&x->rtcd->recon, copy16x16)(ptr, pre_stride, pred_ptr, 16);
         }
@@ -414,10 +407,7 @@ void vp8_build_inter_predictors_mb(MACROBLOCKD *x)
         else
         {
 #if CONFIG_OPENCL
-        if ( cl_initialized == CL_SUCCESS ){
-            //Wait for kernels to finish.
-            clFinish(cl_data.commands);
-        }
+            CL_FINISH;
 #endif
             RECON_INVOKE(&x->rtcd->recon, copy8x8)(uptr, pre_stride, upred_ptr, 8);
             RECON_INVOKE(&x->rtcd->recon, copy8x8)(vptr, pre_stride, vpred_ptr, 8);
