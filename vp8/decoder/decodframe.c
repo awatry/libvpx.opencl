@@ -34,6 +34,7 @@
 #include "threading.h"
 #include "decoderthreading.h"
 #include "dboolhuff.h"
+#include "blockd.h"
 
 #include <assert.h>
 #include <stdio.h>
