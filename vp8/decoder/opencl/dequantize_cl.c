@@ -73,49 +73,97 @@ void vp8_dequantize_b_cl(BLOCKD *d)
 }
 
 void vp8_dequant_idct_add_cl(BLOCKD *b, short *input_base, int input_offset, short *dq, unsigned char *pred,
-                            unsigned char *dest, int pitch, int stride)
+                            unsigned char *dest_base,int dest_offset, int pitch, int stride, vp8_dequant_idct_add_fn_t idct_add)
 {
     short output[16];
     short *diff_ptr = output;
     short *input = input_base + input_offset;
-    int r, c;
+    short *qcoeff = b->qcoeff_base+b->qcoeff_offset;
+    unsigned char *dest = dest_base + dest_offset;
+    int r, c, err;
     int i;
+    size_t global = 1, cur_size, dest_size;
+    cl_mem dest_mem = NULL;
+    
+    //printf("vp8_dequant_idct_add_cl\n");
 
-    printf("vp8_dequant_idct_add_cl\n");
+    /* NOTE: Eventually, all of these buffers need to be initialized outside of
+     *       this function.
+     */
+    //C/asm fallback until CL is ready.
+    idct_add(qcoeff, b->dequant,  b->predictor_base + b->predictor_offset,
+        *(b->base_dst) + b->dst, 16, b->dst_stride);
+    return;
 
-    //set arguments
+    printf("Initializing CL memory\n");
+    //Initialize memory
+    CL_SET_BUF(b->cl_commands, b->cl_dqcoeff_mem, sizeof(cl_short)*400, b->dqcoeff_base,
+        idct_add(qcoeff, b->dequant,  b->predictor_base + b->predictor_offset,
+            *(b->base_dst) + b->dst, 16, b->dst_stride)
+    );
 
-    //run kernel
+    CL_SET_BUF(b->cl_commands, b->cl_dequant_mem, sizeof(cl_short)*16,b->dequant,
+        idct_add(qcoeff, b->dequant,  b->predictor_base + b->predictor_offset,
+            *(b->base_dst) + b->dst, 16, b->dst_stride)
+    );
 
-    for (i = 0; i < 16; i++)
-    {
-        input[i] = dq[i] * input[i];
-    }
+    CL_SET_BUF(b->cl_commands, b->cl_predictor_mem, sizeof(cl_uchar)*384, b->predictor_base,
+        idct_add(qcoeff, b->dequant,  b->predictor_base + b->predictor_offset,
+            *(b->base_dst) + b->dst, 16, b->dst_stride)
+    );
 
-    /* the idct halves ( >> 1) the pitch */
-    vp8_short_idct4x4llm_c(input, output, 4 << 1);
+    dest_size = sizeof(cl_uchar)*(4*stride + dest_offset + 4);
+    cur_size = 0;
+    CL_ENSURE_BUF_SIZE(b->cl_commands, dest_mem, CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,
+            dest_size, cur_size, dest_base,
+            idct_add(qcoeff, b->dequant,  b->predictor_base + b->predictor_offset,
+            *(b->base_dst) + b->dst, 16, b->dst_stride)
+    );
+    clFinish(b->cl_commands);
 
-    cl_memset_short(input, 0, 32);
+    printf("Setting args\n");
+    /* Set kernel arguments */
+    err = 0;
+    err = clSetKernelArg(cl_data.vp8_dequant_idct_add_kernel, 0, sizeof (cl_mem), &b->cl_dqcoeff_mem);
+    err |= clSetKernelArg(cl_data.vp8_dequant_idct_add_kernel, 1, sizeof (cl_mem), &b->cl_dequant_mem);
+    err |= clSetKernelArg(cl_data.vp8_dequant_idct_add_kernel, 2, sizeof (cl_mem), &b->cl_predictor_mem);
+    err |= clSetKernelArg(cl_data.vp8_dequant_idct_add_kernel, 3, sizeof (cl_mem), &dest_mem);
+    err |= clSetKernelArg(cl_data.vp8_dequant_idct_add_kernel, 4, sizeof (int), &dest_offset);
+    err |= clSetKernelArg(cl_data.vp8_dequant_idct_add_kernel, 5, sizeof (int), &pitch);
+    err |= clSetKernelArg(cl_data.vp8_dequant_idct_add_kernel, 6, sizeof (int), &stride);
+    CL_CHECK_SUCCESS( b->cl_commands, err != CL_SUCCESS,
+        "Error: Failed to set kernel arguments!\n",
+        idct_add(qcoeff, b->dequant,  b->predictor_base + b->predictor_offset,
+            *(b->base_dst) + b->dst, 16, b->dst_stride),
+    );
 
-    for (r = 0; r < 4; r++)
-    {
-        for (c = 0; c < 4; c++)
-        {
-            int a = diff_ptr[c] + pred[c];
+    printf("queueing kernel\n");
+    /* Execute the kernel */
+    err = clEnqueueNDRangeKernel( b->cl_commands, cl_data.vp8_dequant_idct_add_kernel, 1, NULL, &global, NULL , 0, NULL, NULL);
+    printf("Queued\n");
+    CL_CHECK_SUCCESS( b->cl_commands, err != CL_SUCCESS,
+        "Error: Failed to execute kernel!\n",
+        printf("err = %d\n",err);\
+        idct_add(qcoeff, b->dequant,  b->predictor_base + b->predictor_offset,
+            *(b->base_dst) + b->dst, 16, b->dst_stride),
+    );
 
-            if (a < 0)
-                a = 0;
+    printf("Passed error check\n");
+    clFinish(b->cl_commands);
+    printf("Read results\n");
+    /* Read back the result data from the device */
+    err = clEnqueueReadBuffer(b->cl_commands, dest_mem, CL_FALSE, 0, dest_size, dest_base, 0, NULL, NULL); \
+    CL_CHECK_SUCCESS( b->cl_commands, err != CL_SUCCESS,
+        "Error: Failed to read output array!\n",
+        idct_add(qcoeff, b->dequant,  b->predictor_base + b->predictor_offset,
+            *(b->base_dst) + b->dst, 16, b->dst_stride),
+    );\
 
-            if (a > 255)
-                a = 255;
+    clFinish(b->cl_commands);
+    clReleaseMemObject(dest_mem);
+    dest_mem = NULL;
 
-            dest[c] = (unsigned char) a;
-        }
-
-        dest += stride;
-        diff_ptr += 4;
-        pred += pitch;
-    }
+    return;
 }
 
 

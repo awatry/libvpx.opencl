@@ -319,20 +319,8 @@ void vp8_decode_macroblock(VP8D_COMP *pbi, MACROBLOCKD *xd)
 #if CONFIG_OPENCL
                 CL_FINISH(xd->cl_commands);
                 if (cl_initialized == CL_SUCCESS){
-                    CL_SET_BUF(b->cl_commands, b->cl_dqcoeff_mem, sizeof(cl_short)*400, b->dqcoeff_base,
-                        DEQUANT_INVOKE(&pbi->dequant, idct_add)
-                            (qcoeff, b->dequant,  b->predictor_base + b->predictor_offset,
-                            *(b->base_dst) + b->dst, 16, b->dst_stride)
-                    );
-
-                    CL_SET_BUF(b->cl_commands, b->cl_dequant_mem, sizeof(cl_short)*16,b->dequant,
-                            DEQUANT_INVOKE(&pbi->dequant, idct_add)
-                            (qcoeff, b->dequant,  b->predictor_base + b->predictor_offset,
-                            *(b->base_dst) + b->dst, 16, b->dst_stride)
-                    );
-
                     vp8_dequant_idct_add_cl(b, b->qcoeff_base, b->qcoeff_offset, b->dequant,  b->predictor_base + b->predictor_offset,
-                        *(b->base_dst) + b->dst, 16, b->dst_stride);
+                        *(b->base_dst), b->dst, 16, b->dst_stride, DEQUANT_INVOKE(&pbi->dequant, idct_add));
                 } else {
                     DEQUANT_INVOKE(&pbi->dequant, idct_add)
                         (qcoeff, b->dequant,  b->predictor_base + b->predictor_offset,

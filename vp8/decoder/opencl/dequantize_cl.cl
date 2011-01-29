@@ -45,7 +45,8 @@ __kernel void vp8_dequant_idct_add_kernel(
     __global short *input,
     __global short *dq,
     __global unsigned char *pred,
-    __global unsigned char *dest,
+    __global unsigned char *dest_base,
+    int dest_offset,
     int pitch,
     int stride
 )
@@ -53,13 +54,15 @@ __kernel void vp8_dequant_idct_add_kernel(
     short output[16];
     short *diff_ptr = output;
     int r, c;
-    //int i;
+    int i;
+    __global unsigned char *dest = dest_base + dest_offset;
 
-    vstore16( (short16)vload16(0,dq) * (short16)vload16(0,input) , 0, input);
-    //for (i = 0; i < 16; i++)
-    //{
-    //    input[i] = dq[i] * input[i];
-    //}
+    //vstore16( (short16)vload16(0,dq) * (short16)vload16(0,input) , 0, input);
+    
+    for (i = 0; i < 16; i++)
+    {
+        input[i] = dq[i] * input[i];
+    }
 
     /* the idct halves ( >> 1) the pitch */
     vp8_short_idct4x4llm(input, output, 4 << 1);
