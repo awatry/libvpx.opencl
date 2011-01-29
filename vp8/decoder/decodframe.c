@@ -69,7 +69,7 @@ void vp8cx_init_de_quantizer(VP8D_COMP *pbi)
 
 void mb_init_dequantizer(VP8D_COMP *pbi, MACROBLOCKD *xd)
 {
-    int i;
+    int i,err;
     int QIndex;
     MB_MODE_INFO *mbmi = &xd->mode_info_context->mbmi;
     VP8_COMMON *const pc = & pbi->common;
@@ -95,14 +95,35 @@ void mb_init_dequantizer(VP8D_COMP *pbi, MACROBLOCKD *xd)
     for (i = 0; i < 16; i++)
     {
         xd->block[i].dequant = pc->Y1dequant[QIndex];
+#if CONFIG_OPENCL
+        if (cl_initialized == CL_SUCCESS){
+            CL_CREATE_BUF(xd->cl_commands, xd->block[i].cl_dequant_mem,
+                CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,
+                16*sizeof(cl_short), xd->block[i].dequant,);
+        }
+#endif
     }
 
     for (i = 16; i < 24; i++)
     {
         xd->block[i].dequant = pc->UVdequant[QIndex];
+#if CONFIG_OPENCL
+        if (cl_initialized == CL_SUCCESS){
+            CL_CREATE_BUF(xd->cl_commands, xd->block[i].cl_dequant_mem,
+                CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,
+                16*sizeof(cl_short), xd->block[i].dequant,);
+        }
+#endif
     }
 
     xd->block[24].dequant = pc->Y2dequant[QIndex];
+#if CONFIG_OPENCL
+    if (cl_initialized == CL_SUCCESS){
+        CL_CREATE_BUF(xd->cl_commands, xd->block[24].cl_dequant_mem,
+            CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,
+            16*sizeof(cl_short), xd->block[24].dequant,);
+    }
+#endif
 
 }
 
@@ -289,7 +310,6 @@ void vp8_decode_macroblock(VP8D_COMP *pbi, MACROBLOCKD *xd)
     {
         for (i = 0; i < 16; i++)
         {
-
             BLOCKD *b = &xd->block[i];
             short *qcoeff = b->qcoeff_base + b->qcoeff_offset;
             vp8_predict_intra4x4(b, b->bmi.mode, b->predictor_base + b->predictor_offset);
@@ -298,11 +318,32 @@ void vp8_decode_macroblock(VP8D_COMP *pbi, MACROBLOCKD *xd)
             {
 #if CONFIG_OPENCL
                 CL_FINISH(xd->cl_commands);
-#endif
-                //Need to work on dequant functions
+                if (cl_initialized == CL_SUCCESS){
+                    CL_SET_BUF(b->cl_commands, b->cl_dqcoeff_mem, sizeof(cl_short)*400, b->dqcoeff_base,
+                        DEQUANT_INVOKE(&pbi->dequant, idct_add)
+                            (qcoeff, b->dequant,  b->predictor_base + b->predictor_offset,
+                            *(b->base_dst) + b->dst, 16, b->dst_stride)
+                    );
+
+                    CL_SET_BUF(b->cl_commands, b->cl_dequant_mem, sizeof(cl_short)*16,b->dequant,
+                            DEQUANT_INVOKE(&pbi->dequant, idct_add)
+                            (qcoeff, b->dequant,  b->predictor_base + b->predictor_offset,
+                            *(b->base_dst) + b->dst, 16, b->dst_stride)
+                    );
+
+                    vp8_dequant_idct_add_cl(b, b->qcoeff_base, b->qcoeff_offset, b->dequant,  b->predictor_base + b->predictor_offset,
+                        *(b->base_dst) + b->dst, 16, b->dst_stride);
+                } else {
+                    DEQUANT_INVOKE(&pbi->dequant, idct_add)
+                        (qcoeff, b->dequant,  b->predictor_base + b->predictor_offset,
+                        *(b->base_dst) + b->dst, 16, b->dst_stride);
+                }
+#else
                 DEQUANT_INVOKE(&pbi->dequant, idct_add)
                     (qcoeff, b->dequant,  b->predictor_base + b->predictor_offset,
                     *(b->base_dst) + b->dst, 16, b->dst_stride);
+
+#endif
             }
             else
             {
@@ -343,7 +384,7 @@ void vp8_decode_macroblock(VP8D_COMP *pbi, MACROBLOCKD *xd)
                      xd->dst.uv_stride, xd->eobs+16);
 
 #if CONFIG_OPENCL
-    printf("clFinish in decode_macroblock\n");
+    //printf("clFinish in decode_macroblock\n");
     CL_FINISH(xd->cl_commands);
 #endif
 }
@@ -945,6 +986,8 @@ int vp8_decode_frame(VP8D_COMP *pbi)
 #if CONFIG_OPENCL
     //If using OpenCL, free all of the GPU buffers we've allocated.
     if (cl_initialized == CL_SUCCESS){
+        int i;
+
         //Wait for stuff to finish, just in case
         clFinish(pbi->mb.cl_commands);
 
@@ -965,6 +1008,10 @@ int vp8_decode_frame(VP8D_COMP *pbi)
             clReleaseCommandQueue(pbi->mb.cl_commands);
         cl_data.commands = NULL;
         pbi->mb.cl_commands = NULL;
+
+        for (i = 0; i < 25; i++){
+            clReleaseMemObject(pbi->mb.block[i].cl_dequant_mem);
+        }
     }
 #endif
 

@@ -14,6 +14,7 @@
 
 #if CONFIG_OPENCL
 #include "opencl/vp8_opencl.h"
+#include "opencl/vp8_decode_cl.h"
 #endif
 
 void vp8_arch_opencl_decode_init(VP8D_COMP *pbi)

@@ -14,83 +14,12 @@ __constant int cospi8sqrt2minus1 = 20091;
 __constant int sinpi8sqrt2      = 35468;
 __constant int rounding = 0;
 
-//Note that this kernel has been copied from common/opencl/idctllm_cl.cl
-void vp8_short_idct4x4llm(
-    __global short *input,
-    __global short *output,
-    int pitch
-)
-{
-    int i;
-    int a1, b1, c1, d1;
+void vp8_short_idct4x4llm(__global short*, short*, int);
+void cl_memset_short(__global short*, int, size_t);
 
-    __global short *ip = input;
-    __global short *op = output;
-    int temp1, temp2;
-    int shortpitch = pitch >> 1;
-
-    for (i = 0; i < 4; i++)
-    {
-        a1 = ip[0] + ip[8];
-        b1 = ip[0] - ip[8];
-
-        temp1 = (ip[4] * sinpi8sqrt2 + rounding) >> 16;
-        temp2 = ip[12] + ((ip[12] * cospi8sqrt2minus1 + rounding) >> 16);
-        c1 = temp1 - temp2;
-
-        temp1 = ip[4] + ((ip[4] * cospi8sqrt2minus1 + rounding) >> 16);
-        temp2 = (ip[12] * sinpi8sqrt2 + rounding) >> 16;
-        d1 = temp1 + temp2;
-
-        op[shortpitch*0] = a1 + d1;
-        op[shortpitch*3] = a1 - d1;
-
-        op[shortpitch*1] = b1 + c1;
-        op[shortpitch*2] = b1 - c1;
-
-        ip++;
-        op++;
-    }
-
-    ip = output;
-    op = output;
-
-    for (i = 0; i < 4; i++)
-    {
-        a1 = ip[0] + ip[2];
-        b1 = ip[0] - ip[2];
-
-        temp1 = (ip[1] * sinpi8sqrt2 + rounding) >> 16;
-        temp2 = ip[3] + ((ip[3] * cospi8sqrt2minus1 + rounding) >> 16);
-        c1 = temp1 - temp2;
-
-        temp1 = ip[1] + ((ip[1] * cospi8sqrt2minus1 + rounding) >> 16);
-        temp2 = (ip[3] * sinpi8sqrt2 + rounding) >> 16;
-        d1 = temp1 + temp2;
-
-
-        op[0] = (a1 + d1 + 4) >> 3;
-        op[3] = (a1 - d1 + 4) >> 3;
-
-        op[1] = (b1 + c1 + 4) >> 3;
-        op[2] = (b1 - c1 + 4) >> 3;
-
-        ip += shortpitch;
-        op += shortpitch;
-    }
-
-}
-
-void cl_memset(__global short *input, short val, size_t nbytes){
-    __global short *cur = input;
-    while (cur < input + nbytes){
-        *cur == val;
-        cur += sizeof(short);
-    }
-}
 
 __kernel void vp8_dequantize_b_kernel(
-    __global short *dqoeff_base,
+    __global short *dqcoeff_base,
     int dqcoeff_offset,
     __global short *qcoeff_base,
     int qcoeff_offset,
@@ -99,9 +28,9 @@ __kernel void vp8_dequantize_b_kernel(
 )
 {
     //int i;
-    __global short *DQ  = dqcoeff_base + dqcoeff_offset;
-    __global short *Q   = qcoeff_base + qcoeff_offset;
-    __global short *DQC = dequant_base + quant_offset;
+    __global short *DQ  = &dqcoeff_base[0] + dqcoeff_offset;
+    __global short *Q   = &qcoeff_base[0]  + qcoeff_offset;
+    __global short *DQC = &dequant_base[0] + dequant_offset;
 
     short16 dqv = vload16(0,Q) * vload16(0,DQC);
     vstore16(dqv, 0, DQ);
@@ -112,13 +41,19 @@ __kernel void vp8_dequantize_b_kernel(
     //}
 }
 
-__kernel void vp8_dequant_idct_add_kernel(short *input, short *dq, unsigned char *pred,
-                            unsigned char *dest, int pitch, int stride)
+__kernel void vp8_dequant_idct_add_kernel(
+    __global short *input,
+    __global short *dq,
+    __global unsigned char *pred,
+    __global unsigned char *dest,
+    int pitch,
+    int stride
+)
 {
     short output[16];
     short *diff_ptr = output;
     int r, c;
-    int i;
+    //int i;
 
     vstore16( (short16)vload16(0,dq) * (short16)vload16(0,input) , 0, input);
     //for (i = 0; i < 16; i++)
@@ -127,9 +62,9 @@ __kernel void vp8_dequant_idct_add_kernel(short *input, short *dq, unsigned char
     //}
 
     /* the idct halves ( >> 1) the pitch */
-    vp8_short_idct4x4llm_kernel(input, output, 4 << 1);
+    vp8_short_idct4x4llm(input, output, 4 << 1);
 
-    cl_memset(input, 0, 32);
+    cl_memset_short(input, 0, 32);
 
     for (r = 0; r < 4; r++)
     {
@@ -162,7 +97,7 @@ __kernel void vp8_dequant_dc_idct_add_kernel(
     int Dc
 )
 {
-    int i;
+    //int i;
     short output[16];
     short *diff_ptr = output;
     int r, c;
@@ -178,7 +113,7 @@ __kernel void vp8_dequant_dc_idct_add_kernel(
     /* the idct halves ( >> 1) the pitch */
     vp8_short_idct4x4llm(input, output, 4 << 1);
 
-    cl_memset(input, 0, 32);
+    cl_memset_short(input, 0, 32);
 
     for (r = 0; r < 4; r++)
     {
@@ -199,4 +134,79 @@ __kernel void vp8_dequant_dc_idct_add_kernel(
         diff_ptr += 4;
         pred += pitch;
     }
+}
+
+
+
+
+
+
+//Note that this kernel has been copied from common/opencl/idctllm_cl.cl
+void vp8_short_idct4x4llm(
+    __global short *input,
+    short *output,
+    int pitch
+)
+{
+    int i;
+    int a1, b1, c1, d1;
+
+    __global short *ip = input;
+    short *op = output;
+    int temp1, temp2;
+    int shortpitch = pitch >> 1;
+
+    for (i = 0; i < 4; i++)
+    {
+        a1 = ip[0] + ip[8];
+        b1 = ip[0] - ip[8];
+
+        temp1 = (ip[4] * sinpi8sqrt2 + rounding) >> 16;
+        temp2 = ip[12] + ((ip[12] * cospi8sqrt2minus1 + rounding) >> 16);
+        c1 = temp1 - temp2;
+
+        temp1 = ip[4] + ((ip[4] * cospi8sqrt2minus1 + rounding) >> 16);
+        temp2 = (ip[12] * sinpi8sqrt2 + rounding) >> 16;
+        d1 = temp1 + temp2;
+
+        op[shortpitch*0] = a1 + d1;
+        op[shortpitch*3] = a1 - d1;
+
+        op[shortpitch*1] = b1 + c1;
+        op[shortpitch*2] = b1 - c1;
+
+        ip++;
+        op++;
+    }
+
+    op = output;
+
+    for (i = 0; i < 4; i++)
+    {
+        a1 = op[0] + op[2];
+        b1 = op[0] - op[2];
+
+        temp1 = (op[1] * sinpi8sqrt2 + rounding) >> 16;
+        temp2 = op[3] + ((op[3] * cospi8sqrt2minus1 + rounding) >> 16);
+        c1 = temp1 - temp2;
+
+        temp1 = op[1] + ((op[1] * cospi8sqrt2minus1 + rounding) >> 16);
+        temp2 = (op[3] * sinpi8sqrt2 + rounding) >> 16;
+        d1 = temp1 + temp2;
+
+
+        op[0] = (a1 + d1 + 4) >> 3;
+        op[3] = (a1 - d1 + 4) >> 3;
+
+        op[1] = (b1 + c1 + 4) >> 3;
+        op[2] = (b1 - c1 + 4) >> 3;
+
+        op += shortpitch;
+    }
+
+}
+
+void cl_memset_short(__global short *s, int c, size_t n) {
+    for (n /= sizeof(short); n > 0; --n)
+        *s++ = c;
 }

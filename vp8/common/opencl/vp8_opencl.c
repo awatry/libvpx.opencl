@@ -20,6 +20,10 @@ VP8_COMMON_CL cl_data;
 extern int cl_init_filter();
 extern int cl_init_idct();
 
+//Destructors for encoder/decoder-specific bits
+extern void cl_decode_destroy();
+extern void cl_encode_destroy();
+
 /**
  *
  */
@@ -64,8 +68,16 @@ void cl_destroy(cl_command_queue cq, int new_status) {
     CL_RELEASE_KERNEL(cl_data.vp8_bilinear_predict8x8_kernel);
     CL_RELEASE_KERNEL(cl_data.vp8_bilinear_predict16x16_kernel);
 
+#if CONFIG_VP8_DECODER
+    if (cl_data.cl_decode_initialized == CL_SUCCESS)
+        cl_decode_destroy();
+#endif
+
+#if CONFIG_VP8_ENCODER
+    //placeholder for if/when encoder CL gets implemented
+#endif
+
     printf("Need to release IDCT kernels\n");
-    printf("Need to release Dequant kernels\n");
 
 
     //Older kernels that probably aren't used anymore... remove eventually.
@@ -286,9 +298,8 @@ int cl_load_program(cl_program *prog_ref, const char *file_name, const char *opt
     /* Build the program executable */
     err = clBuildProgram(*prog_ref, 0, NULL, opts, NULL, NULL);
     if (err != CL_SUCCESS) {
-        printf("Error: Failed to build program executable!\n");
+        printf("Error: Failed to build program executable for %s!\n", file_name);
         err = clGetProgramBuildInfo(*prog_ref, cl_data.device_id, CL_PROGRAM_BUILD_LOG, 0, NULL, &len);
-        printf("Got log size\n");
         if (err != CL_SUCCESS) {
             printf("Error: Could not get length of CL build log\n");
             return CL_TRIED_BUT_FAILED;
@@ -298,13 +309,11 @@ int cl_load_program(cl_program *prog_ref, const char *file_name, const char *opt
             printf("Error: Couldn't allocate compile output buffer memory\n");
             return CL_TRIED_BUT_FAILED;
         }
-        printf("Fetching build log\n");
         err = clGetProgramBuildInfo(*prog_ref, cl_data.device_id, CL_PROGRAM_BUILD_LOG, len, buffer, NULL);
-        printf("Got build log\n");
         if (err != CL_SUCCESS) {
             printf("Error: Could not get CL build log\n");
+            
         } else {
-            printf("didn't crash in clGetProgramBuildInfo\n");
             printf("Compile output: %s\n", buffer);
         }
         free(buffer);

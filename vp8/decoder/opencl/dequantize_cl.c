@@ -17,16 +17,29 @@
 
 extern void vp8_short_idct4x4llm_cl(short *input, short *output, int pitch) ;
 
-void cl_memset(short *input, short val, size_t nbytes){
-    short *cur = input;
-    while (cur < input + nbytes){
-        *cur == val;
-        cur += sizeof(short);
-    }
+void cl_memset_short(short *s, int c, size_t n) {
+    for (n /= sizeof(short); n > 0; --n)
+        *s++ = c;
+}
+
+int cl_destroy_dequant(){
+    printf("Freeing dequant decoder resources\n");
+
+    CL_RELEASE_KERNEL(cl_data.vp8_dequant_dc_idct_add_kernel);
+    CL_RELEASE_KERNEL(cl_data.vp8_dequant_idct_add_kernel);
+    CL_RELEASE_KERNEL(cl_data.vp8_dequantize_b_kernel);
+
+    if (cl_data.dequant_program)
+        clReleaseProgram(cl_data.dequant_program);
+    cl_data.dequant_program = NULL;
+
+    return CL_SUCCESS;
 }
 
 int cl_init_dequant() {
     int err;
+
+    //printf("Initializing dequant program/kernels\n");
 
     // Create the compute program from the file-defined source code
     if (cl_load_program(&cl_data.dequant_program, dequant_cl_file_name,
@@ -34,11 +47,11 @@ int cl_init_dequant() {
         return CL_TRIED_BUT_FAILED;
 
     // Create the compute kernels in the program we wish to run
-    CL_CREATE_KERNEL(cl_data,dequant_program,vp8_dequant_dc_idct_add_kernel,"cl_kernel vp8_dequant_dc_idct_add_kernel");
-    CL_CREATE_KERNEL(cl_data,dequant_program,vp8_dequant_idct_add_kernel,"cl_kernel vp8_dequant_idct_add_kernel");
-    CL_CREATE_KERNEL(cl_data,dequant_program,vp8_dequantize_b_kernel,"cl_kernel vp8_dequantize_b_kernel");
+    CL_CREATE_KERNEL(cl_data,dequant_program,vp8_dequant_dc_idct_add_kernel,"vp8_dequant_dc_idct_add_kernel");
+    CL_CREATE_KERNEL(cl_data,dequant_program,vp8_dequant_idct_add_kernel,"vp8_dequant_idct_add_kernel");
+    CL_CREATE_KERNEL(cl_data,dequant_program,vp8_dequantize_b_kernel,"vp8_dequantize_b_kernel");
 
-    printf("Created dequant kernels\n");
+    //printf("Created dequant kernels\n");
 
     return CL_SUCCESS;
 }
@@ -51,19 +64,28 @@ void vp8_dequantize_b_cl(BLOCKD *d)
     short *Q   = d->qcoeff_base + d->qcoeff_offset;
     short *DQC = d->dequant;
 
+    printf("vp8_dequantize_b_cl\n");
+
     for (i = 0; i < 16; i++)
     {
         DQ[i] = Q[i] * DQC[i];
     }
 }
 
-void vp8_dequant_idct_add_cl(short *input, short *dq, unsigned char *pred,
+void vp8_dequant_idct_add_cl(BLOCKD *b, short *input_base, int input_offset, short *dq, unsigned char *pred,
                             unsigned char *dest, int pitch, int stride)
 {
     short output[16];
     short *diff_ptr = output;
+    short *input = input_base + input_offset;
     int r, c;
     int i;
+
+    printf("vp8_dequant_idct_add_cl\n");
+
+    //set arguments
+
+    //run kernel
 
     for (i = 0; i < 16; i++)
     {
@@ -71,9 +93,9 @@ void vp8_dequant_idct_add_cl(short *input, short *dq, unsigned char *pred,
     }
 
     /* the idct halves ( >> 1) the pitch */
-    vp8_short_idct4x4llm_cl(input, output, 4 << 1);
+    vp8_short_idct4x4llm_c(input, output, 4 << 1);
 
-    cl_memset(input, 0, 32);
+    cl_memset_short(input, 0, 32);
 
     for (r = 0; r < 4; r++)
     {
@@ -96,6 +118,7 @@ void vp8_dequant_idct_add_cl(short *input, short *dq, unsigned char *pred,
     }
 }
 
+
 void vp8_dequant_dc_idct_add_cl(short *input, short *dq, unsigned char *pred,
                                unsigned char *dest, int pitch, int stride,
                                int Dc)
@@ -104,6 +127,8 @@ void vp8_dequant_dc_idct_add_cl(short *input, short *dq, unsigned char *pred,
     short output[16];
     short *diff_ptr = output;
     int r, c;
+
+    printf("vp8_dequant_dc_idct_add_cl\n");
 
     input[0] = (short)Dc;
 
@@ -115,7 +140,7 @@ void vp8_dequant_dc_idct_add_cl(short *input, short *dq, unsigned char *pred,
     /* the idct halves ( >> 1) the pitch */
     vp8_short_idct4x4llm_cl(input, output, 4 << 1);
 
-    cl_memset(input, 0, 32);
+    cl_memset_short(input, 0, 32);
 
     for (r = 0; r < 4; r++)
     {

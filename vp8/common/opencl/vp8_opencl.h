@@ -15,7 +15,7 @@
 extern "C" {
 #endif
 
-#include "vpx_config.h"
+#include "../../vpx_config.h"
 
 #ifdef __APPLE__
 #include <OpenCL/cl.h>
@@ -65,7 +65,7 @@ extern const char *vpx_codec_lib_dir(void);
 #define CL_CREATE_KERNEL(data,program,name,str_name) \
     data.name = clCreateKernel(data.program, str_name , &err); \
     CL_CHECK_SUCCESS(NULL, err != CL_SUCCESS || !data.name, \
-        "Error: Failed to create compute kernel!\n", \
+        "Error: Failed to create compute kernel "#str_name"!\n", \
         ,\
         CL_TRIED_BUT_FAILED \
     );
@@ -166,6 +166,9 @@ typedef struct VP8_COMMON_CL {
     cl_mem intData; //Intermediate data pointer. Used as scratch data
     size_t intAlloc; //Size of intData
 
+    cl_int cl_decode_initialized;
+    cl_int cl_encode_initialized;
+    
 } VP8_COMMON_CL;
 
 extern VP8_COMMON_CL cl_data;

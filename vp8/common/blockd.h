@@ -218,6 +218,8 @@ typedef struct
     cl_mem cl_qcoeff_mem;
     cl_mem cl_dqcoeff_mem;
     cl_mem cl_eobs_mem;
+
+    cl_mem cl_dequant_mem; //Block-specific, not shared
 #endif
 
     /* 16 Y blocks, 4 U blocks, 4 V blocks each with 16 entries */
