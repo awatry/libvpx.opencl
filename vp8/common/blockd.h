@@ -221,11 +221,11 @@ typedef struct
 #endif
 
     /* 16 Y blocks, 4 U blocks, 4 V blocks each with 16 entries */
-    unsigned char **base_pre;
+    unsigned char **base_pre; //prediction base pointer
     int pre;
     int pre_stride;
 
-    unsigned char **base_dst;
+    unsigned char **base_dst; //destination base pointer
     int dst;
     int dst_stride;
 
