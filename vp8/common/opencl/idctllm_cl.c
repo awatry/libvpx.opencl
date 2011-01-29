@@ -59,12 +59,12 @@ void vp8_short_idct4x4llm_cl(short *input, short *output, int pitch)
     return;
 #endif
 
-    CL_ENSURE_BUF_SIZE(cl_data.srcData, CL_MEM_READ_ONLY|CL_MEM_COPY_HOST_PTR,
+    CL_ENSURE_BUF_SIZE(cl_data.commands, cl_data.srcData, CL_MEM_READ_ONLY|CL_MEM_COPY_HOST_PTR,
             sizeof(short)*16, cl_data.srcAlloc, input,
             vp8_short_idct4x4llm_c(input,output,pitch)
     );
 
-    CL_ENSURE_BUF_SIZE(cl_data.destData,CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,
+    CL_ENSURE_BUF_SIZE(cl_data.commands, cl_data.destData,CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,
             sizeof(short)*(4+(pitch/2)*3), cl_data.destAlloc, output,
             vp8_short_idct4x4llm_c(input,output,pitch)
     );
@@ -74,14 +74,14 @@ void vp8_short_idct4x4llm_cl(short *input, short *output, int pitch)
     err = clSetKernelArg(cl_data.vp8_short_idct4x4llm_kernel, 0, sizeof (cl_mem), &cl_data.srcData);
     err |= clSetKernelArg(cl_data.vp8_short_idct4x4llm_kernel, 1, sizeof (cl_mem), &cl_data.destData);
     err |= clSetKernelArg(cl_data.vp8_short_idct4x4llm_kernel, 2, sizeof (int), &pitch);
-    CL_CHECK_SUCCESS( err != CL_SUCCESS,
+    CL_CHECK_SUCCESS( cl_data.commands, err != CL_SUCCESS,
         "Error: Failed to set kernel arguments!\n",
         vp8_short_idct4x4llm_c(input,output,pitch),
     );
     
     /* Execute the kernel */
     err = clEnqueueNDRangeKernel(cl_data.commands, cl_data.vp8_short_idct4x4llm_kernel, 1, NULL, &global, NULL , 0, NULL, NULL);
-    CL_CHECK_SUCCESS( err != CL_SUCCESS,
+    CL_CHECK_SUCCESS( cl_data.commands, err != CL_SUCCESS,
         "Error: Failed to execute kernel!\n",
         printf("err = %d\n",err);
         vp8_short_idct4x4llm_c(input,output,pitch),
@@ -89,7 +89,7 @@ void vp8_short_idct4x4llm_cl(short *input, short *output, int pitch)
 
     /* Read back the result data from the device */
     err = clEnqueueReadBuffer(cl_data.commands, cl_data.destData, CL_FALSE, 0, sizeof(short)*(4+pitch/2*3), output, 0, NULL, NULL);
-    CL_CHECK_SUCCESS(err != CL_SUCCESS,
+    CL_CHECK_SUCCESS(cl_data.commands, err != CL_SUCCESS,
         "Error: Failed to read output array!\n",
         vp8_short_idct4x4llm_c(input,output,pitch),
     );
@@ -116,12 +116,12 @@ void vp8_short_idct4x4llm_1_cl(short *input, short *output, int pitch)
     return;
 #endif
 
-    CL_ENSURE_BUF_SIZE(cl_data.srcData, CL_MEM_READ_ONLY|CL_MEM_COPY_HOST_PTR,
+    CL_ENSURE_BUF_SIZE(cl_data.commands, cl_data.srcData, CL_MEM_READ_ONLY|CL_MEM_COPY_HOST_PTR,
             sizeof(short), cl_data.srcAlloc, input,
             vp8_short_idct4x4llm_1_c(input,output,pitch)
     );
 
-    CL_ENSURE_BUF_SIZE(cl_data.destData,CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,
+    CL_ENSURE_BUF_SIZE(cl_data.commands, cl_data.destData,CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,
             sizeof(short)*(4+(pitch/2)*3), cl_data.destAlloc, output,
             vp8_short_idct4x4llm_1_c(input,output,pitch)
     );
@@ -131,14 +131,14 @@ void vp8_short_idct4x4llm_1_cl(short *input, short *output, int pitch)
     err = clSetKernelArg(cl_data.vp8_short_idct4x4llm_1_kernel, 0, sizeof (cl_mem), &cl_data.srcData);
     err |= clSetKernelArg(cl_data.vp8_short_idct4x4llm_1_kernel, 1, sizeof (cl_mem), &cl_data.destData);
     err |= clSetKernelArg(cl_data.vp8_short_idct4x4llm_1_kernel, 2, sizeof (int), &pitch);
-    CL_CHECK_SUCCESS( err != CL_SUCCESS,
+    CL_CHECK_SUCCESS( cl_data.commands, err != CL_SUCCESS,
         "Error: Failed to set kernel arguments!\n",
         vp8_short_idct4x4llm_1_c(input,output,pitch),
     );
 
     /* Execute the kernel */
     err = clEnqueueNDRangeKernel(cl_data.commands, cl_data.vp8_short_idct4x4llm_1_kernel, 1, NULL, &global, NULL , 0, NULL, NULL);
-    CL_CHECK_SUCCESS( err != CL_SUCCESS,
+    CL_CHECK_SUCCESS( cl_data.commands, err != CL_SUCCESS,
         "Error: Failed to execute kernel!\n",
         printf("err = %d\n",err);
         vp8_short_idct4x4llm_1_c(input,output,pitch),
@@ -146,7 +146,7 @@ void vp8_short_idct4x4llm_1_cl(short *input, short *output, int pitch)
 
     /* Read back the result data from the device */
     err = clEnqueueReadBuffer(cl_data.commands, cl_data.destData, CL_FALSE, 0, sizeof(short)*(4+pitch/2*3), output, 0, NULL, NULL);
-    CL_CHECK_SUCCESS(err != CL_SUCCESS,
+    CL_CHECK_SUCCESS(cl_data.commands, err != CL_SUCCESS,
         "Error: Failed to read output array!\n",
         vp8_short_idct4x4llm_1_c(input,output,pitch),
     );
@@ -168,12 +168,12 @@ void vp8_dc_only_idct_add_cl(short input_dc, unsigned char *pred_ptr, unsigned c
         return;
     }
 
-    CL_ENSURE_BUF_SIZE(cl_data.srcData, CL_MEM_READ_ONLY|CL_MEM_COPY_HOST_PTR,
+    CL_ENSURE_BUF_SIZE(cl_data.commands, cl_data.srcData, CL_MEM_READ_ONLY|CL_MEM_COPY_HOST_PTR,
             sizeof(unsigned char)*(4*pitch+4), cl_data.srcAlloc, pred_ptr,
             vp8_dc_only_idct_add_c(input_dc, pred_ptr, dst_ptr, pitch, stride)
     );
 
-    CL_ENSURE_BUF_SIZE(cl_data.destData,CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,
+    CL_ENSURE_BUF_SIZE(cl_data.commands, cl_data.destData,CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,
             sizeof(unsigned char) * ( 4 * stride + 4), cl_data.destAlloc, dst_ptr,
             vp8_dc_only_idct_add_c(input_dc, pred_ptr, dst_ptr, pitch, stride)
     );
@@ -185,14 +185,14 @@ void vp8_dc_only_idct_add_cl(short input_dc, unsigned char *pred_ptr, unsigned c
     err |= clSetKernelArg(cl_data.vp8_dc_only_idct_add_kernel, 2, sizeof (cl_mem), &cl_data.destData);
     err |= clSetKernelArg(cl_data.vp8_dc_only_idct_add_kernel, 3, sizeof (int), &pitch);
     err |= clSetKernelArg(cl_data.vp8_dc_only_idct_add_kernel, 4, sizeof (int), &stride);
-    CL_CHECK_SUCCESS( err != CL_SUCCESS,
+    CL_CHECK_SUCCESS( cl_data.commands, err != CL_SUCCESS,
         "Error: Failed to set kernel arguments!\n",
         vp8_dc_only_idct_add_c(input_dc, pred_ptr, dst_ptr, pitch, stride),
     );
 
     /* Execute the kernel */
     err = clEnqueueNDRangeKernel(cl_data.commands, cl_data.vp8_dc_only_idct_add_kernel, 1, NULL, &global, NULL , 0, NULL, NULL);
-    CL_CHECK_SUCCESS( err != CL_SUCCESS,
+    CL_CHECK_SUCCESS( cl_data.commands, err != CL_SUCCESS,
         "Error: Failed to execute kernel!\n",
         printf("err = %d\n",err);
         vp8_dc_only_idct_add_c(input_dc, pred_ptr, dst_ptr, pitch, stride),
@@ -201,7 +201,7 @@ void vp8_dc_only_idct_add_cl(short input_dc, unsigned char *pred_ptr, unsigned c
     /* Read back the result data from the device */
     err = clEnqueueReadBuffer(cl_data.commands, cl_data.destData, CL_FALSE, 0, 
             sizeof(unsigned char) * ( 4 * stride + 4), dst_ptr, 0, NULL, NULL);
-    CL_CHECK_SUCCESS(err != CL_SUCCESS,
+    CL_CHECK_SUCCESS(cl_data.commands, err != CL_SUCCESS,
         "Error: Failed to read output array!\n",
         vp8_dc_only_idct_add_c(input_dc, pred_ptr, dst_ptr, pitch, stride),
     );
@@ -219,7 +219,7 @@ void vp8_short_inv_walsh4x4_cl(cl_mem src_data, int src_offset, short *input, sh
         return;
     }
 
-    CL_ENSURE_BUF_SIZE(cl_data.destData,CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,
+    CL_ENSURE_BUF_SIZE(cl_data.commands, cl_data.destData,CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,
             sizeof(cl_short)*16, cl_data.destAlloc, output,
             vp8_short_inv_walsh4x4_c(input, output)
     );
@@ -229,14 +229,14 @@ void vp8_short_inv_walsh4x4_cl(cl_mem src_data, int src_offset, short *input, sh
     err = clSetKernelArg(cl_data.vp8_short_inv_walsh4x4_kernel, 0, sizeof (cl_mem), &src_data);
     err |= clSetKernelArg(cl_data.vp8_short_inv_walsh4x4_kernel, 1, sizeof(cl_int), &src_offset);
     err |= clSetKernelArg(cl_data.vp8_short_inv_walsh4x4_kernel, 2, sizeof (cl_mem), &cl_data.destData);
-    CL_CHECK_SUCCESS( err != CL_SUCCESS,
+    CL_CHECK_SUCCESS( cl_data.commands, err != CL_SUCCESS,
         "Error: Failed to set kernel arguments!\n",
         vp8_short_inv_walsh4x4_c(input, output),
     );
 
     /* Execute the kernel */
     err = clEnqueueNDRangeKernel(cl_data.commands, cl_data.vp8_short_inv_walsh4x4_kernel, 1, NULL, &global, NULL , 0, NULL, NULL);
-    CL_CHECK_SUCCESS( err != CL_SUCCESS,
+    CL_CHECK_SUCCESS( cl_data.commands, err != CL_SUCCESS,
         "Error: Failed to execute kernel!\n",
         printf("err = %d\n",err);
         vp8_short_inv_walsh4x4_c(input, output),
@@ -244,7 +244,7 @@ void vp8_short_inv_walsh4x4_cl(cl_mem src_data, int src_offset, short *input, sh
 
     /* Read back the result data from the device */
     err = clEnqueueReadBuffer(cl_data.commands, cl_data.destData, CL_FALSE, 0, sizeof(cl_short)*16, output, 0, NULL, NULL);
-    CL_CHECK_SUCCESS(err != CL_SUCCESS,
+    CL_CHECK_SUCCESS(cl_data.commands, err != CL_SUCCESS,
         "Error: Failed to read output array!\n",
         vp8_short_inv_walsh4x4_c(input, output),
     );
@@ -264,7 +264,7 @@ void vp8_short_inv_walsh4x4_1_cl(cl_mem src_data, int src_offset, short *input, 
         return;
     }
 
-    CL_ENSURE_BUF_SIZE(cl_data.destData,CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,
+    CL_ENSURE_BUF_SIZE(cl_data.commands, cl_data.destData,CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,
             sizeof(short)*16, cl_data.destAlloc, output,
             vp8_short_inv_walsh4x4_1_c(input,output)
     );
@@ -275,14 +275,14 @@ void vp8_short_inv_walsh4x4_1_cl(cl_mem src_data, int src_offset, short *input, 
     err |= clSetKernelArg(cl_data.vp8_short_inv_walsh4x4_1_kernel, 1, sizeof (cl_int), &src_offset);
     err |= clSetKernelArg(cl_data.vp8_short_inv_walsh4x4_1_kernel, 2, sizeof (cl_mem), &cl_data.destData);
     err |= clSetKernelArg(cl_data.vp8_short_inv_walsh4x4_1_kernel, 3, sizeof (cl_int), &output_offset);
-    CL_CHECK_SUCCESS( err != CL_SUCCESS,
+    CL_CHECK_SUCCESS( cl_data.commands, err != CL_SUCCESS,
         "Error: Failed to set kernel arguments!\n",
         vp8_short_inv_walsh4x4_1_c(input,output),
     );
 
     /* Execute the kernel */
     err = clEnqueueNDRangeKernel(cl_data.commands, cl_data.vp8_short_inv_walsh4x4_1_kernel, 1, NULL, &global, NULL , 0, NULL, NULL);
-    CL_CHECK_SUCCESS( err != CL_SUCCESS,
+    CL_CHECK_SUCCESS( cl_data.commands, err != CL_SUCCESS,
         "Error: Failed to execute kernel!\n",
         printf("err = %d\n",err);
         vp8_short_inv_walsh4x4_1_c(input,output),
@@ -290,7 +290,7 @@ void vp8_short_inv_walsh4x4_1_cl(cl_mem src_data, int src_offset, short *input, 
 
     /* Read back the result data from the device */
     err = clEnqueueReadBuffer(cl_data.commands, cl_data.destData, CL_FALSE, 0, sizeof(short)*16, output, 0, NULL, NULL);
-    CL_CHECK_SUCCESS(err != CL_SUCCESS,
+    CL_CHECK_SUCCESS(cl_data.commands, err != CL_SUCCESS,
         "Error: Failed to read output array!\n",
         vp8_short_inv_walsh4x4_1_c(input,output),
     );

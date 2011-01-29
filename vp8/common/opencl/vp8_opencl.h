@@ -29,7 +29,7 @@ extern "C" {
 
 extern char *cl_read_file(const char* file_name);
 extern int cl_common_init();
-extern void cl_destroy(int new_status);
+extern void cl_destroy(cl_command_queue cq, int new_status);
 extern int cl_load_program(cl_program *prog_ref, const char *file_name, const char *opts);
 
 #define MAX_NUM_PLATFORMS 4
@@ -41,10 +41,10 @@ extern int cl_initialized;
 
 extern const char *vpx_codec_lib_dir(void);
 
-#define CL_FINISH \
+#define CL_FINISH(cq) \
     if (cl_initialized == CL_SUCCESS){ \
-        /* //Wait for kernels to finish. */ \
-        clFinish(cl_data.commands); \
+        /* Wait for kernels to finish. */ \
+        clFinish(cq); \
     }
 
 #define CL_BARRIER \
@@ -53,38 +53,38 @@ extern const char *vpx_codec_lib_dir(void);
         clEnqueueBarrier(cl_data.commands); \
     }
 
-#define CL_CHECK_SUCCESS(cond,msg,alt,retCode) \
+#define CL_CHECK_SUCCESS(cq,cond,msg,alt,retCode) \
     if ( cond ){ \
         printf(msg);  \
         printf("CL operation failed.\n");\
-        cl_destroy(CL_TRIED_BUT_FAILED); \
+        cl_destroy(cq, CL_TRIED_BUT_FAILED); \
         alt; \
         return retCode; \
     }
 
 #define CL_CREATE_KERNEL(data,program,name,str_name) \
     data.name = clCreateKernel(data.program, str_name , &err); \
-    CL_CHECK_SUCCESS(err != CL_SUCCESS || !data.name, \
+    CL_CHECK_SUCCESS(NULL, err != CL_SUCCESS || !data.name, \
         "Error: Failed to create compute kernel!\n", \
         ,\
         CL_TRIED_BUT_FAILED \
     );
 
-#define CL_SET_BUF(bufRef, bufSize, dataPtr, altPath) \
+#define CL_SET_BUF(cq, bufRef, bufSize, dataPtr, altPath) \
     if (dataPtr != NULL){\
                 err = clEnqueueWriteBuffer(cl_data.commands, bufRef, CL_FALSE, 0, \
                     bufSize, dataPtr, 0, NULL, NULL); \
                 \
-                CL_CHECK_SUCCESS( err != CL_SUCCESS, \
+                CL_CHECK_SUCCESS(cq, err != CL_SUCCESS, \
                     "Error: Failed to write to buffer!\n", \
                     altPath, \
                 ); \
     }\
 
-#define CL_CREATE_BUF(bufRef, bufType, bufSize, dataPtr, altPath) \
+#define CL_CREATE_BUF(cq, bufRef, bufType, bufSize, dataPtr, altPath) \
     if (dataPtr != NULL){ \
         bufRef = clCreateBuffer(cl_data.context, bufType, bufSize, dataPtr, &err); \
-        CL_CHECK_SUCCESS( \
+        CL_CHECK_SUCCESS(cq, \
             err != CL_SUCCESS, \
             "Error copying data to buffer! Using CPU path!\n", \
             altPath, \
@@ -92,18 +92,18 @@ extern const char *vpx_codec_lib_dir(void);
     } else {\
         bufRef = clCreateBuffer(cl_data.context, bufType, bufSize, NULL, NULL);\
     } \
-    CL_CHECK_SUCCESS(!bufRef, \
+    CL_CHECK_SUCCESS(cq, !bufRef, \
         "Error: Failed to allocate buffer. Using CPU path!\n", \
         altPath, \
     ); \
 
-#define CL_ENSURE_BUF_SIZE(bufRef, bufType, needSize, curSize, dataPtr, altPath) \
+#define CL_ENSURE_BUF_SIZE(cq, bufRef, bufType, needSize, curSize, dataPtr, altPath) \
     if ( needSize > curSize || bufRef == NULL){ \
         if (bufRef != NULL) \
             clReleaseMemObject(bufRef); \
         if (dataPtr != NULL){ \
             bufRef = clCreateBuffer(cl_data.context, bufType, needSize, dataPtr, &err); \
-            CL_CHECK_SUCCESS( \
+            CL_CHECK_SUCCESS(cq, \
                 err != CL_SUCCESS, \
                 "Error copying data to buffer! Using CPU path!\n", \
                 altPath, \
@@ -111,13 +111,13 @@ extern const char *vpx_codec_lib_dir(void);
         } else {\
             bufRef = clCreateBuffer(cl_data.context, bufType, needSize, NULL, NULL);\
         } \
-        CL_CHECK_SUCCESS(!bufRef, \
+        CL_CHECK_SUCCESS(cq, !bufRef, \
             "Error: Failed to allocate buffer. Using CPU path!\n", \
             altPath, \
         ); \
         curSize = needSize; \
     } else { \
-        CL_SET_BUF(bufRef, needSize, dataPtr, altPath); \
+        CL_SET_BUF(cq, bufRef, needSize, dataPtr, altPath); \
     }
 
 #define CL_RELEASE_KERNEL(kernel) \

@@ -162,15 +162,15 @@ const char *filter_cl_file_name = "vp8/common/opencl/filter_cl.cl";
 #define BIL_SRC_LEN(out_width,out_height,src_px) (out_height * src_px + out_width)
 #define DST_LEN(dst_pitch,dst_height,dst_width) (dst_pitch * dst_height + dst_width)
 
-#define CL_SIXTAP_PREDICT_EXEC(kernel,src_ptr,src_len, src_pixels_per_line, \
+#define CL_SIXTAP_PREDICT_EXEC(cq, kernel,src_ptr,src_len, src_pixels_per_line, \
 xoffset,yoffset,dst_ptr,dst_pitch,thread_count,dst_len,altPath) \
 \
 /*Make space for kernel input/output data. Initialize the buffer as well if needed. */ \
-    CL_ENSURE_BUF_SIZE(cl_data.srcData, CL_MEM_READ_ONLY|CL_MEM_COPY_HOST_PTR, \
+    CL_ENSURE_BUF_SIZE( cq, cl_data.srcData, CL_MEM_READ_ONLY|CL_MEM_COPY_HOST_PTR, \
         sizeof (unsigned char) * src_len, cl_data.srcAlloc, src_ptr-2, \
     ); \
 \
-    CL_ENSURE_BUF_SIZE(cl_data.destData, CL_MEM_WRITE_ONLY|CL_MEM_COPY_HOST_PTR, \
+    CL_ENSURE_BUF_SIZE( cq, cl_data.destData, CL_MEM_WRITE_ONLY|CL_MEM_COPY_HOST_PTR, \
         sizeof (unsigned char) * dst_len, cl_data.destAlloc, dst_ptr, \
     ); \
 \
@@ -182,39 +182,39 @@ xoffset,yoffset,dst_ptr,dst_pitch,thread_count,dst_len,altPath) \
     err |= clSetKernelArg(kernel, 3, sizeof (int), &yoffset); \
     err |= clSetKernelArg(kernel, 4, sizeof (cl_mem), &cl_data.destData); \
     err |= clSetKernelArg(kernel, 5, sizeof (int), &dst_pitch); \
-    CL_CHECK_SUCCESS( err != CL_SUCCESS, \
+    CL_CHECK_SUCCESS( cq, err != CL_SUCCESS, \
         "Error: Failed to set kernel arguments!\n", \
         altPath, \
     ); \
 \
     /* Execute the kernel */ \
-    err = clEnqueueNDRangeKernel(cl_data.commands, kernel, 1, NULL, &global, NULL , 0, NULL, NULL); \
-    CL_CHECK_SUCCESS( err != CL_SUCCESS, \
+    err = clEnqueueNDRangeKernel( cq, kernel, 1, NULL, &global, NULL , 0, NULL, NULL); \
+    CL_CHECK_SUCCESS( cq, err != CL_SUCCESS, \
         "Error: Failed to execute kernel!\n", \
         printf("err = %d\n",err);altPath, \
     ); \
 \
     /* Read back the result data from the device */ \
-    err = clEnqueueReadBuffer(cl_data.commands, cl_data.destData, CL_FALSE, 0, sizeof (unsigned char) * dst_len, dst_ptr, 0, NULL, NULL); \
-    CL_CHECK_SUCCESS(err != CL_SUCCESS, \
+    err = clEnqueueReadBuffer(cq, cl_data.destData, CL_FALSE, 0, sizeof (unsigned char) * dst_len, dst_ptr, 0, NULL, NULL); \
+    CL_CHECK_SUCCESS( cq, err != CL_SUCCESS, \
         "Error: Failed to read output array!\n", \
         altPath, \
     );\
 
 //#end define CL_SIXTAP_PREDICT_EXEC
 
-#define CL_BILINEAR_EXEC(kernel,src_ptr,src_len, src_pixels_per_line, \
+#define CL_BILINEAR_EXEC(cq,kernel,src_ptr,src_len, src_pixels_per_line, \
 xoffset,yoffset,dst_ptr,dst_pitch,thread_count,dst_len,altPath) \
     /*Make space for kernel input/output data. Initialize the buffer as well if needed. */ \
-    CL_ENSURE_BUF_SIZE(cl_data.srcData, CL_MEM_READ_ONLY|CL_MEM_COPY_HOST_PTR, \
+    CL_ENSURE_BUF_SIZE(cq, cl_data.srcData, CL_MEM_READ_ONLY|CL_MEM_COPY_HOST_PTR, \
         sizeof (unsigned char) * src_len, cl_data.srcAlloc, src_ptr, altPath\
     ); \
 \
-    CL_ENSURE_BUF_SIZE(cl_data.destData, CL_MEM_WRITE_ONLY|CL_MEM_COPY_HOST_PTR, \
+    CL_ENSURE_BUF_SIZE(cq, cl_data.destData, CL_MEM_WRITE_ONLY|CL_MEM_COPY_HOST_PTR, \
         sizeof (unsigned char) * dst_len, cl_data.destAlloc, dst_ptr, altPath\
     ); \
     \
-    CL_ENSURE_BUF_SIZE(cl_data.intData,CL_MEM_READ_WRITE, \
+    CL_ENSURE_BUF_SIZE(cq, cl_data.intData,CL_MEM_READ_WRITE, \
         sizeof(cl_int)*17*16, cl_data.intAlloc, NULL, altPath); \
 \
     /* Set kernel arguments */ \
@@ -226,21 +226,21 @@ xoffset,yoffset,dst_ptr,dst_pitch,thread_count,dst_len,altPath) \
     err |= clSetKernelArg(kernel, 4, sizeof (cl_mem), &cl_data.destData); \
     err |= clSetKernelArg(kernel, 5, sizeof (int), &dst_pitch); \
     err |= clSetKernelArg(kernel, 6, sizeof (cl_mem), &cl_data.intData); \
-    CL_CHECK_SUCCESS( err != CL_SUCCESS, \
+    CL_CHECK_SUCCESS( cq, err != CL_SUCCESS, \
         "Error: Failed to set kernel arguments!\n", \
         altPath, \
     ); \
 \
     /* Execute the kernel */ \
-    err = clEnqueueNDRangeKernel(cl_data.commands, kernel, 1, NULL, &global, NULL , 0, NULL, NULL); \
-    CL_CHECK_SUCCESS( err != CL_SUCCESS, \
+    err = clEnqueueNDRangeKernel(cq, kernel, 1, NULL, &global, NULL , 0, NULL, NULL); \
+    CL_CHECK_SUCCESS( cq, err != CL_SUCCESS, \
         "Error: Failed to execute kernel!\n", \
         printf("err = %d\n",err);altPath, \
     ); \
 \
     /* Read back the result data from the device */ \
-    err = clEnqueueReadBuffer(cl_data.commands, cl_data.destData, CL_FALSE, 0, sizeof (unsigned char) * dst_len, dst_ptr, 0, NULL, NULL); \
-    CL_CHECK_SUCCESS(err != CL_SUCCESS, \
+    err = clEnqueueReadBuffer(cq, cl_data.destData, CL_FALSE, 0, sizeof (unsigned char) * dst_len, dst_ptr, 0, NULL, NULL); \
+    CL_CHECK_SUCCESS( cq, err != CL_SUCCESS, \
         "Error: Failed to read output array!\n", \
         altPath, \
     );\

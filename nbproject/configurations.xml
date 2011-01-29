@@ -1,0 +1,1437 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configurationDescriptor version="69">
+  <logicalFolder name="root" displayName="root" projectFiles="true">
+    <df name="libvpx.opencl" root=".">
+      <df name="examples" kind="SOURCE_LOGICAL_FOLDER">
+        <df name="includes" kind="SOURCE_LOGICAL_FOLDER">
+          <df name="ASCIIMathPHP-2.0" kind="SOURCE_LOGICAL_FOLDER">
+          </df>
+          <df name="geshi" kind="SOURCE_LOGICAL_FOLDER">
+            <df name="contrib" kind="SOURCE_LOGICAL_FOLDER">
+            </df>
+            <df name="docs" kind="SOURCE_LOGICAL_FOLDER">
+              <df name="api" kind="SOURCE_LOGICAL_FOLDER">
+                <df name="__filesource" kind="SOURCE_LOGICAL_FOLDER">
+                </df>
+                <df name="geshi" kind="SOURCE_LOGICAL_FOLDER">
+                  <df name="core" kind="SOURCE_LOGICAL_FOLDER">
+                  </df>
+                </df>
+                <df name="media" kind="SOURCE_LOGICAL_FOLDER">
+                  <df name="images" kind="SOURCE_LOGICAL_FOLDER">
+                  </df>
+                </df>
+              </df>
+            </df>
+            <df name="geshi" kind="SOURCE_LOGICAL_FOLDER">
+            </df>
+          </df>
+          <df name="HTML-Toc-0.91" kind="SOURCE_LOGICAL_FOLDER">
+            <df name="t" kind="SOURCE_LOGICAL_FOLDER">
+              <df name="ManualTest" kind="SOURCE_LOGICAL_FOLDER">
+              </df>
+              <df name="SiteMap" kind="SOURCE_LOGICAL_FOLDER">
+                <df name="SubDir1" kind="SOURCE_LOGICAL_FOLDER">
+                  <df name="SubSubDir1" kind="SOURCE_LOGICAL_FOLDER">
+                  </df>
+                </df>
+                <df name="SubDir2" kind="SOURCE_LOGICAL_FOLDER">
+                  <df name="SubSubDir1" kind="SOURCE_LOGICAL_FOLDER">
+                  </df>
+                  <df name="SubSubDir2" kind="SOURCE_LOGICAL_FOLDER">
+                  </df>
+                </df>
+                <df name="SubDir3" kind="SOURCE_LOGICAL_FOLDER">
+                </df>
+              </df>
+            </df>
+          </df>
+          <df name="PHP-Markdown-Extra-1.2.3" kind="SOURCE_LOGICAL_FOLDER">
+          </df>
+          <df name="PHP-SmartyPants-1.5.1e" kind="SOURCE_LOGICAL_FOLDER">
+          </df>
+        </df>
+        <in>decoder_tmpl.c</in>
+        <in>encoder_tmpl.c</in>
+      </df>
+      <df name="libmkv" kind="SOURCE_LOGICAL_FOLDER">
+        <in>EbmlBufferWriter.c</in>
+        <in>EbmlBufferWriter.h</in>
+        <in>EbmlIDs.h</in>
+        <in>EbmlWriter.c</in>
+        <in>EbmlWriter.h</in>
+        <in>WebMElement.c</in>
+        <in>WebMElement.h</in>
+        <in>testlibmkv.c</in>
+      </df>
+      <df name="nestegg" kind="SOURCE_LOGICAL_FOLDER">
+        <df name="docs" kind="SOURCE_LOGICAL_FOLDER">
+        </df>
+        <df name="halloc" kind="SOURCE_LOGICAL_FOLDER">
+          <df name="src" kind="SOURCE_LOGICAL_FOLDER">
+            <in>align.h</in>
+            <in>halloc.c</in>
+            <in>hlist.h</in>
+            <in>macros.h</in>
+          </df>
+          <in>halloc.h</in>
+        </df>
+        <df name="include" kind="SOURCE_LOGICAL_FOLDER">
+          <df name="nestegg" kind="SOURCE_LOGICAL_FOLDER">
+            <in>nestegg.h</in>
+          </df>
+        </df>
+        <df name="m4" kind="SOURCE_LOGICAL_FOLDER">
+        </df>
+        <df name="src" kind="SOURCE_LOGICAL_FOLDER">
+          <in>nestegg.c</in>
+        </df>
+      </df>
+      <df name="tools" kind="SOURCE_LOGICAL_FOLDER">
+      </df>
+      <df name="vp8" kind="SOURCE_LOGICAL_FOLDER">
+        <df name="common" kind="SOURCE_LOGICAL_FOLDER">
+          <df name="arm" kind="SOURCE_LOGICAL_FOLDER">
+            <df name="armv6" kind="SOURCE_LOGICAL_FOLDER">
+            </df>
+            <df name="neon" kind="SOURCE_LOGICAL_FOLDER">
+              <in>recon_neon.c</in>
+            </df>
+            <in>arm_systemdependent.c</in>
+            <in>bilinearfilter_arm.c</in>
+            <in>filter_arm.c</in>
+            <in>idct_arm.h</in>
+            <in>loopfilter_arm.c</in>
+            <in>loopfilter_arm.h</in>
+            <in>recon_arm.h</in>
+            <in>reconintra_arm.c</in>
+            <in>subpixel_arm.h</in>
+            <in>vpx_asm_offsets.c</in>
+          </df>
+          <df name="generic" kind="SOURCE_LOGICAL_FOLDER">
+            <in>systemdependent.c</in>
+          </df>
+          <df name="opencl" kind="SOURCE_LOGICAL_FOLDER">
+            <in>filter_cl.c</in>
+            <in>filter_cl.h</in>
+            <in>opencl_systemdependent.c</in>
+            <in>subpixel_cl.h</in>
+          </df>
+          <df name="ppc" kind="SOURCE_LOGICAL_FOLDER">
+            <in>loopfilter_altivec.c</in>
+            <in>systemdependent.c</in>
+          </df>
+          <df name="x86" kind="SOURCE_LOGICAL_FOLDER">
+            <in>boolcoder.cxx</in>
+            <in>idct_x86.h</in>
+            <in>loopfilter_x86.c</in>
+            <in>loopfilter_x86.h</in>
+            <in>postproc_mmx.c</in>
+            <in>postproc_x86.h</in>
+            <in>recon_x86.h</in>
+            <in>subpixel_x86.h</in>
+            <in>vp8_asm_stubs.c</in>
+            <in>x86_systemdependent.c</in>
+          </df>
+          <in>alloccommon.c</in>
+          <in>alloccommon.h</in>
+          <in>bigend.h</in>
+          <in>blockd.c</in>
+          <in>blockd.h</in>
+          <in>boolcoder.h</in>
+          <in>codec_common_interface.h</in>
+          <in>coefupdateprobs.h</in>
+          <in>common.h</in>
+          <in>common_types.h</in>
+          <in>context.c</in>
+          <in>debugmodes.c</in>
+          <in>defaultcoefcounts.h</in>
+          <in>dma_desc.h</in>
+          <in>duck_io.h</in>
+          <in>entropy.c</in>
+          <in>entropy.h</in>
+          <in>entropymode.c</in>
+          <in>entropymode.h</in>
+          <in>entropymv.c</in>
+          <in>entropymv.h</in>
+          <in>extend.c</in>
+          <in>extend.h</in>
+          <in>filter_c.c</in>
+          <in>findnearmv.c</in>
+          <in>findnearmv.h</in>
+          <in>fourcc.hpp</in>
+          <in>g_common.h</in>
+          <in>header.h</in>
+          <in>idct.h</in>
+          <in>idctllm.c</in>
+          <in>invtrans.c</in>
+          <in>invtrans.h</in>
+          <in>littlend.h</in>
+          <in>loopfilter.c</in>
+          <in>loopfilter.h</in>
+          <in>loopfilter_filters.c</in>
+          <in>mac_specs.h</in>
+          <in>mbpitch.c</in>
+          <in>modecont.c</in>
+          <in>modecont.h</in>
+          <in>modecontext.c</in>
+          <in>mv.h</in>
+          <in>onyx.h</in>
+          <in>onyxc_int.h</in>
+          <in>onyxd.h</in>
+          <in>partialgfupdate.h</in>
+          <in>postproc.c</in>
+          <in>postproc.h</in>
+          <in>ppflags.h</in>
+          <in>pragmas.h</in>
+          <in>predictdc.c</in>
+          <in>predictdc.h</in>
+          <in>preproc.h</in>
+          <in>preprocif.h</in>
+          <in>proposed.h</in>
+          <in>quant_common.c</in>
+          <in>quant_common.h</in>
+          <in>recon.c</in>
+          <in>recon.h</in>
+          <in>reconinter.c</in>
+          <in>reconinter.h</in>
+          <in>reconintra.c</in>
+          <in>reconintra.h</in>
+          <in>reconintra4x4.c</in>
+          <in>reconintra4x4.h</in>
+          <in>setupintrarecon.c</in>
+          <in>setupintrarecon.h</in>
+          <in>subpixel.h</in>
+          <in>swapyv12buffer.c</in>
+          <in>swapyv12buffer.h</in>
+          <in>systemdependent.h</in>
+          <in>textblit.c</in>
+          <in>threading.h</in>
+          <in>treecoder.c</in>
+          <in>treecoder.h</in>
+          <in>type_aliases.h</in>
+          <in>vfwsetting.hpp</in>
+          <in>vpx_ref_build_prefix.h</in>
+          <in>vpxblit.h</in>
+          <in>vpxblit_c64.h</in>
+          <in>vpxerrors.h</in>
+        </df>
+        <df name="decoder" kind="SOURCE_LOGICAL_FOLDER">
+          <df name="arm" kind="SOURCE_LOGICAL_FOLDER">
+            <df name="armv5" kind="SOURCE_LOGICAL_FOLDER">
+            </df>
+            <df name="armv6" kind="SOURCE_LOGICAL_FOLDER">
+              <in>idct_blk_v6.c</in>
+            </df>
+            <df name="neon" kind="SOURCE_LOGICAL_FOLDER">
+              <in>idct_blk_neon.c</in>
+            </df>
+            <in>arm_dsystemdependent.c</in>
+            <in>dboolhuff_arm.h</in>
+            <in>dequantize_arm.c</in>
+            <in>dequantize_arm.h</in>
+            <in>detokenize_arm.h</in>
+          </df>
+          <df name="generic" kind="SOURCE_LOGICAL_FOLDER">
+            <in>dsystemdependent.c</in>
+          </df>
+          <df name="opencl" kind="SOURCE_LOGICAL_FOLDER">
+            <in>opencl_systemdependent.c</in>
+          </df>
+          <df name="x86" kind="SOURCE_LOGICAL_FOLDER">
+            <in>dequantize_x86.h</in>
+            <in>idct_blk_mmx.c</in>
+            <in>idct_blk_sse2.c</in>
+            <in>onyxdxv.c</in>
+            <in>x86_dsystemdependent.c</in>
+          </df>
+          <in>dboolhuff.c</in>
+          <in>dboolhuff.h</in>
+          <in>decodemv.c</in>
+          <in>decodemv.h</in>
+          <in>decoderthreading.h</in>
+          <in>decodframe.c</in>
+          <in>dequantize.c</in>
+          <in>dequantize.h</in>
+          <in>detokenize.c</in>
+          <in>detokenize.h</in>
+          <in>idct_blk.c</in>
+          <in>onyxd_if.c</in>
+          <in>onyxd_int.h</in>
+          <in>reconintra_mt.c</in>
+          <in>reconintra_mt.h</in>
+          <in>threading.c</in>
+          <in>treereader.h</in>
+        </df>
+        <df name="encoder" kind="SOURCE_LOGICAL_FOLDER">
+          <df name="arm" kind="SOURCE_LOGICAL_FOLDER">
+            <df name="armv5te" kind="SOURCE_LOGICAL_FOLDER">
+            </df>
+            <df name="armv6" kind="SOURCE_LOGICAL_FOLDER">
+            </df>
+            <df name="neon" kind="SOURCE_LOGICAL_FOLDER">
+            </df>
+            <in>arm_csystemdependent.c</in>
+            <in>boolhuff_arm.c</in>
+            <in>dct_arm.h</in>
+            <in>encodemb_arm.c</in>
+            <in>encodemb_arm.h</in>
+            <in>picklpf_arm.c</in>
+            <in>quantize_arm.c</in>
+            <in>quantize_arm.h</in>
+            <in>variance_arm.h</in>
+            <in>vpx_vp8_enc_asm_offsets.c</in>
+          </df>
+          <df name="generic" kind="SOURCE_LOGICAL_FOLDER">
+            <in>csystemdependent.c</in>
+          </df>
+          <df name="ppc" kind="SOURCE_LOGICAL_FOLDER">
+            <in>csystemdependent.c</in>
+          </df>
+          <df name="x86" kind="SOURCE_LOGICAL_FOLDER">
+            <in>dct_x86.h</in>
+            <in>encodemb_x86.h</in>
+            <in>mcomp_x86.h</in>
+            <in>preproc_mmx.c</in>
+            <in>quantize_x86.h</in>
+            <in>variance_mmx.c</in>
+            <in>variance_sse2.c</in>
+            <in>variance_x86.h</in>
+            <in>x86_csystemdependent.c</in>
+          </df>
+          <in>bitstream.c</in>
+          <in>bitstream.h</in>
+          <in>block.h</in>
+          <in>boolhuff.c</in>
+          <in>boolhuff.h</in>
+          <in>dct.c</in>
+          <in>dct.h</in>
+          <in>encodeframe.c</in>
+          <in>encodeintra.c</in>
+          <in>encodeintra.h</in>
+          <in>encodemb.c</in>
+          <in>encodemb.h</in>
+          <in>encodemv.c</in>
+          <in>encodemv.h</in>
+          <in>ethreading.c</in>
+          <in>firstpass.c</in>
+          <in>firstpass.h</in>
+          <in>mcomp.c</in>
+          <in>mcomp.h</in>
+          <in>modecosts.c</in>
+          <in>modecosts.h</in>
+          <in>onyx_if.c</in>
+          <in>onyx_int.h</in>
+          <in>parms.cpp</in>
+          <in>pickinter.c</in>
+          <in>pickinter.h</in>
+          <in>picklpf.c</in>
+          <in>preproc.c</in>
+          <in>psnr.c</in>
+          <in>psnr.h</in>
+          <in>quantize.c</in>
+          <in>quantize.h</in>
+          <in>ratectrl.c</in>
+          <in>ratectrl.h</in>
+          <in>rdopt.c</in>
+          <in>rdopt.h</in>
+          <in>sad_c.c</in>
+          <in>segmentation.c</in>
+          <in>segmentation.h</in>
+          <in>ssim.c</in>
+          <in>temporal_filter.c</in>
+          <in>temporal_filter.h</in>
+          <in>tokenize.c</in>
+          <in>tokenize.h</in>
+          <in>treewriter.c</in>
+          <in>treewriter.h</in>
+          <in>variance.h</in>
+          <in>variance_c.c</in>
+        </df>
+        <in>vp8_cx_iface.c</in>
+        <in>vp8_dx_iface.c</in>
+      </df>
+      <df name="vpx" kind="SOURCE_LOGICAL_FOLDER">
+        <df name="internal" kind="SOURCE_LOGICAL_FOLDER">
+          <in>vpx_codec_internal.h</in>
+        </df>
+        <df name="src" kind="SOURCE_LOGICAL_FOLDER">
+          <in>vpx_codec.c</in>
+          <in>vpx_decoder.c</in>
+          <in>vpx_decoder_compat.c</in>
+          <in>vpx_encoder.c</in>
+          <in>vpx_image.c</in>
+        </df>
+        <in>vp8.h</in>
+        <in>vp8cx.h</in>
+        <in>vp8dx.h</in>
+        <in>vp8e.h</in>
+        <in>vpx_codec.h</in>
+        <in>vpx_codec_impl_bottom.h</in>
+        <in>vpx_codec_impl_top.h</in>
+        <in>vpx_decoder.h</in>
+        <in>vpx_decoder_compat.h</in>
+        <in>vpx_encoder.h</in>
+        <in>vpx_image.h</in>
+        <in>vpx_integer.h</in>
+      </df>
+      <df name="vpx_mem" kind="SOURCE_LOGICAL_FOLDER">
+        <df name="include" kind="SOURCE_LOGICAL_FOLDER">
+          <df name="nds" kind="SOURCE_LOGICAL_FOLDER">
+            <in>vpx_mem_nds.h</in>
+          </df>
+          <in>vpx_mem_intrnl.h</in>
+          <in>vpx_mem_tracker.h</in>
+        </df>
+        <df name="intel_linux" kind="SOURCE_LOGICAL_FOLDER">
+          <in>vpx_mem.c</in>
+          <in>vpx_mem_tracker.c</in>
+        </df>
+        <df name="memory_manager" kind="SOURCE_LOGICAL_FOLDER">
+          <df name="include" kind="SOURCE_LOGICAL_FOLDER">
+            <in>cavl_if.h</in>
+            <in>cavl_impl.h</in>
+            <in>heapmm.h</in>
+            <in>hmm_cnfg.h</in>
+            <in>hmm_intrnl.h</in>
+          </df>
+          <in>hmm_alloc.c</in>
+          <in>hmm_base.c</in>
+          <in>hmm_dflt_abort.c</in>
+          <in>hmm_grow.c</in>
+          <in>hmm_largest.c</in>
+          <in>hmm_resize.c</in>
+          <in>hmm_shrink.c</in>
+          <in>hmm_true.c</in>
+        </df>
+        <df name="nds" kind="SOURCE_LOGICAL_FOLDER">
+          <in>vpx_mem_nds.c</in>
+        </df>
+        <df name="ti_c6x" kind="SOURCE_LOGICAL_FOLDER">
+          <in>vpx_mem_ti_6cx.c</in>
+        </df>
+        <in>vpx_mem.c</in>
+        <in>vpx_mem.h</in>
+        <in>vpx_mem_tracker.c</in>
+      </df>
+      <df name="vpx_ports" kind="SOURCE_LOGICAL_FOLDER">
+        <in>arm.h</in>
+        <in>arm_cpudetect.c</in>
+        <in>config.h</in>
+        <in>mem.h</in>
+        <in>mem_ops.h</in>
+        <in>mem_ops_aligned.h</in>
+        <in>vpx_timer.h</in>
+        <in>vpxtypes.h</in>
+        <in>x86.h</in>
+        <in>x86_cpuid.c</in>
+      </df>
+      <df name="vpx_scale" kind="SOURCE_LOGICAL_FOLDER">
+        <df name="arm" kind="SOURCE_LOGICAL_FOLDER">
+          <df name="armv4" kind="SOURCE_LOGICAL_FOLDER">
+          </df>
+          <df name="nds" kind="SOURCE_LOGICAL_FOLDER">
+            <in>yv12extend.c</in>
+          </df>
+          <df name="neon" kind="SOURCE_LOGICAL_FOLDER">
+          </df>
+          <in>scalesystemdependant.c</in>
+          <in>yv12extend_arm.c</in>
+        </df>
+        <df name="blackfin" kind="SOURCE_LOGICAL_FOLDER">
+          <in>yv12config.c</in>
+          <in>yv12extend.c</in>
+        </df>
+        <df name="dm642" kind="SOURCE_LOGICAL_FOLDER">
+          <in>bicubic_scaler_c64.c</in>
+          <in>gen_scalers_c64.c</in>
+          <in>yv12extend.c</in>
+        </df>
+        <df name="generic" kind="SOURCE_LOGICAL_FOLDER">
+          <in>bicubic_scaler.c</in>
+          <in>gen_scalers.c</in>
+          <in>scalesystemdependant.c</in>
+          <in>vpxscale.c</in>
+          <in>yv12config.c</in>
+          <in>yv12extend.c</in>
+        </df>
+        <df name="include" kind="SOURCE_LOGICAL_FOLDER">
+          <df name="arm" kind="SOURCE_LOGICAL_FOLDER">
+            <in>vpxscale_nofp.h</in>
+          </df>
+          <df name="generic" kind="SOURCE_LOGICAL_FOLDER">
+            <in>vpxscale_arbitrary.h</in>
+            <in>vpxscale_depricated.h</in>
+            <in>vpxscale_nofp.h</in>
+          </df>
+          <df name="leapster" kind="SOURCE_LOGICAL_FOLDER">
+            <in>vpxscale.h</in>
+          </df>
+          <df name="symbian" kind="SOURCE_LOGICAL_FOLDER">
+            <in>vpxscale_nofp.h</in>
+          </df>
+          <in>vpxscale_nofp.h</in>
+        </df>
+        <df name="intel_linux" kind="SOURCE_LOGICAL_FOLDER">
+          <in>scaleopt.c</in>
+          <in>scalesystemdependant.c</in>
+        </df>
+        <df name="leapster" kind="SOURCE_LOGICAL_FOLDER">
+          <in>doptsystemdependant_lf.c</in>
+          <in>gen_scalers_lf.c</in>
+          <in>vpxscale_lf.c</in>
+          <in>yv12extend.c</in>
+        </df>
+        <df name="symbian" kind="SOURCE_LOGICAL_FOLDER">
+          <in>scalesystemdependant.c</in>
+        </df>
+        <df name="wce" kind="SOURCE_LOGICAL_FOLDER">
+          <in>scalesystemdependant.c</in>
+        </df>
+        <df name="win32" kind="SOURCE_LOGICAL_FOLDER">
+          <in>scaleopt.c</in>
+          <in>scalesystemdependant.c</in>
+        </df>
+        <df name="x86_64" kind="SOURCE_LOGICAL_FOLDER">
+          <in>scaleopt.c</in>
+          <in>scalesystemdependant.c</in>
+        </df>
+        <in>scale_mode.h</in>
+        <in>vpxscale.h</in>
+        <in>yv12config.h</in>
+        <in>yv12extend.h</in>
+      </df>
+      <in>args.c</in>
+      <in>args.h</in>
+      <in>decode_to_md5.c</in>
+      <in>decode_with_drops.c</in>
+      <in>error_resilient.c</in>
+      <in>example_xma.c</in>
+      <in>force_keyframe.c</in>
+      <in>md5_utils.c</in>
+      <in>md5_utils.h</in>
+      <in>postproc.c</in>
+      <in>simple_decoder.c</in>
+      <in>simple_encoder.c</in>
+      <in>twopass_encoder.c</in>
+      <in>vp8_scalable_patterns.c</in>
+      <in>vp8_set_maps.c</in>
+      <in>vp8cx_set_ref.c</in>
+      <in>vpx_config.c</in>
+      <in>vpx_config.h</in>
+      <in>vpx_version.h</in>
+      <in>vpxdec.c</in>
+      <in>vpxenc.c</in>
+      <in>wince_wmain_adapter.cpp</in>
+      <in>y4minput.c</in>
+      <in>y4minput.h</in>
+    </df>
+    <logicalFolder name="ExternalFiles"
+                   displayName="Important Files"
+                   projectFiles="false"
+                   kind="IMPORTANT_FILES_FOLDER">
+      <itemPath>Makefile</itemPath>
+      <itemPath>Makefile-libvpx.opencl.mk</itemPath>
+      <itemPath>configure</itemPath>
+    </logicalFolder>
+  </logicalFolder>
+  <sourceRootList>
+    <Elem>.</Elem>
+  </sourceRootList>
+  <projectmakefile>Makefile-libvpx.opencl.mk</projectmakefile>
+  <confs>
+    <conf name="Default" type="0">
+      <toolsSet>
+        <developmentServer>localhost</developmentServer>
+        <compilerSet>GNU|GNU</compilerSet>
+        <platform>2</platform>
+      </toolsSet>
+      <makefileType>
+        <makeTool>
+          <buildCommandWorkingDir>.</buildCommandWorkingDir>
+          <buildCommand>$(MAKE) -f Makefile</buildCommand>
+          <cleanCommand>$(MAKE) -f Makefile clean</cleanCommand>
+          <executablePath></executablePath>
+          <cTool>
+            <incDir>
+              <pElem>/usr/local/ati-stream-sdk-v2.3-lnx64/include</pElem>
+            </incDir>
+          </cTool>
+        </makeTool>
+      </makefileType>
+      <item path="decode_to_md5.c" ex="false" tool="0">
+        <cTool>
+          <incDir>
+            <pElem>.</pElem>
+          </incDir>
+        </cTool>
+      </item>
+      <item path="decode_with_drops.c" ex="false" tool="0">
+        <cTool>
+          <incDir>
+            <pElem>.</pElem>
+          </incDir>
+        </cTool>
+      </item>
+      <item path="error_resilient.c" ex="false" tool="0">
+        <cTool>
+          <incDir>
+            <pElem>.</pElem>
+          </incDir>
+        </cTool>
+      </item>
+      <item path="example_xma.c" ex="false" tool="0">
+        <cTool>
+          <incDir>
+            <pElem>.</pElem>
+          </incDir>
+        </cTool>
+      </item>
+      <folder path="libvpx.opencl/examples">
+        <cTool>
+          <incDir>
+            <pElem>.</pElem>
+          </incDir>
+        </cTool>
+      </folder>
+      <folder path="libvpx.opencl/nestegg/src">
+        <cTool>
+          <incDir>
+            <pElem>.</pElem>
+          </incDir>
+        </cTool>
+      </folder>
+      <folder path="libvpx.opencl/vp8/common/arm/neon">
+        <cTool>
+          <incDir>
+            <pElem>.</pElem>
+            <pElem>vp8/common</pElem>
+          </incDir>
+        </cTool>
+      </folder>
+      <folder path="libvpx.opencl/vp8/common/generic">
+        <cTool>
+          <incDir>
+            <pElem>.</pElem>
+            <pElem>vp8/common</pElem>
+          </incDir>
+        </cTool>
+      </folder>
+      <folder path="libvpx.opencl/vp8/common/ppc">
+        <cTool>
+          <incDir>
+            <pElem>.</pElem>
+            <pElem>vp8/common</pElem>
+          </incDir>
+        </cTool>
+      </folder>
+      <folder path="libvpx.opencl/vp8/common/x86">
+        <cTool>
+          <incDir>
+            <pElem>.</pElem>
+            <pElem>vp8/common</pElem>
+          </incDir>
+        </cTool>
+      </folder>
+      <folder path="libvpx.opencl/vp8/decoder">
+        <cTool>
+          <incDir>
+            <pElem>.</pElem>
+          </incDir>
+        </cTool>
+      </folder>
+      <folder path="libvpx.opencl/vp8/decoder/arm">
+        <cTool>
+          <incDir>
+            <pElem>vp8/decoder</pElem>
+            <pElem>vp8/common</pElem>
+          </incDir>
+        </cTool>
+      </folder>
+      <folder path="libvpx.opencl/vp8/decoder/generic">
+        <cTool>
+          <incDir>
+            <pElem>vp8/decoder</pElem>
+            <pElem>vp8/common</pElem>
+          </incDir>
+        </cTool>
+      </folder>
+      <folder path="libvpx.opencl/vp8/decoder/opencl">
+        <cTool>
+          <incDir>
+            <pElem>vp8/decoder</pElem>
+            <pElem>vp8/common</pElem>
+          </incDir>
+        </cTool>
+      </folder>
+      <folder path="libvpx.opencl/vp8/decoder/x86">
+        <cTool>
+          <incDir>
+            <pElem>vp8/decoder</pElem>
+            <pElem>vp8/common</pElem>
+          </incDir>
+        </cTool>
+      </folder>
+      <folder path="libvpx.opencl/vp8/encoder/arm">
+        <cTool>
+          <incDir>
+            <pElem>.</pElem>
+            <pElem>vp8/common</pElem>
+          </incDir>
+        </cTool>
+      </folder>
+      <folder path="libvpx.opencl/vp8/encoder/generic">
+        <cTool>
+          <incDir>
+            <pElem>vp8/encoder</pElem>
+            <pElem>.</pElem>
+            <pElem>vp8/common</pElem>
+          </incDir>
+        </cTool>
+      </folder>
+      <folder path="libvpx.opencl/vp8/encoder/ppc">
+        <cTool>
+          <incDir>
+            <pElem>vp8/encoder</pElem>
+            <pElem>.</pElem>
+            <pElem>vp8/common</pElem>
+          </incDir>
+        </cTool>
+      </folder>
+      <folder path="libvpx.opencl/vp8/encoder/x86">
+        <cTool>
+          <incDir>
+            <pElem>vp8/common</pElem>
+          </incDir>
+        </cTool>
+      </folder>
+      <folder path="libvpx.opencl/vpx">
+        <cTool>
+          <incDir>
+            <pElem>.</pElem>
+          </incDir>
+        </cTool>
+      </folder>
+      <folder path="libvpx.opencl/vpx_mem/intel_linux">
+        <cTool>
+          <incDir>
+            <pElem>vpx_mem/include</pElem>
+          </incDir>
+        </cTool>
+      </folder>
+      <folder path="libvpx.opencl/vpx_mem/memory_manager">
+        <cTool>
+          <incDir>
+            <pElem>vpx_mem/memory_manager/include</pElem>
+          </incDir>
+        </cTool>
+      </folder>
+      <folder path="libvpx.opencl/vpx_mem/nds">
+        <cTool>
+          <incDir>
+            <pElem>vpx_mem/include</pElem>
+            <pElem>.</pElem>
+            <pElem>vpx_mem</pElem>
+          </incDir>
+        </cTool>
+      </folder>
+      <folder path="libvpx.opencl/vpx_ports">
+        <cTool>
+          <incDir>
+            <pElem>.</pElem>
+          </incDir>
+        </cTool>
+      </folder>
+      <folder path="libvpx.opencl/vpx_scale">
+        <cTool>
+          <incDir>
+            <pElem>.</pElem>
+          </incDir>
+        </cTool>
+      </folder>
+      <item path="force_keyframe.c" ex="false" tool="0">
+        <cTool>
+          <incDir>
+            <pElem>.</pElem>
+          </incDir>
+        </cTool>
+      </item>
+      <item path="libmkv/EbmlBufferWriter.c" ex="false" tool="0">
+        <cTool>
+          <incDir>
+            <pElem>.</pElem>
+          </incDir>
+        </cTool>
+      </item>
+      <item path="libmkv/EbmlWriter.c" ex="false" tool="0">
+        <cTool>
+          <incDir>
+            <pElem>.</pElem>
+          </incDir>
+        </cTool>
+      </item>
+      <item path="postproc.c" ex="false" tool="0">
+        <cTool>
+          <incDir>
+            <pElem>.</pElem>
+          </incDir>
+        </cTool>
+      </item>
+      <item path="simple_decoder.c" ex="false" tool="0">
+        <cTool>
+          <incDir>
+            <pElem>.</pElem>
+          </incDir>
+        </cTool>
+      </item>
+      <item path="simple_encoder.c" ex="false" tool="0">
+        <cTool>
+          <incDir>
+            <pElem>.</pElem>
+          </incDir>
+        </cTool>
+      </item>
+      <item path="twopass_encoder.c" ex="false" tool="0">
+        <cTool>
+          <incDir>
+            <pElem>.</pElem>
+          </incDir>
+        </cTool>
+      </item>
+      <item path="vp8/common/alloccommon.c" ex="false" tool="0">
+        <cTool>
+          <incDir>
+            <pElem>.</pElem>
+          </incDir>
+        </cTool>
+      </item>
+      <item path="vp8/common/arm/arm_systemdependent.c" ex="false" tool="0">
+        <cTool>
+          <incDir>
+            <pElem>.</pElem>
+            <pElem>vp8/common</pElem>
+          </incDir>
+        </cTool>
+      </item>
+      <item path="vp8/common/arm/bilinearfilter_arm.c" ex="false" tool="0">
+        <cTool>
+          <incDir>
+            <pElem>vp8/common</pElem>
+          </incDir>
+        </cTool>
+      </item>
+      <item path="vp8/common/arm/filter_arm.c" ex="false" tool="0">
+        <cTool>
+          <incDir>
+            <pElem>.</pElem>
+            <pElem>vp8/common</pElem>
+          </incDir>
+        </cTool>
+      </item>
+      <item path="vp8/common/arm/loopfilter_arm.c" ex="false" tool="0">
+        <cTool>
+          <incDir>
+            <pElem>.</pElem>
+            <pElem>vp8/common</pElem>
+          </incDir>
+        </cTool>
+      </item>
+      <item path="vp8/common/arm/reconintra_arm.c" ex="false" tool="0">
+        <cTool>
+          <incDir>
+            <pElem>.</pElem>
+            <pElem>vp8/common</pElem>
+          </incDir>
+        </cTool>
+      </item>
+      <item path="vp8/common/arm/vpx_asm_offsets.c" ex="false" tool="0">
+        <cTool>
+          <incDir>
+            <pElem>.</pElem>
+          </incDir>
+        </cTool>
+      </item>
+      <item path="vp8/common/blockd.c" ex="false" tool="0">
+        <cTool>
+          <incDir>
+            <pElem>.</pElem>
+          </incDir>
+        </cTool>
+      </item>
+      <item path="vp8/common/context.c" ex="false" tool="0">
+        <cTool>
+          <incDir>
+            <pElem>.</pElem>
+          </incDir>
+        </cTool>
+      </item>
+      <item path="vp8/common/debugmodes.c" ex="false" tool="0">
+        <cTool>
+          <incDir>
+            <pElem>.</pElem>
+          </incDir>
+        </cTool>
+      </item>
+      <item path="vp8/common/entropy.c" ex="false" tool="0">
+        <cTool>
+          <incDir>
+            <pElem>.</pElem>
+          </incDir>
+        </cTool>
+      </item>
+      <item path="vp8/common/entropymode.c" ex="false" tool="0">
+        <cTool>
+          <incDir>
+            <pElem>.</pElem>
+          </incDir>
+        </cTool>
+      </item>
+      <item path="vp8/common/extend.c" ex="false" tool="0">
+        <cTool>
+          <incDir>
+            <pElem>.</pElem>
+          </incDir>
+        </cTool>
+      </item>
+      <item path="vp8/common/findnearmv.c" ex="false" tool="0">
+        <cTool>
+          <incDir>
+            <pElem>.</pElem>
+          </incDir>
+        </cTool>
+      </item>
+      <item path="vp8/common/invtrans.c" ex="false" tool="0">
+        <cTool>
+          <incDir>
+            <pElem>.</pElem>
+          </incDir>
+        </cTool>
+      </item>
+      <item path="vp8/common/loopfilter.c" ex="false" tool="0">
+        <cTool>
+          <incDir>
+            <pElem>.</pElem>
+          </incDir>
+        </cTool>
+      </item>
+      <item path="vp8/common/loopfilter_filters.c" ex="false" tool="0">
+        <cTool>
+          <incDir>
+            <pElem>.</pElem>
+          </incDir>
+        </cTool>
+      </item>
+      <item path="vp8/common/mbpitch.c" ex="false" tool="0">
+        <cTool>
+          <incDir>
+            <pElem>.</pElem>
+          </incDir>
+        </cTool>
+      </item>
+      <item path="vp8/common/modecont.c" ex="false" tool="0">
+        <cTool>
+          <incDir>
+            <pElem>.</pElem>
+          </incDir>
+        </cTool>
+      </item>
+      <item path="vp8/common/modecontext.c" ex="false" tool="0">
+        <cTool>
+          <incDir>
+            <pElem>.</pElem>
+          </incDir>
+        </cTool>
+      </item>
+      <item path="vp8/common/opencl/opencl_systemdependent.c" ex="false" tool="0">
+        <cTool>
+          <incDir>
+            <pElem>.</pElem>
+            <pElem>vp8/common</pElem>
+          </incDir>
+        </cTool>
+      </item>
+      <item path="vp8/common/postproc.c" ex="false" tool="0">
+        <cTool>
+          <incDir>
+            <pElem>.</pElem>
+          </incDir>
+        </cTool>
+      </item>
+      <item path="vp8/common/predictdc.c" ex="false" tool="0">
+        <cTool>
+          <incDir>
+            <pElem>.</pElem>
+          </incDir>
+        </cTool>
+      </item>
+      <item path="vp8/common/quant_common.c" ex="false" tool="0">
+        <cTool>
+          <incDir>
+            <pElem>.</pElem>
+          </incDir>
+        </cTool>
+      </item>
+      <item path="vp8/common/recon.c" ex="false" tool="0">
+        <cTool>
+          <incDir>
+            <pElem>.</pElem>
+          </incDir>
+        </cTool>
+      </item>
+      <item path="vp8/common/reconinter.c" ex="false" tool="0">
+        <cTool>
+          <incDir>
+            <pElem>.</pElem>
+          </incDir>
+        </cTool>
+      </item>
+      <item path="vp8/common/reconintra.c" ex="false" tool="0">
+        <cTool>
+          <incDir>
+            <pElem>.</pElem>
+          </incDir>
+        </cTool>
+      </item>
+      <item path="vp8/common/reconintra4x4.c" ex="false" tool="0">
+        <cTool>
+          <incDir>
+            <pElem>.</pElem>
+          </incDir>
+        </cTool>
+      </item>
+      <item path="vp8/common/setupintrarecon.c" ex="false" tool="0">
+        <cTool>
+          <incDir>
+            <pElem>.</pElem>
+          </incDir>
+        </cTool>
+      </item>
+      <item path="vp8/common/swapyv12buffer.c" ex="false" tool="0">
+        <cTool>
+          <incDir>
+            <pElem>.</pElem>
+          </incDir>
+        </cTool>
+      </item>
+      <item path="vp8/decoder/decodemv.c" ex="false" tool="0">
+        <cTool>
+          <incDir>
+            <pElem>vp8/common</pElem>
+          </incDir>
+        </cTool>
+      </item>
+      <item path="vp8/decoder/decodframe.c" ex="false" tool="0">
+        <cTool>
+          <incDir>
+            <pElem>vp8/common</pElem>
+          </incDir>
+        </cTool>
+      </item>
+      <item path="vp8/decoder/dequantize.c" ex="false" tool="0">
+        <cTool>
+          <incDir>
+            <pElem>vp8/common</pElem>
+          </incDir>
+        </cTool>
+      </item>
+      <item path="vp8/decoder/detokenize.c" ex="false" tool="0">
+        <cTool>
+          <incDir>
+            <pElem>vp8/common</pElem>
+          </incDir>
+        </cTool>
+      </item>
+      <item path="vp8/decoder/idct_blk.c" ex="false" tool="0">
+        <cTool>
+          <incDir>
+            <pElem>vp8/common</pElem>
+          </incDir>
+        </cTool>
+      </item>
+      <item path="vp8/decoder/onyxd_if.c" ex="false" tool="0">
+        <cTool>
+          <incDir>
+            <pElem>vp8/common</pElem>
+          </incDir>
+        </cTool>
+      </item>
+      <item path="vp8/decoder/reconintra_mt.c" ex="false" tool="0">
+        <cTool>
+          <incDir>
+            <pElem>vp8/common</pElem>
+          </incDir>
+        </cTool>
+      </item>
+      <item path="vp8/decoder/threading.c" ex="false" tool="0">
+        <cTool>
+          <incDir>
+            <pElem>vp8/common</pElem>
+          </incDir>
+        </cTool>
+      </item>
+      <item path="vp8/decoder/x86/onyxdxv.c" ex="false" tool="0">
+        <cTool>
+          <incDir>
+            <pElem>vpx_scale</pElem>
+          </incDir>
+        </cTool>
+      </item>
+      <item path="vp8/encoder/arm/arm_csystemdependent.c" ex="false" tool="0">
+        <cTool>
+          <incDir>
+            <pElem>vp8/encoder</pElem>
+          </incDir>
+        </cTool>
+      </item>
+      <item path="vp8/encoder/arm/boolhuff_arm.c" ex="false" tool="0">
+        <cTool>
+          <incDir>
+            <pElem>vp8/encoder</pElem>
+          </incDir>
+        </cTool>
+      </item>
+      <item path="vp8/encoder/arm/encodemb_arm.c" ex="false" tool="0">
+        <cTool>
+          <incDir>
+            <pElem>vp8/encoder</pElem>
+          </incDir>
+        </cTool>
+      </item>
+      <item path="vp8/encoder/arm/picklpf_arm.c" ex="false" tool="0">
+        <cTool>
+          <incDir>
+            <pElem>vp8/encoder</pElem>
+          </incDir>
+        </cTool>
+      </item>
+      <item path="vp8/encoder/arm/quantize_arm.c" ex="false" tool="0">
+        <cTool>
+          <incDir>
+            <pElem>vp8/encoder</pElem>
+          </incDir>
+        </cTool>
+      </item>
+      <item path="vp8/encoder/bitstream.c" ex="false" tool="0">
+        <cTool>
+          <incDir>
+            <pElem>.</pElem>
+            <pElem>vp8/common</pElem>
+          </incDir>
+        </cTool>
+      </item>
+      <item path="vp8/encoder/boolhuff.c" ex="false" tool="0">
+        <cTool>
+          <incDir>
+            <pElem>.</pElem>
+            <pElem>vp8/common</pElem>
+          </incDir>
+        </cTool>
+      </item>
+      <item path="vp8/encoder/encodeframe.c" ex="false" tool="0">
+        <cTool>
+          <incDir>
+            <pElem>.</pElem>
+            <pElem>vp8/common</pElem>
+          </incDir>
+        </cTool>
+      </item>
+      <item path="vp8/encoder/encodeintra.c" ex="false" tool="0">
+        <cTool>
+          <incDir>
+            <pElem>.</pElem>
+            <pElem>vp8/common</pElem>
+          </incDir>
+        </cTool>
+      </item>
+      <item path="vp8/encoder/encodemb.c" ex="false" tool="0">
+        <cTool>
+          <incDir>
+            <pElem>.</pElem>
+            <pElem>vp8/common</pElem>
+          </incDir>
+        </cTool>
+      </item>
+      <item path="vp8/encoder/encodemv.c" ex="false" tool="0">
+        <cTool>
+          <incDir>
+            <pElem>.</pElem>
+            <pElem>vp8/common</pElem>
+          </incDir>
+        </cTool>
+      </item>
+      <item path="vp8/encoder/ethreading.c" ex="false" tool="0">
+        <cTool>
+          <incDir>
+            <pElem>.</pElem>
+            <pElem>vp8/common</pElem>
+          </incDir>
+        </cTool>
+      </item>
+      <item path="vp8/encoder/firstpass.c" ex="false" tool="0">
+        <cTool>
+          <incDir>
+            <pElem>.</pElem>
+            <pElem>vp8/common</pElem>
+          </incDir>
+        </cTool>
+      </item>
+      <item path="vp8/encoder/mcomp.c" ex="false" tool="0">
+        <cTool>
+          <incDir>
+            <pElem>.</pElem>
+            <pElem>vp8/common</pElem>
+          </incDir>
+        </cTool>
+      </item>
+      <item path="vp8/encoder/modecosts.c" ex="false" tool="0">
+        <cTool>
+          <incDir>
+            <pElem>.</pElem>
+            <pElem>vp8/common</pElem>
+          </incDir>
+        </cTool>
+      </item>
+      <item path="vp8/encoder/onyx_if.c" ex="false" tool="0">
+        <cTool>
+          <incDir>
+            <pElem>.</pElem>
+            <pElem>vp8/common</pElem>
+          </incDir>
+        </cTool>
+      </item>
+      <item path="vp8/encoder/pickinter.c" ex="false" tool="0">
+        <cTool>
+          <incDir>
+            <pElem>.</pElem>
+            <pElem>vp8/common</pElem>
+          </incDir>
+        </cTool>
+      </item>
+      <item path="vp8/encoder/picklpf.c" ex="false" tool="0">
+        <cTool>
+          <incDir>
+            <pElem>.</pElem>
+            <pElem>vp8/common</pElem>
+          </incDir>
+        </cTool>
+      </item>
+      <item path="vp8/encoder/preproc.c" ex="false" tool="0">
+        <cTool>
+          <incDir>
+            <pElem>.</pElem>
+          </incDir>
+        </cTool>
+      </item>
+      <item path="vp8/encoder/psnr.c" ex="false" tool="0">
+        <cTool>
+          <incDir>
+            <pElem>.</pElem>
+            <pElem>vp8/common</pElem>
+          </incDir>
+        </cTool>
+      </item>
+      <item path="vp8/encoder/quantize.c" ex="false" tool="0">
+        <cTool>
+          <incDir>
+            <pElem>.</pElem>
+            <pElem>vp8/common</pElem>
+          </incDir>
+        </cTool>
+      </item>
+      <item path="vp8/encoder/ratectrl.c" ex="false" tool="0">
+        <cTool>
+          <incDir>
+            <pElem>.</pElem>
+            <pElem>vp8/common</pElem>
+          </incDir>
+        </cTool>
+      </item>
+      <item path="vp8/encoder/rdopt.c" ex="false" tool="0">
+        <cTool>
+          <incDir>
+            <pElem>.</pElem>
+            <pElem>vp8/common</pElem>
+          </incDir>
+        </cTool>
+      </item>
+      <item path="vp8/encoder/segmentation.c" ex="false" tool="0">
+        <cTool>
+          <incDir>
+            <pElem>.</pElem>
+            <pElem>vp8/common</pElem>
+          </incDir>
+        </cTool>
+      </item>
+      <item path="vp8/encoder/ssim.c" ex="false" tool="0">
+        <cTool>
+          <incDir>
+            <pElem>.</pElem>
+          </incDir>
+        </cTool>
+      </item>
+      <item path="vp8/encoder/temporal_filter.c" ex="false" tool="0">
+        <cTool>
+          <incDir>
+            <pElem>.</pElem>
+            <pElem>vp8/common</pElem>
+          </incDir>
+        </cTool>
+      </item>
+      <item path="vp8/encoder/tokenize.c" ex="false" tool="0">
+        <cTool>
+          <incDir>
+            <pElem>.</pElem>
+            <pElem>vp8/common</pElem>
+          </incDir>
+        </cTool>
+      </item>
+      <item path="vp8/encoder/treewriter.c" ex="false" tool="0">
+        <cTool>
+          <incDir>
+            <pElem>vp8/common</pElem>
+          </incDir>
+        </cTool>
+      </item>
+      <item path="vp8/encoder/x86/variance_mmx.c" ex="false" tool="0">
+        <cTool>
+          <incDir>
+            <pElem>vp8/encoder</pElem>
+            <pElem>.</pElem>
+          </incDir>
+        </cTool>
+      </item>
+      <item path="vp8/encoder/x86/variance_sse2.c" ex="false" tool="0">
+        <cTool>
+          <incDir>
+            <pElem>vp8/encoder</pElem>
+            <pElem>.</pElem>
+          </incDir>
+        </cTool>
+      </item>
+      <item path="vp8/encoder/x86/x86_csystemdependent.c" ex="false" tool="0">
+        <cTool>
+          <incDir>
+            <pElem>vp8/encoder</pElem>
+            <pElem>.</pElem>
+          </incDir>
+        </cTool>
+      </item>
+      <item path="vp8/vp8_cx_iface.c" ex="false" tool="0">
+        <cTool>
+          <incDir>
+            <pElem>vp8/encoder</pElem>
+            <pElem>.</pElem>
+            <pElem>vp8/common</pElem>
+          </incDir>
+        </cTool>
+      </item>
+      <item path="vp8/vp8_dx_iface.c" ex="false" tool="0">
+        <cTool>
+          <incDir>
+            <pElem>vp8/decoder</pElem>
+            <pElem>.</pElem>
+            <pElem>vp8/common</pElem>
+          </incDir>
+        </cTool>
+      </item>
+      <item path="vp8_scalable_patterns.c" ex="false" tool="0">
+        <cTool>
+          <incDir>
+            <pElem>.</pElem>
+          </incDir>
+        </cTool>
+      </item>
+      <item path="vp8_set_maps.c" ex="false" tool="0">
+        <cTool>
+          <incDir>
+            <pElem>.</pElem>
+          </incDir>
+        </cTool>
+      </item>
+      <item path="vp8cx_set_ref.c" ex="false" tool="0">
+        <cTool>
+          <incDir>
+            <pElem>.</pElem>
+          </incDir>
+        </cTool>
+      </item>
+      <item path="vpx_mem/intel_linux/vpx_mem.c" ex="false" tool="0">
+        <cTool>
+          <incDir>
+            <pElem>vpx_mem</pElem>
+          </incDir>
+        </cTool>
+      </item>
+      <item path="vpx_mem/vpx_mem.c" ex="false" tool="0">
+        <cTool>
+          <incDir>
+            <pElem>.</pElem>
+          </incDir>
+        </cTool>
+      </item>
+      <item path="vpx_mem/vpx_mem_tracker.c" ex="false" tool="0">
+        <cTool>
+          <incDir>
+            <pElem>.</pElem>
+          </incDir>
+        </cTool>
+      </item>
+      <item path="vpx_scale/dm642/bicubic_scaler_c64.c" ex="false" tool="0">
+        <cTool>
+          <incDir>
+            <pElem>vpx_scale/include/generic</pElem>
+          </incDir>
+        </cTool>
+      </item>
+      <item path="vpx_scale/generic/bicubic_scaler.c" ex="false" tool="0">
+        <cTool>
+          <incDir>
+            <pElem>vpx_scale/include/generic</pElem>
+          </incDir>
+        </cTool>
+      </item>
+      <item path="vpx_scale/intel_linux/scaleopt.c" ex="false" tool="0">
+        <cTool>
+          <incDir>
+            <pElem>vp8/common</pElem>
+          </incDir>
+        </cTool>
+      </item>
+      <item path="vpx_scale/leapster/vpxscale_lf.c" ex="false" tool="0">
+        <cTool>
+          <incDir>
+            <pElem>vp8/common</pElem>
+          </incDir>
+        </cTool>
+      </item>
+      <item path="vpx_scale/win32/scaleopt.c" ex="false" tool="0">
+        <cTool>
+          <incDir>
+            <pElem>vp8/common</pElem>
+          </incDir>
+        </cTool>
+      </item>
+      <item path="vpx_scale/x86_64/scaleopt.c" ex="false" tool="0">
+        <cTool>
+          <incDir>
+            <pElem>vp8/common</pElem>
+          </incDir>
+        </cTool>
+      </item>
+      <item path="vpxdec.c" ex="false" tool="0">
+        <cTool>
+          <incDir>
+            <pElem>.</pElem>
+          </incDir>
+        </cTool>
+      </item>
+      <item path="vpxenc.c" ex="false" tool="0">
+        <cTool>
+          <incDir>
+            <pElem>.</pElem>
+          </incDir>
+        </cTool>
+      </item>
+    </conf>
+  </confs>
+</configurationDescriptor>

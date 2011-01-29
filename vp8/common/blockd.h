@@ -211,7 +211,7 @@ typedef struct
     short *dequant;
 
 #if CONFIG_OPENCL
-    //cl_command_queue commands;
+    cl_command_queue cl_commands; //pointer to macroblock CL command queue
 
     cl_mem cl_diff_mem;
     cl_mem cl_predictor_mem;
@@ -244,7 +244,7 @@ typedef struct
     DECLARE_ALIGNED(16, char,  eobs[25]);
 
 #if CONFIG_OPENCL
-    //cl_command_queue commands; //Each macroblock gets its own command queue.
+    cl_command_queue cl_commands; //Each macroblock gets its own command queue.
     cl_mem cl_diff_mem;
     cl_mem cl_predictor_mem;
     cl_mem cl_qcoeff_mem;

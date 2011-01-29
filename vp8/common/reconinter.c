@@ -154,10 +154,7 @@ void vp8_build_inter_predictors_b(BLOCKD *d, int pitch, vp8_subpix_fn_t sppf)
     else
     {
 #if CONFIG_OPENCL
-        if ( cl_initialized == CL_SUCCESS ){
-            //Wait for kernels to finish.
-            clFinish(cl_data.commands);
-        }
+        CL_FINISH(d->cl_commands)
 #endif
 
         ptr_base += d->pre + (d->bmi.mv.as_mv.row >> 3) * d->pre_stride + (d->bmi.mv.as_mv.col >> 3);
@@ -195,10 +192,7 @@ void vp8_build_inter_predictors4b(MACROBLOCKD *x, BLOCKD *d, int pitch)
     else
     {
 #if CONFIG_OPENCL
-        if ( cl_initialized == CL_SUCCESS ){
-            //Wait for kernels to finish.
-            clFinish(cl_data.commands);
-        }
+        CL_FINISH(d->cl_commands)
 #endif
         RECON_INVOKE(&x->rtcd->recon, copy8x8)(ptr, d->pre_stride, pred_ptr, pitch);
     }
@@ -220,10 +214,7 @@ void vp8_build_inter_predictors2b(MACROBLOCKD *x, BLOCKD *d, int pitch)
     else
     {
 #if CONFIG_OPENCL
-        if ( cl_initialized == CL_SUCCESS ){
-            //Wait for kernels to finish.
-            clFinish(cl_data.commands);
-        }
+        CL_FINISH(d->cl_commands)
 #endif
         RECON_INVOKE(&x->rtcd->recon, copy8x4)(ptr, d->pre_stride, pred_ptr, pitch);
     }
@@ -258,10 +249,7 @@ void vp8_build_inter_predictors_mbuv(MACROBLOCKD *x)
         else
         {
 #if CONFIG_OPENCL
-        if ( cl_initialized == CL_SUCCESS ){
-            //Wait for kernels to finish.
-            clFinish(cl_data.commands);
-        }
+        CL_FINISH(x->cl_commands)
 #endif
 
             RECON_INVOKE(&x->rtcd->recon, copy8x8)(uptr, pre_stride, upred_ptr, 8);
@@ -285,10 +273,7 @@ void vp8_build_inter_predictors_mbuv(MACROBLOCKD *x)
         }
     }
 #if CONFIG_OPENCL
-        if ( cl_initialized == CL_SUCCESS ){
-            //Wait for kernels to finish.
-            clFinish(cl_data.commands);
-        }
+    CL_FINISH(x->cl_commands)
 #endif
 }
 
@@ -315,10 +300,7 @@ void vp8_build_inter_predictors_mby(MACROBLOCKD *x)
         else
         {
 #if CONFIG_OPENCL
-        if ( cl_initialized == CL_SUCCESS ){
-            //Wait for kernels to finish.
-            clFinish(cl_data.commands);
-        }
+    CL_FINISH(x->cl_commands)
 #endif
             RECON_INVOKE(&x->rtcd->recon, copy16x16)(ptr, pre_stride, pred_ptr, 16);
         }
@@ -355,7 +337,7 @@ void vp8_build_inter_predictors_mby(MACROBLOCKD *x)
         }
     }
 #if CONFIG_OPENCL
-    CL_FINISH;
+    CL_FINISH(x->cl_commands)
 #endif
 }
 
@@ -387,7 +369,7 @@ void vp8_build_inter_predictors_mb(MACROBLOCKD *x)
         else
         {
 #if CONFIG_OPENCL
-            CL_FINISH;
+            CL_FINISH(x->cl_commands);
 #endif
             RECON_INVOKE(&x->rtcd->recon, copy16x16)(ptr, pre_stride, pred_ptr, 16);
         }
@@ -407,7 +389,7 @@ void vp8_build_inter_predictors_mb(MACROBLOCKD *x)
         else
         {
 #if CONFIG_OPENCL
-            CL_FINISH;
+            CL_FINISH(x->cl_commands);
 #endif
             RECON_INVOKE(&x->rtcd->recon, copy8x8)(uptr, pre_stride, upred_ptr, 8);
             RECON_INVOKE(&x->rtcd->recon, copy8x8)(vptr, pre_stride, vpred_ptr, 8);
@@ -462,10 +444,7 @@ void vp8_build_inter_predictors_mb(MACROBLOCKD *x)
     }
 
 #if CONFIG_OPENCL
-    if ( cl_initialized == CL_SUCCESS ){
-        //Wait for kernels to finish.
-        clFinish(cl_data.commands);
-    }
+    CL_FINISH(x->cl_commands)
 #endif
 
 }
@@ -566,10 +545,7 @@ static void vp8_build_inter_predictors_b_s(BLOCKD *d, unsigned char *dst_ptr, vp
     ptr_base = *(d->base_pre);
 
 #if CONFIG_OPENCL
-    if ( cl_initialized == CL_SUCCESS ){
-        //Wait for kernels to finish.
-        clFinish(cl_data.commands);
-    }
+    CL_FINISH(d->cl_commands)
 #endif
 
     if (d->bmi.mv.as_mv.row & 7 || d->bmi.mv.as_mv.col & 7)
@@ -633,10 +609,7 @@ void vp8_build_inter_predictors_mb_s(MACROBLOCKD *x)
         else
         {
 #if CONFIG_OPENCL
-        if ( cl_initialized == CL_SUCCESS ){
-            //Wait for kernels to finish.
-            clFinish(cl_data.commands);
-        }
+        CL_FINISH(x->cl_commands)
 #endif
             RECON_INVOKE(&x->rtcd->recon, copy16x16)(ptr, pre_stride, dst_ptr, x->dst.y_stride); /*x->block[0].dst_stride);*/
         }
@@ -656,10 +629,7 @@ void vp8_build_inter_predictors_mb_s(MACROBLOCKD *x)
         else
         {
 #if CONFIG_OPENCL
-        if ( cl_initialized == CL_SUCCESS ){
-            //Wait for kernels to finish.
-            clFinish(cl_data.commands);
-        }
+        CL_FINISH(x->cl_commands)
 #endif
             RECON_INVOKE(&x->rtcd->recon, copy8x8)(uptr, pre_stride, udst_ptr, x->dst.uv_stride);
             RECON_INVOKE(&x->rtcd->recon, copy8x8)(vptr, pre_stride, vdst_ptr, x->dst.uv_stride);
@@ -694,10 +664,7 @@ void vp8_build_inter_predictors_mb_s(MACROBLOCKD *x)
                     else
                     {
 #if CONFIG_OPENCL
-        if ( cl_initialized == CL_SUCCESS ){
-            //Wait for kernels to finish.
-            clFinish(cl_data.commands);
-        }
+                        CL_FINISH(x->cl_commands)
 #endif
                         RECON_INVOKE(&x->rtcd->recon, copy8x8)(ptr, d->pre_stride, dst_ptr, x->dst.y_stride); /*x->block[0].dst_stride);*/
                     }
@@ -728,10 +695,7 @@ void vp8_build_inter_predictors_mb_s(MACROBLOCKD *x)
                     else
                     {
 #if CONFIG_OPENCL
-        if ( cl_initialized == CL_SUCCESS ){
-            //Wait for kernels to finish.
-            clFinish(cl_data.commands);
-        }
+                        CL_FINISH(x->cl_commands)
 #endif
                         RECON_INVOKE(&x->rtcd->recon, copy8x4)(ptr, d0->pre_stride, dst_ptr, x->dst.y_stride);
                     }
@@ -769,10 +733,7 @@ void vp8_build_inter_predictors_mb_s(MACROBLOCKD *x)
                 else
                 {
 #if CONFIG_OPENCL
-        if ( cl_initialized == CL_SUCCESS ){
-            //Wait for kernels to finish.
-            clFinish(cl_data.commands);
-        }
+                    CL_FINISH(x->cl_commands)
 #endif
                     RECON_INVOKE(&x->rtcd->recon, copy8x4)(ptr,
                         d0->pre_stride, dst_ptr, x->dst.uv_stride);
@@ -786,9 +747,6 @@ void vp8_build_inter_predictors_mb_s(MACROBLOCKD *x)
         }
     }
 #if CONFIG_OPENCL
-    if ( cl_initialized == CL_SUCCESS ){
-        //Wait for kernels to finish.
-        clFinish(cl_data.commands);
-    }
+    CL_FINISH(x->cl_commands)
 #endif
 }

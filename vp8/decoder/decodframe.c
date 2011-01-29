@@ -219,7 +219,7 @@ void vp8_decode_macroblock(VP8D_COMP *pbi, MACROBLOCKD *xd)
     {
         vp8_build_intra_predictors_mbuv(xd);
 #if CONFIG_OPENCL
-                CL_FINISH;
+                CL_FINISH(xd->cl_commands);
 #endif
         if (xd->mode_info_context->mbmi.mode != B_PRED)
         {
@@ -234,7 +234,7 @@ void vp8_decode_macroblock(VP8D_COMP *pbi, MACROBLOCKD *xd)
     }
 
 #if CONFIG_OPENCL
-                CL_FINISH;
+                CL_FINISH(xd->cl_commands);
 #endif
 
     /* dequantization and idct */
@@ -264,7 +264,7 @@ void vp8_decode_macroblock(VP8D_COMP *pbi, MACROBLOCKD *xd)
 
 #if CONFIG_OPENCL
         if (cl_initialized == CL_SUCCESS){
-            CL_SET_BUF(b->cl_dqcoeff_mem, sizeof(cl_short)*400, b->dqcoeff_base,
+            CL_SET_BUF(b->cl_commands, b->cl_dqcoeff_mem, sizeof(cl_short)*400, b->dqcoeff_base,
                     second_order(b->dqcoeff_base + b->dqcoeff_offset, &b->diff_base[b->diff_offset]));
         } else {
             second_order(b->dqcoeff_base + b->dqcoeff_offset, &b->diff_base[b->diff_offset]);
@@ -275,7 +275,7 @@ void vp8_decode_macroblock(VP8D_COMP *pbi, MACROBLOCKD *xd)
         } else {
             vp8_short_inv_walsh4x4_1_cl(b->cl_dqcoeff_mem,b->dqcoeff_offset, b->dqcoeff_base + b->dqcoeff_offset, &b->diff_base[b->diff_offset]);
         }
-        CL_FINISH;
+        CL_FINISH(xd->cl_commands);
 
 #else
         second_order(b->dqcoeff_base + b->dqcoeff_offset, &b->diff_base[b->diff_offset]);
@@ -297,7 +297,7 @@ void vp8_decode_macroblock(VP8D_COMP *pbi, MACROBLOCKD *xd)
             if (xd->eobs[i] > 1)
             {
 #if CONFIG_OPENCL
-                CL_FINISH;
+                CL_FINISH(xd->cl_commands);
 #endif
                 //Need to work on dequant functions
                 DEQUANT_INVOKE(&pbi->dequant, idct_add)
@@ -310,7 +310,7 @@ void vp8_decode_macroblock(VP8D_COMP *pbi, MACROBLOCKD *xd)
                     (qcoeff[0] * b->dequant[0], b->predictor_base + b->predictor_offset,
                     *(b->base_dst) + b->dst, 16, b->dst_stride);
 #if CONFIG_OPENCL
-                CL_FINISH;
+                CL_FINISH(xd->cl_commands);
 #endif
                 //((int *)qcoeff)[0] = 0;
             }
@@ -326,7 +326,7 @@ void vp8_decode_macroblock(VP8D_COMP *pbi, MACROBLOCKD *xd)
             }
         }
 #if CONFIG_OPENCL
-                CL_FINISH;
+                CL_FINISH(xd->cl_commands);
 #endif
     }
     else
@@ -344,7 +344,7 @@ void vp8_decode_macroblock(VP8D_COMP *pbi, MACROBLOCKD *xd)
 
 #if CONFIG_OPENCL
     printf("clFinish in decode_macroblock\n");
-    CL_FINISH;
+    CL_FINISH(xd->cl_commands);
 #endif
 }
 
@@ -946,7 +946,7 @@ int vp8_decode_frame(VP8D_COMP *pbi)
     //If using OpenCL, free all of the GPU buffers we've allocated.
     if (cl_initialized == CL_SUCCESS){
         //Wait for stuff to finish, just in case
-        clFinish(cl_data.commands);
+        clFinish(pbi->mb.cl_commands);
 
         //Free CL buffers
         if (pbi->mb.cl_diff_mem != NULL)
@@ -959,6 +959,12 @@ int vp8_decode_frame(VP8D_COMP *pbi)
             clReleaseMemObject(pbi->mb.cl_dqcoeff_mem);
         if (pbi->mb.cl_eobs_mem != NULL)
             clReleaseMemObject(pbi->mb.cl_eobs_mem);
+
+        //Release the command queue
+        if (pbi->mb.cl_commands != NULL)
+            clReleaseCommandQueue(pbi->mb.cl_commands);
+        cl_data.commands = NULL;
+        pbi->mb.cl_commands = NULL;
     }
 #endif
 

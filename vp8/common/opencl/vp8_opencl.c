@@ -23,10 +23,11 @@ extern int cl_init_idct();
 /**
  *
  */
-void cl_destroy(int new_status) {
+void cl_destroy(cl_command_queue cq, int new_status) {
 
     //Wait on any pending operations to complete... frees up all of our pointers
-    clFinish(cl_data.commands);
+    if (cq != NULL)
+        clFinish(cq);
 
     if (cl_data.srcData) {
         clReleaseMemObject(cl_data.srcData);
@@ -75,9 +76,6 @@ void cl_destroy(int new_status) {
     cl_data.filter_block2d_first_pass_kernel = NULL;
     cl_data.filter_block2d_second_pass_kernel = NULL;
 
-
-    if (cl_data.commands)
-        clReleaseCommandQueue(cl_data.commands);
     if (cl_data.context)
         clReleaseContext(cl_data.context);
 
@@ -162,14 +160,10 @@ int cl_common_init() {
         return CL_TRIED_BUT_FAILED;
     }
 
-    // Create a command queue
-    cl_data.commands = clCreateCommandQueue(cl_data.context, cl_data.device_id, 0, &err);
-    if (!cl_data.commands || err != CL_SUCCESS) {
-        printf("Error: Failed to create a command queue!\n");
-        return CL_TRIED_BUT_FAILED;
-    }
+    //Initialize command queue to null (created for each macroblock)
+    cl_data.commands = NULL;
 
-    //Initialize other memory objects to null pointers
+    //Initialize memory objects to null pointers
     cl_data.srcData = NULL;
     cl_data.srcAlloc = 0;
     cl_data.destData = NULL;
@@ -275,7 +269,7 @@ int cl_load_program(cl_program *prog_ref, const char *file_name, const char *opt
         *prog_ref = clCreateProgramWithSource(cl_data.context, 1, (const char**)&kernel_src, NULL, &err);
         free(kernel_src);
     } else {
-        cl_destroy(CL_TRIED_BUT_FAILED);
+        cl_destroy(cl_data.commands, CL_TRIED_BUT_FAILED);
         printf("Couldn't find OpenCL source files. \nUsing software path.\n");
         return CL_TRIED_BUT_FAILED;
     }

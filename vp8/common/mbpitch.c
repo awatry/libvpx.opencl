@@ -125,6 +125,7 @@ void vp8_setup_block_dptrs(MACROBLOCKD *x)
     x->block[24].diff_offset = 384;
 
 #if CONFIG_OPENCL
+    cl_data.commands = x->cl_commands = NULL;
     x->cl_diff_mem = NULL;
     x->cl_predictor_mem = NULL;
     x->cl_qcoeff_mem = NULL;
@@ -135,19 +136,29 @@ void vp8_setup_block_dptrs(MACROBLOCKD *x)
     if (cl_initialized == CL_SUCCESS){
         int err;
 
-        CL_CREATE_BUF(x->cl_diff_mem, CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,
+        //Create command queue for macroblock.
+        x->cl_commands = clCreateCommandQueue(cl_data.context, cl_data.device_id, 0, &err);
+        if (!x->cl_commands || err != CL_SUCCESS) {
+            printf("Error: Failed to create a command queue!\n");
+            cl_destroy(NULL, CL_TRIED_BUT_FAILED);
+            goto BUF_DONE;
+        }
+        //Temporarily store a copy of the command queue in cl_data
+        cl_data.commands = x->cl_commands;
+
+        CL_CREATE_BUF(x->cl_commands, x->cl_diff_mem, CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,
                 sizeof(cl_short)*400, x->diff, goto BUF_DONE);
 
-        CL_CREATE_BUF(x->cl_predictor_mem, CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,
+        CL_CREATE_BUF(x->cl_commands, x->cl_predictor_mem, CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,
                 sizeof(cl_uchar)*384, x->dqcoeff, goto BUF_DONE);
 
-        CL_CREATE_BUF(x->cl_qcoeff_mem, CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,
+        CL_CREATE_BUF(x->cl_commands, x->cl_qcoeff_mem, CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,
                 sizeof(cl_short)*400, x->qcoeff, goto BUF_DONE);
 
-        CL_CREATE_BUF(x->cl_dqcoeff_mem, CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,
+        CL_CREATE_BUF(x->cl_commands, x->cl_dqcoeff_mem, CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,
                 sizeof(cl_short)*400, x->dqcoeff, goto BUF_DONE);
 
-        CL_CREATE_BUF(x->cl_eobs_mem, CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,
+        CL_CREATE_BUF(x->cl_commands, x->cl_eobs_mem, CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,
                 sizeof(cl_char)*25, x->eobs, goto BUF_DONE);
     }
 BUF_DONE:
@@ -167,8 +178,11 @@ BUF_DONE:
         //x->block[r].diff = &x->diff[x->block[r].diff_offset];
 
 #if CONFIG_OPENCL
-        /* Set up CL memory buffers if appropriate */
         if (cl_initialized == CL_SUCCESS){
+            /* Copy command queue reference from macroblock */
+            x->block[r].cl_commands = x->cl_commands;
+
+            /* Set up CL memory buffers if appropriate */
             x->block[r].cl_diff_mem = x->cl_diff_mem;
             x->block[r].cl_dqcoeff_mem = x->cl_dqcoeff_mem;
             x->block[r].cl_eobs_mem = x->cl_eobs_mem;
