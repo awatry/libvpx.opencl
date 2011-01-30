@@ -1,3 +1,5 @@
+#pragma OPENCL EXTENSION cl_khr_byte_addressable_store : enable
+
 /*
  *  Copyright (c) 2010 The WebM project authors. All Rights Reserved.
  *
@@ -8,8 +10,6 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#pragma OPENCL EXTENSION cl_khr_byte_addressable_store : enable
-
 __constant int cospi8sqrt2minus1 = 20091;
 __constant int sinpi8sqrt2      = 35468;
 __constant int rounding = 0;
@@ -17,32 +17,38 @@ __constant int rounding = 0;
 void vp8_short_idct4x4llm(__global short*, short*, int);
 void cl_memset_short(__global short*, int, size_t);
 
+#define USE_VECTORS 1
 
 __kernel void vp8_dequantize_b_kernel(
     __global short *dqcoeff_base,
     int dqcoeff_offset,
     __global short *qcoeff_base,
     int qcoeff_offset,
-    __global short *DQC
+    __global short *dequant
 )
 {
-    //int i;
-    __global short *DQ  = &dqcoeff_base[0] + dqcoeff_offset;
-    __global short *Q   = &qcoeff_base[0]  + qcoeff_offset;
-
+    __global short *DQ  = dqcoeff_base + dqcoeff_offset;
+    __global short *Q   = qcoeff_base  + qcoeff_offset;
+    __global short *DQC = dequant;
+#if USE_VECTORS
     short16 dqv = vload16(0,Q) * vload16(0,DQC);
-    vstore16(dqv, 0, DQ);
+    vstore16(vload16(0,Q) * vload16(0,DQC), 0, DQ);
+#else
+    int i;
+    for (i = 0; i < 16; i++)
+    {
+        DQ[i] = Q[i] * DQC[i];
+    }
 
-    //for (i = 0; i < 16; i++)
-    //{
-    //    DQ[i] = Q[i] * DQC[i];
-    //}
+#endif
 }
 
 __kernel void vp8_dequant_idct_add_kernel(
-    __global short *input,
+    __global short *input_base,
+    int input_offset,
     __global short *dq,
-    __global unsigned char *pred,
+    __global unsigned char *pred_base,
+    int pred_offset,
     __global unsigned char *dest_base,
     int dest_offset,
     int pitch,
@@ -54,13 +60,17 @@ __kernel void vp8_dequant_idct_add_kernel(
     int r, c;
     int i;
     __global unsigned char *dest = dest_base + dest_offset;
+    __global short *input = input_base + input_offset;
+    __global unsigned char *pred = pred_base + pred_offset;
 
-    //vstore16( (short16)vload16(0,dq) * (short16)vload16(0,input) , 0, input);
-    
+#if USE_VECTORS
+    vstore16( (short16)vload16(0,dq) * (short16)vload16(0,input) , 0, input);
+#else
     for (i = 0; i < 16; i++)
     {
         input[i] = dq[i] * input[i];
     }
+#endif
 
     /* the idct halves ( >> 1) the pitch */
     vp8_short_idct4x4llm(input, output, 4 << 1);
@@ -98,18 +108,18 @@ __kernel void vp8_dequant_dc_idct_add_kernel(
     int Dc
 )
 {
-    //int i;
+    int i;
     short output[16];
     short *diff_ptr = output;
     int r, c;
 
     input[0] = (short)Dc;
 
-    vstore16( (short16)vload16(0,dq) * (short16)vload16(0,input) , 0, input);
-    //for (i = 1; i < 16; i++)
-    //{
-    //    input[i] = dq[i] * input[i];
-    //}
+    //vstore16( (short16)vload16(0,dq) * (short16)vload16(0,input) , 0, input);
+    for (i = 1; i < 16; i++)
+    {
+        input[i] = dq[i] * input[i];
+    }
 
     /* the idct halves ( >> 1) the pitch */
     vp8_short_idct4x4llm(input, output, 4 << 1);

@@ -46,7 +46,7 @@ void vp8_filter_block2d_first_pass(
         for (i=0; i < output_width*output_height; i++){
             src_offset = i + (i/output_width * (src_pixels_per_line - output_width)) + PS2;
 
-            if (1){
+#if 0
                 int8 t8, s, f;
                 int4 t4;
                 int2 t2;
@@ -61,8 +61,7 @@ void vp8_filter_block2d_first_pass(
                 //t2 = t4.xy + t4.zw;
                 t2 = t8.s01 + t8.s23 + t8.s45;
                 Temp = t2.x + t2.y + (VP8_FILTER_WEIGHT >> 1);
-
-            } else {
+#else
                 Temp = (int)(src_ptr[src_offset - PS2]      * vp8_filter[0]) +
                    (int)(src_ptr[src_offset - (int)pixel_step] * vp8_filter[1]) +
                    (int)(src_ptr[src_offset]                * vp8_filter[2]) +
@@ -70,7 +69,7 @@ void vp8_filter_block2d_first_pass(
                    (int)(src_ptr[src_offset + PS2]          * vp8_filter[4]) +
                    (int)(src_ptr[src_offset + PS3]          * vp8_filter[5]) +
                    (VP8_FILTER_WEIGHT >> 1);      /* Rounding */
-            }
+#endif
             /* Normalize back to 0-255 */
             Temp = Temp >> VP8_FILTER_SHIFT;
 
