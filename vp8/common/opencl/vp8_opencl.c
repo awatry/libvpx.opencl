@@ -131,14 +131,33 @@ int cl_common_init() {
     //Enumerate the platforms found
     for (i = 0; i < num_found; i++){
     	char buf[2048];
-    	size_t len;
+        char version[2048];
+        char features[2048];
+        size_t len;
     	err = clGetPlatformInfo( platform_ids[i], CL_PLATFORM_VENDOR, sizeof(buf), buf, &len);
     	if (err != CL_SUCCESS){
-    		printf("Error retrieving platform vendor for platform %d",i);
-    		return CL_TRIED_BUT_FAILED;
+            printf("Error retrieving platform vendor for platform %d",i);
+            continue;
     	}
     	//printf("Platform %d: %s\n",i,buf);
 
+        //First, check version. If higher than 1.0, don't bother checking extensions
+        err = clGetPlatformInfo( platform_ids[i], CL_PLATFORM_VERSION, sizeof(version), version, NULL);
+        if (err != CL_SUCCESS){
+            printf("Error retrieving version for platform %d (%s)\n",i,buf);
+            continue;
+        }
+        printf("Version: %s\n",version);
+        if (strstr(version,"1.0")){
+            //Check if byte-addressable stores are enabled.. we need this feature
+            err = clGetPlatformInfo( platform_ids[i], CL_PLATFORM_EXTENSIONS, sizeof(features), features, NULL);
+            if (err != CL_SUCCESS){
+                printf("Error retrieving extension list for platform %d (%s)\n",i,buf);
+                continue;
+            }
+            printf("Platform: %s\nExtensions: %s\n",buf,features);
+        }
+        
     	//Try to find a valid compute device
     	//Favor the GPU, but fall back to any other available device if necessary
 #ifdef __APPLE__
@@ -150,17 +169,17 @@ int cl_common_init() {
         //printf("found %d GPU devices\n", num_devices);
 
 #endif //__APPLE__
-    	        if (err != CL_SUCCESS) {
-    	            err = clGetDeviceIDs(platform_ids[0], CL_DEVICE_TYPE_ALL, MAX_NUM_DEVICES, devices, &num_devices);
-    	            if (err != CL_SUCCESS) {
-    	                printf("Error: Failed to create a device group!\n");
-    	                return CL_TRIED_BUT_FAILED;
-    	            }
-    	            //printf("found %d generic devices\n", num_devices);
-    	        }
-    	        cl_data.device_id = devices[0];
-    	    }
-    	    //printf("Done enumerating\n");
+        if (err != CL_SUCCESS) {
+            err = clGetDeviceIDs(platform_ids[0], CL_DEVICE_TYPE_ALL, MAX_NUM_DEVICES, devices, &num_devices);
+            if (err != CL_SUCCESS) {
+                printf("Error: Failed to create a device group!\n");
+                continue;
+            }
+            //printf("found %d generic devices\n", num_devices);
+        }
+        cl_data.device_id = devices[0];
+    }
+    //printf("Done enumerating\n");
 
     if (cl_data.device_id == NULL){
     	printf("Error: Failed to find a valid OpenCL device. Using CPU paths\n");
