@@ -23,14 +23,12 @@ __kernel void vp8_dequantize_b_kernel(
     int dqcoeff_offset,
     __global short *qcoeff_base,
     int qcoeff_offset,
-    __global short *dequant_base,
-    int dequant_offset
+    __global short *DQC
 )
 {
     //int i;
     __global short *DQ  = &dqcoeff_base[0] + dqcoeff_offset;
     __global short *Q   = &qcoeff_base[0]  + qcoeff_offset;
-    __global short *DQC = &dequant_base[0] + dequant_offset;
 
     short16 dqv = vload16(0,Q) * vload16(0,DQC);
     vstore16(dqv, 0, DQ);

@@ -19,7 +19,6 @@
  * them in the function pointer initialization code
  */
 
-#if CONFIG_OPENCL
 extern prototype_subpixel_predict(vp8_sixtap_predict16x16_cl);
 extern prototype_subpixel_predict(vp8_sixtap_predict8x8_cl);
 extern prototype_subpixel_predict(vp8_sixtap_predict8x4_cl);
@@ -56,7 +55,11 @@ extern prototype_subpixel_predict(vp8_bilinear_predict4x4_cl);
 #define vp8_subpix_bilinear4x4 vp8_bilinear_predict4x4_cl
 
 #endif
-#endif
 
+//typedef enum
+//{
+//    SIXTAP = 0,
+//    BILINEAR = 1
+//} SUBPIX_TYPE;
 
 #endif

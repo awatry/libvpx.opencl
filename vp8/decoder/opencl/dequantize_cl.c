@@ -56,19 +56,62 @@ int cl_init_dequant() {
     return CL_SUCCESS;
 }
 
-
 void vp8_dequantize_b_cl(BLOCKD *d)
 {
-    int i;
+    int i,err;
     short *DQ  = d->dqcoeff_base + d->dqcoeff_offset;
     short *Q   = d->qcoeff_base + d->qcoeff_offset;
     short *DQC = d->dequant;
+    size_t global = 1;
 
-    printf("vp8_dequantize_b_cl\n");
+    //printf("vp8_dequantize_b_cl\n");
 
-    for (i = 0; i < 16; i++)
-    {
-        DQ[i] = Q[i] * DQC[i];
+    if (cl_initialized == CL_SUCCESS && 0){
+         //Initialize memory
+        CL_SET_BUF(d->cl_commands, d->cl_dqcoeff_mem, sizeof(cl_short)*400, d->dqcoeff_base,
+            vp8_dequantize_b_c(d)
+        );
+
+        CL_SET_BUF(d->cl_commands, d->cl_qcoeff_mem, sizeof(cl_short)*400, d->qcoeff_base,
+            vp8_dequantize_b_c(d)
+        );
+
+        /* Set kernel arguments */
+        err = 0;
+        err = clSetKernelArg(cl_data.vp8_dequantize_b_kernel, 0, sizeof (cl_mem), &d->cl_dqcoeff_mem);
+        err |= clSetKernelArg(cl_data.vp8_dequantize_b_kernel, 1, sizeof (int), &d->dqcoeff_offset);
+        err |= clSetKernelArg(cl_data.vp8_dequantize_b_kernel, 2, sizeof (cl_mem), &d->cl_qcoeff_mem);
+        err |= clSetKernelArg(cl_data.vp8_dequantize_b_kernel, 3, sizeof (int), &d->qcoeff_offset);
+        err |= clSetKernelArg(cl_data.vp8_dequantize_b_kernel, 4, sizeof (cl_mem), &d->cl_dequant_mem);
+        CL_CHECK_SUCCESS( d->cl_commands, err != CL_SUCCESS,
+            "Error: Failed to set kernel arguments!\n",
+            vp8_dequantize_b_c(d),
+        );
+
+        printf("queueing kernel\n");
+        /* Execute the kernel */
+        err = clEnqueueNDRangeKernel( d->cl_commands, cl_data.vp8_dequantize_b_kernel, 1, NULL, &global, NULL , 0, NULL, NULL);
+        printf("Queued\n");
+        CL_CHECK_SUCCESS( d->cl_commands, err != CL_SUCCESS,
+            "Error: Failed to execute kernel!\n",
+            printf("err = %d\n",err);\
+            vp8_dequantize_b_c(d),
+        );
+
+        /* Read back the result data from the device */
+        err = clEnqueueReadBuffer(d->cl_commands, d->cl_dequant_mem, CL_FALSE, 0, sizeof(cl_short)*16, d->dequant, 0, NULL, NULL); \
+        CL_CHECK_SUCCESS( d->cl_commands, err != CL_SUCCESS,
+            "Error: Failed to read output array!\n",
+            vp8_dequantize_b_c(d),
+        );
+
+        clFinish(d->cl_commands);
+
+    } else {
+        for (i = 0; i < 16; i++)
+        {
+            DQ[i] = Q[i] * DQC[i];
+        }
     }
 }
 
@@ -84,16 +127,15 @@ void vp8_dequant_idct_add_cl(BLOCKD *b, short *input_base, int input_offset, sho
     int i;
     size_t global = 1, cur_size, dest_size;
     cl_mem dest_mem = NULL;
-    
+
     //printf("vp8_dequant_idct_add_cl\n");
+    vp8_dequant_idct_add_c(qcoeff, b->dequant,  b->predictor_base + b->predictor_offset,
+        *(b->base_dst) + b->dst, 16, b->dst_stride);
+    return;
 
     /* NOTE: Eventually, all of these buffers need to be initialized outside of
      *       this function.
      */
-    //C/asm fallback until CL is ready.
-    idct_add(qcoeff, b->dequant,  b->predictor_base + b->predictor_offset,
-        *(b->base_dst) + b->dst, 16, b->dst_stride);
-    return;
 
     printf("Initializing CL memory\n");
     //Initialize memory
@@ -139,7 +181,7 @@ void vp8_dequant_idct_add_cl(BLOCKD *b, short *input_base, int input_offset, sho
 
     printf("queueing kernel\n");
     /* Execute the kernel */
-    err = clEnqueueNDRangeKernel( b->cl_commands, cl_data.vp8_dequant_idct_add_kernel, 1, NULL, &global, NULL , 0, NULL, NULL);
+    //err = clEnqueueNDRangeKernel( b->cl_commands, cl_data.vp8_dequant_idct_add_kernel, 1, NULL, &global, NULL , 0, NULL, NULL);
     printf("Queued\n");
     CL_CHECK_SUCCESS( b->cl_commands, err != CL_SUCCESS,
         "Error: Failed to execute kernel!\n",
@@ -157,7 +199,7 @@ void vp8_dequant_idct_add_cl(BLOCKD *b, short *input_base, int input_offset, sho
         "Error: Failed to read output array!\n",
         idct_add(qcoeff, b->dequant,  b->predictor_base + b->predictor_offset,
             *(b->base_dst) + b->dst, 16, b->dst_stride),
-    );\
+    );
 
     clFinish(b->cl_commands);
     clReleaseMemObject(dest_mem);

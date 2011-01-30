@@ -614,7 +614,9 @@ static void init_frame(VP8D_COMP *pbi)
         else
             pc->mcomp_filter_type = BILINEAR;
 
-        /* To enable choice of different interploation filters */
+        xd->subpix_type = pc->mcomp_filter_type;
+
+        /* To enable choice of different interpolation filters */
         if (pc->mcomp_filter_type == SIXTAP)
         {
             xd->subpixel_predict      = SUBPIX_INVOKE(RTCD_VTABLE(subpix), sixtap4x4);

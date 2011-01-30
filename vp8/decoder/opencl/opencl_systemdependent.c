@@ -17,6 +17,10 @@
 #include "opencl/vp8_decode_cl.h"
 #endif
 
+extern void vp8_dequantize_b_cl(BLOCKD*);
+extern void vp8_dequant_dc_idct_add_cl(short*, short*, unsigned char*,
+                               unsigned char*, int, int, int Dc);
+
 void vp8_arch_opencl_decode_init(VP8D_COMP *pbi)
 {
 
@@ -31,9 +35,9 @@ void vp8_arch_opencl_decode_init(VP8D_COMP *pbi)
     /* Override current functions with OpenCL replacements: */
 #if CONFIG_RUNTIME_CPU_DETECT
     //pbi->mb.rtcd                     = &pbi->common.rtcd;
-    //pbi->dequant.block               = vp8_dequantize_b_cl;
+    pbi->dequant.block               = vp8_dequantize_b_cl;
     //pbi->dequant.idct_add            = vp8_dequant_idct_add_cl;
-    //pbi->dequant.dc_idct_add         = vp8_dequant_dc_idct_add_cl;
+    pbi->dequant.dc_idct_add         = vp8_dequant_dc_idct_add_cl;
     //pbi->dequant.dc_idct_add_y_block = vp8_dequant_dc_idct_add_y_block_cl;
     //pbi->dequant.idct_add_y_block    = vp8_dequant_idct_add_y_block_cl;
     //pbi->dequant.idct_add_uv_block   = vp8_dequant_idct_add_uv_block_cl;
