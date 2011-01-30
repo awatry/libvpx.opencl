@@ -137,28 +137,30 @@ int cl_common_init() {
     		printf("Error retrieving platform vendor for platform %d",i);
     		return CL_TRIED_BUT_FAILED;
     	}
-//   	printf("Platform %d: %s\n",i,buf);
+    	//printf("Platform %d: %s\n",i,buf);
 
     	//Try to find a valid compute device
     	//Favor the GPU, but fall back to any other available device if necessary
 #ifdef __APPLE__
     	printf("Apple system. Running CL as CPU-only for now...\n");
         err = clGetDeviceIDs(platform_ids[0], CL_DEVICE_TYPE_CPU, MAX_NUM_DEVICES, devices, &num_devices);
+        //printf("found %d CPU devices\n", num_devices);
 #else
         err = clGetDeviceIDs(platform_ids[0], CL_DEVICE_TYPE_GPU, MAX_NUM_DEVICES, devices, &num_devices);
+        //printf("found %d GPU devices\n", num_devices);
+
 #endif //__APPLE__
-    	//        printf("found %d GPU devices\n", num_devices);
     	        if (err != CL_SUCCESS) {
     	            err = clGetDeviceIDs(platform_ids[0], CL_DEVICE_TYPE_ALL, MAX_NUM_DEVICES, devices, &num_devices);
     	            if (err != CL_SUCCESS) {
     	                printf("Error: Failed to create a device group!\n");
     	                return CL_TRIED_BUT_FAILED;
     	            }
-    	//            printf("found %d generic devices\n", num_devices);
+    	            //printf("found %d generic devices\n", num_devices);
     	        }
     	        cl_data.device_id = devices[0];
     	    }
-    	//    printf("Done enumerating\n");
+    	    //printf("Done enumerating\n");
 
     if (cl_data.device_id == NULL){
     	printf("Error: Failed to find a valid OpenCL device. Using CPU paths\n");
@@ -269,6 +271,30 @@ char *cl_read_file(const char* file_name) {
     return bytes;
 }
 
+void show_build_log(cl_program *prog_ref){
+    size_t len;
+    char *buffer;
+    int err = clGetProgramBuildInfo(*prog_ref, cl_data.device_id, CL_PROGRAM_BUILD_LOG, 0, NULL, &len);
+
+    if (err != CL_SUCCESS){
+        printf("Error: Could not get length of CL build log\n");
+    }
+
+    buffer = (char*) malloc(len);
+    if (buffer == NULL) {
+        printf("Error: Couldn't allocate compile output buffer memory\n");
+    }
+
+    err = clGetProgramBuildInfo(*prog_ref, cl_data.device_id, CL_PROGRAM_BUILD_LOG, len, buffer, NULL);
+    if (err != CL_SUCCESS) {
+        printf("Error: Could not get CL build log\n");
+
+    } else {
+        printf("Compile output: %s\n", buffer);
+    }
+    free(buffer);
+}
+
 int cl_load_program(cl_program *prog_ref, const char *file_name, const char *opts) {
 
     int err;
@@ -299,25 +325,12 @@ int cl_load_program(cl_program *prog_ref, const char *file_name, const char *opt
     err = clBuildProgram(*prog_ref, 0, NULL, opts, NULL, NULL);
     if (err != CL_SUCCESS) {
         printf("Error: Failed to build program executable for %s!\n", file_name);
-        err = clGetProgramBuildInfo(*prog_ref, cl_data.device_id, CL_PROGRAM_BUILD_LOG, 0, NULL, &len);
-        if (err != CL_SUCCESS) {
-            printf("Error: Could not get length of CL build log\n");
-            return CL_TRIED_BUT_FAILED;
-        }
-        buffer = (char*) malloc(len);
-        if (buffer == NULL) {
-            printf("Error: Couldn't allocate compile output buffer memory\n");
-            return CL_TRIED_BUT_FAILED;
-        }
-        err = clGetProgramBuildInfo(*prog_ref, cl_data.device_id, CL_PROGRAM_BUILD_LOG, len, buffer, NULL);
-        if (err != CL_SUCCESS) {
-            printf("Error: Could not get CL build log\n");
-            
-        } else {
-            printf("Compile output: %s\n", buffer);
-        }
-        free(buffer);
+
+        show_build_log(prog_ref);
+
         return CL_TRIED_BUT_FAILED;
     }
+    //else show_build_log(prog_ref);
+
     return CL_SUCCESS;
 }
