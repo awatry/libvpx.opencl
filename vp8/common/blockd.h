@@ -311,7 +311,7 @@ typedef struct
     unsigned int frames_till_alt_ref_frame;
 
 #if CONFIG_OPENCL
-    INTERPOLATIONFILTERTYPE subpix_type;
+    //INTERPOLATIONFILTERTYPE subpix_type;
 #endif
     vp8_subpix_fn_t  subpixel_predict;
     vp8_subpix_fn_t  subpixel_predict8x4;

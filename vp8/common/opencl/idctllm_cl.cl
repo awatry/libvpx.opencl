@@ -136,6 +136,7 @@ __kernel void vp8_short_inv_walsh4x4_kernel(
 
     //4-short vectors to calculate things in
     short4 a,b,c,d, a2v, b2v, c2v, d2v, a1t, b1t, c1t, d1t;
+    short16 out;
     int tid = get_global_id(0);
 
     if (tid == 0){
@@ -169,22 +170,11 @@ __kernel void vp8_short_inv_walsh4x4_kernel(
         c2v = (a - b) >> (short)3;
         d2v = (d - c) >> (short)3;
 
-        output[0] = a2v.x;
-        output[1] = b2v.x;
-        output[2] = c2v.x;
-        output[3] = d2v.x;
-        output[4] = a2v.y;
-        output[5] = b2v.y;
-        output[6] = c2v.y;
-        output[7] = d2v.y;
-        output[8] = a2v.z;
-        output[9] = b2v.z;
-        output[10] = c2v.z;
-        output[11] = d2v.z;
-        output[12] = a2v.w;
-        output[13] = b2v.w;
-        output[14] = c2v.w;
-        output[15] = d2v.w;
+        out.s048c = a2v;
+        out.s159d = b2v;
+        out.s26ae = c2v;
+        out.s37bf = d2v;
+        vstore16(out,0,output);
     }
 }
 

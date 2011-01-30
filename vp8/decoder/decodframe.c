@@ -614,7 +614,7 @@ static void init_frame(VP8D_COMP *pbi)
         else
             pc->mcomp_filter_type = BILINEAR;
 
-        xd->subpix_type = pc->mcomp_filter_type;
+        //xd->subpix_type = pc->mcomp_filter_type;
 
         /* To enable choice of different interpolation filters */
         if (pc->mcomp_filter_type == SIXTAP)
