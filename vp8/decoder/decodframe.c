@@ -95,33 +95,24 @@ void mb_init_dequantizer(VP8D_COMP *pbi, MACROBLOCKD *xd)
     for (i = 0; i < 16; i++)
     {
         xd->block[i].dequant = pc->Y1dequant[QIndex];
-#if CONFIG_OPENCL
-        if (cl_initialized == CL_SUCCESS){
-            CL_CREATE_BUF(xd->cl_commands, xd->block[i].cl_dequant_mem,
-                CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,
-                16*sizeof(cl_short), xd->block[i].dequant,);
-        }
-#endif
     }
 
     for (i = 16; i < 24; i++)
     {
         xd->block[i].dequant = pc->UVdequant[QIndex];
-#if CONFIG_OPENCL
-        if (cl_initialized == CL_SUCCESS){
-            CL_CREATE_BUF(xd->cl_commands, xd->block[i].cl_dequant_mem,
-                CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,
-                16*sizeof(cl_short), xd->block[i].dequant,);
-        }
-#endif
     }
 
     xd->block[24].dequant = pc->Y2dequant[QIndex];
+
 #if CONFIG_OPENCL
+    //Set up per-block dequant CL memory. Eventually, might be able to set up
+    //one large buffer containing the entire large dequant buffer.
     if (cl_initialized == CL_SUCCESS){
-        CL_CREATE_BUF(xd->cl_commands, xd->block[24].cl_dequant_mem,
-            CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,
-            16*sizeof(cl_short), xd->block[24].dequant,);
+        for (i=0; i < 25; i++){
+            CL_CREATE_BUF(xd->cl_commands, xd->block[i].cl_dequant_mem,
+                CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,
+               16*sizeof(cl_short), xd->block[i].dequant,);
+        }
     }
 #endif
 
@@ -998,6 +989,7 @@ int vp8_decode_frame(VP8D_COMP *pbi)
 
         for (i = 0; i < 25; i++){
             clReleaseMemObject(pbi->mb.block[i].cl_dequant_mem);
+            pbi->mb.block[i].cl_dequant_mem = NULL;
         }
     }
 #endif
