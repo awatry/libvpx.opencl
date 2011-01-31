@@ -12,7 +12,8 @@
 #ifndef DEQUANTIZE_CL_H
 #define DEQUANTIZE_CL_H
 
-#include "dequantize.h"
+#include "vp8/decoder/dequantize.h"
+#include "vp8/common/opencl/vp8_opencl.h"
 
 #define prototype_dequant_block_cl(sym) \
     void sym(BLOCKD *x)

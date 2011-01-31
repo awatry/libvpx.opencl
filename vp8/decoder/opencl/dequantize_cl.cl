@@ -17,7 +17,7 @@ __constant int rounding = 0;
 void vp8_short_idct4x4llm(__global short*, short*, int);
 void cl_memset_short(__global short*, int, size_t);
 
-#define USE_VECTORS 1
+#define USE_VECTORS 0
 
 __kernel void vp8_dequantize_b_kernel(
     __global short *dqcoeff_base,
@@ -75,6 +75,7 @@ __kernel void vp8_dequant_idct_add_kernel(
     /* the idct halves ( >> 1) the pitch */
     vp8_short_idct4x4llm(input, output, 4 << 1);
 
+    //Note, remember to copy back the input buffer to system memory.
     cl_memset_short(input, 0, 32);
 
     for (r = 0; r < 4; r++)
@@ -113,6 +114,7 @@ __kernel void vp8_dequant_dc_idct_add_kernel(
     short *diff_ptr = output;
     int r, c;
 
+    //Another candidate to copy back a modified input buffer...
     input[0] = (short)Dc;
 
 #if USE_VECTORS
@@ -149,8 +151,6 @@ __kernel void vp8_dequant_dc_idct_add_kernel(
         pred += pitch;
     }
 }
-
-
 
 
 
@@ -221,6 +221,7 @@ void vp8_short_idct4x4llm(
 }
 
 void cl_memset_short(__global short *s, int c, size_t n) {
-    for (n /= sizeof(short); n > 0; --n)
+    int i;
+    for (i = 0; i < n/2; i++)
         *s++ = c;
 }
