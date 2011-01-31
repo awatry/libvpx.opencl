@@ -21,6 +21,11 @@ void vpx_log(const char *format, ...);
 #include "subpixel.h"
 #include "vpx_ports/mem.h"
 
+#include "vpx_config.h"
+#if CONFIG_OPENCL
+#include "opencl/vp8_opencl.h"
+#endif
+
 #define TRUE    1
 #define FALSE   0
 
@@ -189,12 +194,31 @@ typedef struct
 
 typedef struct
 {
-    short *qcoeff;
-    short *dqcoeff;
-    unsigned char  *predictor;
-    short *diff;
+    short *qcoeff_base;
+    unsigned int qcoeff_offset;
+
+    short *dqcoeff_base;
+    unsigned int dqcoeff_offset;
+
+    //unsigned char  *predictor;
+    unsigned char *predictor_base;
+    unsigned int predictor_offset;
+
+    //short *diff;
+    short *diff_base;
+    unsigned int diff_offset;
 
     short *dequant;
+
+#if CONFIG_OPENCL
+    //cl_command_queue commands;
+
+    cl_mem cl_diff_mem;
+    cl_mem cl_predictor_mem;
+    cl_mem cl_qcoeff_mem;
+    cl_mem cl_dqcoeff_mem;
+    cl_mem cl_eobs_mem;
+#endif
 
     /* 16 Y blocks, 4 U blocks, 4 V blocks each with 16 entries */
     unsigned char **base_pre;
@@ -218,6 +242,15 @@ typedef struct
     DECLARE_ALIGNED(16, short, qcoeff[400]);
     DECLARE_ALIGNED(16, short, dqcoeff[400]);
     DECLARE_ALIGNED(16, char,  eobs[25]);
+
+#if CONFIG_OPENCL
+    //cl_command_queue commands; //Each macroblock gets its own command queue.
+    cl_mem cl_diff_mem;
+    cl_mem cl_predictor_mem;
+    cl_mem cl_qcoeff_mem;
+    cl_mem cl_dqcoeff_mem;
+    cl_mem cl_eobs_mem;
+#endif
 
     /* 16 Y blocks, 4 U, 4 V, 1 DC 2nd order block, each with 16 entries. */
     BLOCKD block[25];

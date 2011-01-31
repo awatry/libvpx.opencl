@@ -184,6 +184,7 @@ void vp8_decode_macroblock(VP8D_COMP *pbi, MACROBLOCKD *xd)
 {
     int eobtotal = 0;
     int i, do_clamp = xd->mode_info_context->mbmi.need_to_clamp_mvs;
+    int err; //CL return code tracking
 
     if (xd->mode_info_context->mbmi.mb_skip_coeff)
     {
@@ -239,36 +240,49 @@ void vp8_decode_macroblock(VP8D_COMP *pbi, MACROBLOCKD *xd)
     if (xd->mode_info_context->mbmi.mode != B_PRED && xd->mode_info_context->mbmi.mode != SPLITMV)
     {
         BLOCKD *b = &xd->block[24];
+        short *qcoeff = b->qcoeff_base + b->qcoeff_offset;
+        vp8_second_order_fn_t second_order;
+        
         DEQUANT_INVOKE(&pbi->dequant, block)(b);
 
         /* do 2nd order transform on the dc block */
+        if (xd->eobs[24] > 1){
+            second_order = IDCT_INVOKE(RTCD_VTABLE(idct), iwalsh16);
+            ((int *)qcoeff)[0] = 0;
+            ((int *)qcoeff)[1] = 0;
+            ((int *)qcoeff)[2] = 0;
+            ((int *)qcoeff)[3] = 0;
+            ((int *)qcoeff)[4] = 0;
+            ((int *)qcoeff)[5] = 0;
+            ((int *)qcoeff)[6] = 0;
+            ((int *)qcoeff)[7] = 0;
+        } else {
+            second_order = IDCT_INVOKE(RTCD_VTABLE(idct), iwalsh1);
+            ((int *)qcoeff)[0] = 0;
+        }
+
+#if CONFIG_OPENCL
+        if (cl_initialized == CL_SUCCESS){
+            CL_SET_BUF(b->cl_dqcoeff_mem, sizeof(cl_short)*400, b->dqcoeff_base,
+                    second_order(b->dqcoeff_base + b->dqcoeff_offset, &b->diff_base[b->diff_offset]));
+        } else {
+            second_order(b->dqcoeff_base + b->dqcoeff_offset, &b->diff_base[b->diff_offset]);
+        }
         if (xd->eobs[24] > 1)
         {
-            IDCT_INVOKE(RTCD_VTABLE(idct), iwalsh16)(&b->dqcoeff[0], b->diff);
-#if CONFIG_OPENCL
-                CL_FINISH;
-#endif
-            ((int *)b->qcoeff)[0] = 0;
-            ((int *)b->qcoeff)[1] = 0;
-            ((int *)b->qcoeff)[2] = 0;
-            ((int *)b->qcoeff)[3] = 0;
-            ((int *)b->qcoeff)[4] = 0;
-            ((int *)b->qcoeff)[5] = 0;
-            ((int *)b->qcoeff)[6] = 0;
-            ((int *)b->qcoeff)[7] = 0;
+            vp8_short_inv_walsh4x4_cl(b->cl_dqcoeff_mem,b->dqcoeff_offset, b->dqcoeff_base + b->dqcoeff_offset, &b->diff_base[b->diff_offset]);
+        } else {
+            vp8_short_inv_walsh4x4_1_cl(b->cl_dqcoeff_mem,b->dqcoeff_offset, b->dqcoeff_base + b->dqcoeff_offset, &b->diff_base[b->diff_offset]);
         }
-        else
-        {
-            IDCT_INVOKE(RTCD_VTABLE(idct), iwalsh1)(&b->dqcoeff[0], b->diff);
-#if CONFIG_OPENCL
-            CL_FINISH;
+        CL_FINISH;
+
+#else
+        second_order(b->dqcoeff_base + b->dqcoeff_offset, &b->diff_base[b->diff_offset]);
 #endif
-            ((int *)b->qcoeff)[0] = 0;
-        }
         DEQUANT_INVOKE (&pbi->dequant, dc_idct_add_y_block)
                         (xd->qcoeff, xd->block[0].dequant,
                          xd->predictor, xd->dst.y_buffer,
-                         xd->dst.y_stride, xd->eobs, xd->block[24].diff);
+                         xd->dst.y_stride, xd->eobs, &xd->block[24].diff_base[xd->block[24].diff_offset]);
     }
     else if ((xd->frame_type == KEY_FRAME  ||  xd->mode_info_context->mbmi.ref_frame == INTRA_FRAME) && xd->mode_info_context->mbmi.mode == B_PRED)
     {
@@ -276,7 +290,8 @@ void vp8_decode_macroblock(VP8D_COMP *pbi, MACROBLOCKD *xd)
         {
 
             BLOCKD *b = &xd->block[i];
-            vp8_predict_intra4x4(b, b->bmi.mode, b->predictor);
+            short *qcoeff = b->qcoeff_base + b->qcoeff_offset;
+            vp8_predict_intra4x4(b, b->bmi.mode, b->predictor_base + b->predictor_offset);
 
             if (xd->eobs[i] > 1)
             {
@@ -285,27 +300,28 @@ void vp8_decode_macroblock(VP8D_COMP *pbi, MACROBLOCKD *xd)
 #endif
                 //Need to work on dequant functions
                 DEQUANT_INVOKE(&pbi->dequant, idct_add)
-                    (b->qcoeff, b->dequant,  b->predictor,
+                    (qcoeff, b->dequant,  b->predictor_base + b->predictor_offset,
                     *(b->base_dst) + b->dst, 16, b->dst_stride);
             }
             else
             {
                 IDCT_INVOKE(RTCD_VTABLE(idct), idct1_scalar_add)
-                    (b->qcoeff[0] * b->dequant[0], b->predictor,
+                    (qcoeff[0] * b->dequant[0], b->predictor_base + b->predictor_offset,
                     *(b->base_dst) + b->dst, 16, b->dst_stride);
 #if CONFIG_OPENCL
                 CL_FINISH;
 #endif
-                //((int *)b->qcoeff)[0] = 0;
+                //((int *)qcoeff)[0] = 0;
             }
 
         }
         
-        //b->qcoeff[0] must be set for all scalar_add IDCT blocks
+        //qcoeff[0] must be set for all scalar_add IDCT blocks
         for (i=0; i < 16; i++){
             BLOCKD *b = &xd->block[i];
+            short *qcoeff = b->qcoeff_base + b->qcoeff_offset;
             if (xd->eobs[i] <= 1){
-                ((int *)b->qcoeff)[0] = 0;
+                ((int *)qcoeff)[0] = 0;
             }
         }
 #if CONFIG_OPENCL
@@ -868,12 +884,12 @@ int vp8_decode_frame(VP8D_COMP *pbi)
     if (!(pbi->b_multithreaded_rd) || pc->multi_token_partition == ONE_PARTITION || !(pc->filter_level))
         vp8_setup_intra_recon(&pc->yv12_fb[pc->new_fb_idx]);
 
+    /* clear out the coeff buffer */
+    vpx_memset(xd->qcoeff, 0, sizeof(xd->qcoeff));
+
     vp8_setup_block_dptrs(xd);
 
     vp8_build_block_doffsets(xd);
-
-    /* clear out the coeff buffer */
-    vpx_memset(xd->qcoeff, 0, sizeof(xd->qcoeff));
 
     /* Read the mb_no_coeff_skip flag */
     pc->mb_no_coeff_skip = (int)vp8_read_bit(bc);
@@ -920,6 +936,25 @@ int vp8_decode_frame(VP8D_COMP *pbi)
         }
     }
 
+#if CONFIG_OPENCL
+    //If using OpenCL, free all of the GPU buffers we've allocated.
+    if (cl_initialized == CL_SUCCESS){
+        //Wait for stuff to finish, just in case
+        clFinish(cl_data.commands);
+
+        //Free CL buffers
+        if (pbi->mb.cl_diff_mem != NULL)
+            clReleaseMemObject(pbi->mb.cl_diff_mem);
+        if (pbi->mb.cl_predictor_mem != NULL)
+            clReleaseMemObject(pbi->mb.cl_predictor_mem);
+        if (pbi->mb.cl_qcoeff_mem != NULL)
+            clReleaseMemObject(pbi->mb.cl_qcoeff_mem);
+        if (pbi->mb.cl_dqcoeff_mem != NULL)
+            clReleaseMemObject(pbi->mb.cl_dqcoeff_mem);
+        if (pbi->mb.cl_eobs_mem != NULL)
+            clReleaseMemObject(pbi->mb.cl_eobs_mem);
+    }
+#endif
 
     stop_token_decoder(pbi);
 

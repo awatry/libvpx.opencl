@@ -33,6 +33,7 @@ extern void cl_destroy(int new_status);
 extern int cl_load_program(cl_program *prog_ref, const char *file_name, const char *opts);
 
 #define MAX_NUM_PLATFORMS 4
+#define MAX_NUM_DEVICES 10
 
 #define CL_TRIED_BUT_FAILED 1
 #define CL_NOT_INITIALIZED -1
@@ -69,6 +70,33 @@ extern const char *vpx_codec_lib_dir(void);
         CL_TRIED_BUT_FAILED \
     );
 
+#define CL_SET_BUF(bufRef, bufSize, dataPtr, altPath) \
+    if (dataPtr != NULL){\
+                err = clEnqueueWriteBuffer(cl_data.commands, bufRef, CL_FALSE, 0, \
+                    bufSize, dataPtr, 0, NULL, NULL); \
+                \
+                CL_CHECK_SUCCESS( err != CL_SUCCESS, \
+                    "Error: Failed to write to buffer!\n", \
+                    altPath, \
+                ); \
+    }\
+
+#define CL_CREATE_BUF(bufRef, bufType, bufSize, dataPtr, altPath) \
+    if (dataPtr != NULL){ \
+        bufRef = clCreateBuffer(cl_data.context, bufType, bufSize, dataPtr, &err); \
+        CL_CHECK_SUCCESS( \
+            err != CL_SUCCESS, \
+            "Error copying data to buffer! Using CPU path!\n", \
+            altPath, \
+        ); \
+    } else {\
+        bufRef = clCreateBuffer(cl_data.context, bufType, bufSize, NULL, NULL);\
+    } \
+    CL_CHECK_SUCCESS(!bufRef, \
+        "Error: Failed to allocate buffer. Using CPU path!\n", \
+        altPath, \
+    ); \
+
 #define CL_ENSURE_BUF_SIZE(bufRef, bufType, needSize, curSize, dataPtr, altPath) \
     if ( needSize > curSize || bufRef == NULL){ \
         if (bufRef != NULL) \
@@ -89,15 +117,7 @@ extern const char *vpx_codec_lib_dir(void);
         ); \
         curSize = needSize; \
     } else { \
-        if (dataPtr != NULL){\
-            err = clEnqueueWriteBuffer(cl_data.commands, bufRef, CL_FALSE, 0, \
-                needSize, dataPtr, 0, NULL, NULL); \
-            \
-            CL_CHECK_SUCCESS( err != CL_SUCCESS, \
-                "Error: Failed to write to buffer!\n", \
-                altPath, \
-            ); \
-        }\
+        CL_SET_BUF(bufRef, needSize, dataPtr, altPath); \
     }
 
 #define CL_RELEASE_KERNEL(kernel) \

@@ -125,25 +125,18 @@ __kernel void vp8_dc_only_idct_add_kernel(
 }
 
 __kernel void vp8_short_inv_walsh4x4_kernel(
-    __global short *input,
+    __global short *src_data,
+    int src_offset,
     __global short *output
 )
 {
 
-#define VEC
-#ifdef VEC
+    __global short *input = src_data + src_offset;
+
     //4-short vectors to calculate things in
     short4 a,b,c,d, a2v, b2v, c2v, d2v, a1t, b1t, c1t, d1t;
-#else
-    int i;
-    int a1, b1, c1, d1;
-    int a2, b2, c2, d2;
-    __global short *ip = input;
-    __global short *op = output;
-#endif
     int tid = get_global_id(0);
 
-#ifdef VEC
     if (tid == 0){
         //first pass loop in vector form
         a = vload4(0,input) + vload4(3,input);
@@ -165,15 +158,15 @@ __kernel void vp8_short_inv_walsh4x4_kernel(
         c1t = (short4)(output[2], output[6], output[10], output[14]);
         d1t = (short4)(output[3], output[7], output[11], output[15]);
 
-        a = a + a1t + 3;
+        a = a + a1t + (short)3;
         b = b + b1t;
         c = c - c1t;
-        d = d - d1t + 3;
+        d = d - d1t + (short)3;
 
-        a2v = (a + b) >> 3;
-        b2v = (c + d) >> 3;
-        c2v = (a - b) >> 3;
-        d2v = (d - c) >> 3;
+        a2v = (a + b) >> (short)3;
+        b2v = (c + d) >> (short)3;
+        c2v = (a - b) >> (short)3;
+        d2v = (d - c) >> (short)3;
 
         output[0] = a2v.x;
         output[1] = b2v.x;
@@ -191,47 +184,24 @@ __kernel void vp8_short_inv_walsh4x4_kernel(
         output[13] = b2v.w;
         output[14] = c2v.w;
         output[15] = d2v.w;
-#else
-        ip = output;
-        op = output;
-
-        for (i = 0; i < 4; i++)
-        {
-            a1 = ip[0] + ip[3];
-            b1 = ip[1] + ip[2];
-            c1 = ip[1] - ip[2];
-            d1 = ip[0] - ip[3];
-
-            a2 = a1 + b1;
-            b2 = c1 + d1;
-            c2 = a1 - b1;
-            d2 = d1 - c1;
-
-            op[0] = (a2 + 3) >> 3;
-            op[1] = (b2 + 3) >> 3;
-            op[2] = (c2 + 3) >> 3;
-            op[3] = (d2 + 3) >> 3;
-
-            ip += 4;
-            op += 4;
-        }
-#endif
     }
 }
 
 __kernel void vp8_short_inv_walsh4x4_1_kernel(
-    __global short *input,
-    int input_offset,
-    __global short *output,
-    int output_offset
+    __global short *src_data,
+    int src_offset,
+    __global short *dst_data,
+    int dst_offset
 ){
     int a1;
     int tid = get_global_id(0);
     short16 a;
+    __global short *input = src_data + src_offset;
+    __global short *output = dst_data + dst_offset;
 
     if (tid == 0)
     {
-        a1 = ((input[input_offset] + 3) >> 3);
+        a1 = ((input[0] + 3) >> 3);
         a = (short)a1; //Set all elements of vector to a1
         vstore16(a, 0, output);
     }

@@ -45,7 +45,7 @@ void vp8_update_mode_context(int *abmode, int *lbmode, int i, int best_mode)
 #endif
 void vp8_encode_intra4x4block(const VP8_ENCODER_RTCD *rtcd, MACROBLOCK *x, BLOCK *be, BLOCKD *b, int best_mode)
 {
-    vp8_predict_intra4x4(b, best_mode, b->predictor);
+    vp8_predict_intra4x4(b, best_mode, b->predictor_base + b->predictor_offset);
 
     ENCODEMB_INVOKE(&rtcd->encodemb, subb)(be, b, 16);
 
@@ -55,12 +55,12 @@ void vp8_encode_intra4x4block(const VP8_ENCODER_RTCD *rtcd, MACROBLOCK *x, BLOCK
 
     vp8_inverse_transform_b(IF_RTCD(&rtcd->common->idct), b, 32);
 
-    RECON_INVOKE(&rtcd->common->recon, recon)(b->predictor, b->diff, *(b->base_dst) + b->dst, b->dst_stride);
+    RECON_INVOKE(&rtcd->common->recon, recon)(b->predictor_base + b->predictor_offset, &b->diff_base[b->diff_offset], *(b->base_dst) + b->dst, b->dst_stride);
 }
 
 void vp8_encode_intra4x4block_rd(const VP8_ENCODER_RTCD *rtcd, MACROBLOCK *x, BLOCK *be, BLOCKD *b, int best_mode)
 {
-    vp8_predict_intra4x4(b, best_mode, b->predictor);
+    vp8_predict_intra4x4(b, best_mode, b->predictor_base + b->predictor_offset);
 
     ENCODEMB_INVOKE(&rtcd->encodemb, subb)(be, b, 16);
 
@@ -68,9 +68,9 @@ void vp8_encode_intra4x4block_rd(const VP8_ENCODER_RTCD *rtcd, MACROBLOCK *x, BL
 
     x->quantize_b(be, b);
 
-    IDCT_INVOKE(&rtcd->common->idct, idct16)(b->dqcoeff, b->diff, 32);
+    IDCT_INVOKE(&rtcd->common->idct, idct16)(b->dqcoeff_base+b->dqcoeff_offset, &b->diff_base[b->diff_offset], 32);
 
-    RECON_INVOKE(&rtcd->common->recon, recon)(b->predictor, b->diff, *(b->base_dst) + b->dst, b->dst_stride);
+    RECON_INVOKE(&rtcd->common->recon, recon)(b->predictor_base + b->predictor_offset, &b->diff_base[b->diff_offset], *(b->base_dst) + b->dst, b->dst_stride);
 }
 
 void vp8_encode_intra4x4mby(const VP8_ENCODER_RTCD *rtcd, MACROBLOCK *mb)

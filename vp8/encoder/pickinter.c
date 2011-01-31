@@ -154,7 +154,7 @@ static int get_prediction_error(BLOCK *be, BLOCKD *b, const vp8_variance_rtcd_vt
     unsigned char *sptr;
     unsigned char *dptr;
     sptr = (*(be->base_src) + be->src);
-    dptr = b->predictor;
+    dptr = b->predictor_base + b->predictor_offset;
 
     return VARIANCE_INVOKE(rtcd, get4x4sse_cs)(sptr, be->src_stride, dptr, 16, 0x7fffffff);
 
@@ -196,7 +196,7 @@ static int pick_intra4x4block(
         int this_rd;
 
         rate = mode_costs[mode];
-        vp8_predict_intra4x4(b, mode, b->predictor);
+        vp8_predict_intra4x4(b, mode, b->predictor_base + b->predictor_offset);
         distortion = get_prediction_error(be, b, &rtcd->variance);
         this_rd = RD_ESTIMATE(x->rdmult, x->rddiv, rate, distortion);
 

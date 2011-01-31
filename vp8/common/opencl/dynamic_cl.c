@@ -8,12 +8,13 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#include "dynamic_cl.h"
+#include "vp8_opencl.h"
 
 #include <stdio.h>
 
 CL_FUNCTIONS cl;
 void *dll = NULL;
+int cl_loaded = CL_NOT_INITIALIZED;
 
 int close_cl(){
     int ret = dlclose(dll);
@@ -36,9 +37,9 @@ int load_cl(char *lib_name){
     }
 
     CL_LOAD_FN("clGetPlatformIDs", cl.getPlatformIDs);
-//    CL_LOAD_FN("clGetPlatformInfo", cl.getPlatformInfo);
+    CL_LOAD_FN("clGetPlatformInfo", cl.getPlatformInfo);
     CL_LOAD_FN("clGetDeviceIDs", cl.getDeviceIDs);
-//    CL_LOAD_FN("clGetDeviceInfo", cl.getDeviceInfo);
+    CL_LOAD_FN("clGetDeviceInfo", cl.getDeviceInfo);
     CL_LOAD_FN("clCreateContext", cl.createContext);
 //    CL_LOAD_FN("clCreateContextFromType", cl.createContextFromType);
 //    CL_LOAD_FN("clRetainContext", cl.retainContext);
@@ -66,8 +67,8 @@ int load_cl(char *lib_name){
     CL_LOAD_FN("clReleaseProgram", cl.releaseProgram);
     CL_LOAD_FN("clBuildProgram", cl.buildProgram);
 //    CL_LOAD_FN("clUnloadCompiler", cl.unloadCompiler);
-//    CL_LOAD_FN("clGetProgramInfo", cl.getProgramInfo);
-//    CL_LOAD_FN("clGetProgramBuildInfo", cl.getProgramBuildInfo);
+    CL_LOAD_FN("clGetProgramInfo", cl.getProgramInfo);
+    CL_LOAD_FN("clGetProgramBuildInfo", cl.getProgramBuildInfo);
     CL_LOAD_FN("clCreateKernel", cl.createKernel);
 //    CL_LOAD_FN("clCreateKernelsInProgram", cl.createKernelsInProgram);
 //    CL_LOAD_FN("clRetainKernel", cl.retainKernel);
@@ -101,5 +102,5 @@ int load_cl(char *lib_name){
     CL_LOAD_FN("clEnqueueBarrier", cl.enqueueBarrier);
 //    CL_LOAD_FN("clGetExtensionFunctionAddress", cl.getExtensionFunctionAddress);
 
-    return 1;
+    return CL_SUCCESS;
 }

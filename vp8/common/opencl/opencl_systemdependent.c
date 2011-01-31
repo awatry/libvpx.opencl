@@ -40,18 +40,25 @@ void vp8_arch_opencl_common_init(VP8_COMMON *ctx)
     VP8_COMMON_RTCD *rtcd = &ctx->rtcd;
 
 #if HAVE_DLOPEN
-    if (load_cl("libOpenCL.so")){
+#if WIN32 //Windows .dll has no lib prefix and no extension
+    	cl_loaded = load_cl("OpenCL");
+#else   //But *nix needs full name
+    	cl_loaded = load_cl("libOpenCL.so");
 #endif
+        if (cl_loaded == CL_SUCCESS)
+        	cl_initialized = cl_init();
+#else
         cl_initialized = cl_init();
-        if ( cl_initialized != CL_SUCCESS)
-            return;
+#endif
+        //if ( cl_initialized != CL_SUCCESS)
+        //    return;
 
         /* Override default functions with OpenCL accelerated ones. */
         rtcd->idct.idct1        = vp8_short_idct4x4llm_1_cl;
         rtcd->idct.idct16       = vp8_short_idct4x4llm_cl;
         rtcd->idct.idct1_scalar_add = vp8_dc_only_idct_add_cl;
-        rtcd->idct.iwalsh1      = vp8_short_inv_walsh4x4_1_cl;
-        rtcd->idct.iwalsh16     = vp8_short_inv_walsh4x4_cl;
+        //rtcd->idct.iwalsh1      = vp8_short_inv_walsh4x4_1_cl;
+        //rtcd->idct.iwalsh16     = vp8_short_inv_walsh4x4_cl;
 
         //rtcd->recon.copy16x16   = vp8_copy_mem16x16_cl;
         //rtcd->recon.copy8x8     = vp8_copy_mem8x8_cl;
@@ -92,12 +99,5 @@ void vp8_arch_opencl_common_init(VP8_COMMON *ctx)
         /* Pure C: */
         //vp8_build_intra_predictors_mby_ptr = vp8_build_intra_predictors_mby_cl;
         //vp8_build_intra_predictors_mby_s_ptr = vp8_build_intra_predictors_mby_s_cl;
-
-#if HAVE_DLOPEN
-    }
-    //else {
-        //fprintf(stderr, "Could not find/load OpenCL library\n");
-    //}
-#endif
 
 }

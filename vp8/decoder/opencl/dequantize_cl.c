@@ -9,18 +9,24 @@
  */
 
 
-#include "vpx_ports/config.h"
 #include "dequantize.h"
-#include "predictdc.h"
-#include "idct.h"
 #include "vpx_mem/vpx_mem.h"
 
-extern void vp8_short_idct4x4llm_c(short *input, short *output, int pitch) ;
-extern void vp8_short_idct4x4llm_1_c(short *input, short *output, int pitch);
+extern void vp8_short_idct4x4llm_cl(short *input, short *output, int pitch) ;
 
+void cl_memset(short *input, short val, size_t nbytes){
+    short *cur = input;
+    while (cur < input + nbytes){
+        *cur == val;
+        cur += sizeof(short);
+    }
+}
 
-void vp8_dequantize_b_c(BLOCKD *d)
+void vp8_dequantize_b_cl(BLOCKD *d)
 {
+
+    
+
     int i;
     short *DQ  = d->dqcoeff_base + d->dqcoeff_offset;
     short *Q   = d->qcoeff_base + d->qcoeff_offset;
@@ -32,7 +38,7 @@ void vp8_dequantize_b_c(BLOCKD *d)
     }
 }
 
-void vp8_dequant_idct_add_c(short *input, short *dq, unsigned char *pred,
+void vp8_dequant_idct_add_cl(short *input, short *dq, unsigned char *pred,
                             unsigned char *dest, int pitch, int stride)
 {
     short output[16];
@@ -46,9 +52,9 @@ void vp8_dequant_idct_add_c(short *input, short *dq, unsigned char *pred,
     }
 
     /* the idct halves ( >> 1) the pitch */
-    vp8_short_idct4x4llm_c(input, output, 4 << 1);
+    vp8_short_idct4x4llm_cl(input, output, 4 << 1);
 
-    vpx_memset(input, 0, 32);
+    cl_memset(input, 0, 32);
 
     for (r = 0; r < 4; r++)
     {
@@ -71,7 +77,7 @@ void vp8_dequant_idct_add_c(short *input, short *dq, unsigned char *pred,
     }
 }
 
-void vp8_dequant_dc_idct_add_c(short *input, short *dq, unsigned char *pred,
+void vp8_dequant_dc_idct_add_cl(short *input, short *dq, unsigned char *pred,
                                unsigned char *dest, int pitch, int stride,
                                int Dc)
 {
@@ -88,9 +94,9 @@ void vp8_dequant_dc_idct_add_c(short *input, short *dq, unsigned char *pred,
     }
 
     /* the idct halves ( >> 1) the pitch */
-    vp8_short_idct4x4llm_c(input, output, 4 << 1);
+    vp8_short_idct4x4llm_cl(input, output, 4 << 1);
 
-    vpx_memset(input, 0, 32);
+    cl_memset(input, 0, 32);
 
     for (r = 0; r < 4; r++)
     {

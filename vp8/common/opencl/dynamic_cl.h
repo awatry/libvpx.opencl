@@ -26,6 +26,8 @@ extern "C" {
 int load_cl(char *lib_name);
 int close_cl();
 
+extern int cl_loaded;
+
 typedef cl_int(*fn_clGetPlatformIDs_t)(cl_uint, cl_platform_id *, cl_uint *);
 typedef cl_int(*fn_clGetPlatformInfo_t)(cl_platform_id, cl_platform_info, size_t, void *, size_t *);
 typedef cl_int(*fn_clGetDeviceIDs_t)(cl_platform_id, cl_device_type, cl_uint, cl_device_id *, cl_uint *);
@@ -240,7 +242,7 @@ extern CL_FUNCTIONS cl;
     ref = dlsym(dll,name); \
     if (ref == NULL){ \
         dlclose(dll); \
-        return 0; \
+        return CL_INVALID_PLATFORM; \
     }
 
 

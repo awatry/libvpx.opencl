@@ -547,6 +547,10 @@ process_common_toolchain() {
                 tgt_isa=universal
                 tgt_os=darwin9
                 ;;
+            *darwin10*)
+                #tgt_isa=universal
+                tgt_os=darwin10
+                ;;
             *mingw32*|*cygwin*)
                 [ -z "$tgt_isa" ] && tgt_isa=x86
                 tgt_os=win32
@@ -605,6 +609,12 @@ process_common_toolchain() {
             add_cflags  "-mmacosx-version-min=10.5"
             add_ldflags "-isysroot /Developer/SDKs/MacOSX10.5.sdk"
             add_ldflags "-mmacosx-version-min=10.5"
+            ;;
+        *-darwin10-*)
+            add_cflags  "-isysroot /Developer/SDKs/MacOSX10.6.sdk"
+            add_cflags  "-mmacosx-version-min=10.6"
+            add_ldflags "-isysroot /Developer/SDKs/MacOSX10.6.sdk"
+            add_ldflags "-mmacosx-version-min=10.6"
             ;;
     esac
 
@@ -939,19 +949,28 @@ process_common_toolchain() {
     	enable runtime_cpu_detect
 	
         #Use dlopen() to load OpenCL when possible.
-        if check_header dlfcn.h; then
-            add_extralibs -ldl 
-            enable dlopen
-        else
-            case ${toolchain} in
-                *-win32-gcc)
-                    add_extralibs --library OpenCL
-                    ;;
-                *)
+        case ${toolchain} in
+            *darwin10*)
+				check_add_cflags -D__APPLE__
+                add_extralibs -framework OpenCL
+                ;;
+            *-win32-gcc)
+                if check_header dlfcn.h; then
+                    add_extralibs -ldl 
+                    enable dlopen
+                else
+                    add_extralibs -L/cygdrive/c/Windows/System32 -lOpenCL
+                fi
+                ;;
+            *)
+                if check_header dlfcn.h; then
+                    add_extralibs -ldl 
+                    enable dlopen
+                else
                     add_extralibs -lOpenCL
-                    ;;
-            esac
-        fi
+                fi
+                ;;
+        esac
     fi
 
     # Position Independant Code (PIC) support, for building relocatable
