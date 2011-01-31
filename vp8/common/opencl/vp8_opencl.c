@@ -144,8 +144,7 @@ int cl_common_init() {
         char version[2048];
         char features[2048];
         size_t len;
-        int has_cl_1_1 = CL_FALSE;
-
+        
     	err = clGetPlatformInfo( platform_ids[i], CL_PLATFORM_VENDOR, sizeof(buf), buf, &len);
     	if (err != CL_SUCCESS){
             printf("Error retrieving platform vendor for platform %d",i);
@@ -168,9 +167,6 @@ int cl_common_init() {
                 continue;
             }
             printf("Platform: %s\nExtensions: %s\n",buf,features);
-            has_cl_1_1 = CL_FALSE;
-        } else {
-            has_cl_1_1 = CL_TRUE;
         }
         
     	//Try to find a valid compute device
@@ -185,15 +181,14 @@ int cl_common_init() {
         cl_data.device_id = NULL;
         for( dev = 0; dev < num_devices; dev++ ){
             char ext[2048];
-            if (!has_cl_1_1){
-                //Get info for this device.
-                err = clGetDeviceInfo(devices[dev], CL_DEVICE_EXTENSIONS, sizeof(ext),ext,NULL);
-                CL_CHECK_SUCCESS(NULL,err != CL_SUCCESS,"Error retrieving device extension list",continue, 0);
-                printf("Device %d supports: %s\n",dev,ext);
-            }
-
-            //The kernels in VP8 require byte-addressable stores, which is a feature of CL 1.1 or an extension
-            if (has_cl_1_1 || strstr(ext,"cl_khr_byte_addressable_store")){
+            //Get info for this device.
+            err = clGetDeviceInfo(devices[dev], CL_DEVICE_EXTENSIONS, sizeof(ext),ext,NULL);
+            CL_CHECK_SUCCESS(NULL,err != CL_SUCCESS,"Error retrieving device extension list",continue, 0);
+            printf("Device %d supports: %s\n",dev,ext);
+            
+            //The kernels in VP8 require byte-addressable stores, which is an extension.
+            //It's required in OpenCL 1.1, but not all devices support it.
+            if (strstr(ext,"cl_khr_byte_addressable_store")){
                 //We found a valid device, so use it. But if we find a GPU (maybe this is one), prefer that.
                 cl_data.device_id = devices[dev];
 
