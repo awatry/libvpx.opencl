@@ -24,7 +24,6 @@ void vpx_log(const char *format, ...);
 #include "vpx_config.h"
 #if CONFIG_OPENCL
 #include "opencl/vp8_opencl.h"
-//#include "onyxc_int.h"
 #endif
 
 #define TRUE    1
@@ -310,9 +309,6 @@ typedef struct
     unsigned int frames_since_golden;
     unsigned int frames_till_alt_ref_frame;
 
-#if CONFIG_OPENCL
-    //INTERPOLATIONFILTERTYPE subpix_type;
-#endif
     vp8_subpix_fn_t  subpixel_predict;
     vp8_subpix_fn_t  subpixel_predict8x4;
     vp8_subpix_fn_t  subpixel_predict8x8;
