@@ -73,12 +73,12 @@ void vp8_arch_opencl_common_init(VP8_COMMON *ctx)
         rtcd->subpix.sixtap8x8     = vp8_sixtap_predict8x8_cl;
         //All of the subpix functions have been implemented, but they are so
         //expensive to set up that they have been disabled for now.
-        //rtcd->subpix.sixtap8x4     = vp8_sixtap_predict8x4_cl;
-        //rtcd->subpix.sixtap4x4     = vp8_sixtap_predict_cl;
-        //rtcd->subpix.bilinear16x16 = vp8_bilinear_predict16x16_cl;
-        //rtcd->subpix.bilinear8x8   = vp8_bilinear_predict8x8_cl;
-        //rtcd->subpix.bilinear8x4   = vp8_bilinear_predict8x4_cl;
-        //rtcd->subpix.bilinear4x4   = vp8_bilinear_predict4x4_cl;
+        rtcd->subpix.sixtap8x4     = vp8_sixtap_predict8x4_cl;
+        rtcd->subpix.sixtap4x4     = vp8_sixtap_predict_cl;
+        rtcd->subpix.bilinear16x16 = vp8_bilinear_predict16x16_cl;
+        rtcd->subpix.bilinear8x8   = vp8_bilinear_predict8x8_cl;
+        rtcd->subpix.bilinear8x4   = vp8_bilinear_predict8x4_cl;
+        rtcd->subpix.bilinear4x4   = vp8_bilinear_predict4x4_cl;
 
         //rtcd->loopfilter.normal_mb_v = vp8_loop_filter_mbv_cl;
         //rtcd->loopfilter.normal_b_v  = vp8_loop_filter_bv_cl;
