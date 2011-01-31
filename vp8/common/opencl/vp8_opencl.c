@@ -104,6 +104,16 @@ void cl_destroy(cl_command_queue cq, int new_status) {
     return;
 }
 
+cl_device_type device_type(cl_device_id dev){
+    cl_device_type type;
+    int err;
+
+    err = clGetDeviceInfo(dev, CL_DEVICE_TYPE, sizeof(type),&type,NULL);
+    if (err != CL_SUCCESS)
+        return CL_INVALID_DEVICE;
+    return type;
+}
+
 int cl_common_init() {
     int err,i,dev;
     cl_platform_id platform_ids[MAX_NUM_PLATFORMS];
@@ -184,20 +194,19 @@ int cl_common_init() {
 
             //The kernels in VP8 require byte-addressable stores, which is a feature of CL 1.1 or an extension
             if (has_cl_1_1 || strstr(ext,"cl_khr_byte_addressable_store")){
-                cl_device_type type;
-                err = clGetDeviceInfo(devices[dev], CL_DEVICE_TYPE, sizeof(type),&type,NULL);
-                if (err != CL_SUCCESS)
-                    continue;
-
                 //We found a valid device, so use it. But if we find a GPU (maybe this is one), prefer that.
                 cl_data.device_id = devices[dev];
 
-                if (type == CL_DEVICE_TYPE_GPU){
+                if ( device_type(devices[dev]) == CL_DEVICE_TYPE_GPU ){
                     printf("Device %d is a GPU\n",dev);
                     break;
                 }
             }
         }
+
+        //If we've found a GPU, stop looking.
+        if (cl_data.device_id != NULL && device_type(cl_data.device_id) == CL_DEVICE_TYPE_GPU )
+            break;
 
         //if (err != CL_SUCCESS || cl_data.device_id == NULL) {
         //    err = clGetDeviceIDs(platform_ids[i], CL_DEVICE_TYPE_ALL, MAX_NUM_DEVICES, devices, &num_devices);
