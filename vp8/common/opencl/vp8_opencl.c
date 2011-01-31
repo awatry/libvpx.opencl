@@ -105,7 +105,7 @@ void cl_destroy(cl_command_queue cq, int new_status) {
 }
 
 int cl_common_init() {
-    int err,i;
+    int err,i,dev;
     cl_platform_id platform_ids[MAX_NUM_PLATFORMS];
     cl_uint num_found, num_devices;
     cl_device_id devices[MAX_NUM_DEVICES];
@@ -134,6 +134,8 @@ int cl_common_init() {
         char version[2048];
         char features[2048];
         size_t len;
+        int has_cl_1_1 = CL_FALSE;
+
     	err = clGetPlatformInfo( platform_ids[i], CL_PLATFORM_VENDOR, sizeof(buf), buf, &len);
     	if (err != CL_SUCCESS){
             printf("Error retrieving platform vendor for platform %d",i);
@@ -156,28 +158,57 @@ int cl_common_init() {
                 continue;
             }
             printf("Platform: %s\nExtensions: %s\n",buf,features);
+            has_cl_1_1 = CL_FALSE;
+        } else {
+            has_cl_1_1 = CL_TRUE;
         }
         
     	//Try to find a valid compute device
     	//Favor the GPU, but fall back to any other available device if necessary
 #ifdef __APPLE__
     	printf("Apple system. Running CL as CPU-only for now...\n");
-        err = clGetDeviceIDs(platform_ids[0], CL_DEVICE_TYPE_CPU, MAX_NUM_DEVICES, devices, &num_devices);
-        //printf("found %d CPU devices\n", num_devices);
+        err = clGetDeviceIDs(platform_ids[i], CL_DEVICE_TYPE_CPU, MAX_NUM_DEVICES, devices, &num_devices);
 #else
-        err = clGetDeviceIDs(platform_ids[0], CL_DEVICE_TYPE_GPU, MAX_NUM_DEVICES, devices, &num_devices);
-        //printf("found %d GPU devices\n", num_devices);
-
+        err = clGetDeviceIDs(platform_ids[i], CL_DEVICE_TYPE_ALL, MAX_NUM_DEVICES, devices, &num_devices);
 #endif //__APPLE__
-        if (err != CL_SUCCESS) {
-            err = clGetDeviceIDs(platform_ids[0], CL_DEVICE_TYPE_ALL, MAX_NUM_DEVICES, devices, &num_devices);
-            if (err != CL_SUCCESS) {
-                printf("Error: Failed to create a device group!\n");
-                continue;
+        printf("found %d devices\n", num_devices);
+        cl_data.device_id = NULL;
+        for( dev = 0; dev < num_devices; dev++ ){
+            char ext[2048];
+            if (!has_cl_1_1){
+                //Get info for this device.
+                err = clGetDeviceInfo(devices[dev], CL_DEVICE_EXTENSIONS, sizeof(ext),ext,NULL);
+                CL_CHECK_SUCCESS(NULL,err != CL_SUCCESS,"Error retrieving device extension list",continue, 0);
+                printf("Device %d supports: %s\n",dev,ext);
             }
-            //printf("found %d generic devices\n", num_devices);
+
+            //The kernels in VP8 require byte-addressable stores, which is a feature of CL 1.1 or an extension
+            if (has_cl_1_1 || strstr(ext,"cl_khr_byte_addressable_store")){
+                cl_device_type type;
+                err = clGetDeviceInfo(devices[dev], CL_DEVICE_TYPE, sizeof(type),&type,NULL);
+                if (err != CL_SUCCESS)
+                    continue;
+
+                //We found a valid device, so use it. But if we find a GPU (maybe this is one), prefer that.
+                cl_data.device_id = devices[dev];
+
+                if (type == CL_DEVICE_TYPE_GPU){
+                    printf("Device %d is a GPU\n",dev);
+                    break;
+                }
+            }
         }
-        cl_data.device_id = devices[0];
+
+        //if (err != CL_SUCCESS || cl_data.device_id == NULL) {
+        //    err = clGetDeviceIDs(platform_ids[i], CL_DEVICE_TYPE_ALL, MAX_NUM_DEVICES, devices, &num_devices);
+        //    if (err != CL_SUCCESS) {
+        //        printf("Error: Failed to create a device group!\n");
+        //        continue;
+        //    }
+        //    //printf("found %d generic devices\n", num_devices);
+        //}
+        //cl_data.device_id = devices[0];
+
     }
     //printf("Done enumerating\n");
 
