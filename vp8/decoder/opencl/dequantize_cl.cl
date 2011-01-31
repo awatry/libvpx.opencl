@@ -115,12 +115,15 @@ __kernel void vp8_dequant_dc_idct_add_kernel(
 
     input[0] = (short)Dc;
 
-    //vstore16( (short16)vload16(0,dq) * (short16)vload16(0,input) , 0, input);
+#if USE_VECTORS
+    vstore16( (short16)vload16(0,dq) * (short16)vload16(0,input) , 0, input);
+#else
     for (i = 1; i < 16; i++)
     {
         input[i] = dq[i] * input[i];
     }
-
+#endif
+    
     /* the idct halves ( >> 1) the pitch */
     vp8_short_idct4x4llm(input, output, 4 << 1);
 
