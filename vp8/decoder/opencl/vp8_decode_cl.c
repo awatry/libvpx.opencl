@@ -1,7 +1,7 @@
 #include "vpx_ports/config.h"
 
-#include "opencl/vp8_opencl.h"
-#include "opencl/vp8_decode_cl.h"
+#include "../../common/opencl/vp8_opencl.h"
+#include "vp8_decode_cl.h"
 
 #include <stdio.h>
 
@@ -28,8 +28,6 @@ int cl_decode_init()
     err = cl_init_dequant();
     if (err != CL_SUCCESS)
         return err;
-
-    printf(" .. done\n");
 
     return CL_SUCCESS;
 }
