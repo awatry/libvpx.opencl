@@ -80,19 +80,19 @@ typedef enum
 
 typedef enum
 {
-    DC_PRED,            /* average of above and left pixels */
-    V_PRED,             /* vertical prediction */
-    H_PRED,             /* horizontal prediction */
-    TM_PRED,            /* Truemotion prediction */
-    B_PRED,             /* block based prediction, each block has its own prediction mode */
+    DC_PRED = 0,            /* average of above and left pixels */
+    V_PRED = 1,             /* vertical prediction */
+    H_PRED = 2,             /* horizontal prediction */
+    TM_PRED = 3,            /* Truemotion prediction */
+    B_PRED = 4,             /* block based prediction, each block has its own prediction mode */
 
-    NEARESTMV,
-    NEARMV,
-    ZEROMV,
-    NEWMV,
-    SPLITMV,
+    NEARESTMV = 5,
+    NEARMV = 6,
+    ZEROMV = 7,
+    NEWMV = 8,
+    SPLITMV = 9,
 
-    MB_MODE_COUNT
+    MB_MODE_COUNT = 10
 } MB_PREDICTION_MODE;
 
 /* Macroblock level features */
