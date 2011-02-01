@@ -34,7 +34,7 @@ void vp8_arch_opencl_decode_init(VP8D_COMP *pbi)
 
     /* Override current functions with OpenCL replacements: */
 #if CONFIG_RUNTIME_CPU_DETECT
-    //pbi->mb.rtcd                     = &pbi->common.rtcd;
+    pbi->mb.rtcd                     = &pbi->common.rtcd;
     pbi->dequant.block               = vp8_dequantize_b_cl;
     //pbi->dequant.idct_add            = vp8_dequant_idct_add_cl;
     pbi->dequant.dc_idct_add         = vp8_dequant_dc_idct_add_cl;

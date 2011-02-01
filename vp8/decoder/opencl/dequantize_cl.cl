@@ -1,4 +1,6 @@
 #pragma OPENCL EXTENSION cl_khr_byte_addressable_store : enable
+#pragma OPENCL EXTENSION cl_amd_printf : enable
+
 
 /*
  *  Copyright (c) 2010 The WebM project authors. All Rights Reserved.
