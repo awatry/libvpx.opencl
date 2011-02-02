@@ -41,6 +41,7 @@
 
 #if CONFIG_OPENCL
 #include "opencl/vp8_opencl.h"
+#include "opencl/dequantize_cl.h"
 #endif
 
 void vp8cx_init_de_quantizer(VP8D_COMP *pbi)
@@ -287,15 +288,22 @@ void vp8_decode_macroblock(VP8D_COMP *pbi, MACROBLOCKD *xd)
         } else {
             vp8_short_inv_walsh4x4_1_cl(b->cl_dqcoeff_mem,b->dqcoeff_offset, b->dqcoeff_base + b->dqcoeff_offset, &b->diff_base[b->diff_offset]);
         }
+
+        CL_FINISH(xd->cl_commands);
+
+        vp8_dequant_dc_idct_add_y_block_cl(xd, xd->qcoeff, xd->block[0].dequant,
+                         xd->predictor, xd->dst.y_buffer,
+                         xd->dst.y_stride, xd->eobs, &xd->block[24].diff_base[xd->block[24].diff_offset]);
         CL_FINISH(xd->cl_commands);
 
 #else
         second_order(b->dqcoeff_base + b->dqcoeff_offset, &b->diff_base[b->diff_offset]);
-#endif
         DEQUANT_INVOKE (&pbi->dequant, dc_idct_add_y_block)
                         (xd->qcoeff, xd->block[0].dequant,
                          xd->predictor, xd->dst.y_buffer,
                          xd->dst.y_stride, xd->eobs, &xd->block[24].diff_base[xd->block[24].diff_offset]);
+#endif
+
     }
     else if ((xd->frame_type == KEY_FRAME  ||  xd->mode_info_context->mbmi.ref_frame == INTRA_FRAME) && xd->mode_info_context->mbmi.mode == B_PRED)
     {
@@ -309,15 +317,11 @@ void vp8_decode_macroblock(VP8D_COMP *pbi, MACROBLOCKD *xd)
             {
 #if CONFIG_OPENCL
                 CL_FINISH(xd->cl_commands);
-                if (cl_initialized == CL_SUCCESS){
-                    vp8_dequant_idct_add_cl(b, *(b->base_dst), b->dst, 16, b->dst_stride, DEQUANT_INVOKE(&pbi->dequant, idct_add));
-                } else {
-#endif
-                    DEQUANT_INVOKE(&pbi->dequant, idct_add)
-                        (qcoeff, b->dequant,  b->predictor_base + b->predictor_offset,
-                        *(b->base_dst) + b->dst, 16, b->dst_stride);
-#if CONFIG_OPENCL
-                }
+                vp8_dequant_idct_add_cl(b, *(b->base_dst), b->dst, b->qcoeff_offset, b->predictor_offset, 16, b->dst_stride, DEQUANT_INVOKE(&pbi->dequant, idct_add));
+#else
+                DEQUANT_INVOKE(&pbi->dequant, idct_add)
+                    (qcoeff, b->dequant,  b->predictor_base + b->predictor_offset,
+                    *(b->base_dst) + b->dst, 16, b->dst_stride);
 #endif
             }
             else
@@ -347,17 +351,24 @@ void vp8_decode_macroblock(VP8D_COMP *pbi, MACROBLOCKD *xd)
     }
     else
     {
+#if CONFIG_OPENCL
+        vp8_dequant_idct_add_y_block_cl(pbi, xd, xd->dst.y_buffer);
+#else
         DEQUANT_INVOKE (&pbi->dequant, idct_add_y_block)
                         (xd->qcoeff, xd->block[0].dequant,
                          xd->predictor, xd->dst.y_buffer,
                          xd->dst.y_stride, xd->eobs);
+#endif
     }
 
+#if CONFIG_OPENCL
+    vp8_dequant_idct_add_uv_block_cl(pbi, xd,  DEQUANT_INVOKE (&pbi->dequant, idct_add_uv_block));
+#else
     DEQUANT_INVOKE (&pbi->dequant, idct_add_uv_block)
-                    (xd->qcoeff+16*16, xd->block[16].dequant,
-                     xd->predictor+16*16, xd->dst.u_buffer, xd->dst.v_buffer,
-                     xd->dst.uv_stride, xd->eobs+16);
-
+        (xd->qcoeff+16*16, xd->block[16].dequant,
+         xd->predictor+16*16, xd->dst.u_buffer, xd->dst.v_buffer,
+         xd->dst.uv_stride, xd->eobs+16);
+#endif
 #if CONFIG_OPENCL
     //printf("clFinish in decode_macroblock\n");
     CL_FINISH(xd->cl_commands);

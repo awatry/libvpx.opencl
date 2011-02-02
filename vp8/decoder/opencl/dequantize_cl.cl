@@ -222,6 +222,36 @@ void vp8_short_idct4x4llm(
 
 }
 
+void vp8_dc_only_idct_add_kernel(
+    short input_dc,
+    __global unsigned char *pred_ptr,
+    __global unsigned char *dst_ptr,
+    int pitch,
+    int stride
+)
+{
+    int a1 = ((input_dc + 4) >> 3);
+    int r, c;
+    int pred_offset,dst_offset;
+
+    int tid = get_global_id(0);
+    if (tid < 16){
+        r = tid / 4;
+        c = tid % 4;
+
+        pred_offset = r * pitch;
+        dst_offset = r * stride;
+        int a = a1 + pred_ptr[pred_offset + c] ;
+
+        if (a < 0)
+            a = 0;
+        else if (a > 255)
+            a = 255;
+
+        dst_ptr[dst_offset + c] = (unsigned char) a ;
+    }
+}
+
 void cl_memset_short(__global short *s, int c, size_t n) {
     int i;
     for (i = 0; i < n/2; i++)

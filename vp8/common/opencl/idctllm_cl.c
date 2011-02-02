@@ -52,12 +52,7 @@ void vp8_short_idct4x4llm_cl(short *input, short *output, int pitch)
         return;
     }
 
-    printf("vp8_short_idct4x4llm_cl\n");
-    clFinish(cl_data.commands);
-#ifdef NO_CL
-    vp8_short_idct4x4llm_c(input,output,pitch);
-    return;
-#endif
+    //clFinish(cl_data.commands);
 
     CL_ENSURE_BUF_SIZE(cl_data.commands, cl_data.srcData, CL_MEM_READ_ONLY|CL_MEM_COPY_HOST_PTR,
             sizeof(short)*16, cl_data.srcAlloc, input,

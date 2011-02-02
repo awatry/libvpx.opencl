@@ -85,3 +85,4 @@ VP8_DX_SRCS-$(CONFIG_OPENCL) += decoder/opencl/opencl_systemdependent.c
 VP8_DX_SRCS-$(CONFIG_OPENCL) += decoder/opencl/dequantize_cl.c
 VP8_DX_SRCS-$(CONFIG_OPENCL) += decoder/opencl/dequantize_cl.h
 VP8_DX_SRCS-$(CONFIG_OPENCL) += decoder/opencl/dequantize_cl.cl
+VP8_DX_SRCS-$(CONFIG_OPENCL) += decoder/opencl/idct_blk_cl.c

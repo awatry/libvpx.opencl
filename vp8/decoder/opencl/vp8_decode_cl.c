@@ -19,7 +19,7 @@ int cl_decode_destroy(){
 int cl_decode_init()
 {
     int err;
-    printf("Initializing opencl decoder-specific programs/kernels");
+    printf("Initializing opencl decoder-specific programs/kernels\n");
 
     //Initialize programs to null value
     //Enables detection of if they've been initialized as well.
