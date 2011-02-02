@@ -252,6 +252,8 @@ typedef struct
     cl_mem cl_qcoeff_mem;
     cl_mem cl_dqcoeff_mem;
     cl_mem cl_eobs_mem;
+
+    cl_bool sixtap_filter;
 #endif
 
     /* 16 Y blocks, 4 U, 4 V, 1 DC 2nd order block, each with 16 entries. */

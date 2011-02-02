@@ -44,14 +44,14 @@ extern const char *vpx_codec_lib_dir(void);
 #define CL_FINISH(cq) \
     if (cl_initialized == CL_SUCCESS){ \
         /* Wait for kernels to finish. */ \
-        clFinish(cl_data.commands); \
+        /* clFinish(cl_data.commands); */ \
         clFinish(cq); \
     }
 
-#define CL_BARRIER \
+#define CL_BARRIER(cq) \
     if (cl_initialized == CL_SUCCESS){ \
         /* Insert a barrier into the command queue. */ \
-        clEnqueueBarrier(cl_data.commands); \
+        clEnqueueBarrier(cq); \
     }
 
 #define CL_CHECK_SUCCESS(cq,cond,msg,alt,retCode) \
@@ -128,7 +128,7 @@ extern const char *vpx_codec_lib_dir(void);
 typedef struct VP8_COMMON_CL {
     cl_device_id device_id; // compute device id
     cl_context context; // compute context
-    cl_command_queue commands; // compute command queue
+    //cl_command_queue commands; // compute command queue
 
     cl_program filter_program; // compute program for subpixel/bilinear filters
     cl_kernel vp8_block_variation_kernel;

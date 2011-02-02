@@ -69,8 +69,8 @@ void vp8_arch_opencl_common_init(VP8_COMMON *ctx)
         //rtcd->recon.recon_mb    = vp8_recon_mb_cl;
         //rtcd->recon.recon_mby   = vp8_recon_mby_cl;
 
-        rtcd->subpix.sixtap16x16   = vp8_sixtap_predict16x16_cl;
-        rtcd->subpix.sixtap8x8     = vp8_sixtap_predict8x8_cl;
+        //rtcd->subpix.sixtap16x16   = vp8_sixtap_predict16x16_cl;
+        //rtcd->subpix.sixtap8x8     = vp8_sixtap_predict8x8_cl;
         //All of the subpix functions have been implemented, but they are so
         //expensive to set up that they have been disabled for now.
         rtcd->subpix.sixtap8x4     = vp8_sixtap_predict8x4_cl;

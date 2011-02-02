@@ -125,7 +125,8 @@ void vp8_setup_block_dptrs(MACROBLOCKD *x)
     x->block[24].diff_offset = 384;
 
 #if CONFIG_OPENCL
-    cl_data.commands = x->cl_commands = NULL;
+    //cl_data.commands =
+    x->cl_commands = NULL;
     x->cl_diff_mem = NULL;
     x->cl_predictor_mem = NULL;
     x->cl_qcoeff_mem = NULL;
@@ -144,7 +145,7 @@ void vp8_setup_block_dptrs(MACROBLOCKD *x)
             goto BUF_DONE;
         }
         //Temporarily store a copy of the command queue in cl_data
-        cl_data.commands = x->cl_commands;
+      //  cl_data.commands = x->cl_commands;
 
         CL_CREATE_BUF(x->cl_commands, x->cl_diff_mem, CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,
                 sizeof(cl_short)*400, x->diff, goto BUF_DONE);

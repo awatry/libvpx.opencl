@@ -91,12 +91,16 @@ void cl_destroy(cl_command_queue cq, int new_status) {
     if (cl_data.context)
         clReleaseContext(cl_data.context);
 
+    if (cq){
+        clReleaseCommandQueue(cq);
+    }
+
     cl_data.filter_program = NULL;
     cl_data.idct_program = NULL;
 
     printf("Need to determine where to destroy encoder/decoder-specific items\n");
 
-    cl_data.commands = NULL;
+    //cl_data.commands = NULL;
     cl_data.context = NULL;
 
     cl_initialized = new_status;
@@ -229,7 +233,7 @@ int cl_common_init() {
     }
 
     //Initialize command queue to null (created for each macroblock)
-    cl_data.commands = NULL;
+    //cl_data.commands = NULL;
 
     //Initialize memory objects to null pointers
     cl_data.srcData = NULL;
@@ -352,7 +356,7 @@ int cl_load_program(cl_program *prog_ref, const char *file_name, const char *opt
         *prog_ref = clCreateProgramWithSource(cl_data.context, 1, (const char**)&kernel_src, NULL, &err);
         free(kernel_src);
     } else {
-        cl_destroy(cl_data.commands, CL_TRIED_BUT_FAILED);
+        cl_destroy(NULL, CL_TRIED_BUT_FAILED);
         printf("Couldn't find OpenCL source files. \nUsing software path.\n");
         return CL_TRIED_BUT_FAILED;
     }

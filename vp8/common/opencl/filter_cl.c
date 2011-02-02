@@ -16,6 +16,7 @@
 #include <string.h>
 
 #include "filter_cl.h"
+#include "../blockd.h"
 
 #define SIXTAP_FILTER_LEN 6
 
@@ -46,13 +47,14 @@ int cl_init_filter() {
 
 void vp8_sixtap_predict_cl
 (
-        unsigned char *src_ptr,
-        int src_pixels_per_line,
-        int xoffset,
-        int yoffset,
-        unsigned char *dst_ptr,
-        int dst_pitch
-        ) {
+    MACROBLOCKD *x,
+    unsigned char *src_ptr,
+    int src_pixels_per_line,
+    int xoffset,
+    int yoffset,
+    unsigned char *dst_ptr,
+    int dst_pitch
+) {
 
     int err;
     size_t global = 36; //9*4
@@ -69,7 +71,7 @@ void vp8_sixtap_predict_cl
         return;
     }
 
-    CL_SIXTAP_PREDICT_EXEC(cl_data.commands, cl_data.vp8_sixtap_predict_kernel,(src_ptr-2*src_pixels_per_line),src_len,
+    CL_SIXTAP_PREDICT_EXEC(x->cl_commands, cl_data.vp8_sixtap_predict_kernel,(src_ptr-2*src_pixels_per_line),src_len,
             src_pixels_per_line, xoffset,yoffset,dst_ptr,dst_pitch,global,
             dst_len,
             vp8_sixtap_predict_c(src_ptr,src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch)
@@ -80,13 +82,14 @@ void vp8_sixtap_predict_cl
 
 void vp8_sixtap_predict8x8_cl
 (
-        unsigned char *src_ptr,
-        int src_pixels_per_line,
-        int xoffset,
-        int yoffset,
-        unsigned char *dst_ptr,
-        int dst_pitch
-        ) {
+    MACROBLOCKD *x,
+    unsigned char *src_ptr,
+    int src_pixels_per_line,
+    int xoffset,
+    int yoffset,
+    unsigned char *dst_ptr,
+    int dst_pitch
+) {
 
     int err;
     size_t global = 104; //13*8
@@ -103,7 +106,7 @@ void vp8_sixtap_predict8x8_cl
         return;
     }
 
-    CL_SIXTAP_PREDICT_EXEC(cl_data.commands, cl_data.vp8_sixtap_predict8x8_kernel,(src_ptr-2*src_pixels_per_line),src_len,
+    CL_SIXTAP_PREDICT_EXEC(x->cl_commands, cl_data.vp8_sixtap_predict8x8_kernel,(src_ptr-2*src_pixels_per_line),src_len,
             src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch,global,dst_len,
             vp8_sixtap_predict8x8_c(src_ptr,src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch)
     );
@@ -113,12 +116,13 @@ void vp8_sixtap_predict8x8_cl
 
 void vp8_sixtap_predict8x4_cl
 (
-        unsigned char *src_ptr,
-        int src_pixels_per_line,
-        int xoffset,
-        int yoffset,
-        unsigned char *dst_ptr,
-        int dst_pitch
+    MACROBLOCKD *x,
+    unsigned char *src_ptr,
+    int src_pixels_per_line,
+    int xoffset,
+    int yoffset,
+    unsigned char *dst_ptr,
+    int dst_pitch
 )
 {
 
@@ -137,7 +141,7 @@ void vp8_sixtap_predict8x4_cl
         return;
     }
 
-    CL_SIXTAP_PREDICT_EXEC(cl_data.commands, cl_data.vp8_sixtap_predict8x4_kernel,(src_ptr-2*src_pixels_per_line),src_len,
+    CL_SIXTAP_PREDICT_EXEC(x->cl_commands, cl_data.vp8_sixtap_predict8x4_kernel,(src_ptr-2*src_pixels_per_line),src_len,
             src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch,global,dst_len,
             vp8_sixtap_predict8x4_c(src_ptr,src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch)
     );
@@ -147,6 +151,7 @@ void vp8_sixtap_predict8x4_cl
 
 void vp8_sixtap_predict16x16_cl
 (
+        MACROBLOCKD *x,
         unsigned char *src_ptr,
         int src_pixels_per_line,
         int xoffset,
@@ -171,7 +176,7 @@ void vp8_sixtap_predict16x16_cl
         return;
     }
 
-    CL_SIXTAP_PREDICT_EXEC(cl_data.commands, cl_data.vp8_sixtap_predict16x16_kernel,(src_ptr-2*src_pixels_per_line),src_len,
+    CL_SIXTAP_PREDICT_EXEC(x->cl_commands, cl_data.vp8_sixtap_predict16x16_kernel,(src_ptr-2*src_pixels_per_line),src_len,
             src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch,global,dst_len,
             vp8_sixtap_predict16x16_c(src_ptr,src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch)
     );
@@ -182,13 +187,15 @@ void vp8_sixtap_predict16x16_cl
 
 void vp8_bilinear_predict4x4_cl
 (
-        unsigned char *src_ptr,
-        int src_pixels_per_line,
-        int xoffset,
-        int yoffset,
-        unsigned char *dst_ptr,
-        int dst_pitch
-        ) {
+    MACROBLOCKD *x,
+    unsigned char *src_ptr,
+    int src_pixels_per_line,
+    int xoffset,
+    int yoffset,
+    unsigned char *dst_ptr,
+    int dst_pitch
+)
+{
 
 #define CL_BILINEAR 1
 #if CL_BILINEAR
@@ -209,7 +216,7 @@ void vp8_bilinear_predict4x4_cl
         return;
     }
 
-    CL_BILINEAR_EXEC(cl_data.commands, cl_data.vp8_bilinear_predict4x4_kernel,src_ptr,src_len,
+    CL_BILINEAR_EXEC(x->cl_commands, cl_data.vp8_bilinear_predict4x4_kernel,src_ptr,src_len,
             src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch,global,dst_len,
             vp8_bilinear_predict4x4_c(src_ptr,src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch)
     );
@@ -221,13 +228,14 @@ void vp8_bilinear_predict4x4_cl
 
 void vp8_bilinear_predict8x8_cl
 (
-        unsigned char *src_ptr,
-        int src_pixels_per_line,
-        int xoffset,
-        int yoffset,
-        unsigned char *dst_ptr,
-        int dst_pitch
-        ) {
+    MACROBLOCKD *x,
+    unsigned char *src_ptr,
+    int src_pixels_per_line,
+    int xoffset,
+    int yoffset,
+    unsigned char *dst_ptr,
+    int dst_pitch
+) {
 
 #if CL_BILINEAR
     int err;
@@ -247,7 +255,7 @@ void vp8_bilinear_predict8x8_cl
         return;
     }
     
-    CL_BILINEAR_EXEC(cl_data.commands, cl_data.vp8_bilinear_predict8x8_kernel,src_ptr,src_len,
+    CL_BILINEAR_EXEC(x->cl_commands, cl_data.vp8_bilinear_predict8x8_kernel,src_ptr,src_len,
             src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch,global,dst_len,
             vp8_bilinear_predict8x8_c(src_ptr,src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch)
     );
@@ -258,13 +266,14 @@ void vp8_bilinear_predict8x8_cl
 
 void vp8_bilinear_predict8x4_cl
 (
-        unsigned char *src_ptr,
-        int src_pixels_per_line,
-        int xoffset,
-        int yoffset,
-        unsigned char *dst_ptr,
-        int dst_pitch
-        ) {
+    MACROBLOCKD *x,
+    unsigned char *src_ptr,
+    int src_pixels_per_line,
+    int xoffset,
+    int yoffset,
+    unsigned char *dst_ptr,
+    int dst_pitch
+) {
 
 #if CL_BILINEAR
     int err;
@@ -282,7 +291,7 @@ void vp8_bilinear_predict8x4_cl
         return;
     }
 
-    CL_BILINEAR_EXEC(cl_data.commands, cl_data.vp8_bilinear_predict8x4_kernel,src_ptr,src_len,
+    CL_BILINEAR_EXEC(x->cl_commands, cl_data.vp8_bilinear_predict8x4_kernel,src_ptr,src_len,
             src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch,global,dst_len,
             vp8_bilinear_predict8x4_c(src_ptr,src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch)
     );
@@ -293,13 +302,14 @@ void vp8_bilinear_predict8x4_cl
 
 void vp8_bilinear_predict16x16_cl
 (
-        unsigned char *src_ptr,
-        int src_pixels_per_line,
-        int xoffset,
-        int yoffset,
-        unsigned char *dst_ptr,
-        int dst_pitch
-        ) {
+    MACROBLOCKD *x,
+    unsigned char *src_ptr,
+    int src_pixels_per_line,
+    int xoffset,
+    int yoffset,
+    unsigned char *dst_ptr,
+    int dst_pitch
+) {
 
 #if CL_BILINEAR
     int err;
@@ -316,7 +326,7 @@ void vp8_bilinear_predict16x16_cl
         return;
     }
 
-    CL_BILINEAR_EXEC(cl_data.commands, cl_data.vp8_bilinear_predict16x16_kernel,src_ptr,src_len,
+    CL_BILINEAR_EXEC(x->cl_commands, cl_data.vp8_bilinear_predict16x16_kernel,src_ptr,src_len,
             src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch,global,dst_len,
             vp8_bilinear_predict16x16_c(src_ptr,src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch)
     );

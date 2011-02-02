@@ -71,7 +71,7 @@ extern void vp8_sixtap_predict8x8_c
     int  dst_pitch
 );
 
-void vp8_sixtap_predict8x4_c
+extern void vp8_sixtap_predict8x4_c
 (
     unsigned char  *src_ptr,
     int  src_pixels_per_line,
@@ -117,7 +117,6 @@ extern void vp8_bilinear_predict8x4_c(
     unsigned char *dst_ptr,
     int  dst_pitch
 );
-
 
 extern void vp8_bilinear_predict16x16_c(
     unsigned char  *src_ptr,

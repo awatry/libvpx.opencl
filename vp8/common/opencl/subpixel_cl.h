@@ -12,6 +12,8 @@
 #ifndef SUBPIXEL_CL_H
 #define SUBPIXEL_CL_H
 
+#include "../blockd.h"
+
 /* Note:
  *
  * This platform is commonly built for runtime CPU detection. If you modify
@@ -19,42 +21,18 @@
  * them in the function pointer initialization code
  */
 
-extern prototype_subpixel_predict(vp8_sixtap_predict16x16_cl);
-extern prototype_subpixel_predict(vp8_sixtap_predict8x8_cl);
-extern prototype_subpixel_predict(vp8_sixtap_predict8x4_cl);
-extern prototype_subpixel_predict(vp8_sixtap_predict_cl);
-extern prototype_subpixel_predict(vp8_bilinear_predict16x16_cl);
-extern prototype_subpixel_predict(vp8_bilinear_predict8x8_cl);
-extern prototype_subpixel_predict(vp8_bilinear_predict8x4_cl);
-extern prototype_subpixel_predict(vp8_bilinear_predict4x4_cl);
+#define prototype_subpixel_predict_cl(sym) \
+    void sym(MACROBLOCKD *x, unsigned char *src, int src_pitch, int xofst, int yofst, \
+             unsigned char *dst, int dst_pitch)
 
-
-#if !CONFIG_RUNTIME_CPU_DETECT
-#undef  vp8_subpix_sixtap16x16
-#define vp8_subpix_sixtap16x16 vp8_sixtap_predict16x16_cl
-
-#undef  vp8_subpix_sixtap8x8
-#define vp8_subpix_sixtap8x8 vp8_sixtap_predict8x8_cl
-
-#undef  vp8_subpix_sixtap8x4
-#define vp8_subpix_sixtap8x4 vp8_sixtap_predict8x4_cl
-
-#undef  vp8_subpix_sixtap4x4
-#define vp8_subpix_sixtap4x4 vp8_sixtap_predict_cl
-
-#undef  vp8_subpix_bilinear16x16
-#define vp8_subpix_bilinear16x16 vp8_bilinear_predict16x16_cl
-
-#undef  vp8_subpix_bilinear8x8
-#define vp8_subpix_bilinear8x8 vp8_bilinear_predict8x8_cl
-
-#undef  vp8_subpix_bilinear8x4
-#define vp8_subpix_bilinear8x4 vp8_bilinear_predict8x4_cl
-
-#undef  vp8_subpix_bilinear4x4
-#define vp8_subpix_bilinear4x4 vp8_bilinear_predict4x4_cl
-
-#endif
+extern prototype_subpixel_predict_cl(vp8_sixtap_predict16x16_cl);
+extern prototype_subpixel_predict_cl(vp8_sixtap_predict8x8_cl);
+extern prototype_subpixel_predict_cl(vp8_sixtap_predict8x4_cl);
+extern prototype_subpixel_predict_cl(vp8_sixtap_predict_cl);
+extern prototype_subpixel_predict_cl(vp8_bilinear_predict16x16_cl);
+extern prototype_subpixel_predict_cl(vp8_bilinear_predict8x8_cl);
+extern prototype_subpixel_predict_cl(vp8_bilinear_predict8x4_cl);
+extern prototype_subpixel_predict_cl(vp8_bilinear_predict4x4_cl);
 
 //typedef enum
 //{

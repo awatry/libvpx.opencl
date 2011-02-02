@@ -25,7 +25,7 @@
 #endif
 
 #if CONFIG_OPENCL
-#include "opencl/subpixel_cl.h"
+//#include "opencl/subpixel_cl.h"
 #endif
 
 #ifndef vp8_subpix_sixtap16x16
