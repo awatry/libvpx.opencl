@@ -12,7 +12,9 @@
 #ifndef IDCT_OPENCL_H
 #define IDCT_OPENCL_H
 
-#if CONFIG_OPENCL
+#ifdef	__cplusplus
+extern "C" {
+#endif
 
 #include "vp8_opencl.h"
 #include "vp8/common/blockd.h"
@@ -51,6 +53,10 @@ extern prototype_second_order_cl(vp8_short_inv_walsh4x4_cl);
 #undef  vp8_idct_iwalsh16
 #define vp8_idct_iwalsh16 vp8_short_inv_walsh4x4_cl
 #endif
+
+
+#ifdef	__cplusplus
+}
 #endif
 
 #endif

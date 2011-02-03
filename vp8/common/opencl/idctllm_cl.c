@@ -94,7 +94,7 @@ void vp8_short_idct4x4llm_cl(BLOCKD *b, short *input, short *output, int pitch)
         "Error: Failed to read output array!\n",
         vp8_short_idct4x4llm_c(input,output,pitch),
     );
-
+CL_FINISH(b->cl_commands);
     return;
 }
 
@@ -168,6 +168,8 @@ void vp8_dc_only_idct_add_cl(BLOCKD *b, short input_dc, unsigned char *pred_ptr,
         return;
     }
 
+    CL_FINISH(b->cl_commands);
+
     CL_ENSURE_BUF_SIZE(b->cl_commands, cl_data.srcData, CL_MEM_READ_ONLY|CL_MEM_COPY_HOST_PTR,
             sizeof(unsigned char)*(4*pitch+4), cl_data.srcAlloc, pred_ptr,
             vp8_dc_only_idct_add_c(input_dc, pred_ptr, dst_ptr, pitch, stride)
@@ -206,6 +208,8 @@ void vp8_dc_only_idct_add_cl(BLOCKD *b, short input_dc, unsigned char *pred_ptr,
         vp8_dc_only_idct_add_c(input_dc, pred_ptr, dst_ptr, pitch, stride),
     );
 
+    CL_FINISH(b->cl_commands);
+
     return;
 }
 
@@ -219,7 +223,7 @@ void vp8_short_inv_walsh4x4_cl(BLOCKD *b, int src_offset, short *input, short *o
         vp8_short_inv_walsh4x4_c(input,output);
         return;
     }
-
+CL_FINISH(b->cl_commands);
     CL_ENSURE_BUF_SIZE(b->cl_commands, cl_data.destData,CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,
             sizeof(cl_short)*16, cl_data.destAlloc, output,
             vp8_short_inv_walsh4x4_c(input, output)
@@ -249,7 +253,7 @@ void vp8_short_inv_walsh4x4_cl(BLOCKD *b, int src_offset, short *input, short *o
         "Error: Failed to read output array!\n",
         vp8_short_inv_walsh4x4_c(input, output),
     );
-
+CL_FINISH(b->cl_commands);
     return;
 }
 
@@ -265,7 +269,7 @@ void vp8_short_inv_walsh4x4_1_cl(BLOCKD *b, int src_offset, short *input, short 
         vp8_short_inv_walsh4x4_1_c(input,output);
         return;
     }
-
+CL_FINISH(b->cl_commands);
     CL_ENSURE_BUF_SIZE(b->cl_commands, cl_data.destData,CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,
             sizeof(short)*16, cl_data.destAlloc, output,
             vp8_short_inv_walsh4x4_1_c(input,output)
@@ -296,6 +300,8 @@ void vp8_short_inv_walsh4x4_1_cl(BLOCKD *b, int src_offset, short *input, short 
         "Error: Failed to read output array!\n",
         vp8_short_inv_walsh4x4_1_c(input,output),
     );
+
+    CL_FINISH(b->cl_commands);
 
     return;
 }

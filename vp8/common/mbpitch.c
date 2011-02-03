@@ -144,8 +144,6 @@ void vp8_setup_block_dptrs(MACROBLOCKD *x)
             cl_destroy(NULL, CL_TRIED_BUT_FAILED);
             goto BUF_DONE;
         }
-        //Temporarily store a copy of the command queue in cl_data
-      //  cl_data.commands = x->cl_commands;
 
         CL_CREATE_BUF(x->cl_commands, x->cl_diff_mem, CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,
                 sizeof(cl_short)*400, x->diff, goto BUF_DONE);
@@ -171,12 +169,10 @@ BUF_DONE:
     	x->block[r].qcoeff_offset = r * 16;
         x->block[r].dqcoeff_base = x->dqcoeff;
         x->block[r].dqcoeff_offset = r * 16;
-
+        
         x->block[r].predictor_base = x->predictor;
-        //x->block[r].predictor = x->predictor + x->block[r].predictor_offset;
-
         x->block[r].diff_base = x->diff;
-        //x->block[r].diff = &x->diff[x->block[r].diff_offset];
+        x->block[r].eobs_base = x->eobs;
 
 #if CONFIG_OPENCL
         if (cl_initialized == CL_SUCCESS){

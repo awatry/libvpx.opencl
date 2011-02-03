@@ -180,6 +180,9 @@ endif
 VP8_COMMON_SRCS-$(CONFIG_OPENCL) += common/opencl/vp8_opencl.c
 VP8_COMMON_SRCS-$(CONFIG_OPENCL) += common/opencl/vp8_opencl.h
 
+VP8_COMMON_SRCS-$(CONFIG_OPENCL) += common/opencl/blockd_cl.h
+VP8_COMMON_SRCS-$(CONFIG_OPENCL) += common/opencl/blockd_cl.c
+
 VP8_COMMON_SRCS-$(CONFIG_OPENCL) += common/opencl/filter_cl.h
 VP8_COMMON_SRCS-$(CONFIG_OPENCL) += common/opencl/filter_cl.c
 VP8_COMMON_SRCS-$(CONFIG_OPENCL) += common/opencl/filter_cl.cl

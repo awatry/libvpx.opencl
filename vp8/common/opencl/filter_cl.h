@@ -11,6 +11,10 @@
 #ifndef FILTER_CL_H_
 #define FILTER_CL_H_
 
+#ifdef	__cplusplus
+extern "C" {
+#endif
+
 #include "vp8_opencl.h"
 
 #define VP8_FILTER_WEIGHT 128
@@ -245,5 +249,10 @@ xoffset,yoffset,dst_ptr,dst_pitch,thread_count,dst_len,altPath) \
     );\
 
 //#end define CL_BILINEAR_EXEC
+
+
+#ifdef	__cplusplus
+}
+#endif
 
 #endif /* FILTER_CL_H_ */

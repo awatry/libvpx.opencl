@@ -231,7 +231,9 @@ typedef struct
     int dst;
     int dst_stride;
 
-    int eob;
+    int eob; //only used in encoder? Decoder uses MBD.eobs
+
+    char *eobs_base; //beginning of MB.eobs
 
     B_MODE_INFO bmi;
 
