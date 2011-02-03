@@ -136,7 +136,6 @@ void vp8_dequant_idct_add_cl(BLOCKD *b, unsigned char *dest_base,int dest_offset
 
     printf("vp8_dequant_idct_add_cl\n");
 
-    //Not needed probably
     CL_FINISH(b->cl_commands);
 
     //Initialize memory

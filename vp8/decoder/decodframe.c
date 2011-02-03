@@ -320,17 +320,16 @@ void vp8_decode_macroblock(VP8D_COMP *pbi, MACROBLOCKD *xd)
 #if CONFIG_OPENCL
             if (xd->eobs[i] > 1)
             {
-                CL_FINISH(xd->cl_commands);
                 vp8_dequant_idct_add_cl(b, *(b->base_dst), b->dst, b->qcoeff_offset, b->predictor_offset, 16, b->dst_stride, DEQUANT_INVOKE(&pbi->dequant, idct_add));
-                CL_FINISH(xd->cl_commands);
+                //CL_FINISH(xd->cl_commands);
             }
             else
             {
                 vp8_dc_only_idct_add_cl(b,qcoeff[0] * b->dequant[0], b->predictor_base + b->predictor_offset,
                     *(b->base_dst) + b->dst, 16, b->dst_stride);
-                CL_FINISH(b->cl_commands);
                 ((int *)qcoeff)[0] = 0; //Move into follow-up kernel?
             }
+            CL_FINISH(b->cl_commands);
 #else
             if (xd->eobs[i] > 1)
             {
