@@ -15,21 +15,22 @@
 #if CONFIG_OPENCL
 
 #include "vp8_opencl.h"
+#include "vp8/common/blockd.h"
 
 #define prototype_second_order_cl(sym) \
-    void sym(cl_mem src, int src_offset, short *input, short *output)
+    void sym(BLOCKD *b, int src_offset, short *input, short *output)
 
 #define prototype_idct_cl(sym) \
-    void sym(short *input, short *output, int pitch)
+    void sym(BLOCKD *b, short *input, short *output, int pitch)
 
 #define prototype_idct_scalar_add_cl(sym) \
-    void sym(short input, \
+    void sym(BLOCKD *b, short input, \
              unsigned char *pred, unsigned char *output, \
              int pitch, int stride)
 
-extern prototype_idct(vp8_short_idct4x4llm_1_cl);
-extern prototype_idct(vp8_short_idct4x4llm_cl);
-extern prototype_idct_scalar_add(vp8_dc_only_idct_add_cl);
+extern prototype_idct_cl(vp8_short_idct4x4llm_1_cl);
+extern prototype_idct_cl(vp8_short_idct4x4llm_cl);
+extern prototype_idct_scalar_add_cl(vp8_dc_only_idct_add_cl);
 
 extern prototype_second_order_cl(vp8_short_inv_walsh4x4_1_cl);
 extern prototype_second_order_cl(vp8_short_inv_walsh4x4_cl);

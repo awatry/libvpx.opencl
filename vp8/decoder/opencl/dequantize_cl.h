@@ -24,57 +24,46 @@ extern "C" {
     void sym(BLOCKD *x)
 
 #define prototype_dequant_idct_add_cl(sym) \
-    void sym(short *input, short *dq, \
-             unsigned char *pred, unsigned char *output, \
-             int pitch, int stride)
+    void sym(BLOCKD *b, unsigned char *dest_base,int dest_offset, int q_offset, \
+             int pred_offset, int pitch, int stride, \
+             vp8_dequant_idct_add_fn_t idct_add)
 
 #define prototype_dequant_dc_idct_add_cl(sym) \
-    void sym(short *input, short *dq, \
+    void sym(BLOCKD* b, short *input, short *dq, \
              unsigned char *pred, unsigned char *output, \
              int pitch, int stride, \
              int dc)
 
 #define prototype_dequant_dc_idct_add_y_block_cl(sym) \
-    void sym(short *q, short *dq, \
+    void sym(BLOCKD *b, short *q, short *dq, \
              unsigned char *pre, unsigned char *dst, \
              int stride, char *eobs, short *dc)
 
 #define prototype_dequant_idct_add_y_block_cl(sym) \
-    void sym(short *q, short *dq, \
-             unsigned char *pre, unsigned char *dst, \
-             int stride, char *eobs)
+    void sym(VP8D_COMP *pbi, MACROBLOCKD *xd, unsigned char *dst)
 
 #define prototype_dequant_idct_add_uv_block_cl(sym) \
-    void sym(short *q, short *dq, \
-             unsigned char *pre, unsigned char *dst_u, \
-             unsigned char *dst_v, int stride, char *eobs)
+    void sym(VP8D_COMP *pbi, MACROBLOCKD *xd, \
+        vp8_dequant_idct_add_uv_block_fn_t idct_add_uv_block)
 
-void vp8_dequantize_b_cl(BLOCKD *d);
+
+    
+extern prototype_dequant_block_cl(vp8_dequantize_b_cl);
 
 //CL functions
-void vp8_dequant_idct_add_cl(BLOCKD *b, unsigned char *dest_base,int dest_offset,
-        int q_offset, int pred_offset, int pitch, int stride,
-        vp8_dequant_idct_add_fn_t idct_add);
+extern prototype_dequant_idct_add_cl(vp8_dequant_idct_add_cl);
 
 //C functions
-void vp8_dequant_dc_idct_add_cl(short *input, short *dq, unsigned char *pred,
-                               unsigned char *dest, int pitch, int stride,
-                               int Dc);
-
-//CL but using the wrong cl_commands and cl_mem
-void vp8_dc_only_idct_add_cl(short input_dc, unsigned char *pred_ptr,
-                            unsigned char *dst_ptr, int pitch, int stride);
+extern prototype_dequant_dc_idct_add_cl(vp8_dequant_dc_idct_add_cl);
 
 
-void vp8_dequant_dc_idct_add_y_block_cl
-            (MACROBLOCKD *xd, short *q, short *dq, unsigned char *pre,
-             unsigned char *dst, int stride, char *eobs, short *dc);
 
-void vp8_dequant_idct_add_y_block_cl (VP8D_COMP *pbi, MACROBLOCKD *xd, unsigned char *dst);
+//Might be CL... check implementation.
+extern prototype_dequant_dc_idct_add_y_block_cl(vp8_dequant_dc_idct_add_y_block_cl);
+extern prototype_dequant_idct_add_y_block_cl(vp8_dequant_idct_add_y_block_cl);
+extern prototype_dequant_idct_add_uv_block_cl(vp8_dequant_idct_add_uv_block_cl);
 
-void vp8_dequant_idct_add_uv_block_cl(VP8D_COMP *pbi, MACROBLOCKD *xd,
-        vp8_dequant_idct_add_uv_block_fn_t idct_add_uv_block
-);
+
 
 extern const char *dequantCompileOptions;
 extern const char *dequant_cl_file_name;

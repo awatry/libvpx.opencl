@@ -72,7 +72,7 @@ extern const char *vpx_codec_lib_dir(void);
 
 #define CL_SET_BUF(cq, bufRef, bufSize, dataPtr, altPath) \
     if (dataPtr != NULL){\
-                err = clEnqueueWriteBuffer(cl_data.commands, bufRef, CL_FALSE, 0, \
+                err = clEnqueueWriteBuffer(cq, bufRef, CL_FALSE, 0, \
                     bufSize, dataPtr, 0, NULL, NULL); \
                 \
                 CL_CHECK_SUCCESS(cq, err != CL_SUCCESS, \
@@ -147,6 +147,7 @@ typedef struct VP8_COMMON_CL {
     cl_kernel vp8_dc_only_idct_add_kernel;
     cl_kernel vp8_short_idct4x4llm_1_kernel;
     cl_kernel vp8_short_idct4x4llm_kernel;
+    cl_kernel recon_dcblock_kernel;
 
     cl_program dequant_program;
     cl_kernel vp8_dequant_dc_idct_add_kernel;

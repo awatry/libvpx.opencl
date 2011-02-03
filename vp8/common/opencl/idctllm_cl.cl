@@ -4,7 +4,20 @@ __constant int cospi8sqrt2minus1 = 20091;
 __constant int sinpi8sqrt2      = 35468;
 __constant int rounding = 0;
 
+
+kernel void vp8_short_idct4x4llm_1st_pass_kernel(global short*,global short *,int);
+kernel void vp8_short_idct4x4llm_2nd_pass_kernel(global short*,int);
+
 __kernel void vp8_short_idct4x4llm_kernel(
+    __global short *input,
+    __global short *output,
+    int pitch
+){
+    vp8_short_idct4x4llm_1st_pass_kernel(input,output,pitch);
+    vp8_short_idct4x4llm_2nd_pass_kernel(output,pitch);
+}
+
+__kernel void vp8_short_idct4x4llm_1st_pass_kernel(
     __global short *input,
     __global short *output,
     int pitch
@@ -41,8 +54,21 @@ __kernel void vp8_short_idct4x4llm_kernel(
         op++;
     }
 
-    ip = output;
-    op = output;
+    return;
+}
+
+__kernel void vp8_short_idct4x4llm_2nd_pass_kernel(
+    __global short *output,
+    int pitch
+)
+{
+    int i;
+    int a1, b1, c1, d1;
+
+    int temp1, temp2;
+    int shortpitch = pitch >> 1;
+    __global short *ip = output;
+    __global short *op = output;
 
     for (i = 0; i < 4; i++)
     {
@@ -57,7 +83,6 @@ __kernel void vp8_short_idct4x4llm_kernel(
         temp2 = (ip[3] * sinpi8sqrt2 + rounding) >> 16;
         d1 = temp1 + temp2;
 
-
         op[0] = (a1 + d1 + 4) >> 3;
         op[3] = (a1 - d1 + 4) >> 3;
 
@@ -68,6 +93,7 @@ __kernel void vp8_short_idct4x4llm_kernel(
         op += shortpitch;
     }
 
+    return;
 }
 
 __kernel void vp8_short_idct4x4llm_1_kernel(
@@ -195,5 +221,22 @@ __kernel void vp8_short_inv_walsh4x4_1_kernel(
         a1 = ((input[0] + 3) >> 3);
         a = (short)a1; //Set all elements of vector to a1
         vstore16(a, 0, output);
+    }
+}
+
+
+kernel void recon_dcblock_kernel(
+    global short *dqcoeff_base,
+    global short *diff_base,
+    int diff_offset
+)
+{
+    int tid = get_global_id(0);
+
+    if (tid < 16)
+    {
+        int dqcoeff_offset = 16 * tid;
+
+        *(dqcoeff_base+dqcoeff_offset) = diff_base[diff_offset+tid];
     }
 }

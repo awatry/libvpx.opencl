@@ -13,12 +13,11 @@
 #include <string.h>
 
 #include "vp8/common/blockd.h"
+#include "vp8/common/opencl/idct_cl.h"
 #include "dequantize_cl.h"
 
 const char *dequantCompileOptions = "";
 const char *dequant_cl_file_name = "vp8/decoder/opencl/dequantize_cl.cl";
-
-extern void vp8_short_idct4x4llm_cl(short *input, short *output, int pitch) ;
 
 void cl_memset_short(short *s, int c, size_t n) {
     for (n /= sizeof(short); n > 0; --n)
@@ -218,7 +217,7 @@ void vp8_dequant_idct_add_cl(BLOCKD *b, unsigned char *dest_base,int dest_offset
 }
 
 //Can modify arguments. Only called from vp8_dequant_dc_idct_add_y_block_cl.
-void vp8_dequant_dc_idct_add_cl(short *input, short *dq, unsigned char *pred,
+void vp8_dequant_dc_idct_add_cl(BLOCKD *b, short *input, short *dq, unsigned char *pred,
                                unsigned char *dest, int pitch, int stride,
                                int Dc)
 {
@@ -237,8 +236,8 @@ void vp8_dequant_dc_idct_add_cl(short *input, short *dq, unsigned char *pred,
     }
 
     /* the idct halves ( >> 1) the pitch */
-    vp8_short_idct4x4llm_cl(input, output, 4 << 1);
-    CL_FINISH(cl_data.commands); //Need to fix idct4x4llm for Mblock-level CQs
+    vp8_short_idct4x4llm_cl(b, input, output, 4 << 1);
+    CL_FINISH(b->cl_commands); //Need to fix idct4x4llm for Mblock-level CQs
     
     cl_memset_short(input, 0, 32);
 

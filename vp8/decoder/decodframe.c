@@ -276,22 +276,26 @@ void vp8_decode_macroblock(VP8D_COMP *pbi, MACROBLOCKD *xd)
         }
 
 #if CONFIG_OPENCL
-        if (cl_initialized == CL_SUCCESS){
-            CL_SET_BUF(b->cl_commands, b->cl_dqcoeff_mem, sizeof(cl_short)*400, b->dqcoeff_base,
-                    second_order(b->dqcoeff_base + b->dqcoeff_offset, &b->diff_base[b->diff_offset]));
-        } else {
-            second_order(b->dqcoeff_base + b->dqcoeff_offset, &b->diff_base[b->diff_offset]);
-        }
+        //if (cl_initialized == CL_SUCCESS){
+        //    CL_SET_BUF(b->cl_commands, b->cl_dqcoeff_mem, sizeof(cl_short)*400, b->dqcoeff_base,
+        //    second_order(b->dqcoeff_base + b->dqcoeff_offset, &b->diff_base[b->diff_offset]));
+        //} else {
+        //    second_order(b->dqcoeff_base + b->dqcoeff_offset, &b->diff_base[b->diff_offset]);
+        //}
+        CL_FINISH(b->cl_commands);
+        CL_SET_BUF(b->cl_commands, b->cl_dqcoeff_mem, sizeof(cl_short)*400, b->dqcoeff_base,
+            second_order(b->dqcoeff_base + b->dqcoeff_offset, &b->diff_base[b->diff_offset]));
+
         if (xd->eobs[24] > 1)
         {
-            vp8_short_inv_walsh4x4_cl(b->cl_dqcoeff_mem,b->dqcoeff_offset, b->dqcoeff_base + b->dqcoeff_offset, &b->diff_base[b->diff_offset]);
+            vp8_short_inv_walsh4x4_cl(b, b->dqcoeff_offset, b->dqcoeff_base + b->dqcoeff_offset, &b->diff_base[b->diff_offset]);
         } else {
-            vp8_short_inv_walsh4x4_1_cl(b->cl_dqcoeff_mem,b->dqcoeff_offset, b->dqcoeff_base + b->dqcoeff_offset, &b->diff_base[b->diff_offset]);
+            vp8_short_inv_walsh4x4_1_cl(b, b->dqcoeff_offset, b->dqcoeff_base + b->dqcoeff_offset, &b->diff_base[b->diff_offset]);
         }
 
         CL_FINISH(xd->cl_commands);
 
-        vp8_dequant_dc_idct_add_y_block_cl(xd, xd->qcoeff, xd->block[0].dequant,
+        vp8_dequant_dc_idct_add_y_block_cl(&xd->block[0], xd->qcoeff, xd->block[0].dequant,
                          xd->predictor, xd->dst.y_buffer,
                          xd->dst.y_stride, xd->eobs, &xd->block[24].diff_base[xd->block[24].diff_offset]);
         CL_FINISH(xd->cl_commands);
@@ -313,41 +317,36 @@ void vp8_decode_macroblock(VP8D_COMP *pbi, MACROBLOCKD *xd)
             short *qcoeff = b->qcoeff_base + b->qcoeff_offset;
             vp8_predict_intra4x4(b, b->bmi.mode, b->predictor_base + b->predictor_offset);
 
+#if CONFIG_OPENCL
             if (xd->eobs[i] > 1)
             {
-#if CONFIG_OPENCL
                 CL_FINISH(xd->cl_commands);
                 vp8_dequant_idct_add_cl(b, *(b->base_dst), b->dst, b->qcoeff_offset, b->predictor_offset, 16, b->dst_stride, DEQUANT_INVOKE(&pbi->dequant, idct_add));
+                CL_FINISH(xd->cl_commands);
+            }
+            else
+            {
+                vp8_dc_only_idct_add_cl(b,qcoeff[0] * b->dequant[0], b->predictor_base + b->predictor_offset,
+                    *(b->base_dst) + b->dst, 16, b->dst_stride);
+                CL_FINISH(b->cl_commands);
+                ((int *)qcoeff)[0] = 0; //Move into follow-up kernel?
+            }
 #else
+            if (xd->eobs[i] > 1)
+            {
                 DEQUANT_INVOKE(&pbi->dequant, idct_add)
                     (qcoeff, b->dequant,  b->predictor_base + b->predictor_offset,
                     *(b->base_dst) + b->dst, 16, b->dst_stride);
-#endif
             }
             else
             {
                 IDCT_INVOKE(RTCD_VTABLE(idct), idct1_scalar_add)
                     (qcoeff[0] * b->dequant[0], b->predictor_base + b->predictor_offset,
                     *(b->base_dst) + b->dst, 16, b->dst_stride);
-#if CONFIG_OPENCL
-                CL_FINISH(xd->cl_commands);
-#endif
-                //((int *)qcoeff)[0] = 0;
-            }
-
-        }
-        
-        //qcoeff[0] must be set for all scalar_add IDCT blocks
-        for (i=0; i < 16; i++){
-            BLOCKD *b = &xd->block[i];
-            short *qcoeff = b->qcoeff_base + b->qcoeff_offset;
-            if (xd->eobs[i] <= 1){
                 ((int *)qcoeff)[0] = 0;
             }
-        }
-#if CONFIG_OPENCL
-                CL_FINISH(xd->cl_commands);
 #endif
+        }
     }
     else
     {
@@ -996,7 +995,6 @@ int vp8_decode_frame(VP8D_COMP *pbi)
         //Release the command queue
         if (pbi->mb.cl_commands != NULL)
             clReleaseCommandQueue(pbi->mb.cl_commands);
-        cl_data.commands = NULL;
         pbi->mb.cl_commands = NULL;
 
         for (i = 0; i < 25; i++){
