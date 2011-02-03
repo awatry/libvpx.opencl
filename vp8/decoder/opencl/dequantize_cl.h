@@ -29,18 +29,18 @@ extern "C" {
              vp8_dequant_idct_add_fn_t idct_add)
 
 #define prototype_dequant_dc_idct_add_cl(sym) \
-    void sym(BLOCKD* b, short *input, short *dq, \
-             unsigned char *pred, unsigned char *output, \
+    void sym(BLOCKD* b, int qcoeff_offset, \
+             int pred_offset, unsigned char *output, \
              int pitch, int stride, \
              int dc)
 
 #define prototype_dequant_dc_idct_add_y_block_cl(sym) \
     void sym(BLOCKD *b, short *q, short *dq, \
              unsigned char *pre, unsigned char *dst, \
-             int stride, char *eobs, short *dc)
+             int stride, char *eobs, int dc_offset)
 
 #define prototype_dequant_idct_add_y_block_cl(sym) \
-    void sym(VP8D_COMP *pbi, MACROBLOCKD *xd, unsigned char *dst)
+    void sym(VP8D_COMP *pbi, MACROBLOCKD *xd)
 
 #define prototype_dequant_idct_add_uv_block_cl(sym) \
     void sym(VP8D_COMP *pbi, MACROBLOCKD *xd, \
@@ -55,7 +55,6 @@ extern prototype_dequant_idct_add_cl(vp8_dequant_idct_add_cl);
 
 //C functions
 extern prototype_dequant_dc_idct_add_cl(vp8_dequant_dc_idct_add_cl);
-
 
 
 //Might be CL... check implementation.

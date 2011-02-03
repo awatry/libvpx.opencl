@@ -11,19 +11,27 @@
 #include "vp8/decoder/onyxd_int.h"
 #include "vpx_ports/config.h"
 #include "../../common/idct.h"
-#include "vp8/common/blockd.h"
+#include "vp8/common/opencl/blockd_cl.h"
 #include "dequantize_cl.h"
 
-
-void vp8_dequant_dc_idct_add_y_block_cl
-            (BLOCKD *b, short *q, short *dq, unsigned char *pre,
-             unsigned char *dst, int stride, char *eobs, short *dc)
+//change q/dq/pre/eobs/dc to offsets
+void vp8_dequant_dc_idct_add_y_block_cl(
+    BLOCKD *b,
+    short *q,           //xd->qcoeff
+    short *dq,          //xd->block[0].dequant
+    unsigned char *pre, //xd->predictor
+    unsigned char *dst, //xd->dst.y_buffer
+    int stride,         //xd->dst.y_stride
+    char *eobs,         //xd->eobs
+    int dc_offset       //xd->block[24].diff_offset
+)
 {
     int i, j;
+    short *dc = b->diff_base;
     int q_offset = 0;
     int pre_offset = 0;
     int dst_offset = 0;
-    int dc_offset = 0;
+    //dc_offset = 0;
 
     printf("vp8_dequant_dc_idct_add_y_block_cl\n");
     CL_FINISH(b->cl_commands);
@@ -33,12 +41,20 @@ void vp8_dequant_dc_idct_add_y_block_cl
         for (j = 0; j < 4; j++)
         {
             if (*eobs++ > 1){
-                vp8_dequant_dc_idct_add_cl (b, q+q_offset, dq, pre+pre_offset, dst+dst_offset, 16, stride, dc[dc_offset]);
+                CL_FINISH(b->cl_commands);
+                vp8_cl_block_prep(b);
+                CL_FINISH(b->cl_commands);
+                vp8_dequant_dc_idct_add_cl (b, q_offset, pre_offset, dst+dst_offset, 16, stride, dc_offset);
+                CL_FINISH(b->cl_commands);
+                vp8_cl_block_finish(b);
+                //don't re-enable vp8_cl_block_finish until after dequant_dc_idct_add_cl is actually CL code.
+                CL_FINISH(b->cl_commands);
             }
             else{
                 //Note: dc[0] needs to be either verified for unchanging value,
                 //      or this needs to become an offset just like everything else
-                vp8_dc_only_idct_add_cl(b, dc[dc_offset], pre+pre_offset, dst+dst_offset, 16, stride);
+                CL_FINISH(b->cl_commands);
+                vp8_dc_only_idct_add_cl(b, b->diff_base[dc_offset], pre+pre_offset, dst+dst_offset, 16, stride);
             }
 
             q_offset   += 16;
@@ -55,7 +71,7 @@ void vp8_dequant_dc_idct_add_y_block_cl
 
 }
 
-void vp8_dequant_idct_add_y_block_cl (VP8D_COMP *pbi, MACROBLOCKD *xd, unsigned char *dsty)
+void vp8_dequant_idct_add_y_block_cl (VP8D_COMP *pbi, MACROBLOCKD *xd)
 {
     int i, j;
 
@@ -64,7 +80,7 @@ void vp8_dequant_idct_add_y_block_cl (VP8D_COMP *pbi, MACROBLOCKD *xd, unsigned 
     short *dq = xd->block[0].dequant;
     unsigned char *pre = xd->predictor;
     int pre_offset = 0;
-    unsigned char *dest_base = xd->dst.y_buffer;
+    unsigned char *dsty = xd->dst.y_buffer;
     int dest_offset = 0;
     int stride = xd->dst.y_stride;
     char *eobs = xd->eobs;
@@ -136,13 +152,17 @@ void vp8_dequant_idct_add_uv_block_cl(VP8D_COMP *pbi, MACROBLOCKD *xd,
             printf("vp8_dequant_idct_add_uv_block_cl\n");
             if (*eobs++ > 1){
                 //vp8_dequant_idct_add_cl (xd->block[16], q, dq, pre, dstu, 8, stride);
+                CL_FINISH(xd->cl_commands);
                 vp8_dequant_idct_add_cl(&xd->block[block_num], dstu, 0, q_offset, pre_offset, 8, stride, DEQUANT_INVOKE (&pbi->dequant, idct_add));
+                CL_FINISH(xd->cl_commands);
             }
             else
             {
                 //Another case where (q+offset)[0] and dq[0] need to become references
                 //to cl_mem locations.
+                CL_FINISH(xd->cl_commands);
                 vp8_dc_only_idct_add_cl (&xd->block[block_num], *(q+q_offset)*dq[0], pre+pre_offset, dstu, 8, stride);
+                CL_FINISH(xd->cl_commands);
                 ((int *)(q+q_offset))[0] = 0;
             }
 
@@ -160,13 +180,17 @@ void vp8_dequant_idct_add_uv_block_cl(VP8D_COMP *pbi, MACROBLOCKD *xd,
         for (j = 0; j < 2; j++)
         {
             if (*eobs++ > 1){
+                CL_FINISH(xd->cl_commands);
                 vp8_dequant_idct_add_cl (&xd->block[block_num], dstv, 0, q_offset, pre_offset, 8, stride, DEQUANT_INVOKE (&pbi->dequant, idct_add));
+                CL_FINISH(xd->cl_commands);
             }
             else
             {
                 //Another case where (q+offset)[0] and dq[0] need to become references
                 //to cl_mem locations.
+                CL_FINISH(xd->cl_commands);
                 vp8_dc_only_idct_add_cl (&xd->block[block_num], (q+q_offset)[0]*dq[0], pre+pre_offset, dstv, 8, stride);
+                CL_FINISH(xd->cl_commands);
                 ((int *)(q+q_offset))[0] = 0;
             }
 

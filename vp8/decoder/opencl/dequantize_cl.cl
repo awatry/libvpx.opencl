@@ -101,14 +101,24 @@ __kernel void vp8_dequant_idct_add_kernel(
     }
 }
 
+
 __kernel void vp8_dequant_dc_idct_add_kernel(
-    __global short *input, 
-    __global short *dq,
-    __global unsigned char *pred,
+    __global short *qcoeff_base,
+    int qcoeff_offset,
+
+    __global short *dq_base,
+    int dq_offset,
+
+    __global unsigned char *pred_base,
+    int pred_offset,
+
+    __global short *diff_base,
+    int diff_offset,
+
     __global unsigned char *dest,
+
     int pitch,
-    int stride,
-    int Dc
+    int stride
 )
 {
     int i;
@@ -116,8 +126,12 @@ __kernel void vp8_dequant_dc_idct_add_kernel(
     short *diff_ptr = output;
     int r, c;
 
-    //Another candidate to copy back a modified input buffer...
-    input[0] = (short)Dc;
+    global short *input = &qcoeff_base[qcoeff_offset];
+    global short *dq = &dq_base[dq_offset];
+    global unsigned char *pred = pred_base + pred_offset;
+
+    //A modified input buffer... copy back to System memory when done!
+    input[0] = diff_base[diff_offset];
 
 #if USE_VECTORS
     vstore16( (short16)vload16(0,dq) * (short16)vload16(0,input) , 0, input);

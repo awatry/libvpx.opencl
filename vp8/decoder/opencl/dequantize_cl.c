@@ -12,7 +12,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "vp8/common/blockd.h"
+#include "vp8/common/opencl/blockd_cl.h"
 #include "vp8/common/opencl/idct_cl.h"
 #include "dequantize_cl.h"
 
@@ -216,17 +216,91 @@ void vp8_dequant_idct_add_cl(BLOCKD *b, unsigned char *dest_base,int dest_offset
 }
 
 //Can modify arguments. Only called from vp8_dequant_dc_idct_add_y_block_cl.
-void vp8_dequant_dc_idct_add_cl(BLOCKD *b, short *input, short *dq, unsigned char *pred,
-                               unsigned char *dest, int pitch, int stride,
-                               int Dc)
+void vp8_dequant_dc_idct_add_cl(
+    BLOCKD *b,
+    int qcoeff_offset,
+    int pred_offset,
+    unsigned char *dest,
+    int pitch,
+    int stride,
+    int Dc_offset)
 {
     int i;
+    int err;
     short output[16];
     short *diff_ptr = output;
     int r, c;
+    int Dc = b->diff_base[Dc_offset];
+
+    short *dq_base = b->dequant;
+    int dq_offset = 0;
+    short *dq = dq_base+dq_offset;
+    short *input = &b->qcoeff_base[qcoeff_offset];
+    unsigned char *pred = b->predictor_base + pred_offset;
+
+    cl_mem dest_mem = NULL;
+    size_t dest_size, cur_size;
+    size_t global = 1;
+    int dest_offset=0;
 
     printf("vp8_dequant_dc_idct_add_cl\n");
 
+#if 1
+    //Initialize dest_mem
+    dest_size = sizeof(cl_uchar)*(4*stride + dest_offset + 4);
+    cur_size = 0;
+    CL_ENSURE_BUF_SIZE(b->cl_commands, dest_mem, CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,
+            dest_size, cur_size, dest,
+            vp8_dequant_dc_idct_add_c(input, dq, pred, dest, pitch, stride, Dc)
+    );
+
+    //Assuming that all input cl_mem has been initialized outside of this Fn.
+
+    /* Set kernel arguments */
+    err = 0;
+    err = clSetKernelArg(cl_data.vp8_dequant_dc_idct_add_kernel, 0, sizeof (cl_mem), &b->cl_qcoeff_mem);
+    err |= clSetKernelArg(cl_data.vp8_dequant_dc_idct_add_kernel, 1, sizeof (int), &qcoeff_offset);
+    err |= clSetKernelArg(cl_data.vp8_dequant_dc_idct_add_kernel, 2, sizeof (cl_mem), &b->cl_dequant_mem);
+    err |= clSetKernelArg(cl_data.vp8_dequant_dc_idct_add_kernel, 3, sizeof(int), &dq_offset);
+    err |= clSetKernelArg(cl_data.vp8_dequant_dc_idct_add_kernel, 4, sizeof (cl_mem), &b->cl_predictor_mem);
+    err |= clSetKernelArg(cl_data.vp8_dequant_dc_idct_add_kernel, 5, sizeof (int), &pred_offset);
+    err |= clSetKernelArg(cl_data.vp8_dequant_dc_idct_add_kernel, 6, sizeof (cl_mem), &b->cl_diff_mem);
+    err |= clSetKernelArg(cl_data.vp8_dequant_dc_idct_add_kernel, 7, sizeof (int), &Dc_offset);
+    err |= clSetKernelArg(cl_data.vp8_dequant_dc_idct_add_kernel, 8, sizeof (cl_mem), &dest_mem);
+    err |= clSetKernelArg(cl_data.vp8_dequant_dc_idct_add_kernel, 9, sizeof (int), &pitch);
+    err |= clSetKernelArg(cl_data.vp8_dequant_dc_idct_add_kernel, 10, sizeof (int), &stride);
+
+    CL_CHECK_SUCCESS( b->cl_commands, err != CL_SUCCESS,
+        "Error: Failed to set kernel arguments!\n",
+        vp8_dequant_dc_idct_add_c(input, dq, pred, dest, pitch, stride, Dc),
+    );
+
+    /* Execute the kernel */
+    err = clEnqueueNDRangeKernel( b->cl_commands, cl_data.vp8_dequant_dc_idct_add_kernel, 1, NULL, &global, NULL , 0, NULL, NULL);
+    CL_CHECK_SUCCESS( b->cl_commands, err != CL_SUCCESS,
+        "Error: Failed to execute kernel!\n",
+        printf("err = %d\n",err);\
+        vp8_dequant_dc_idct_add_c(input, dq, pred, dest, pitch, stride, Dc),
+    );
+
+    /* Read back the result data from the device */
+    err = clEnqueueReadBuffer(b->cl_commands, dest_mem, CL_FALSE, 0, dest_size, dest, 0, NULL, NULL);
+    CL_CHECK_SUCCESS( b->cl_commands, err != CL_SUCCESS,
+        "Error: Failed to read output array!\n",
+        vp8_dequant_dc_idct_add_c(input, dq, pred, dest, pitch, stride, Dc),
+    );
+
+    vp8_cl_block_finish(b);
+    
+    CL_FINISH(b->cl_commands);
+
+
+
+    //CL Spec says this can be freed without clFinish first
+    clReleaseMemObject(dest_mem);
+    dest_mem = NULL;
+    
+#else
     input[0] = (short)Dc;
 
     for (i = 1; i < 16; i++)
@@ -259,4 +333,5 @@ void vp8_dequant_dc_idct_add_cl(BLOCKD *b, short *input, short *dq, unsigned cha
         diff_ptr += 4;
         pred += pitch;
     }
+#endif
 }
