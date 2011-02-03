@@ -225,16 +225,12 @@ void vp8_dequant_dc_idct_add_cl(
     int stride,
     int Dc_offset)
 {
-    int i;
     int err;
-    short output[16];
-    short *diff_ptr = output;
-    int r, c;
+
     int Dc = b->diff_base[Dc_offset];
 
-    short *dq_base = b->dequant;
     int dq_offset = 0;
-    short *dq = dq_base+dq_offset;
+    short *dq = b->dequant + dq_offset;
     short *input = &b->qcoeff_base[qcoeff_offset];
     unsigned char *pred = b->predictor_base + pred_offset;
 
@@ -245,7 +241,6 @@ void vp8_dequant_dc_idct_add_cl(
 
     printf("vp8_dequant_dc_idct_add_cl\n");
 
-#if 1
     //Initialize dest_mem
     dest_size = sizeof(cl_uchar)*(4*stride + dest_offset + 4);
     cur_size = 0;
@@ -291,47 +286,11 @@ void vp8_dequant_dc_idct_add_cl(
     );
 
     vp8_cl_block_finish(b);
-    
-    CL_FINISH(b->cl_commands);
-
-
 
     //CL Spec says this can be freed without clFinish first
     clReleaseMemObject(dest_mem);
     dest_mem = NULL;
-    
-#else
-    input[0] = (short)Dc;
 
-    for (i = 1; i < 16; i++)
-    {
-        input[i] = dq[i] * input[i];
-    }
+    return;
 
-    /* the idct halves ( >> 1) the pitch */
-    vp8_short_idct4x4llm_cl(b, input, output, 4 << 1);
-    CL_FINISH(b->cl_commands); //Need to fix idct4x4llm for Mblock-level CQs
-    
-    cl_memset_short(input, 0, 32);
-
-    for (r = 0; r < 4; r++)
-    {
-        for (c = 0; c < 4; c++)
-        {
-            int a = diff_ptr[c] + pred[c];
-
-            if (a < 0)
-                a = 0;
-
-            if (a > 255)
-                a = 255;
-
-            dest[c] = (unsigned char) a;
-        }
-
-        dest += stride;
-        diff_ptr += 4;
-        pred += pitch;
-    }
-#endif
 }

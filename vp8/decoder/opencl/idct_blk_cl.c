@@ -43,16 +43,15 @@ void vp8_dequant_dc_idct_add_y_block_cl(
             if (*eobs++ > 1){
                 CL_FINISH(b->cl_commands);
                 vp8_cl_block_prep(b);
-                CL_FINISH(b->cl_commands);
                 vp8_dequant_dc_idct_add_cl (b, q_offset, pre_offset, dst+dst_offset, 16, stride, dc_offset);
                 CL_FINISH(b->cl_commands);
                 vp8_cl_block_finish(b);
                 //don't re-enable vp8_cl_block_finish until after dequant_dc_idct_add_cl is actually CL code.
-                CL_FINISH(b->cl_commands);
             }
             else{
-                //Note: dc[0] needs to be either verified for unchanging value,
-                //      or this needs to become an offset just like everything else
+                //Note: diff[offset] needs to become an offset just like everything else
+                // This will require modifying dc_only_idct_add as it's called
+                // from several places with changing source data.
                 CL_FINISH(b->cl_commands);
                 vp8_dc_only_idct_add_cl(b, b->diff_base[dc_offset], pre+pre_offset, dst+dst_offset, 16, stride);
             }
