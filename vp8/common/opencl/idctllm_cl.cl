@@ -18,16 +18,14 @@ __kernel void vp8_short_idct4x4llm_kernel(
 }
 
 __kernel void vp8_short_idct4x4llm_1st_pass_kernel(
-    __global short *input,
-    __global short *output,
+    __global short *ip,
+    __global short *op,
     int pitch
 )
 {
     int i;
     int a1, b1, c1, d1;
 
-    __global short *ip = input;
-    __global short *op = output;
     int temp1, temp2;
     int shortpitch = pitch >> 1;
 
@@ -152,13 +150,15 @@ __kernel void vp8_dc_only_idct_add_kernel(
 }
 
 __kernel void vp8_short_inv_walsh4x4_kernel(
-    __global short *src_data,
+    __global short *src_base,
     int src_offset,
-    __global short *output
+    __global short *output_base,
+    int out_offset
 )
 {
 
-    __global short *input = src_data + src_offset;
+    __global short *input = src_base + src_offset;
+    __global short *output = output_base + src_offset;
 
     //4-short vectors to calculate things in
     short4 a,b,c,d, a2v, b2v, c2v, d2v, a1t, b1t, c1t, d1t;

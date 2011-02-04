@@ -224,30 +224,25 @@ void vp8_dc_only_idct_add_cl(BLOCKD *b, short input_dc, int pred_offset, unsigne
     return;
 }
 
-void vp8_short_inv_walsh4x4_cl(BLOCKD *b, int src_offset, short *input, short *output)
+void vp8_short_inv_walsh4x4_cl(BLOCKD *b)
 {
     int err;
     size_t global = 1;
-    cl_mem src_data = b->cl_dqcoeff_mem;
 
     if (cl_initialized != CL_SUCCESS){
-        vp8_short_inv_walsh4x4_c(input,output);
+        vp8_short_inv_walsh4x4_c(b->dqcoeff_base+b->dqcoeff_offset,&b->diff_base[b->diff_offset]);
         return;
     }
-CL_FINISH(b->cl_commands);
-    CL_ENSURE_BUF_SIZE(b->cl_commands, cl_data.destData,CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,
-            sizeof(cl_short)*16, cl_data.destAlloc, output,
-            vp8_short_inv_walsh4x4_c(input, output)
-    );
 
     //Set arguments and run kernel
     err = 0;
-    err = clSetKernelArg(cl_data.vp8_short_inv_walsh4x4_kernel, 0, sizeof (cl_mem), &src_data);
-    err |= clSetKernelArg(cl_data.vp8_short_inv_walsh4x4_kernel, 1, sizeof(cl_int), &src_offset);
-    err |= clSetKernelArg(cl_data.vp8_short_inv_walsh4x4_kernel, 2, sizeof (cl_mem), &cl_data.destData);
+    err = clSetKernelArg(cl_data.vp8_short_inv_walsh4x4_kernel, 0, sizeof (cl_mem), &b->cl_dqcoeff_mem);
+    err |= clSetKernelArg(cl_data.vp8_short_inv_walsh4x4_kernel, 1, sizeof(int), &b->dqcoeff_offset);
+    err |= clSetKernelArg(cl_data.vp8_short_inv_walsh4x4_kernel, 2, sizeof (cl_mem), &b->cl_diff_mem);
+    err |= clSetKernelArg(cl_data.vp8_short_inv_walsh4x4_kernel, 3, sizeof(int), &b->diff_offset);
     CL_CHECK_SUCCESS( b->cl_commands, err != CL_SUCCESS,
         "Error: Failed to set kernel arguments!\n",
-        vp8_short_inv_walsh4x4_c(input, output),
+        vp8_short_inv_walsh4x4_c(b->dqcoeff_base+b->dqcoeff_offset, &b->diff_base[b->diff_offset]),
     );
 
     /* Execute the kernel */
@@ -255,46 +250,34 @@ CL_FINISH(b->cl_commands);
     CL_CHECK_SUCCESS( b->cl_commands, err != CL_SUCCESS,
         "Error: Failed to execute kernel!\n",
         printf("err = %d\n",err);
-        vp8_short_inv_walsh4x4_c(input, output),
+        vp8_short_inv_walsh4x4_c(b->dqcoeff_base+b->dqcoeff_offset, &b->diff_base[b->diff_offset]),
     );
 
-    /* Read back the result data from the device */
-    err = clEnqueueReadBuffer(b->cl_commands, cl_data.destData, CL_FALSE, 0, sizeof(cl_short)*16, output, 0, NULL, NULL);
-    CL_CHECK_SUCCESS(b->cl_commands, err != CL_SUCCESS,
-        "Error: Failed to read output array!\n",
-        vp8_short_inv_walsh4x4_c(input, output),
-    );
-CL_FINISH(b->cl_commands);
     return;
 }
 
-void vp8_short_inv_walsh4x4_1_cl(BLOCKD *b, int src_offset, short *input, short *output)
+void vp8_short_inv_walsh4x4_1_cl(BLOCKD *b)
 {
     
     int err;
     size_t global = 1;
-    cl_mem src_data = b->cl_dqcoeff_mem;
-    cl_int output_offset = 0;
 
     if (cl_initialized != CL_SUCCESS){
-        vp8_short_inv_walsh4x4_1_c(input,output);
+        vp8_short_inv_walsh4x4_1_c(b->dqcoeff_base + b->dqcoeff_offset,
+            &b->diff_base[b->diff_offset]);
         return;
     }
-CL_FINISH(b->cl_commands);
-    CL_ENSURE_BUF_SIZE(b->cl_commands, cl_data.destData,CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,
-            sizeof(short)*16, cl_data.destAlloc, output,
-            vp8_short_inv_walsh4x4_1_c(input,output)
-    );
 
     //Set arguments and run kernel
     err = 0;
-    err = clSetKernelArg(cl_data.vp8_short_inv_walsh4x4_1_kernel, 0, sizeof (cl_mem), &src_data);
-    err |= clSetKernelArg(cl_data.vp8_short_inv_walsh4x4_1_kernel, 1, sizeof (cl_int), &src_offset);
-    err |= clSetKernelArg(cl_data.vp8_short_inv_walsh4x4_1_kernel, 2, sizeof (cl_mem), &cl_data.destData);
-    err |= clSetKernelArg(cl_data.vp8_short_inv_walsh4x4_1_kernel, 3, sizeof (cl_int), &output_offset);
+    err = clSetKernelArg(cl_data.vp8_short_inv_walsh4x4_1_kernel, 0, sizeof (cl_mem), &b->cl_dqcoeff_mem);
+    err |= clSetKernelArg(cl_data.vp8_short_inv_walsh4x4_1_kernel, 1, sizeof (int), &b->dqcoeff_offset);
+    err |= clSetKernelArg(cl_data.vp8_short_inv_walsh4x4_1_kernel, 2, sizeof (cl_mem), &b->cl_diff_mem);
+    err |= clSetKernelArg(cl_data.vp8_short_inv_walsh4x4_1_kernel, 3, sizeof (int), &b->diff_offset);
     CL_CHECK_SUCCESS( b->cl_commands, err != CL_SUCCESS,
         "Error: Failed to set kernel arguments!\n",
-        vp8_short_inv_walsh4x4_1_c(input,output),
+        vp8_short_inv_walsh4x4_1_c(b->dqcoeff_base + b->dqcoeff_offset,
+            &b->diff_base[b->diff_offset]),
     );
 
     /* Execute the kernel */
@@ -302,17 +285,9 @@ CL_FINISH(b->cl_commands);
     CL_CHECK_SUCCESS( b->cl_commands, err != CL_SUCCESS,
         "Error: Failed to execute kernel!\n",
         printf("err = %d\n",err);
-        vp8_short_inv_walsh4x4_1_c(input,output),
+        vp8_short_inv_walsh4x4_1_c(b->dqcoeff_base + b->dqcoeff_offset,
+                &b->diff_base[b->diff_offset]),
     );
-
-    /* Read back the result data from the device */
-    err = clEnqueueReadBuffer(b->cl_commands, cl_data.destData, CL_FALSE, 0, sizeof(short)*16, output, 0, NULL, NULL);
-    CL_CHECK_SUCCESS(b->cl_commands, err != CL_SUCCESS,
-        "Error: Failed to read output array!\n",
-        vp8_short_inv_walsh4x4_1_c(input,output),
-    );
-
-    CL_FINISH(b->cl_commands);
 
     return;
 }

@@ -278,18 +278,15 @@ void vp8_decode_macroblock(VP8D_COMP *pbi, MACROBLOCKD *xd)
 
 #if CONFIG_OPENCL
         CL_FINISH(b->cl_commands);
-        CL_SET_BUF(b->cl_commands, b->cl_dqcoeff_mem, sizeof(cl_short)*400, b->dqcoeff_base,
-            second_order(b->dqcoeff_base + b->dqcoeff_offset, &b->diff_base[b->diff_offset]));
-
-        //vp8_cl_block_prep(b);
+        
+        vp8_cl_block_prep(b);
         if (xd->eobs[24] > 1)
         {
-            vp8_short_inv_walsh4x4_cl(b, b->dqcoeff_offset, b->dqcoeff_base + b->dqcoeff_offset, &b->diff_base[b->diff_offset]);
+            vp8_short_inv_walsh4x4_cl(b);
         } else {
-            vp8_short_inv_walsh4x4_1_cl(b, b->dqcoeff_offset, b->dqcoeff_base + b->dqcoeff_offset, &b->diff_base[b->diff_offset]);
+            vp8_short_inv_walsh4x4_1_cl(b);
         }
-
-        //vp8_cl_block_finish(b);
+        vp8_cl_block_finish(b);
 
         CL_FINISH(xd->cl_commands);
 

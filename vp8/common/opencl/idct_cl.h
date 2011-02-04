@@ -20,7 +20,7 @@ extern "C" {
 #include "vp8/common/blockd.h"
 
 #define prototype_second_order_cl(sym) \
-    void sym(BLOCKD *b, int src_offset, short *input, short *output)
+    void sym(BLOCKD *b)
 
 #define prototype_idct_cl(sym) \
     void sym(BLOCKD *b, int pitch)
