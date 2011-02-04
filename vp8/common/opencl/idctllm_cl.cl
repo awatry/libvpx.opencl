@@ -223,20 +223,3 @@ __kernel void vp8_short_inv_walsh4x4_1_kernel(
         vstore16(a, 0, output);
     }
 }
-
-
-kernel void recon_dcblock_kernel(
-    global short *dqcoeff_base,
-    global short *diff_base,
-    int diff_offset
-)
-{
-    int tid = get_global_id(0);
-
-    if (tid < 16)
-    {
-        int dqcoeff_offset = 16 * tid;
-
-        *(dqcoeff_base+dqcoeff_offset) = diff_base[diff_offset+tid];
-    }
-}

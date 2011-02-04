@@ -58,8 +58,8 @@ void cl_destroy(cl_command_queue cq, int new_status) {
     if (cl_data.idct_program)
         clReleaseProgram(cl_data.idct_program);
 
-    CL_RELEASE_KERNEL(cl_data.vp8_sixtap_predict_kernel);
     CL_RELEASE_KERNEL(cl_data.vp8_block_variation_kernel);
+    CL_RELEASE_KERNEL(cl_data.vp8_sixtap_predict_kernel);
     CL_RELEASE_KERNEL(cl_data.vp8_sixtap_predict8x8_kernel);
     CL_RELEASE_KERNEL(cl_data.vp8_sixtap_predict8x4_kernel);
     CL_RELEASE_KERNEL(cl_data.vp8_sixtap_predict16x16_kernel);
@@ -67,6 +67,12 @@ void cl_destroy(cl_command_queue cq, int new_status) {
     CL_RELEASE_KERNEL(cl_data.vp8_bilinear_predict8x4_kernel);
     CL_RELEASE_KERNEL(cl_data.vp8_bilinear_predict8x8_kernel);
     CL_RELEASE_KERNEL(cl_data.vp8_bilinear_predict16x16_kernel);
+
+    CL_RELEASE_KERNEL(cl_data.vp8_short_inv_walsh4x4_1_kernel);
+    CL_RELEASE_KERNEL(cl_data.vp8_short_inv_walsh4x4_kernel);
+    CL_RELEASE_KERNEL(cl_data.vp8_dc_only_idct_add_kernel);
+    //CL_RELEASE_KERNEL(cl_data.vp8_short_idct4x4llm_1_kernel);
+    //CL_RELEASE_KERNEL(cl_data.vp8_short_idct4x4llm_kernel);
 
 #if CONFIG_VP8_DECODER
     if (cl_data.cl_decode_initialized == CL_SUCCESS)
@@ -76,9 +82,6 @@ void cl_destroy(cl_command_queue cq, int new_status) {
 #if CONFIG_VP8_ENCODER
     //placeholder for if/when encoder CL gets implemented
 #endif
-
-    printf("Need to release IDCT kernels\n");
-
 
     //Older kernels that probably aren't used anymore... remove eventually.
     if (cl_data.filter_block2d_first_pass_kernel)

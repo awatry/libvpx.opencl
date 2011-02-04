@@ -113,54 +113,27 @@ void vp8_dequantize_b_cl(BLOCKD *d)
 
 }
 
-void vp8_dequant_idct_add_cl(BLOCKD *b, unsigned char *dest_base,int dest_offset, int q_offset, int pred_offset, int pitch, int stride, vp8_dequant_idct_add_fn_t idct_add)
+void vp8_dequant_idct_add_cl(BLOCKD *b, unsigned char *dest_base, int dest_offset, int q_offset, int pred_offset, int pitch, int stride, vp8_dequant_idct_add_fn_t idct_add)
 {
-    short *qcoeff = b->qcoeff_base+q_offset;
     int err;
-    int i;
-    size_t global = 1, cur_size, dest_size;
+    size_t global = 1;
+    size_t cur_size, dest_size;
     cl_mem dest_mem = NULL;
 
-    //This should be set by callers
-    //pred_offset += b->predictor_offset;
-
     if (cl_initialized != CL_SUCCESS){
-        idct_add(qcoeff, b->dequant,  b->predictor_base + pred_offset,
+        idct_add(b->qcoeff_base+q_offset, b->dequant,  b->predictor_base + pred_offset,
             dest_base + dest_offset, pitch, stride);
         return;
     }
 
-    /* NOTE: Eventually, all of these buffers need to be initialized outside of
-     *       this function.
-     */
-
-    printf("vp8_dequant_idct_add_cl\n");
-
-    CL_FINISH(b->cl_commands);
-
-    //Initialize memory
-    CL_SET_BUF(b->cl_commands, b->cl_qcoeff_mem, sizeof(cl_short)*400, b->qcoeff_base,
-        idct_add(qcoeff, b->dequant,  b->predictor_base + pred_offset,
-            dest_base + dest_offset, pitch, stride)
-    );
-
-    //Don't think this is necessary
-    CL_SET_BUF(b->cl_commands, b->cl_dequant_mem, sizeof(cl_short)*16 ,b->dequant,
-        idct_add(qcoeff, b->dequant,  b->predictor_base + pred_offset,
-            dest_base + dest_offset, pitch, stride)
-    );
-
-    CL_SET_BUF(b->cl_commands, b->cl_predictor_mem, sizeof(cl_uchar)*384, b->predictor_base,
-        idct_add(qcoeff, b->dequant,  b->predictor_base + pred_offset,
-            dest_base + dest_offset, pitch, stride)
-    );
+    //Initialize destination memory
 
     //Dest size calculation stolen from memory allocation function for planes.
     dest_size = sizeof(cl_uchar)*(4*stride + dest_offset + 4);
     cur_size = 0;
     CL_ENSURE_BUF_SIZE(b->cl_commands, dest_mem, CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,
             dest_size, cur_size, dest_base,
-            idct_add(qcoeff, b->dequant,  b->predictor_base + pred_offset,
+            idct_add(b->qcoeff_base+q_offset, b->dequant,  b->predictor_base + pred_offset,
             dest_base + dest_offset, pitch, stride)
     );
     
@@ -177,7 +150,7 @@ void vp8_dequant_idct_add_cl(BLOCKD *b, unsigned char *dest_base,int dest_offset
     err |= clSetKernelArg(cl_data.vp8_dequant_idct_add_kernel, 8, sizeof (int), &stride);
     CL_CHECK_SUCCESS( b->cl_commands, err != CL_SUCCESS,
         "Error: Failed to set kernel arguments!\n",
-        idct_add(qcoeff, b->dequant,  b->predictor_base + pred_offset,
+        idct_add(b->qcoeff_base+q_offset, b->dequant,  b->predictor_base + pred_offset,
             dest_base + dest_offset, pitch, stride),
     );
 
@@ -186,7 +159,7 @@ void vp8_dequant_idct_add_cl(BLOCKD *b, unsigned char *dest_base,int dest_offset
     CL_CHECK_SUCCESS( b->cl_commands, err != CL_SUCCESS,
         "Error: Failed to execute kernel!\n",
         printf("err = %d\n",err);\
-        idct_add(qcoeff, b->dequant,  b->predictor_base + pred_offset,
+        idct_add(b->qcoeff_base+q_offset, b->dequant,  b->predictor_base + pred_offset,
             dest_base + dest_offset, pitch, stride),
     );
 
@@ -194,19 +167,9 @@ void vp8_dequant_idct_add_cl(BLOCKD *b, unsigned char *dest_base,int dest_offset
     err = clEnqueueReadBuffer(b->cl_commands, dest_mem, CL_FALSE, 0, dest_size, dest_base, 0, NULL, NULL);
     CL_CHECK_SUCCESS( b->cl_commands, err != CL_SUCCESS,
         "Error: Failed to read output array!\n",
-        idct_add(qcoeff, b->dequant,  b->predictor_base + pred_offset,
+        idct_add(b->qcoeff_base+q_offset, b->dequant,  b->predictor_base + pred_offset,
             dest_base + dest_offset, pitch, stride),
     );
-
-    //And remember to copy back qcoeff (modified by the memset)
-    err = clEnqueueReadBuffer(b->cl_commands, b->cl_qcoeff_mem, CL_FALSE, 0, sizeof(short)*400, b->qcoeff_base, 0, NULL, NULL);
-    CL_CHECK_SUCCESS( b->cl_commands, err != CL_SUCCESS,
-        "Error: Failed to read from GPU!\n",
-        idct_add(qcoeff, b->dequant,  b->predictor_base + pred_offset,
-            dest_base + dest_offset, pitch, stride),
-    );
-
-    CL_FINISH(b->cl_commands);
 
     //CL Spec says this can be freed without clFinish first
     clReleaseMemObject(dest_mem); 

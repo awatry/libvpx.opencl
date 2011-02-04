@@ -17,7 +17,6 @@
 #include "reconinter.h"
 #include "dequantize.h"
 #include "detokenize.h"
-#include "invtrans.h"
 #include "alloccommon.h"
 #include "entropymode.h"
 #include "quant_common.h"
@@ -41,6 +40,7 @@
 
 #if CONFIG_OPENCL
 #include "opencl/vp8_opencl.h"
+#include "opencl/blockd_cl.h"
 #include "opencl/dequantize_cl.h"
 #endif
 
@@ -320,12 +320,14 @@ void vp8_decode_macroblock(VP8D_COMP *pbi, MACROBLOCKD *xd)
 #if CONFIG_OPENCL
             if (xd->eobs[i] > 1)
             {
+                vp8_cl_block_prep(b);
                 vp8_dequant_idct_add_cl(b, *(b->base_dst), b->dst, b->qcoeff_offset, b->predictor_offset, 16, b->dst_stride, DEQUANT_INVOKE(&pbi->dequant, idct_add));
-                CL_FINISH(xd->cl_commands);
+                vp8_cl_block_finish(b);
+                CL_FINISH(b->cl_commands);
             }
             else
             {
-                vp8_dc_only_idct_add_cl(b,qcoeff[0] * b->dequant[0], b->predictor_base + b->predictor_offset,
+                vp8_dc_only_idct_add_cl(b,qcoeff[0] * b->dequant[0], b->predictor_offset,
                     *(b->base_dst) + b->dst, 16, b->dst_stride);
                 CL_FINISH(b->cl_commands);
                 ((int *)qcoeff)[0] = 0; //Move into follow-up kernel?

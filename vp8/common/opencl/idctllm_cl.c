@@ -15,6 +15,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "idct_cl.h"
 #include "idctllm_cl.h"
 
 static const int cospi8sqrt2minus1 = 20091;
@@ -33,23 +34,25 @@ int cl_init_idct() {
     CL_CREATE_KERNEL(cl_data,idct_program,vp8_short_inv_walsh4x4_1_kernel,"vp8_short_inv_walsh4x4_1_kernel");
     CL_CREATE_KERNEL(cl_data,idct_program,vp8_short_inv_walsh4x4_kernel,"vp8_short_inv_walsh4x4_kernel");
     CL_CREATE_KERNEL(cl_data,idct_program,vp8_dc_only_idct_add_kernel,"vp8_dc_only_idct_add_kernel");
-    CL_CREATE_KERNEL(cl_data,idct_program,vp8_short_idct4x4llm_1_kernel,"vp8_short_idct4x4llm_1_kernel");
-    CL_CREATE_KERNEL(cl_data,idct_program,vp8_short_idct4x4llm_kernel,"vp8_short_idct4x4llm_kernel");
 
-    // Called from invtrans.c
-    CL_CREATE_KERNEL(cl_data,idct_program,recon_dcblock_kernel,"recon_dcblock_kernel");
-
+    ////idct4x4llm kernels are only useful for the encoder
+    //CL_CREATE_KERNEL(cl_data,idct_program,vp8_short_idct4x4llm_1_kernel,"vp8_short_idct4x4llm_1_kernel");
+    //CL_CREATE_KERNEL(cl_data,idct_program,vp8_short_idct4x4llm_kernel,"vp8_short_idct4x4llm_kernel");
 
     return CL_SUCCESS;
 }
 
 #define max(x,y) (x > y ? x: y)
-#define NO_CL
+//#define NO_CL
 
-void vp8_short_idct4x4llm_cl(BLOCKD *b, short *input, short *output, int pitch)
+/* Only useful for encoder... Untested... */
+void vp8_short_idct4x4llm_cl(BLOCKD *b, int pitch)
 {
     int err;
-    
+
+    short *input = b->dqcoeff_base + b->dqcoeff_offset;
+    short *output = &b->diff_base[b->diff_offset];
+
     //1 instance for now. This should be split into 2-pass * 4 thread.
     size_t global = 1;
 
@@ -94,14 +97,20 @@ void vp8_short_idct4x4llm_cl(BLOCKD *b, short *input, short *output, int pitch)
         "Error: Failed to read output array!\n",
         vp8_short_idct4x4llm_c(input,output,pitch),
     );
-CL_FINISH(b->cl_commands);
+
+    CL_FINISH(b->cl_commands);
+
     return;
 }
 
-void vp8_short_idct4x4llm_1_cl(BLOCKD *b, short *input, short *output, int pitch)
+/* Only useful for encoder... Untested... */
+void vp8_short_idct4x4llm_1_cl(BLOCKD *b, int pitch)
 {
     int err;
     size_t global = 4;
+
+    short *input = b->dqcoeff_base + b->dqcoeff_offset;
+    short *output = &b->diff_base[b->diff_offset];
 
     if (cl_initialized != CL_SUCCESS){
         vp8_short_idct4x4llm_1_c(input,output,pitch);
@@ -157,11 +166,13 @@ void vp8_short_idct4x4llm_1_cl(BLOCKD *b, short *input, short *output, int pitch
 
 }
 
-void vp8_dc_only_idct_add_cl(BLOCKD *b, short input_dc, unsigned char *pred_ptr, unsigned char *dst_ptr, int pitch, int stride)
+void vp8_dc_only_idct_add_cl(BLOCKD *b, short input_dc, int pred_offset, unsigned char *dst_ptr, int pitch, int stride)
 {
     
     int err;
     size_t global = 16;
+
+    unsigned char *pred_ptr = b->predictor_base + pred_offset;
 
     if (cl_initialized != CL_SUCCESS){
         vp8_dc_only_idct_add_c(input_dc, pred_ptr, dst_ptr, pitch, stride);
