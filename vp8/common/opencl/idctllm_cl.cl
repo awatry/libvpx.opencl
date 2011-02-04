@@ -103,19 +103,20 @@ __kernel void vp8_short_idct4x4llm_1_kernel(
     int a1;
     int out_offset;
     int shortpitch = pitch >> 1;
-    short4 a;
+
+    //short4 a;
+    a1 = ((input[0] + 4) >> 3);
+    //a = a1;
 
     int tid = get_global_id(0);
     if (tid < 4){
         out_offset = shortpitch * tid;
 
-        a1 = ((input[0] + 4) >> 3);
-        a = a1;
-        vstore4(a, 0, &output[out_offset]);
-        //output[out_offset] = a1;
-        //output[out_offset+1] = a1;
-        //output[out_offset+2] = a1;
-        //output[out_offset+3] = a1;
+        //vstore4(a,0,&output[out_offset];
+        output[out_offset] = a1;
+        output[out_offset+1] = a1;
+        output[out_offset+2] = a1;
+        output[out_offset+3] = a1;
     }
 }
 
