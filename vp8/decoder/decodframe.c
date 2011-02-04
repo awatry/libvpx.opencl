@@ -325,7 +325,7 @@ void vp8_decode_macroblock(VP8D_COMP *pbi, MACROBLOCKD *xd)
                 vp8_dc_only_idct_add_cl(b,qcoeff[0] * b->dequant[0], b->predictor_offset,
                     *(b->base_dst) + b->dst, 16, b->dst_stride);
                 CL_FINISH(b->cl_commands);
-                ((int *)qcoeff)[0] = 0; //Move into follow-up kernel?
+                ((int *)(b->qcoeff_base + b->qcoeff_offset))[0] = 0; //Move into follow-up kernel?
             }
 #else
             if (xd->eobs[i] > 1)
