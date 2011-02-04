@@ -67,6 +67,8 @@ void vp8_dequantize_b_cl(BLOCKD *d)
         vp8_dequantize_b_c(d);
         return;
     }
+    
+    printf("vp8_dequantize_b_cl\n");
 
      //Initialize memory
     CL_SET_BUF(d->cl_commands, d->cl_dqcoeff_mem, sizeof(cl_short)*400, d->dqcoeff_base,

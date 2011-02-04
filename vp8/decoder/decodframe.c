@@ -256,7 +256,8 @@ void vp8_decode_macroblock(VP8D_COMP *pbi, MACROBLOCKD *xd)
         BLOCKD *b = &xd->block[24];
         short *qcoeff = b->qcoeff_base + b->qcoeff_offset;
         vp8_second_order_fn_t second_order;
-        
+
+        //Do normal/CL change and check if block is still in system dependent.
         DEQUANT_INVOKE(&pbi->dequant, block)(b);
 
         /* do 2nd order transform on the dc block */
@@ -276,22 +277,19 @@ void vp8_decode_macroblock(VP8D_COMP *pbi, MACROBLOCKD *xd)
         }
 
 #if CONFIG_OPENCL
-        //if (cl_initialized == CL_SUCCESS){
-        //    CL_SET_BUF(b->cl_commands, b->cl_dqcoeff_mem, sizeof(cl_short)*400, b->dqcoeff_base,
-        //    second_order(b->dqcoeff_base + b->dqcoeff_offset, &b->diff_base[b->diff_offset]));
-        //} else {
-        //    second_order(b->dqcoeff_base + b->dqcoeff_offset, &b->diff_base[b->diff_offset]);
-        //}
         CL_FINISH(b->cl_commands);
         CL_SET_BUF(b->cl_commands, b->cl_dqcoeff_mem, sizeof(cl_short)*400, b->dqcoeff_base,
             second_order(b->dqcoeff_base + b->dqcoeff_offset, &b->diff_base[b->diff_offset]));
 
+        //vp8_cl_block_prep(b);
         if (xd->eobs[24] > 1)
         {
             vp8_short_inv_walsh4x4_cl(b, b->dqcoeff_offset, b->dqcoeff_base + b->dqcoeff_offset, &b->diff_base[b->diff_offset]);
         } else {
             vp8_short_inv_walsh4x4_1_cl(b, b->dqcoeff_offset, b->dqcoeff_base + b->dqcoeff_offset, &b->diff_base[b->diff_offset]);
         }
+
+        //vp8_cl_block_finish(b);
 
         CL_FINISH(xd->cl_commands);
 
