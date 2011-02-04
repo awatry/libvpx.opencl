@@ -257,8 +257,12 @@ void vp8_decode_macroblock(VP8D_COMP *pbi, MACROBLOCKD *xd)
         short *qcoeff = b->qcoeff_base + b->qcoeff_offset;
         vp8_second_order_fn_t second_order;
 
-        //Do normal/CL change and check if block is still in system dependent.
-        DEQUANT_INVOKE(&pbi->dequant, block)(b);
+        //ACW TODO: Do normal/CL change and check if block is still in system dependent.
+#if CONFIG_OPENCL
+		DEQUANT_INVOKE(&pbi->dequant, block)(b);
+#else
+		DEQUANT_INVOKE(&pbi->dequant, block)(b);
+#endif
 
         /* do 2nd order transform on the dc block */
         if (xd->eobs[24] > 1){

@@ -186,6 +186,9 @@ BUF_DONE:
             x->block[r].cl_predictor_mem = x->cl_predictor_mem;
             x->block[r].cl_qcoeff_mem = x->cl_qcoeff_mem;
         }
+
+		//Copy filter type to block.
+		x->block[r].sixtap_filter = x->sixtap_filter;
 #endif
     }
 

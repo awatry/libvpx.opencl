@@ -323,74 +323,6 @@ void vp8_recon_intra4x4mb(const vp8_recon_rtcd_vtable_t *rtcd, MACROBLOCKD *x)
 
     vp8_intra_prediction_down_copy(x);
 
-#if ARCH_ARM
-    {
-        BLOCKD *b = &x->block[0];
-
-        vp8_predict_intra4x4(b, b->bmi.mode, b->predictor_base + b->predictor_offset);
-        RECON_INVOKE(rtcd, recon)(b->predictor_base + b->predictor_offset, &b->diff_base[b->diff_offset], *(b->base_dst) + b->dst, b->dst_stride);
-        b += 1;
-
-        vp8_predict_intra4x4(b, b->bmi.mode, b->predictor_base + b->predictor_offset);
-        RECON_INVOKE(rtcd, recon)(b->predictor_base + b->predictor_offset, &b->diff_base[b->diff_offset], *(b->base_dst) + b->dst, b->dst_stride);
-        b += 1;
-
-        vp8_predict_intra4x4(b, b->bmi.mode, b->predictor_base + b->predictor_offset);
-        RECON_INVOKE(rtcd, recon)(b->predictor_base + b->predictor_offset, &b->diff_base[b->diff_offset], *(b->base_dst) + b->dst, b->dst_stride);
-        b += 1;
-
-        vp8_predict_intra4x4(b, b->bmi.mode, b->predictor_base + b->predictor_offset);
-        RECON_INVOKE(rtcd, recon)(b->predictor_base + b->predictor_offset, &b->diff_base[b->diff_offset], *(b->base_dst) + b->dst, b->dst_stride);
-        b += 1;
-
-        vp8_predict_intra4x4(b, b->bmi.mode, b->predictor_base + b->predictor_offset);
-        RECON_INVOKE(rtcd, recon)(b->predictor_base + b->predictor_offset, &b->diff_base[b->diff_offset], *(b->base_dst) + b->dst, b->dst_stride);
-        b += 1;
-
-        vp8_predict_intra4x4(b, b->bmi.mode, b->predictor_base + b->predictor_offset);
-        RECON_INVOKE(rtcd, recon)(b->predictor_base + b->predictor_offset, &b->diff_base[b->diff_offset], *(b->base_dst) + b->dst, b->dst_stride);
-        b += 1;
-
-        vp8_predict_intra4x4(b, b->bmi.mode, b->predictor_base + b->predictor_offset);
-        RECON_INVOKE(rtcd, recon)(b->predictor_base + b->predictor_offset, &b->diff_base[b->diff_offset], *(b->base_dst) + b->dst, b->dst_stride);
-        b += 1;
-
-        vp8_predict_intra4x4(b, b->bmi.mode, b->predictor_base + b->predictor_offset);
-        RECON_INVOKE(rtcd, recon)(b->predictor_base + b->predictor_offset, &b->diff_base[b->diff_offset], *(b->base_dst) + b->dst, b->dst_stride);
-        b += 1;
-
-        vp8_predict_intra4x4(b, b->bmi.mode, b->predictor_base + b->predictor_offset);
-        RECON_INVOKE(rtcd, recon)(b->predictor_base + b->predictor_offset, &b->diff_base[b->diff_offset], *(b->base_dst) + b->dst, b->dst_stride);
-        b += 1;
-
-        vp8_predict_intra4x4(b, b->bmi.mode, b->predictor_base + b->predictor_offset);
-        RECON_INVOKE(rtcd, recon)(b->predictor_base + b->predictor_offset, &b->diff_base[b->diff_offset], *(b->base_dst) + b->dst, b->dst_stride);
-        b += 1;
-
-        vp8_predict_intra4x4(b, b->bmi.mode, b->predictor_base + b->predictor_offset);
-        RECON_INVOKE(rtcd, recon)(b->predictor_base + b->predictor_offset, &b->diff_base[b->diff_offset], *(b->base_dst) + b->dst, b->dst_stride);
-        b += 1;
-
-        vp8_predict_intra4x4(b, b->bmi.mode, b->predictor_base + b->predictor_offset);
-        RECON_INVOKE(rtcd, recon)(b->predictor_base + b->predictor_offset, &b->diff_base[b->diff_offset], *(b->base_dst) + b->dst, b->dst_stride);
-        b += 1;
-
-        vp8_predict_intra4x4(b, b->bmi.mode, b->predictor_base + b->predictor_offset);
-        RECON_INVOKE(rtcd, recon)(b->predictor_base + b->predictor_offset, &b->diff_base[b->diff_offset], *(b->base_dst) + b->dst, b->dst_stride);
-        b += 1;
-
-        vp8_predict_intra4x4(b, b->bmi.mode, b->predictor_base + b->predictor_offset);
-        RECON_INVOKE(rtcd, recon)(b->predictor_base + b->predictor_offset, &b->diff_base[b->diff_offset], *(b->base_dst) + b->dst, b->dst_stride);
-        b += 1;
-
-        vp8_predict_intra4x4(b, b->bmi.mode, b->predictor_base + b->predictor_offset);
-        RECON_INVOKE(rtcd, recon)(b->predictor_base + b->predictor_offset, &b->diff_base[b->diff_offset], *(b->base_dst) + b->dst, b->dst_stride);
-        b += 1;
-
-        vp8_predict_intra4x4(b, b->bmi.mode, b->predictor_base + b->predictor_offset);
-        RECON_INVOKE(rtcd, recon)(b->predictor_base + b->predictor_offset, &b->diff_base[b->diff_offset], *(b->base_dst) + b->dst, b->dst_stride);
-    }
-#else
     for (i = 0; i < 16; i++)
     {
         BLOCKD *b = &x->block[i];
@@ -398,7 +330,6 @@ void vp8_recon_intra4x4mb(const vp8_recon_rtcd_vtable_t *rtcd, MACROBLOCKD *x)
         vp8_predict_intra4x4(b, x->block[i].bmi.mode, x->block[i].predictor_base + x->block[i].predictor_offset);
         RECON_INVOKE(rtcd, recon)(b->predictor_base + b->predictor_offset, &b->diff_base[b->diff_offset], *(b->base_dst) + b->dst, b->dst_stride);
     }
-#endif
 
     vp8_recon_intra_mbuv(rtcd, x);
 

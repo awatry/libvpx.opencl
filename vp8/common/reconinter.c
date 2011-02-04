@@ -32,7 +32,7 @@
 static const int bbb[4] = {0, 2, 8, 10};
 
 
-
+//Copy 16 x 16-bytes from src to dst.
 void vp8_copy_mem16x16_c(
     unsigned char *src,
     int src_stride,
@@ -41,6 +41,9 @@ void vp8_copy_mem16x16_c(
 {
 
     int r;
+
+	//Set this up as a 2D kernel. Each loop iteration is X, each byte/int within
+	//is the Y address.
 
     for (r = 0; r < 16; r++)
     {
@@ -76,6 +79,7 @@ void vp8_copy_mem16x16_c(
 
 }
 
+//Copy 8 x 8-bytes
 void vp8_copy_mem8x8_c(
     unsigned char *src,
     int src_stride,
@@ -145,11 +149,14 @@ void vp8_build_inter_predictors_b(BLOCKD *d, int pitch, vp8_subpix_fn_t sppf)
     unsigned char *ptr;
     unsigned char *pred_ptr = d->predictor_base + d->predictor_offset;
 
+    int ptr_offset = d->pre + (d->bmi.mv.as_mv.row >> 3) * d->pre_stride + (d->bmi.mv.as_mv.col >> 3);
+
+    //d->base_pre is the start of the Macroblock's y_buffer, u_buffer, or v_buffer
     ptr_base = *(d->base_pre);
+    ptr = ptr_base + ptr_offset;
 
     if (d->bmi.mv.as_mv.row & 7 || d->bmi.mv.as_mv.col & 7)
     {
-        ptr = ptr_base + d->pre + (d->bmi.mv.as_mv.row >> 3) * d->pre_stride + (d->bmi.mv.as_mv.col >> 3);
         sppf(ptr, d->pre_stride, d->bmi.mv.as_mv.col & 7, d->bmi.mv.as_mv.row & 7, pred_ptr, pitch);
     }
     else
@@ -157,9 +164,6 @@ void vp8_build_inter_predictors_b(BLOCKD *d, int pitch, vp8_subpix_fn_t sppf)
 #if CONFIG_OPENCL
         CL_FINISH(d->cl_commands)
 #endif
-
-        ptr_base += d->pre + (d->bmi.mv.as_mv.row >> 3) * d->pre_stride + (d->bmi.mv.as_mv.col >> 3);
-        ptr = ptr_base;
 
         for (r = 0; r < 4; r++)
         {
@@ -175,6 +179,8 @@ void vp8_build_inter_predictors_b(BLOCKD *d, int pitch, vp8_subpix_fn_t sppf)
             ptr         += d->pre_stride;
         }
     }
+
+	//copy back cl_predictor_mem to b->predictor_base
 }
 
 void vp8_build_inter_predictors4b(MACROBLOCKD *x, BLOCKD *d, int pitch)
@@ -568,7 +574,7 @@ void vp8_build_uvmvs(MACROBLOCKD *x, int fullpixel)
 }
 
 
-/* The following functions are wriiten for skip_recon_mb() to call. Since there is no recon in this
+/* The following functions are written for skip_recon_mb() to call. Since there is no recon in this
  * situation, we can write the result directly to dst buffer instead of writing it to predictor
  * buffer and then copying it to dst buffer.
  */
@@ -580,8 +586,10 @@ static void vp8_build_inter_predictors_b_s(BLOCKD *d, unsigned char *dst_ptr, vp
     /*unsigned char *pred_ptr = d->predictor_base + d->predictor_offset;*/
     int dst_stride = d->dst_stride;
     int pre_stride = d->pre_stride;
+    int ptr_offset = d->pre + (d->bmi.mv.as_mv.row >> 3) * d->pre_stride + (d->bmi.mv.as_mv.col >> 3);
 
     ptr_base = *(d->base_pre);
+    ptr = ptr_base + ptr_offset;
 
 #if CONFIG_OPENCL
     CL_FINISH(d->cl_commands)
@@ -589,14 +597,10 @@ static void vp8_build_inter_predictors_b_s(BLOCKD *d, unsigned char *dst_ptr, vp
 
     if (d->bmi.mv.as_mv.row & 7 || d->bmi.mv.as_mv.col & 7)
     {
-        ptr = ptr_base + d->pre + (d->bmi.mv.as_mv.row >> 3) * d->pre_stride + (d->bmi.mv.as_mv.col >> 3);
         sppf(ptr, pre_stride, d->bmi.mv.as_mv.col & 7, d->bmi.mv.as_mv.row & 7, dst_ptr, dst_stride);
     }
     else
     {
-        ptr_base += d->pre + (d->bmi.mv.as_mv.row >> 3) * d->pre_stride + (d->bmi.mv.as_mv.col >> 3);
-        ptr = ptr_base;
-
         for (r = 0; r < 4; r++)
         {
 #ifdef MUST_BE_ALIGNED
@@ -692,6 +696,8 @@ void vp8_build_inter_predictors_mb_s(MACROBLOCKD *x)
     {
         /* note: this whole ELSE part is not executed at all. So, no way to test the correctness of my modification. Later,
          * if sth is wrong, go back to what it is in build_inter_predictors_mb.
+         *
+         * ACW: note: Not sure who the above comment belongs to.
          */
         int i;
 
@@ -724,7 +730,7 @@ void vp8_build_inter_predictors_mb_s(MACROBLOCKD *x)
                 }
             }
         }
-        else
+		else
         {
             for (i = 0; i < 16; i += 2)
             {
