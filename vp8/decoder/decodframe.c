@@ -333,6 +333,7 @@ void vp8_decode_macroblock(VP8D_COMP *pbi, MACROBLOCKD *xd)
                 }
                 else
                 {
+                    vp8_cl_block_prep(b, BLOCK_COPY_ALL);
                     vp8_dc_only_idct_add_cl(b, CL_FALSE, 0, b->qcoeff_offset, b->predictor_offset,
                         *(b->base_dst) + b->dst, 16, b->dst_stride);
                     CL_FINISH(b->cl_commands);

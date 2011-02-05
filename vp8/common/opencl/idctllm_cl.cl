@@ -123,19 +123,34 @@ __kernel void vp8_short_idct4x4llm_1_kernel(
 }
 
 __kernel void vp8_dc_only_idct_add_kernel(
-    short input_dc,
     __global unsigned char *pred_ptr,
     __global unsigned char *dst_ptr,
     int pitch,
-    int stride
+    int stride,
+    int use_diff,
+    global short *diff_base,
+    int diff_offset,
+    global short *qcoeff_base,
+    int qcoeff_offset,
+    global short *dequant
 )
 {
-    int a1 = ((input_dc + 4) >> 3);
+
     int r, c;
     int pred_offset,dst_offset;
-
     int tid = get_global_id(0);
+
+    int a1;
+
     if (tid < 16){
+
+        if (use_diff == 1){
+            a1 = diff_base[diff_offset];
+        } else {
+            a1 = qcoeff_base[qcoeff_offset] * dequant[0];
+        }
+        a1 = (a1 + 4)>>3;
+
         r = tid / 4;
         c = tid % 4;
 

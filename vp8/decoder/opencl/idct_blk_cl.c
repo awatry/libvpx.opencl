@@ -49,10 +49,8 @@ void vp8_dequant_dc_idct_add_y_block_cl(
                 //don't re-enable vp8_cl_block_finish until after dequant_dc_idct_add_cl is actually CL code.
             }
             else{
-                //Note: diff[offset] needs to become an offset just like everything else
-                // This will require modifying dc_only_idct_add as it's called
-                // from several places with changing source data.
                 CL_FINISH(b->cl_commands);
+                vp8_cl_block_prep(b, BLOCK_COPY_ALL);
                 vp8_dc_only_idct_add_cl(b, CL_TRUE, dc_offset, 0, pre_offset, dst+dst_offset, 16, stride);
                 CL_FINISH(b->cl_commands);
             }
@@ -101,9 +99,8 @@ void vp8_dequant_idct_add_y_block_cl (VP8D_COMP *pbi, MACROBLOCKD *xd)
             }
             else
             {
-                //Another case where (q+offset)[0] and dq[0] need to become references
-                //to cl_mem locations.
-                vp8_dc_only_idct_add_cl (&xd->block[0], CL_FALSE, 0, q_offset, pre_offset, dsty+dest_offset, 16, stride);
+                vp8_cl_block_prep(&xd->block[0], BLOCK_COPY_ALL);
+                vp8_dc_only_idct_add_cl(&xd->block[0], CL_FALSE, 0, q_offset, pre_offset, dsty+dest_offset, 16, stride);
                 CL_FINISH(xd->cl_commands);
                 ((int *)(q+q_offset))[0] = 0;
             }
@@ -164,9 +161,8 @@ void vp8_dequant_idct_add_uv_block_cl(VP8D_COMP *pbi, MACROBLOCKD *xd,
             }
             else
             {
-                //Another case where (q+offset)[0] and dq[0] need to become references
-                //to cl_mem locations.
                 CL_FINISH(xd->cl_commands);
+                vp8_cl_block_prep(&xd->block[block_num], BLOCK_COPY_ALL);
                 vp8_dc_only_idct_add_cl (&xd->block[block_num], CL_FALSE, 0, q_offset, pre_offset, dstu, 8, stride);
                 CL_FINISH(xd->cl_commands);
                 ((int *)(q+q_offset))[0] = 0;
@@ -194,9 +190,8 @@ void vp8_dequant_idct_add_uv_block_cl(VP8D_COMP *pbi, MACROBLOCKD *xd,
             }
             else
             {
-                //Another case where (q+offset)[0] and dq[0] need to become references
-                //to cl_mem locations.
                 CL_FINISH(xd->cl_commands);
+                vp8_cl_block_prep(&xd->block[block_num], BLOCK_COPY_ALL);
                 vp8_dc_only_idct_add_cl (&xd->block[block_num], CL_FALSE, 0, q_offset, pre_offset, dstv, 8, stride);
                 CL_FINISH(xd->cl_commands);
                 ((int *)(q+q_offset))[0] = 0;

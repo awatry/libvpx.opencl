@@ -17,6 +17,7 @@
 
 #include "idct_cl.h"
 #include "idctllm_cl.h"
+#include "blockd_cl.h"
 
 int cl_init_idct() {
     int err;
@@ -151,7 +152,7 @@ void vp8_short_idct4x4llm_1_cl(BLOCKD *b, int pitch)
 
 }
 
-void vp8_dc_only_idct_add_cl(BLOCKD *b, cl_bool use_diff, int diff_offset, int qcoeff_offset, int pred_offset, unsigned char *dst_ptr, int pitch, int stride)
+void vp8_dc_only_idct_add_cl(BLOCKD *b, cl_int use_diff, int diff_offset, int qcoeff_offset, int pred_offset, unsigned char *dst_ptr, int pitch, int stride)
 {
     
     int err;
@@ -159,7 +160,7 @@ void vp8_dc_only_idct_add_cl(BLOCKD *b, cl_bool use_diff, int diff_offset, int q
     unsigned char *pred_ptr = b->predictor_base + pred_offset;
 
     short input_dc;
-    if (use_diff == CL_TRUE){
+    if (use_diff == 1){
         input_dc = b->diff_base[diff_offset];
     } else {
         input_dc = b->qcoeff_base[qcoeff_offset] * b->dequant[0];
@@ -181,12 +182,16 @@ void vp8_dc_only_idct_add_cl(BLOCKD *b, cl_bool use_diff, int diff_offset, int q
     );
 
     //Set arguments and run kernel
-    err = 0;
-    err = clSetKernelArg(cl_data.vp8_dc_only_idct_add_kernel, 0, sizeof(short), &input_dc);
-    err |= clSetKernelArg(cl_data.vp8_dc_only_idct_add_kernel, 1, sizeof (cl_mem), &cl_data.srcData);
-    err |= clSetKernelArg(cl_data.vp8_dc_only_idct_add_kernel, 2, sizeof (cl_mem), &cl_data.destData);
-    err |= clSetKernelArg(cl_data.vp8_dc_only_idct_add_kernel, 3, sizeof (int), &pitch);
-    err |= clSetKernelArg(cl_data.vp8_dc_only_idct_add_kernel, 4, sizeof (int), &stride);
+    err =  clSetKernelArg(cl_data.vp8_dc_only_idct_add_kernel, 0, sizeof (cl_mem), &cl_data.srcData);
+    err |= clSetKernelArg(cl_data.vp8_dc_only_idct_add_kernel, 1, sizeof (cl_mem), &cl_data.destData);
+    err |= clSetKernelArg(cl_data.vp8_dc_only_idct_add_kernel, 2, sizeof (int), &pitch);
+    err |= clSetKernelArg(cl_data.vp8_dc_only_idct_add_kernel, 3, sizeof (int), &stride);
+    err |= clSetKernelArg(cl_data.vp8_dc_only_idct_add_kernel, 4, sizeof (cl_int), &use_diff);
+    err |= clSetKernelArg(cl_data.vp8_dc_only_idct_add_kernel, 5, sizeof (cl_mem), &b->cl_diff_mem);
+    err |= clSetKernelArg(cl_data.vp8_dc_only_idct_add_kernel, 6, sizeof (int), &diff_offset);
+    err |= clSetKernelArg(cl_data.vp8_dc_only_idct_add_kernel, 7, sizeof (cl_mem), &b->cl_qcoeff_mem);
+    err |= clSetKernelArg(cl_data.vp8_dc_only_idct_add_kernel, 8, sizeof (int), &qcoeff_offset);
+    err |= clSetKernelArg(cl_data.vp8_dc_only_idct_add_kernel, 9, sizeof (cl_mem), &b->cl_dequant_mem);
     CL_CHECK_SUCCESS( b->cl_commands, err != CL_SUCCESS,
         "Error: Failed to set kernel arguments!\n",
         vp8_dc_only_idct_add_c(input_dc, pred_ptr, dst_ptr, pitch, stride),
