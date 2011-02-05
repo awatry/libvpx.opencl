@@ -19,8 +19,35 @@ extern "C" {
 #include "vp8_opencl.h"
 #include "vp8/common/blockd.h"
 
-    extern int vp8_cl_block_finish(BLOCKD *b);
-    extern int vp8_cl_block_prep(BLOCKD *b);
+    #define DIFF 0x0001
+#define PREDICTOR 0x0002
+#define QCOEFF 0x0004
+#define DQCOEFF 0x0008
+#define EOBS 0x0010
+#define DEQUANT 0x0020
+#define BLOCK_COPY_ALL 0xffff
+
+#define BLOCK_MEM_SIZE 6
+enum {
+    DIFF_MEM = 0,
+    PRED_MEM = 1,
+    QCOEFF_MEM = 2,
+    DQCOEFF_MEM = 3,
+    EOBS_MEM = 4,
+    DEQUANT_MEM = 5
+} BLOCK_MEM_TYPES;
+
+
+struct cl_block_mem{
+    cl_mem gpu_mem;
+    size_t size;
+    void *host_mem;
+};
+
+typedef struct cl_block_mem block_mem;
+
+extern int vp8_cl_block_finish(BLOCKD *b, int flags);
+extern int vp8_cl_block_prep(BLOCKD *b, int flags);
 
 #ifdef	__cplusplus
 }

@@ -71,15 +71,15 @@ extern const char *vpx_codec_lib_dir(void);
     );
 
 #define CL_SET_BUF(cq, bufRef, bufSize, dataPtr, altPath) \
-    if (dataPtr != NULL){\
-                err = clEnqueueWriteBuffer(cq, bufRef, CL_FALSE, 0, \
-                    bufSize, dataPtr, 0, NULL, NULL); \
-                \
-                CL_CHECK_SUCCESS(cq, err != CL_SUCCESS, \
-                    "Error: Failed to write to buffer!\n", \
-                    altPath, \
-                ); \
-    }\
+    { \
+        err = clEnqueueWriteBuffer(cq, bufRef, CL_FALSE, 0, \
+            bufSize, dataPtr, 0, NULL, NULL); \
+        \
+        CL_CHECK_SUCCESS(cq, err != CL_SUCCESS, \
+            "Error: Failed to write to buffer!\n", \
+            altPath, \
+        ); \
+    } \
 
 #define CL_CREATE_BUF(cq, bufRef, bufType, bufSize, dataPtr, altPath) \
     if (dataPtr != NULL){ \

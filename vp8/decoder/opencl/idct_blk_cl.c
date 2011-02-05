@@ -42,10 +42,10 @@ void vp8_dequant_dc_idct_add_y_block_cl(
         {
             if (*eobs++ > 1){
                 CL_FINISH(b->cl_commands);
-                vp8_cl_block_prep(b);
+                vp8_cl_block_prep(b, QCOEFF|DEQUANT|DIFF|PREDICTOR);
                 vp8_dequant_dc_idct_add_cl (b, q_offset, pre_offset, dst+dst_offset, 16, stride, dc_offset);
-                CL_FINISH(b->cl_commands);
-                vp8_cl_block_finish(b);
+                //CL_FINISH(b->cl_commands);
+                vp8_cl_block_finish(b, QCOEFF);
                 //don't re-enable vp8_cl_block_finish until after dequant_dc_idct_add_cl is actually CL code.
             }
             else{
@@ -54,6 +54,7 @@ void vp8_dequant_dc_idct_add_y_block_cl(
                 // from several places with changing source data.
                 CL_FINISH(b->cl_commands);
                 vp8_dc_only_idct_add_cl(b, b->diff_base[dc_offset], pre_offset, dst+dst_offset, 16, stride);
+                CL_FINISH(b->cl_commands);
             }
 
             q_offset   += 16;
@@ -93,9 +94,9 @@ void vp8_dequant_idct_add_y_block_cl (VP8D_COMP *pbi, MACROBLOCKD *xd)
         {
             printf("vp8_dequant_idct_add_y_block_cl\n");
             if (*eobs++ > 1){
-                vp8_cl_block_prep(&xd->block[0]);
+                vp8_cl_block_prep(&xd->block[0], DQCOEFF|DEQUANT|PREDICTOR|BLOCK_COPY_ALL);
                 vp8_dequant_idct_add_cl(&xd->block[0],dsty, dest_offset, q_offset, pre_offset, 16, stride, pbi->dequant.idct_add);
-                vp8_cl_block_finish(&xd->block[0]);
+                vp8_cl_block_finish(&xd->block[0], DQCOEFF|BLOCK_COPY_ALL);
                 CL_FINISH(xd->cl_commands);
             }
             else
@@ -156,9 +157,9 @@ void vp8_dequant_idct_add_uv_block_cl(VP8D_COMP *pbi, MACROBLOCKD *xd,
             if (*eobs++ > 1){
                 //vp8_dequant_idct_add_cl (xd->block[16], q, dq, pre, dstu, 8, stride);
                 CL_FINISH(xd->cl_commands);
-                vp8_cl_block_prep(&xd->block[0]);
+                vp8_cl_block_prep(&xd->block[0], DQCOEFF|DEQUANT|PREDICTOR|BLOCK_COPY_ALL);
                 vp8_dequant_idct_add_cl(&xd->block[block_num], dstu, 0, q_offset, pre_offset, 8, stride, DEQUANT_INVOKE (&pbi->dequant, idct_add));
-                vp8_cl_block_finish(&xd->block[0]);
+                vp8_cl_block_finish(&xd->block[0], DQCOEFF|BLOCK_COPY_ALL);
                 CL_FINISH(xd->cl_commands);
             }
             else
@@ -186,9 +187,9 @@ void vp8_dequant_idct_add_uv_block_cl(VP8D_COMP *pbi, MACROBLOCKD *xd,
         {
             if (*eobs++ > 1){
                 CL_FINISH(xd->cl_commands);
-                vp8_cl_block_prep(&xd->block[block_num]);
+                vp8_cl_block_prep(&xd->block[block_num], DQCOEFF|DEQUANT|PREDICTOR|BLOCK_COPY_ALL);
                 vp8_dequant_idct_add_cl (&xd->block[block_num], dstv, 0, q_offset, pre_offset, 8, stride, DEQUANT_INVOKE (&pbi->dequant, idct_add));
-                vp8_cl_block_finish(&xd->block[block_num]);
+                vp8_cl_block_finish(&xd->block[block_num], DQCOEFF|BLOCK_COPY_ALL);
                 CL_FINISH(xd->cl_commands);
             }
             else

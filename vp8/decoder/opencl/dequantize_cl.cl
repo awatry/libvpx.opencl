@@ -77,7 +77,7 @@ __kernel void vp8_dequant_idct_add_kernel(
     /* the idct halves ( >> 1) the pitch */
     vp8_short_idct4x4llm(input, output, 4 << 1);
 
-    //Note, remember to copy back the input buffer to system memory.
+    //Note, remember to copy back the input buffer (qcoeff) to system memory.
     cl_memset_short(input, 0, 32);
 
     for (r = 0; r < 4; r++)
@@ -106,8 +106,8 @@ __kernel void vp8_dequant_dc_idct_add_kernel(
     __global short *qcoeff_base,
     int qcoeff_offset,
 
-    __global short *dq_base,
-    int dq_offset,
+    __global short *dequant_base,
+    int dequant_offset,
 
     __global unsigned char *pred_base,
     int pred_offset,
@@ -127,7 +127,7 @@ __kernel void vp8_dequant_dc_idct_add_kernel(
     int r, c;
 
     global short *input = &qcoeff_base[qcoeff_offset];
-    global short *dq = &dq_base[dq_offset];
+    global short *dq = &dequant_base[dequant_offset];
     global unsigned char *pred = pred_base + pred_offset;
 
     //A modified input buffer... copy back to System memory when done!
@@ -270,4 +270,18 @@ void cl_memset_short(__global short *s, int c, size_t n) {
     int i;
     for (i = 0; i < n/2; i++)
         *s++ = c;
+}
+
+kernel void vp8_memset_short_kernel(
+    global short *mem,
+    int offset,
+    short newval,
+    size_t size
+)
+{
+    int tid = get_global_id(0);
+
+    if (tid < (size/2)){
+        mem[offset+tid/2] = newval;
+    }
 }

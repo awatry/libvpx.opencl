@@ -18,10 +18,6 @@
 #include "idct_cl.h"
 #include "idctllm_cl.h"
 
-static const int cospi8sqrt2minus1 = 20091;
-static const int sinpi8sqrt2      = 35468;
-static const int rounding = 0;
-
 int cl_init_idct() {
     int err;
 
@@ -62,8 +58,6 @@ void vp8_short_idct4x4llm_cl(BLOCKD *b, int pitch)
         return;
     }
 
-    clFinish(b->cl_commands);
-
     CL_ENSURE_BUF_SIZE(b->cl_commands, cl_data.srcData, CL_MEM_READ_ONLY|CL_MEM_COPY_HOST_PTR,
             sizeof(short)*16, cl_data.srcAlloc, input,
             vp8_short_idct4x4llm_c(input,output,pitch)
@@ -99,8 +93,6 @@ void vp8_short_idct4x4llm_cl(BLOCKD *b, int pitch)
         vp8_short_idct4x4llm_c(input,output,pitch),
     );
 
-    CL_FINISH(b->cl_commands);
-
     return;
 }
 
@@ -119,12 +111,6 @@ void vp8_short_idct4x4llm_1_cl(BLOCKD *b, int pitch)
     }
 
     printf("vp8_short_idct4x4llm_1_cl\n");
-    clFinish(b->cl_commands);
-#ifdef NO_CL
-    printf("Using C-only idct4x4llm_1_cl... Test the CL version.");
-    vp8_short_idct4x4llm_1_c(input,output,pitch);
-    return;
-#endif
 
     CL_ENSURE_BUF_SIZE(b->cl_commands, cl_data.srcData, CL_MEM_READ_ONLY|CL_MEM_COPY_HOST_PTR,
             sizeof(short), cl_data.srcAlloc, input,
@@ -161,8 +147,6 @@ void vp8_short_idct4x4llm_1_cl(BLOCKD *b, int pitch)
         vp8_short_idct4x4llm_1_c(input,output,pitch),
     );
 
-    clFinish(b->cl_commands);
-
     return;
 
 }
@@ -179,8 +163,6 @@ void vp8_dc_only_idct_add_cl(BLOCKD *b, short input_dc, int pred_offset, unsigne
         vp8_dc_only_idct_add_c(input_dc, pred_ptr, dst_ptr, pitch, stride);
         return;
     }
-
-    CL_FINISH(b->cl_commands);
 
     CL_ENSURE_BUF_SIZE(b->cl_commands, cl_data.srcData, CL_MEM_READ_ONLY|CL_MEM_COPY_HOST_PTR,
             sizeof(unsigned char)*(4*pitch+4), cl_data.srcAlloc, pred_ptr,
@@ -219,8 +201,6 @@ void vp8_dc_only_idct_add_cl(BLOCKD *b, short input_dc, int pred_offset, unsigne
         "Error: Failed to read output array!\n",
         vp8_dc_only_idct_add_c(input_dc, pred_ptr, dst_ptr, pitch, stride),
     );
-
-    CL_FINISH(b->cl_commands);
 
     return;
 }
@@ -271,7 +251,6 @@ void vp8_short_inv_walsh4x4_cl(BLOCKD *b)
         printf("err = %d\n",err);
         vp8_short_inv_walsh4x4_c(b->dqcoeff_base+b->dqcoeff_offset, &b->diff_base[b->diff_offset]),
     );
-
 
     return;
 }

@@ -24,6 +24,10 @@ void cl_memset_short(short *s, int c, size_t n) {
         *s++ = c;
 }
 
+void vp8_memset_short_cl(cl_mem mem, int offset, short val){
+
+}
+
 int cl_destroy_dequant(){
     printf("Freeing dequant decoder resources\n");
 
@@ -249,8 +253,6 @@ void vp8_dequant_dc_idct_add_cl(
         "Error: Failed to read output array!\n",
         vp8_dequant_dc_idct_add_c(input, dq, pred, dest, pitch, stride, Dc),
     );
-
-    vp8_cl_block_finish(b);
 
     //CL Spec says this can be freed without clFinish first
     clReleaseMemObject(dest_mem);
