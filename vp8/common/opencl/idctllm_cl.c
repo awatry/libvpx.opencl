@@ -151,13 +151,19 @@ void vp8_short_idct4x4llm_1_cl(BLOCKD *b, int pitch)
 
 }
 
-void vp8_dc_only_idct_add_cl(BLOCKD *b, short input_dc, int pred_offset, unsigned char *dst_ptr, int pitch, int stride)
+void vp8_dc_only_idct_add_cl(BLOCKD *b, cl_bool use_diff, int diff_offset, int qcoeff_offset, int pred_offset, unsigned char *dst_ptr, int pitch, int stride)
 {
     
     int err;
     size_t global = 16;
-
     unsigned char *pred_ptr = b->predictor_base + pred_offset;
+
+    short input_dc;
+    if (use_diff == CL_TRUE){
+        input_dc = b->diff_base[diff_offset];
+    } else {
+        input_dc = b->qcoeff_base[qcoeff_offset] * b->dequant[0];
+    }
 
     if (cl_initialized != CL_SUCCESS){
         vp8_dc_only_idct_add_c(input_dc, pred_ptr, dst_ptr, pitch, stride);
