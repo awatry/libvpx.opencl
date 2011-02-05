@@ -69,7 +69,8 @@ void cl_destroy(cl_command_queue cq, int new_status) {
     CL_RELEASE_KERNEL(cl_data.vp8_bilinear_predict16x16_kernel);
 
     CL_RELEASE_KERNEL(cl_data.vp8_short_inv_walsh4x4_1_kernel);
-    CL_RELEASE_KERNEL(cl_data.vp8_short_inv_walsh4x4_kernel);
+    CL_RELEASE_KERNEL(cl_data.vp8_short_inv_walsh4x4_1st_pass_kernel);
+    CL_RELEASE_KERNEL(cl_data.vp8_short_inv_walsh4x4_2nd_pass_kernel);
     CL_RELEASE_KERNEL(cl_data.vp8_dc_only_idct_add_kernel);
     //CL_RELEASE_KERNEL(cl_data.vp8_short_idct4x4llm_1_kernel);
     //CL_RELEASE_KERNEL(cl_data.vp8_short_idct4x4llm_kernel);

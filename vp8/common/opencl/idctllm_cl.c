@@ -32,7 +32,8 @@ int cl_init_idct() {
 
     // Create the compute kernel in the program we wish to run
     CL_CREATE_KERNEL(cl_data,idct_program,vp8_short_inv_walsh4x4_1_kernel,"vp8_short_inv_walsh4x4_1_kernel");
-    CL_CREATE_KERNEL(cl_data,idct_program,vp8_short_inv_walsh4x4_kernel,"vp8_short_inv_walsh4x4_kernel");
+    CL_CREATE_KERNEL(cl_data,idct_program,vp8_short_inv_walsh4x4_1st_pass_kernel,"vp8_short_inv_walsh4x4_1st_pass_kernel");
+    CL_CREATE_KERNEL(cl_data,idct_program,vp8_short_inv_walsh4x4_2nd_pass_kernel,"vp8_short_inv_walsh4x4_2nd_pass_kernel");
     CL_CREATE_KERNEL(cl_data,idct_program,vp8_dc_only_idct_add_kernel,"vp8_dc_only_idct_add_kernel");
 
     ////idct4x4llm kernels are only useful for the encoder
@@ -227,7 +228,7 @@ void vp8_dc_only_idct_add_cl(BLOCKD *b, short input_dc, int pred_offset, unsigne
 void vp8_short_inv_walsh4x4_cl(BLOCKD *b)
 {
     int err;
-    size_t global = 1;
+    size_t global = 4;
 
     if (cl_initialized != CL_SUCCESS){
         vp8_short_inv_walsh4x4_c(b->dqcoeff_base+b->dqcoeff_offset,&b->diff_base[b->diff_offset]);
@@ -236,22 +237,43 @@ void vp8_short_inv_walsh4x4_cl(BLOCKD *b)
 
     //Set arguments and run kernel
     err = 0;
-    err = clSetKernelArg(cl_data.vp8_short_inv_walsh4x4_kernel, 0, sizeof (cl_mem), &b->cl_dqcoeff_mem);
-    err |= clSetKernelArg(cl_data.vp8_short_inv_walsh4x4_kernel, 1, sizeof(int), &b->dqcoeff_offset);
-    err |= clSetKernelArg(cl_data.vp8_short_inv_walsh4x4_kernel, 2, sizeof (cl_mem), &b->cl_diff_mem);
-    err |= clSetKernelArg(cl_data.vp8_short_inv_walsh4x4_kernel, 3, sizeof(int), &b->diff_offset);
+    err = clSetKernelArg(cl_data.vp8_short_inv_walsh4x4_1st_pass_kernel, 0, sizeof (cl_mem), &b->cl_dqcoeff_mem);
+    err |= clSetKernelArg(cl_data.vp8_short_inv_walsh4x4_1st_pass_kernel, 1, sizeof(int), &b->dqcoeff_offset);
+    err |= clSetKernelArg(cl_data.vp8_short_inv_walsh4x4_1st_pass_kernel, 2, sizeof (cl_mem), &b->cl_diff_mem);
+    err |= clSetKernelArg(cl_data.vp8_short_inv_walsh4x4_1st_pass_kernel, 3, sizeof(int), &b->diff_offset);
     CL_CHECK_SUCCESS( b->cl_commands, err != CL_SUCCESS,
         "Error: Failed to set kernel arguments!\n",
         vp8_short_inv_walsh4x4_c(b->dqcoeff_base+b->dqcoeff_offset, &b->diff_base[b->diff_offset]),
     );
 
     /* Execute the kernel */
-    err = clEnqueueNDRangeKernel(b->cl_commands, cl_data.vp8_short_inv_walsh4x4_kernel, 1, NULL, &global, NULL , 0, NULL, NULL);
+    err = clEnqueueNDRangeKernel(b->cl_commands, cl_data.vp8_short_inv_walsh4x4_1st_pass_kernel, 1, NULL, &global, NULL , 0, NULL, NULL);
     CL_CHECK_SUCCESS( b->cl_commands, err != CL_SUCCESS,
         "Error: Failed to execute kernel!\n",
         printf("err = %d\n",err);
         vp8_short_inv_walsh4x4_c(b->dqcoeff_base+b->dqcoeff_offset, &b->diff_base[b->diff_offset]),
     );
+
+    //Second pass
+    //Set arguments and run kernel
+    err = 0;
+    err = clSetKernelArg(cl_data.vp8_short_inv_walsh4x4_2nd_pass_kernel, 0, sizeof (cl_mem), &b->cl_dqcoeff_mem);
+    err |= clSetKernelArg(cl_data.vp8_short_inv_walsh4x4_2nd_pass_kernel, 1, sizeof(int), &b->dqcoeff_offset);
+    err |= clSetKernelArg(cl_data.vp8_short_inv_walsh4x4_2nd_pass_kernel, 2, sizeof (cl_mem), &b->cl_diff_mem);
+    err |= clSetKernelArg(cl_data.vp8_short_inv_walsh4x4_2nd_pass_kernel, 3, sizeof(int), &b->diff_offset);
+    CL_CHECK_SUCCESS( b->cl_commands, err != CL_SUCCESS,
+        "Error: Failed to set kernel arguments!\n",
+        vp8_short_inv_walsh4x4_c(b->dqcoeff_base+b->dqcoeff_offset, &b->diff_base[b->diff_offset]),
+    );
+
+    /* Execute the kernel */
+    err = clEnqueueNDRangeKernel(b->cl_commands, cl_data.vp8_short_inv_walsh4x4_2nd_pass_kernel, 1, NULL, &global, NULL , 0, NULL, NULL);
+    CL_CHECK_SUCCESS( b->cl_commands, err != CL_SUCCESS,
+        "Error: Failed to execute kernel!\n",
+        printf("err = %d\n",err);
+        vp8_short_inv_walsh4x4_c(b->dqcoeff_base+b->dqcoeff_offset, &b->diff_base[b->diff_offset]),
+    );
+
 
     return;
 }
@@ -260,7 +282,7 @@ void vp8_short_inv_walsh4x4_1_cl(BLOCKD *b)
 {
     
     int err;
-    size_t global = 1;
+    size_t global = 4;
 
     if (cl_initialized != CL_SUCCESS){
         vp8_short_inv_walsh4x4_1_c(b->dqcoeff_base + b->dqcoeff_offset,

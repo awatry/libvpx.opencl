@@ -1,4 +1,5 @@
 #pragma OPENCL EXTENSION cl_khr_byte_addressable_store : enable
+#pragma OPENCL EXTENSION cl_amd_printf : enable
 
 __constant int cospi8sqrt2minus1 = 20091;
 __constant int sinpi8sqrt2      = 35468;
@@ -7,6 +8,16 @@ __constant int rounding = 0;
 
 kernel void vp8_short_idct4x4llm_1st_pass_kernel(global short*,global short *,int);
 kernel void vp8_short_idct4x4llm_2nd_pass_kernel(global short*,int);
+
+kernel void vp8_short_inv_walsh4x4_1st_pass_kernel(
+    global short*,int,global short*,int
+);
+
+kernel void vp8_short_inv_walsh4x4_2nd_pass_kernel(
+    global short*,int,global short*,int
+);
+
+
 
 __kernel void vp8_short_idct4x4llm_kernel(
     __global short *input,
@@ -155,16 +166,28 @@ __kernel void vp8_short_inv_walsh4x4_kernel(
     int src_offset,
     __global short *output_base,
     int out_offset
+){
+    vp8_short_inv_walsh4x4_1st_pass_kernel(src_base,src_offset,output_base,out_offset);
+    vp8_short_inv_walsh4x4_2nd_pass_kernel(src_base,src_offset,output_base,out_offset);
+}
+
+__kernel void vp8_short_inv_walsh4x4_1st_pass_kernel(
+    __global short *src_base,
+    int src_offset,
+    __global short *output_base,
+    int out_offset
 )
 {
 
     __global short *input = src_base + src_offset;
     __global short *output = output_base + src_offset;
+    int tid = get_global_id(0);
 
+#define VEC_WALSH 0
+#if VEC_WALSH
     //4-short vectors to calculate things in
     short4 a,b,c,d, a2v, b2v, c2v, d2v, a1t, b1t, c1t, d1t;
     short16 out;
-    int tid = get_global_id(0);
 
     if (tid == 0){
         //first pass loop in vector form
@@ -176,6 +199,8 @@ __kernel void vp8_short_inv_walsh4x4_kernel(
         vstore4(c + d, 1, output);
         vstore4(a - b, 2, output);
         vstore4(d - c, 3, output);
+
+        return;
 
         //2nd pass
         a = (short4)(output[0], output[4], output[8], output[12]);
@@ -203,6 +228,63 @@ __kernel void vp8_short_inv_walsh4x4_kernel(
         out.s37bf = d2v;
         vstore16(out,0,output);
     }
+#else
+
+    int i;
+    int a1, b1, c1, d1;
+    int a2, b2, c2, d2;
+    global short *ip = input;
+    global short *op = output;
+
+    int offset;
+
+    if (tid < 4){
+        offset = tid;
+        a1 = ip[offset] + ip[offset + 12];
+        b1 = ip[offset + 4] + ip[offset + 8];
+        c1 = ip[offset + 4] - ip[offset + 8];
+        d1 = ip[offset] - ip[offset + 12];
+
+        op[offset] = a1 + b1;
+        op[offset + 4] = c1 + d1;
+        op[offset + 8] = a1 - b1;
+        op[offset + 12] = d1 - c1;
+    }
+#endif
+}
+
+__kernel void vp8_short_inv_walsh4x4_2nd_pass_kernel(
+    __global short *src_base,
+    int src_offset,
+    __global short *output_base,
+    int out_offset
+)
+{
+    int i;
+    int a1, b1, c1, d1;
+    int a2, b2, c2, d2;
+
+    __global short *output = output_base + src_offset;
+    int tid = get_global_id(0);
+    int offset = 0;
+
+    if (tid < 4){
+        offset = 4*tid;
+        a1 = output[offset] + output[offset + 3];
+        b1 = output[offset + 1] + output[offset + 2];
+        c1 = output[offset + 1] - output[offset + 2];
+        d1 = output[offset + 0] - output[offset + 3];
+
+        a2 = a1 + b1;
+        b2 = c1 + d1;
+        c2 = a1 - b1;
+        d2 = d1 - c1;
+
+        output[offset + 0] = (a2 + 3) >> 3;
+        output[offset + 1] = (b2 + 3) >> 3;
+        output[offset + 2] = (c2 + 3) >> 3;
+        output[offset + 3] = (d2 + 3) >> 3;
+    }
 }
 
 __kernel void vp8_short_inv_walsh4x4_1_kernel(
@@ -213,14 +295,16 @@ __kernel void vp8_short_inv_walsh4x4_1_kernel(
 ){
     int a1;
     int tid = get_global_id(0);
-    short16 a;
+    //short16 a;
+    int i;
+    short4 a;
     __global short *input = src_data + src_offset;
     __global short *output = dst_data + dst_offset;
 
-    if (tid == 0)
+    if (tid < 4)
     {
         a1 = ((input[0] + 3) >> 3);
         a = (short)a1; //Set all elements of vector to a1
-        vstore16(a, 0, output);
+        vstore4(a, tid, output);
     }
 }
