@@ -46,7 +46,7 @@ void vp8_filter_block2d_first_pass(
         for (i=0; i < output_width*output_height; i++){
             src_offset = i + (i/output_width * (src_pixels_per_line - output_width)) + PS2;
 
-#if 0
+#if 1
                 int8 t8, s, f;
                 int4 t4;
                 int2 t2;
@@ -83,9 +83,8 @@ void vp8_filter_block2d_first_pass(
         }
     }
 
-    //Add a fence/barrier so that no 2nd pass stuff starts before 1st pass is done.
+    //Add a fence so that no 2nd pass stuff starts before 1st pass writes are done.
     write_mem_fence(CLK_GLOBAL_MEM_FENCE);
-    //barrier(CLK_GLOBAL_MEM_FENCE);
 }
 
 void vp8_filter_block2d_second_pass
@@ -136,7 +135,6 @@ void vp8_filter_block2d_second_pass
             Temp = 255;
 
         output_ptr[out_offset] = (unsigned char)Temp;
-        //output_ptr[i] = (unsigned char)out_offset;
     }
 }
 
