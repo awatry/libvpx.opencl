@@ -257,10 +257,8 @@ void vp8_short_inv_walsh4x4_cl(BLOCKD *b)
     //Second pass
     //Set arguments and run kernel
     err = 0;
-    err = clSetKernelArg(cl_data.vp8_short_inv_walsh4x4_2nd_pass_kernel, 0, sizeof (cl_mem), &b->cl_dqcoeff_mem);
-    err |= clSetKernelArg(cl_data.vp8_short_inv_walsh4x4_2nd_pass_kernel, 1, sizeof(int), &b->dqcoeff_offset);
-    err |= clSetKernelArg(cl_data.vp8_short_inv_walsh4x4_2nd_pass_kernel, 2, sizeof (cl_mem), &b->cl_diff_mem);
-    err |= clSetKernelArg(cl_data.vp8_short_inv_walsh4x4_2nd_pass_kernel, 3, sizeof(int), &b->diff_offset);
+    err = clSetKernelArg(cl_data.vp8_short_inv_walsh4x4_2nd_pass_kernel, 0, sizeof (cl_mem), &b->cl_diff_mem);
+    err |= clSetKernelArg(cl_data.vp8_short_inv_walsh4x4_2nd_pass_kernel, 1, sizeof(int), &b->diff_offset);
     CL_CHECK_SUCCESS( b->cl_commands, err != CL_SUCCESS,
         "Error: Failed to set kernel arguments!\n",
         vp8_short_inv_walsh4x4_c(b->dqcoeff_base+b->dqcoeff_offset, &b->diff_base[b->diff_offset]),

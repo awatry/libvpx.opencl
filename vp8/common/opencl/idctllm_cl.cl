@@ -9,15 +9,6 @@ __constant int rounding = 0;
 kernel void vp8_short_idct4x4llm_1st_pass_kernel(global short*,global short *,int);
 kernel void vp8_short_idct4x4llm_2nd_pass_kernel(global short*,int);
 
-kernel void vp8_short_inv_walsh4x4_1st_pass_kernel(
-    global short*,int,global short*,int
-);
-
-kernel void vp8_short_inv_walsh4x4_2nd_pass_kernel(
-    global short*,int,global short*,int
-);
-
-
 
 __kernel void vp8_short_idct4x4llm_kernel(
     __global short *input,
@@ -161,15 +152,6 @@ __kernel void vp8_dc_only_idct_add_kernel(
     }
 }
 
-__kernel void vp8_short_inv_walsh4x4_kernel(
-    __global short *src_base,
-    int src_offset,
-    __global short *output_base,
-    int out_offset
-){
-    vp8_short_inv_walsh4x4_1st_pass_kernel(src_base,src_offset,output_base,out_offset);
-    vp8_short_inv_walsh4x4_2nd_pass_kernel(src_base,src_offset,output_base,out_offset);
-}
 
 __kernel void vp8_short_inv_walsh4x4_1st_pass_kernel(
     __global short *src_base,
@@ -254,8 +236,6 @@ __kernel void vp8_short_inv_walsh4x4_1st_pass_kernel(
 }
 
 __kernel void vp8_short_inv_walsh4x4_2nd_pass_kernel(
-    __global short *src_base,
-    int src_offset,
     __global short *output_base,
     int out_offset
 )
@@ -264,7 +244,7 @@ __kernel void vp8_short_inv_walsh4x4_2nd_pass_kernel(
     int a1, b1, c1, d1;
     int a2, b2, c2, d2;
 
-    __global short *output = output_base + src_offset;
+    __global short *output = output_base + out_offset;
     int tid = get_global_id(0);
     int offset = 0;
 
