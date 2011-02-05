@@ -186,6 +186,9 @@ VP8_COMMON_SRCS-$(CONFIG_OPENCL) += common/opencl/filter_cl.c
 VP8_COMMON_SRCS-$(CONFIG_OPENCL) += common/opencl/filter_cl.cl
 VP8_COMMON_SRCS-$(CONFIG_OPENCL) += common/opencl/subpixel_cl.h
 
+VP8_COMMON_SRCS-$(CONFIG_OPENCL) += common/opencl/reconinter_cl.h
+VP8_COMMON_SRCS-$(CONFIG_OPENCL) += common/opencl/reconinter_cl.c
+
 VP8_COMMON_SRCS-$(CONFIG_OPENCL) += common/opencl/idctllm_cl.h
 VP8_COMMON_SRCS-$(CONFIG_OPENCL) += common/opencl/idctllm_cl.c
 VP8_COMMON_SRCS-$(CONFIG_OPENCL) += common/opencl/idctllm_cl.cl
