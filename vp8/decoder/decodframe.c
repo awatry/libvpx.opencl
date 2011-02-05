@@ -619,7 +619,9 @@ static void init_frame(VP8D_COMP *pbi)
         /* To enable choice of different interpolation filters */
         if (pc->mcomp_filter_type == SIXTAP)
         {
+#if CONFIG_OPENCL
             xd->sixtap_filter = CL_TRUE;
+#endif
             xd->subpixel_predict      = SUBPIX_INVOKE(RTCD_VTABLE(subpix), sixtap4x4);
             xd->subpixel_predict8x4   = SUBPIX_INVOKE(RTCD_VTABLE(subpix), sixtap8x4);
             xd->subpixel_predict8x8   = SUBPIX_INVOKE(RTCD_VTABLE(subpix), sixtap8x8);
@@ -627,7 +629,9 @@ static void init_frame(VP8D_COMP *pbi)
         }
         else
         {
+#if CONFIG_OPENCL
             xd->sixtap_filter = CL_FALSE;
+#endif
             xd->subpixel_predict      = SUBPIX_INVOKE(RTCD_VTABLE(subpix), bilinear4x4);
             xd->subpixel_predict8x4   = SUBPIX_INVOKE(RTCD_VTABLE(subpix), bilinear8x4);
             xd->subpixel_predict8x8   = SUBPIX_INVOKE(RTCD_VTABLE(subpix), bilinear8x8);
