@@ -36,23 +36,17 @@ void vp8_dequant_dc_idct_add_y_block_cl(
     printf("vp8_dequant_dc_idct_add_y_block_cl\n");
     CL_FINISH(b->cl_commands);
 
+    vp8_cl_block_prep(b, QCOEFF|DEQUANT|DIFF|PREDICTOR);
     for (i = 0; i < 4; i++)
     {
         for (j = 0; j < 4; j++)
         {
             if (*eobs++ > 1){
                 CL_FINISH(b->cl_commands);
-                vp8_cl_block_prep(b, QCOEFF|DEQUANT|DIFF|PREDICTOR);
                 vp8_dequant_dc_idct_add_cl (b, q_offset, pre_offset, dst+dst_offset, 16, stride, dc_offset);
-                //CL_FINISH(b->cl_commands);
-                vp8_cl_block_finish(b, QCOEFF);
-                //don't re-enable vp8_cl_block_finish until after dequant_dc_idct_add_cl is actually CL code.
             }
             else{
-                CL_FINISH(b->cl_commands);
-                vp8_cl_block_prep(b, BLOCK_COPY_ALL);
                 vp8_dc_only_idct_add_cl(b, CL_TRUE, dc_offset, 0, pre_offset, dst+dst_offset, 16, stride);
-                CL_FINISH(b->cl_commands);
             }
 
             q_offset   += 16;
@@ -65,6 +59,7 @@ void vp8_dequant_dc_idct_add_y_block_cl(
         dst_offset += 4*stride - 16;
     }
 
+    vp8_cl_block_finish(b, QCOEFF);
     CL_FINISH(b->cl_commands);
 
 }

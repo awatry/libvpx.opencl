@@ -215,7 +215,6 @@ void vp8_dequant_dc_idct_add_cl(
     cur_size = 0;
     CL_ENSURE_BUF_SIZE(b->cl_commands, dest_mem, CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,
             dest_size, cur_size, dest,
-            vp8_dequant_dc_idct_add_c(input, dq, pred, dest, pitch, stride, Dc)
     );
 
     //Assuming that all input cl_mem has been initialized outside of this Fn.
@@ -235,23 +234,20 @@ void vp8_dequant_dc_idct_add_cl(
     err |= clSetKernelArg(cl_data.vp8_dequant_dc_idct_add_kernel, 10, sizeof (int), &stride);
 
     CL_CHECK_SUCCESS( b->cl_commands, err != CL_SUCCESS,
-        "Error: Failed to set kernel arguments!\n",
-        vp8_dequant_dc_idct_add_c(input, dq, pred, dest, pitch, stride, Dc),
+        "Error: Failed to set kernel arguments!\n",,
     );
 
     /* Execute the kernel */
     err = clEnqueueNDRangeKernel( b->cl_commands, cl_data.vp8_dequant_dc_idct_add_kernel, 1, NULL, &global, NULL , 0, NULL, NULL);
     CL_CHECK_SUCCESS( b->cl_commands, err != CL_SUCCESS,
         "Error: Failed to execute kernel!\n",
-        printf("err = %d\n",err);\
-        vp8_dequant_dc_idct_add_c(input, dq, pred, dest, pitch, stride, Dc),
+        printf("err = %d\n",err);,
     );
 
     /* Read back the result data from the device */
     err = clEnqueueReadBuffer(b->cl_commands, dest_mem, CL_FALSE, 0, dest_size, dest, 0, NULL, NULL);
     CL_CHECK_SUCCESS( b->cl_commands, err != CL_SUCCESS,
-        "Error: Failed to read output array!\n",
-        vp8_dequant_dc_idct_add_c(input, dq, pred, dest, pitch, stride, Dc),
+        "Error: Failed to read output array!\n",,
     );
 
     //CL Spec says this can be freed without clFinish first
