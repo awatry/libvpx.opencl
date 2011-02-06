@@ -270,17 +270,3 @@ void cl_memset_short(__global short *s, int c, size_t n) {
     for (i = 0; i < n/2; i++)
         *s++ = c;
 }
-
-kernel void vp8_memset_short_kernel(
-    global short *mem,
-    int offset,
-    short newval,
-    size_t size
-)
-{
-    int tid = get_global_id(0);
-
-    if (tid < (size/2)){
-        mem[offset+tid/2] = newval;
-    }
-}

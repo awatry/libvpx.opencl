@@ -1,4 +1,5 @@
 #pragma OPENCL EXTENSION cl_khr_byte_addressable_store : enable
+#pragma OPENCL EXTENSION cl_amd_printf : enable
 
 __constant int bilinear_filters[8][2] = {
     { 128, 0},
@@ -403,4 +404,42 @@ __kernel void vp8_bilinear_predict16x16_kernel
         ) {
 
     vp8_filter_block2d_bil(src_ptr, dst_ptr, src_pixels_per_line, dst_pitch, xoffset, yoffset, 16, 16, FData);
+}
+
+
+kernel void vp8_memcpy_kernel(
+    global unsigned char *src,
+    int src_stride,
+    global unsigned char *dst,
+    int dst_stride,
+    int num_bytes,
+    int num_iter
+){
+
+    int i,r;
+    int src_offset, dst_offset;
+
+    r = get_global_id(1);
+    if (r < get_global_size(1)){
+        i = get_global_id(0);
+        if (i < get_global_size(0)){
+            src_offset = r*src_stride + i;
+            dst_offset = r*dst_stride + i;
+            dst[dst_offset] = src[src_offset];
+        }
+    }
+}
+
+kernel void vp8_memset_short_kernel(
+    global short *mem,
+    int offset,
+    short newval,
+    size_t size
+)
+{
+    int tid = get_global_id(0);
+
+    if (tid < (size/2)){
+        mem[offset+tid/2] = newval;
+    }
 }

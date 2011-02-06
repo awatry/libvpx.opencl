@@ -141,6 +141,7 @@ typedef struct VP8_COMMON_CL {
     cl_kernel vp8_bilinear_predict8x4_kernel;
     cl_kernel vp8_bilinear_predict8x8_kernel;
     cl_kernel vp8_bilinear_predict16x16_kernel;
+    cl_kernel vp8_memcpy_kernel;
 
     cl_program idct_program;
     cl_kernel vp8_short_inv_walsh4x4_1_kernel;

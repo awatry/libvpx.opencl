@@ -32,6 +32,8 @@
 #include "reconinter_cl.h"
 #include "blockd_cl.h"
 
+#include <stdio.h>
+
 /* use this define on systems where unaligned int reads and writes are
  * not allowed, i.e. ARM architectures
  */
@@ -40,116 +42,85 @@
 
 static const int bbb[4] = {0, 2, 8, 10};
 
-
-//Copy 16 x 16-bytes from src to dst.
-void vp8_copy_mem16x16_cl(
+static void vp8_copy_mem_cl(
+    cl_command_queue cq,
     unsigned char *src,
     int src_stride,
     unsigned char *dst,
-    int dst_stride)
-{
+    int dst_stride,
+    int num_bytes,
+    int num_iter
+){
 
-    int r;
+#if 1
+    cl_mem src_mem;
+    cl_mem dst_mem;
+    int err;
+    size_t src_len = (num_iter - 1)*src_stride + num_bytes;
+    size_t dst_len = (num_iter - 1)*dst_stride + num_bytes;
+    size_t global[2] = {num_bytes, num_iter};
 
-	//Set this up as a 2D kernel. Each loop iteration is X, each byte/int within
-	//is the Y address.
+    CL_FINISH(cq);
 
-    for (r = 0; r < 16; r++)
-    {
-#ifdef MUST_BE_ALIGNED
-        dst[0] = src[0];
-        dst[1] = src[1];
-        dst[2] = src[2];
-        dst[3] = src[3];
-        dst[4] = src[4];
-        dst[5] = src[5];
-        dst[6] = src[6];
-        dst[7] = src[7];
-        dst[8] = src[8];
-        dst[9] = src[9];
-        dst[10] = src[10];
-        dst[11] = src[11];
-        dst[12] = src[12];
-        dst[13] = src[13];
-        dst[14] = src[14];
-        dst[15] = src[15];
+    CL_CREATE_BUF( cq, src_mem, CL_MEM_WRITE_ONLY|CL_MEM_COPY_HOST_PTR,
+        sizeof (unsigned char) * src_len, src,
+    ); 
+
+    CL_CREATE_BUF( cq, dst_mem, CL_MEM_WRITE_ONLY|CL_MEM_COPY_HOST_PTR,
+        sizeof (unsigned char) * dst_len, dst,
+    );
+
+    /* Set kernel arguments */
+    err = 0; \
+    err = clSetKernelArg(cl_data.vp8_memcpy_kernel, 0, sizeof (cl_mem), &src_mem);
+    err |= clSetKernelArg(cl_data.vp8_memcpy_kernel, 1, sizeof (int), &src_stride);
+    err |= clSetKernelArg(cl_data.vp8_memcpy_kernel, 2, sizeof (cl_mem), &dst_mem);
+    err |= clSetKernelArg(cl_data.vp8_memcpy_kernel, 3, sizeof (int), &dst_stride);
+    err |= clSetKernelArg(cl_data.vp8_memcpy_kernel, 4, sizeof (int), &num_bytes);
+    err |= clSetKernelArg(cl_data.vp8_memcpy_kernel, 5, sizeof (int), &num_iter);
+    CL_CHECK_SUCCESS( cq, err != CL_SUCCESS,
+        "Error: Failed to set kernel arguments!\n",
+        return,
+    );
+
+    /* Execute the kernel */
+    err = clEnqueueNDRangeKernel( cq, cl_data.vp8_memcpy_kernel, 2, NULL, global, NULL , 0, NULL, NULL);
+    CL_CHECK_SUCCESS( cq, err != CL_SUCCESS,
+        "Error: Failed to execute kernel!\n",
+        return,
+    );
+
+    /* Read back the result data from the device */
+    err = clEnqueueReadBuffer(cq, dst_mem, CL_FALSE, 0,
+            sizeof (unsigned char) * dst_len, dst, 0, NULL, NULL);
+    CL_CHECK_SUCCESS( cq, err != CL_SUCCESS,
+        "Error: Failed to read output array!\n",
+        return,
+    );
+
+
+    clReleaseMemObject(src_mem);
+    clReleaseMemObject(dst_mem);
+
+    clFinish(cq);
 
 #else
-        ((int *)dst)[0] = ((int *)src)[0] ;
-        ((int *)dst)[1] = ((int *)src)[1] ;
-        ((int *)dst)[2] = ((int *)src)[2] ;
-        ((int *)dst)[3] = ((int *)src)[3] ;
+    int i,r;
 
-#endif
+    CL_FINISH(cq);
+
+    for (r = 0; r < num_iter; r++)
+    {
+        for (i=0; i < num_bytes; i++){
+            dst[i] = src[i];
+        }
+        
         src += src_stride;
         dst += dst_stride;
 
     }
-
-}
-
-//Copy 8 x 8-bytes
-void vp8_copy_mem8x8_cl(
-    unsigned char *src,
-    int src_stride,
-    unsigned char *dst,
-    int dst_stride)
-{
-    int r;
-
-    for (r = 0; r < 8; r++)
-    {
-#ifdef MUST_BE_ALIGNED
-        dst[0] = src[0];
-        dst[1] = src[1];
-        dst[2] = src[2];
-        dst[3] = src[3];
-        dst[4] = src[4];
-        dst[5] = src[5];
-        dst[6] = src[6];
-        dst[7] = src[7];
-#else
-        ((int *)dst)[0] = ((int *)src)[0] ;
-        ((int *)dst)[1] = ((int *)src)[1] ;
 #endif
-        src += src_stride;
-        dst += dst_stride;
-
-    }
-
 }
-
-void vp8_copy_mem8x4_cl(
-    unsigned char *src,
-    int src_stride,
-    unsigned char *dst,
-    int dst_stride)
-{
-    int r;
-
-    for (r = 0; r < 4; r++)
-    {
-#ifdef MUST_BE_ALIGNED
-        dst[0] = src[0];
-        dst[1] = src[1];
-        dst[2] = src[2];
-        dst[3] = src[3];
-        dst[4] = src[4];
-        dst[5] = src[5];
-        dst[6] = src[6];
-        dst[7] = src[7];
-#else
-        ((int *)dst)[0] = ((int *)src)[0] ;
-        ((int *)dst)[1] = ((int *)src)[1] ;
-#endif
-        src += src_stride;
-        dst += dst_stride;
-
-    }
-
-}
-
-
 
 void vp8_build_inter_predictors_b_cl(BLOCKD *d, int pitch, vp8_subpix_fn_t sppf)
 {
@@ -170,10 +141,9 @@ void vp8_build_inter_predictors_b_cl(BLOCKD *d, int pitch, vp8_subpix_fn_t sppf)
     }
     else
     {
-#if CONFIG_OPENCL
         CL_FINISH(d->cl_commands)
-#endif
 
+        //vp8_copy_mem_cl(ptr,d->pre_stride,pred_ptr,pitch,4,4);
         for (r = 0; r < 4; r++)
         {
 #ifdef MUST_BE_ALIGNED
@@ -203,19 +173,14 @@ void vp8_build_inter_predictors4b_cl(MACROBLOCKD *x, BLOCKD *d, int pitch)
 
     if (d->bmi.mv.as_mv.row & 7 || d->bmi.mv.as_mv.col & 7)
     {
-#if CONFIG_OPENCL
             if (cl_initialized == CL_SUCCESS && x->sixtap_filter == CL_TRUE)
                 vp8_sixtap_predict8x8_cl(x, ptr, d->pre_stride, d->bmi.mv.as_mv.col & 7, d->bmi.mv.as_mv.row & 7, pred_ptr, pitch);
             else
-#endif
-        x->subpixel_predict8x8(ptr, d->pre_stride, d->bmi.mv.as_mv.col & 7, d->bmi.mv.as_mv.row & 7, pred_ptr, pitch);
+                x->subpixel_predict8x8(ptr, d->pre_stride, d->bmi.mv.as_mv.col & 7, d->bmi.mv.as_mv.row & 7, pred_ptr, pitch);
     }
     else
     {
-#if CONFIG_OPENCL
-        CL_FINISH(d->cl_commands)
-#endif
-        vp8_copy_mem8x8_cl(ptr, d->pre_stride, pred_ptr, pitch);
+        vp8_copy_mem_cl(d->cl_commands, ptr, d->pre_stride, pred_ptr, pitch, 8, 8);
     }
 }
 
@@ -234,10 +199,7 @@ void vp8_build_inter_predictors2b_cl(MACROBLOCKD *x, BLOCKD *d, int pitch)
     }
     else
     {
-#if CONFIG_OPENCL
-        CL_FINISH(d->cl_commands)
-#endif
-        vp8_copy_mem8x4_cl(ptr, d->pre_stride, pred_ptr, pitch);
+        vp8_copy_mem_cl(d->cl_commands, ptr, d->pre_stride, pred_ptr, pitch, 8, 4);
     }
 }
 
@@ -264,28 +226,19 @@ void vp8_build_inter_predictors_mbuv_cl(MACROBLOCKD *x)
 
         if ((mv_row | mv_col) & 7)
         {
-#if CONFIG_OPENCL
             if (cl_initialized == CL_SUCCESS && x->sixtap_filter == CL_TRUE){
                 vp8_sixtap_predict8x8_cl(x,uptr, pre_stride, mv_col & 7, mv_row & 7, upred_ptr, 8);
                 vp8_sixtap_predict8x8_cl(x,vptr, pre_stride, mv_col & 7, mv_row & 7, vpred_ptr, 8);
             }
             else{
-#endif
                 x->subpixel_predict8x8(uptr, pre_stride, mv_col & 7, mv_row & 7, upred_ptr, 8);
                 x->subpixel_predict8x8(vptr, pre_stride, mv_col & 7, mv_row & 7, vpred_ptr, 8);
-#if CONFIG_OPENCL
             }
-#endif
-
         }
         else
         {
-#if CONFIG_OPENCL
-        CL_FINISH(x->cl_commands)
-#endif
-
-            vp8_copy_mem8x8_cl(uptr, pre_stride, upred_ptr, 8);
-            vp8_copy_mem8x8_cl(vptr, pre_stride, vpred_ptr, 8);
+            vp8_copy_mem_cl(x->cl_commands, uptr, pre_stride, upred_ptr, 8, 8, 8);
+            vp8_copy_mem_cl(x->cl_commands, vptr, pre_stride, vpred_ptr, 8, 8, 8);
         }
     }
     else
@@ -332,20 +285,18 @@ void vp8_build_inter_predictors_mb_cl(MACROBLOCKD *x)
 
         if ((mv_row | mv_col) & 7)
         {
-//#if CONFIG_OPENCL
-//            if (cl_initialized == CL_SUCCESS && x->sixtap_filter == CL_TRUE)
-//                vp8_sixtap_predict16x16_cl(x, ptr, pre_stride, mv_col & 7, mv_row & 7, pred_ptr, 16);
-//            else
-//#endif
-            x->subpixel_predict16x16(ptr, pre_stride, mv_col & 7, mv_row & 7, pred_ptr, 16);
+            if (cl_initialized == CL_SUCCESS && x->sixtap_filter == CL_TRUE)
+                vp8_sixtap_predict16x16_cl(x, ptr, pre_stride, mv_col & 7, mv_row & 7, pred_ptr, 16);
+            else
+                vp8_bilinear_predict16x16_cl(x, ptr, pre_stride, mv_col & 7, mv_row & 7, pred_ptr, 16);
         }
         else
         {
-#if CONFIG_OPENCL
-            CL_FINISH(x->cl_commands);
-#endif
-            vp8_copy_mem16x16_cl(ptr, pre_stride, pred_ptr, 16);
+            //16x16 copy
+            vp8_copy_mem_cl(x->cl_commands, ptr, pre_stride, pred_ptr, 16, 16, 16);
         }
+        
+        CL_FINISH(x->cl_commands);
 
         mv_row = x->block[16].bmi.mv.as_mv.row;
         mv_col = x->block[16].bmi.mv.as_mv.col;
@@ -356,27 +307,20 @@ void vp8_build_inter_predictors_mb_cl(MACROBLOCKD *x)
 
         if ((mv_row | mv_col) & 7)
         {
-#if CONFIG_OPENCL
             if (cl_initialized == CL_SUCCESS && x->sixtap_filter == CL_TRUE){
                 vp8_sixtap_predict8x8_cl(x, uptr, pre_stride, mv_col & 7, mv_row & 7, upred_ptr, 8);
                 vp8_sixtap_predict8x8_cl(x, vptr, pre_stride, mv_col & 7, mv_row & 7, vpred_ptr, 8);
 
             }
             else {
-#endif
                 x->subpixel_predict8x8(uptr, pre_stride, mv_col & 7, mv_row & 7, upred_ptr, 8);
                 x->subpixel_predict8x8(vptr, pre_stride, mv_col & 7, mv_row & 7, vpred_ptr, 8);
-#if CONFIG_OPENCL
             }
-#endif
         }
         else
         {
-#if CONFIG_OPENCL
-            CL_FINISH(x->cl_commands);
-#endif
-            vp8_copy_mem8x8_cl(uptr, pre_stride, upred_ptr, 8);
-            vp8_copy_mem8x8_cl(vptr, pre_stride, vpred_ptr, 8);
+            vp8_copy_mem_cl(x->cl_commands, uptr, pre_stride, upred_ptr, 8, 8, 8);
+            vp8_copy_mem_cl(x->cl_commands, vptr, pre_stride, vpred_ptr, 8, 8, 8);
         }
     }
     else
@@ -452,9 +396,7 @@ static void vp8_build_inter_predictors_b_s_cl(BLOCKD *d, unsigned char *dst_ptr,
     ptr_base = *(d->base_pre);
     ptr = ptr_base + ptr_offset;
 
-#if CONFIG_OPENCL
-    CL_FINISH(d->cl_commands)
-#endif
+    CL_FINISH(d->cl_commands);
 
     if (d->bmi.mv.as_mv.row & 7 || d->bmi.mv.as_mv.col & 7)
     {
@@ -462,6 +404,7 @@ static void vp8_build_inter_predictors_b_s_cl(BLOCKD *d, unsigned char *dst_ptr,
     }
     else
     {
+//        vp8_copy_mem_cl(d->cl_commands, ptr,pre_stride,dst_ptr,dst_stride,4,4);
         for (r = 0; r < 4; r++)
         {
 #ifdef MUST_BE_ALIGNED
@@ -508,20 +451,18 @@ void vp8_build_inter_predictors_mb_s_cl(MACROBLOCKD *x)
 
         if ((mv_row | mv_col) & 7)
         {
-#if CONFIG_OPENCL
             if (cl_initialized == CL_SUCCESS && x->sixtap_filter == CL_TRUE)
                 vp8_sixtap_predict16x16_cl(x, ptr, pre_stride, mv_col & 7, mv_row & 7, dst_ptr, x->dst.y_stride);
             else
-#endif
                 x->subpixel_predict16x16(ptr, pre_stride, mv_col & 7, mv_row & 7, dst_ptr, x->dst.y_stride); /*x->block[0].dst_stride);*/
         }
         else
         {
-#if CONFIG_OPENCL
-        CL_FINISH(x->cl_commands)
-#endif
-            vp8_copy_mem16x16_cl(ptr, pre_stride, dst_ptr, x->dst.y_stride); /*x->block[0].dst_stride);*/
+            vp8_copy_mem_cl(x->cl_commands, ptr, pre_stride, dst_ptr, x->dst.y_stride, 16, 16);
         }
+
+        CL_FINISH(x->cl_commands)
+
 
         mv_row = x->block[16].bmi.mv.as_mv.row;
         mv_col = x->block[16].bmi.mv.as_mv.col;
@@ -532,25 +473,19 @@ void vp8_build_inter_predictors_mb_s_cl(MACROBLOCKD *x)
 
         if ((mv_row | mv_col) & 7)
         {
-#if CONFIG_OPENCL
             if (cl_initialized == CL_SUCCESS && x->sixtap_filter == CL_TRUE){
                 vp8_sixtap_predict8x8_cl(x, uptr, pre_stride, mv_col & 7, mv_row & 7, udst_ptr, x->dst.uv_stride);
                 vp8_sixtap_predict8x8_cl(x, vptr, pre_stride, mv_col & 7, mv_row & 7, vdst_ptr, x->dst.uv_stride);
             } else {
-#endif
                 x->subpixel_predict8x8(uptr, pre_stride, mv_col & 7, mv_row & 7, udst_ptr, x->dst.uv_stride);
                 x->subpixel_predict8x8(vptr, pre_stride, mv_col & 7, mv_row & 7, vdst_ptr, x->dst.uv_stride);
-#if CONFIG_OPENCL
             }
-#endif
         }
         else
         {
-#if CONFIG_OPENCL
-        CL_FINISH(x->cl_commands)
-#endif
-            vp8_copy_mem8x8_cl(uptr, pre_stride, udst_ptr, x->dst.uv_stride);
-            vp8_copy_mem8x8_cl(vptr, pre_stride, vdst_ptr, x->dst.uv_stride);
+            CL_FINISH(x->cl_commands)
+            vp8_copy_mem_cl(x->cl_commands, uptr, pre_stride, udst_ptr, x->dst.uv_stride, 8, 8);
+            vp8_copy_mem_cl(x->cl_commands, vptr, pre_stride, vdst_ptr, x->dst.uv_stride, 8, 8);
         }
     }
     else
@@ -583,10 +518,8 @@ void vp8_build_inter_predictors_mb_s_cl(MACROBLOCKD *x)
                     }
                     else
                     {
-#if CONFIG_OPENCL
                         CL_FINISH(x->cl_commands)
-#endif
-                        vp8_copy_mem8x8_cl(ptr, d->pre_stride, dst_ptr, x->dst.y_stride); /*x->block[0].dst_stride);*/
+                        vp8_copy_mem_cl(x->cl_commands, ptr, d->pre_stride, dst_ptr, x->dst.y_stride, 8, 8);
                     }
                 }
             }
@@ -614,10 +547,8 @@ void vp8_build_inter_predictors_mb_s_cl(MACROBLOCKD *x)
                     }
                     else
                     {
-#if CONFIG_OPENCL
-                        CL_FINISH(x->cl_commands)
-#endif
-                        vp8_copy_mem8x4_cl(ptr, d0->pre_stride, dst_ptr, x->dst.y_stride);
+                        CL_FINISH(x->cl_commands);
+                        vp8_copy_mem_cl(x->cl_commands, ptr, d0->pre_stride, dst_ptr, x->dst.y_stride, 8, 4);
                     }
                 }
                 else
@@ -652,11 +583,9 @@ void vp8_build_inter_predictors_mb_s_cl(MACROBLOCKD *x)
                 }
                 else
                 {
-#if CONFIG_OPENCL
                     CL_FINISH(x->cl_commands)
-#endif
-                    vp8_copy_mem8x4_cl(ptr,
-                        d0->pre_stride, dst_ptr, x->dst.uv_stride);
+                    vp8_copy_mem_cl(x->cl_commands, ptr,
+                        d0->pre_stride, dst_ptr, x->dst.uv_stride, 8, 4);
                 }
             }
             else
@@ -666,7 +595,5 @@ void vp8_build_inter_predictors_mb_s_cl(MACROBLOCKD *x)
             }
         }
     }
-#if CONFIG_OPENCL
     CL_FINISH(x->cl_commands)
-#endif
 }
