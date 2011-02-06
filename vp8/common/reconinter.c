@@ -185,7 +185,7 @@ void vp8_build_inter_predictors_b(BLOCKD *d, int pitch, vp8_subpix_fn_t sppf)
     }
 }
 
-void vp8_build_inter_predictors4b(MACROBLOCKD *x, BLOCKD *d, int pitch)
+static void vp8_build_inter_predictors4b(MACROBLOCKD *x, BLOCKD *d, int pitch)
 {
     unsigned char *ptr_base;
     unsigned char *ptr;
@@ -204,7 +204,7 @@ void vp8_build_inter_predictors4b(MACROBLOCKD *x, BLOCKD *d, int pitch)
     }
 }
 
-void vp8_build_inter_predictors2b(MACROBLOCKD *x, BLOCKD *d, int pitch)
+static void vp8_build_inter_predictors2b(MACROBLOCKD *x, BLOCKD *d, int pitch)
 {
     unsigned char *ptr_base;
     unsigned char *ptr;
