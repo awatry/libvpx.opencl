@@ -22,17 +22,19 @@
  */
 
 #define prototype_subpixel_predict_cl(sym) \
-    void sym(MACROBLOCKD *x, unsigned char *src, int src_pitch, int xofst, int yofst, \
+    void sym(cl_command_queue cq, unsigned char *src, int src_pitch, int xofst, int yofst, \
              unsigned char *dst, int dst_pitch)
 
 extern prototype_subpixel_predict_cl(vp8_sixtap_predict16x16_cl);
 extern prototype_subpixel_predict_cl(vp8_sixtap_predict8x8_cl);
 extern prototype_subpixel_predict_cl(vp8_sixtap_predict8x4_cl);
-extern prototype_subpixel_predict_cl(vp8_sixtap_predict_cl);
+extern prototype_subpixel_predict_cl(vp8_sixtap_predict4x4_cl);
 extern prototype_subpixel_predict_cl(vp8_bilinear_predict16x16_cl);
 extern prototype_subpixel_predict_cl(vp8_bilinear_predict8x8_cl);
 extern prototype_subpixel_predict_cl(vp8_bilinear_predict8x4_cl);
 extern prototype_subpixel_predict_cl(vp8_bilinear_predict4x4_cl);
+
+typedef prototype_subpixel_predict_cl((*vp8_subpix_cl_fn_t));
 
 //typedef enum
 //{

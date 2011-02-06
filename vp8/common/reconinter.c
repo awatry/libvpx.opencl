@@ -153,7 +153,7 @@ void vp8_build_inter_predictors_b(BLOCKD *d, int pitch, vp8_subpix_fn_t sppf)
 
 #if CONFIG_OPENCL
     if (cl_initialized == CL_SUCCESS){
-        vp8_build_inter_predictors_b_cl(d,pitch,sppf);
+        vp8_build_inter_predictors_b_cl(d,pitch);
         return;
     }
 #endif

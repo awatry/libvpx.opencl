@@ -13,11 +13,13 @@
 #define __INC_RECONINTER_CL_H
 
 #include "blockd_cl.h"
+#include "subpixel_cl.h"
+#include "filter_cl.h"
 
 extern void vp8_build_inter_predictors_mb_cl(MACROBLOCKD *x);
 extern void vp8_build_inter_predictors_mb_s_cl(MACROBLOCKD *x);
 
-extern void vp8_build_inter_predictors_b_cl(BLOCKD *d, int pitch, vp8_subpix_fn_t sppf);
+extern void vp8_build_inter_predictors_b_cl(BLOCKD *d, int pitch);
 extern void vp8_build_inter_predictors_mbuv_cl(MACROBLOCKD *x);
 
 #endif

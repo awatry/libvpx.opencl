@@ -122,12 +122,19 @@ static void vp8_copy_mem_cl(
 #endif
 }
 
-void vp8_build_inter_predictors_b_cl(BLOCKD *d, int pitch, vp8_subpix_fn_t sppf)
+void vp8_build_inter_predictors_b_cl(BLOCKD *d, int pitch)
 {
     int r;
     unsigned char *ptr_base;
     unsigned char *ptr;
     unsigned char *pred_ptr = d->predictor_base + d->predictor_offset;
+
+    vp8_subpix_cl_fn_t sppf;
+
+    if (d->sixtap_filter == CL_TRUE)
+        sppf = vp8_sixtap_predict4x4_cl;
+    else
+        sppf = vp8_bilinear_predict4x4_cl;
 
     int ptr_offset = d->pre + (d->bmi.mv.as_mv.row >> 3) * d->pre_stride + (d->bmi.mv.as_mv.col >> 3);
 
@@ -137,29 +144,12 @@ void vp8_build_inter_predictors_b_cl(BLOCKD *d, int pitch, vp8_subpix_fn_t sppf)
 
     if (d->bmi.mv.as_mv.row & 7 || d->bmi.mv.as_mv.col & 7)
     {
-        sppf(ptr, d->pre_stride, d->bmi.mv.as_mv.col & 7, d->bmi.mv.as_mv.row & 7, pred_ptr, pitch);
+        sppf(d->cl_commands, ptr, d->pre_stride, d->bmi.mv.as_mv.col & 7, d->bmi.mv.as_mv.row & 7, pred_ptr, pitch);
     }
     else
     {
-        CL_FINISH(d->cl_commands)
-
-        //vp8_copy_mem_cl(ptr,d->pre_stride,pred_ptr,pitch,4,4);
-        for (r = 0; r < 4; r++)
-        {
-#ifdef MUST_BE_ALIGNED
-            pred_ptr[0]  = ptr[0];
-            pred_ptr[1]  = ptr[1];
-            pred_ptr[2]  = ptr[2];
-            pred_ptr[3]  = ptr[3];
-#else
-            *(int *)pred_ptr = *(int *)ptr ;
-#endif
-            pred_ptr     += pitch;
-            ptr         += d->pre_stride;
-        }
+        vp8_copy_mem_cl(d->cl_commands, ptr,d->pre_stride,pred_ptr,pitch,4,4);
     }
-
-	//copy back cl_predictor_mem to b->predictor_base
 }
 
 void vp8_build_inter_predictors4b_cl(MACROBLOCKD *x, BLOCKD *d, int pitch)
@@ -173,10 +163,10 @@ void vp8_build_inter_predictors4b_cl(MACROBLOCKD *x, BLOCKD *d, int pitch)
 
     if (d->bmi.mv.as_mv.row & 7 || d->bmi.mv.as_mv.col & 7)
     {
-            if (cl_initialized == CL_SUCCESS && x->sixtap_filter == CL_TRUE)
-                vp8_sixtap_predict8x8_cl(x, ptr, d->pre_stride, d->bmi.mv.as_mv.col & 7, d->bmi.mv.as_mv.row & 7, pred_ptr, pitch);
+            if (d->sixtap_filter == CL_TRUE)
+                vp8_sixtap_predict8x8_cl(d->cl_commands, ptr, d->pre_stride, d->bmi.mv.as_mv.col & 7, d->bmi.mv.as_mv.row & 7, pred_ptr, pitch);
             else
-                x->subpixel_predict8x8(ptr, d->pre_stride, d->bmi.mv.as_mv.col & 7, d->bmi.mv.as_mv.row & 7, pred_ptr, pitch);
+                vp8_bilinear_predict8x8_cl(d->cl_commands,ptr, d->pre_stride, d->bmi.mv.as_mv.col & 7, d->bmi.mv.as_mv.row & 7, pred_ptr, pitch);
     }
     else
     {
@@ -195,7 +185,10 @@ void vp8_build_inter_predictors2b_cl(MACROBLOCKD *x, BLOCKD *d, int pitch)
 
     if (d->bmi.mv.as_mv.row & 7 || d->bmi.mv.as_mv.col & 7)
     {
-        x->subpixel_predict8x4(ptr, d->pre_stride, d->bmi.mv.as_mv.col & 7, d->bmi.mv.as_mv.row & 7, pred_ptr, pitch);
+        if (d->sixtap_filter == CL_TRUE)
+            vp8_sixtap_predict8x4_cl(d->cl_commands,ptr, d->pre_stride, d->bmi.mv.as_mv.col & 7, d->bmi.mv.as_mv.row & 7, pred_ptr, pitch);
+        else
+            vp8_bilinear_predict8x4_cl(d->cl_commands,ptr, d->pre_stride, d->bmi.mv.as_mv.col & 7, d->bmi.mv.as_mv.row & 7, pred_ptr, pitch);
     }
     else
     {
@@ -227,18 +220,18 @@ void vp8_build_inter_predictors_mbuv_cl(MACROBLOCKD *x)
         if ((mv_row | mv_col) & 7)
         {
             if (cl_initialized == CL_SUCCESS && x->sixtap_filter == CL_TRUE){
-                vp8_sixtap_predict8x8_cl(x,uptr, pre_stride, mv_col & 7, mv_row & 7, upred_ptr, 8);
-                vp8_sixtap_predict8x8_cl(x,vptr, pre_stride, mv_col & 7, mv_row & 7, vpred_ptr, 8);
+                vp8_sixtap_predict8x8_cl(x->block[16].cl_commands,uptr, pre_stride, mv_col & 7, mv_row & 7, upred_ptr, 8);
+                vp8_sixtap_predict8x8_cl(x->block[16].cl_commands,vptr, pre_stride, mv_col & 7, mv_row & 7, vpred_ptr, 8);
             }
             else{
-                x->subpixel_predict8x8(uptr, pre_stride, mv_col & 7, mv_row & 7, upred_ptr, 8);
-                x->subpixel_predict8x8(vptr, pre_stride, mv_col & 7, mv_row & 7, vpred_ptr, 8);
+                vp8_bilinear_predict8x8_cl(x->block[16].cl_commands,uptr, pre_stride, mv_col & 7, mv_row & 7, upred_ptr, 8);
+                vp8_bilinear_predict8x8_cl(x->block[16].cl_commands,vptr, pre_stride, mv_col & 7, mv_row & 7, vpred_ptr, 8);
             }
         }
         else
         {
-            vp8_copy_mem_cl(x->cl_commands, uptr, pre_stride, upred_ptr, 8, 8, 8);
-            vp8_copy_mem_cl(x->cl_commands, vptr, pre_stride, vpred_ptr, 8, 8, 8);
+            vp8_copy_mem_cl(x->block[16].cl_commands, uptr, pre_stride, upred_ptr, 8, 8, 8);
+            vp8_copy_mem_cl(x->block[16].cl_commands, vptr, pre_stride, vpred_ptr, 8, 8, 8);
         }
     }
     else
@@ -252,8 +245,8 @@ void vp8_build_inter_predictors_mbuv_cl(MACROBLOCKD *x)
                 vp8_build_inter_predictors2b_cl(x, d0, 8);
             else
             {
-                vp8_build_inter_predictors_b_cl(d0, 8, x->subpixel_predict);
-                vp8_build_inter_predictors_b_cl(d1, 8, x->subpixel_predict);
+                vp8_build_inter_predictors_b_cl(d0, 8);
+                vp8_build_inter_predictors_b_cl(d1, 8);
             }
         }
     }
@@ -286,9 +279,9 @@ void vp8_build_inter_predictors_mb_cl(MACROBLOCKD *x)
         if ((mv_row | mv_col) & 7)
         {
             if (cl_initialized == CL_SUCCESS && x->sixtap_filter == CL_TRUE)
-                vp8_sixtap_predict16x16_cl(x, ptr, pre_stride, mv_col & 7, mv_row & 7, pred_ptr, 16);
+                vp8_sixtap_predict16x16_cl(x->cl_commands, ptr, pre_stride, mv_col & 7, mv_row & 7, pred_ptr, 16);
             else
-                vp8_bilinear_predict16x16_cl(x, ptr, pre_stride, mv_col & 7, mv_row & 7, pred_ptr, 16);
+                vp8_bilinear_predict16x16_cl(x->cl_commands, ptr, pre_stride, mv_col & 7, mv_row & 7, pred_ptr, 16);
         }
         else
         {
@@ -307,14 +300,13 @@ void vp8_build_inter_predictors_mb_cl(MACROBLOCKD *x)
 
         if ((mv_row | mv_col) & 7)
         {
-            if (cl_initialized == CL_SUCCESS && x->sixtap_filter == CL_TRUE){
-                vp8_sixtap_predict8x8_cl(x, uptr, pre_stride, mv_col & 7, mv_row & 7, upred_ptr, 8);
-                vp8_sixtap_predict8x8_cl(x, vptr, pre_stride, mv_col & 7, mv_row & 7, vpred_ptr, 8);
-
+            if (x->sixtap_filter == CL_TRUE){
+                vp8_sixtap_predict8x8_cl(x->cl_commands, uptr, pre_stride, mv_col & 7, mv_row & 7, upred_ptr, 8);
+                vp8_sixtap_predict8x8_cl(x->cl_commands, vptr, pre_stride, mv_col & 7, mv_row & 7, vpred_ptr, 8);
             }
             else {
-                x->subpixel_predict8x8(uptr, pre_stride, mv_col & 7, mv_row & 7, upred_ptr, 8);
-                x->subpixel_predict8x8(vptr, pre_stride, mv_col & 7, mv_row & 7, vpred_ptr, 8);
+                vp8_bilinear_predict8x8_cl(x->cl_commands, uptr, pre_stride, mv_col & 7, mv_row & 7, upred_ptr, 8);
+                vp8_bilinear_predict8x8_cl(x->cl_commands, vptr, pre_stride, mv_col & 7, mv_row & 7, vpred_ptr, 8);
             }
         }
         else
@@ -346,8 +338,8 @@ void vp8_build_inter_predictors_mb_cl(MACROBLOCKD *x)
                     vp8_build_inter_predictors2b_cl(x, d0, 16);
                 else
                 {
-                    vp8_build_inter_predictors_b_cl(d0, 16, x->subpixel_predict);
-                    vp8_build_inter_predictors_b_cl(d1, 16, x->subpixel_predict);
+                    vp8_build_inter_predictors_b_cl(d0, 16);
+                    vp8_build_inter_predictors_b_cl(d1, 16);
                 }
 
             }
@@ -363,8 +355,8 @@ void vp8_build_inter_predictors_mb_cl(MACROBLOCKD *x)
                 vp8_build_inter_predictors2b_cl(x, d0, 8);
             else
             {
-                vp8_build_inter_predictors_b_cl(d0, 8, x->subpixel_predict);
-                vp8_build_inter_predictors_b_cl(d1, 8, x->subpixel_predict);
+                vp8_build_inter_predictors_b_cl(d0, 8);
+                vp8_build_inter_predictors_b_cl(d1, 8);
             }
 
         }
@@ -451,10 +443,10 @@ void vp8_build_inter_predictors_mb_s_cl(MACROBLOCKD *x)
 
         if ((mv_row | mv_col) & 7)
         {
-            if (cl_initialized == CL_SUCCESS && x->sixtap_filter == CL_TRUE)
-                vp8_sixtap_predict16x16_cl(x, ptr, pre_stride, mv_col & 7, mv_row & 7, dst_ptr, x->dst.y_stride);
+            if (x->sixtap_filter == CL_TRUE)
+                vp8_sixtap_predict16x16_cl(x->cl_commands, ptr, pre_stride, mv_col & 7, mv_row & 7, dst_ptr, x->dst.y_stride);
             else
-                x->subpixel_predict16x16(ptr, pre_stride, mv_col & 7, mv_row & 7, dst_ptr, x->dst.y_stride); /*x->block[0].dst_stride);*/
+                vp8_bilinear_predict16x16_cl(x->cl_commands, ptr, pre_stride, mv_col & 7, mv_row & 7, dst_ptr, x->dst.y_stride);
         }
         else
         {
@@ -473,19 +465,18 @@ void vp8_build_inter_predictors_mb_s_cl(MACROBLOCKD *x)
 
         if ((mv_row | mv_col) & 7)
         {
-            if (cl_initialized == CL_SUCCESS && x->sixtap_filter == CL_TRUE){
-                vp8_sixtap_predict8x8_cl(x, uptr, pre_stride, mv_col & 7, mv_row & 7, udst_ptr, x->dst.uv_stride);
-                vp8_sixtap_predict8x8_cl(x, vptr, pre_stride, mv_col & 7, mv_row & 7, vdst_ptr, x->dst.uv_stride);
+            if (x->sixtap_filter == CL_TRUE){
+                vp8_sixtap_predict8x8_cl(x->cl_commands, uptr, pre_stride, mv_col & 7, mv_row & 7, udst_ptr, x->dst.uv_stride);
+                vp8_sixtap_predict8x8_cl(x->cl_commands, vptr, pre_stride, mv_col & 7, mv_row & 7, vdst_ptr, x->dst.uv_stride);
             } else {
-                x->subpixel_predict8x8(uptr, pre_stride, mv_col & 7, mv_row & 7, udst_ptr, x->dst.uv_stride);
-                x->subpixel_predict8x8(vptr, pre_stride, mv_col & 7, mv_row & 7, vdst_ptr, x->dst.uv_stride);
+                vp8_bilinear_predict8x8_cl(x->cl_commands, uptr, pre_stride, mv_col & 7, mv_row & 7, udst_ptr, x->dst.uv_stride);
+                vp8_bilinear_predict8x8_cl(x->cl_commands, vptr, pre_stride, mv_col & 7, mv_row & 7, vdst_ptr, x->dst.uv_stride);
             }
         }
         else
         {
-            CL_FINISH(x->cl_commands)
-            vp8_copy_mem_cl(x->cl_commands, uptr, pre_stride, udst_ptr, x->dst.uv_stride, 8, 8);
-            vp8_copy_mem_cl(x->cl_commands, vptr, pre_stride, vdst_ptr, x->dst.uv_stride, 8, 8);
+            vp8_copy_mem_cl(x->block[16].cl_commands, uptr, pre_stride, udst_ptr, x->dst.uv_stride, 8, 8);
+            vp8_copy_mem_cl(x->block[16].cl_commands, vptr, pre_stride, vdst_ptr, x->dst.uv_stride, 8, 8);
         }
     }
     else
@@ -514,11 +505,13 @@ void vp8_build_inter_predictors_mb_s_cl(MACROBLOCKD *x)
 
                     if (d->bmi.mv.as_mv.row & 7 || d->bmi.mv.as_mv.col & 7)
                     {
-                        x->subpixel_predict8x8(ptr, d->pre_stride, d->bmi.mv.as_mv.col & 7, d->bmi.mv.as_mv.row & 7, dst_ptr, x->dst.y_stride); /*x->block[0].dst_stride);*/
+                        if (x->sixtap_filter == CL_TRUE)
+                            vp8_sixtap_predict8x8_cl(d->cl_commands, ptr, d->pre_stride, d->bmi.mv.as_mv.col & 7, d->bmi.mv.as_mv.row & 7, dst_ptr, x->dst.y_stride);
+                        else
+                            vp8_bilinear_predict8x8_cl(d->cl_commands, ptr, d->pre_stride, d->bmi.mv.as_mv.col & 7, d->bmi.mv.as_mv.row & 7, dst_ptr, x->dst.y_stride);
                     }
                     else
                     {
-                        CL_FINISH(x->cl_commands)
                         vp8_copy_mem_cl(x->cl_commands, ptr, d->pre_stride, dst_ptr, x->dst.y_stride, 8, 8);
                     }
                 }
@@ -543,7 +536,10 @@ void vp8_build_inter_predictors_mb_s_cl(MACROBLOCKD *x)
 
                     if (d0->bmi.mv.as_mv.row & 7 || d0->bmi.mv.as_mv.col & 7)
                     {
-                        x->subpixel_predict8x4(ptr, d0->pre_stride, d0->bmi.mv.as_mv.col & 7, d0->bmi.mv.as_mv.row & 7, dst_ptr, x->dst.y_stride);
+                        if (d0->sixtap_filter == CL_TRUE)
+                            vp8_sixtap_predict8x4_cl(d0->cl_commands, ptr, d0->pre_stride, d0->bmi.mv.as_mv.col & 7, d0->bmi.mv.as_mv.row & 7, dst_ptr, x->dst.y_stride);
+                        else
+                            vp8_bilinear_predict8x4_cl(d0->cl_commands, ptr, d0->pre_stride, d0->bmi.mv.as_mv.col & 7, d0->bmi.mv.as_mv.row & 7, dst_ptr, x->dst.y_stride);
                     }
                     else
                     {
