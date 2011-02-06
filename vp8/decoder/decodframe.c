@@ -245,7 +245,7 @@ void vp8_decode_macroblock(VP8D_COMP *pbi, MACROBLOCKD *xd)
     }
 
 #if CONFIG_OPENCL
-                CL_FINISH(xd->cl_commands);
+    CL_FINISH(xd->cl_commands);
 #endif
 
     /* dequantization and idct */

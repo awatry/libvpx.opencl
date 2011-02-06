@@ -52,7 +52,6 @@ static void vp8_copy_mem_cl(
     int num_iter
 ){
 
-#if 1
     cl_mem src_mem;
     cl_mem dst_mem;
     int err;
@@ -60,20 +59,13 @@ static void vp8_copy_mem_cl(
     size_t dst_len = (num_iter - 1)*dst_stride + num_bytes;
     size_t global[2] = {num_bytes, num_iter};
 
-    //CL_FINISH(cq);
-
-    //NEED TO CONVERT ALL CL_CREATE_BUF(with src pointer) to create null data,
-    //and then enqueue write
-
     CL_CREATE_BUF( cq, src_mem, CL_MEM_WRITE_ONLY,
-        sizeof (unsigned char) * src_len, NULL,
+        sizeof (unsigned char) * src_len, src,
     ); 
-    CL_SET_BUF( cq, src_mem, sizeof (unsigned char) * src_len, src, );
 
     CL_CREATE_BUF( cq, dst_mem, CL_MEM_WRITE_ONLY,
-        sizeof (unsigned char) * dst_len, NULL,
+        sizeof (unsigned char) * dst_len, dst,
     );
-    CL_SET_BUF( cq, dst_mem, sizeof (unsigned char) * dst_len, dst, );
 
     /* Set kernel arguments */
     err = 0; \
@@ -103,28 +95,8 @@ static void vp8_copy_mem_cl(
         return,
     );
 
-
     clReleaseMemObject(src_mem);
     clReleaseMemObject(dst_mem);
-
-    clFinish(cq);
-
-#else
-    int i,r;
-
-    CL_FINISH(cq);
-
-    for (r = 0; r < num_iter; r++)
-    {
-        for (i=0; i < num_bytes; i++){
-            dst[i] = src[i];
-        }
-        
-        src += src_stride;
-        dst += dst_stride;
-
-    }
-#endif
 }
 
 void vp8_build_inter_predictors_b_cl(BLOCKD *d, int pitch)
@@ -254,9 +226,6 @@ void vp8_build_inter_predictors_mbuv_cl(MACROBLOCKD *x)
             }
         }
     }
-#if CONFIG_OPENCL
-    CL_FINISH(x->cl_commands)
-#endif
 }
 
 void vp8_build_inter_predictors_mb_cl(MACROBLOCKD *x)
@@ -292,8 +261,6 @@ void vp8_build_inter_predictors_mb_cl(MACROBLOCKD *x)
             //16x16 copy
             vp8_copy_mem_cl(x->cl_commands, ptr, pre_stride, pred_ptr, 16, 16, 16);
         }
-        
-        CL_FINISH(x->cl_commands);
 
         mv_row = x->block[16].bmi.mv.as_mv.row;
         mv_col = x->block[16].bmi.mv.as_mv.col;
@@ -345,9 +312,7 @@ void vp8_build_inter_predictors_mb_cl(MACROBLOCKD *x)
                     vp8_build_inter_predictors_b_cl(d0, 16);
                     vp8_build_inter_predictors_b_cl(d1, 16);
                 }
-
             }
-
         }
 
         for (i = 16; i < 24; i += 2)
@@ -367,10 +332,6 @@ void vp8_build_inter_predictors_mb_cl(MACROBLOCKD *x)
 
     }
 
-#if CONFIG_OPENCL
-    CL_FINISH(x->cl_commands)
-#endif
-
 }
 
 
@@ -379,7 +340,7 @@ void vp8_build_inter_predictors_mb_cl(MACROBLOCKD *x)
  * buffer and then copying it to dst buffer.
  */
 
-static void vp8_build_inter_predictors_b_s_cl(BLOCKD *d, unsigned char *dst_ptr, vp8_subpix_fn_t sppf)
+static void vp8_build_inter_predictors_b_s_cl(BLOCKD *d, unsigned char *dst_ptr, vp8_subpix_fn_t discarc)
 {
     int r;
     unsigned char *ptr_base;
@@ -392,11 +353,15 @@ static void vp8_build_inter_predictors_b_s_cl(BLOCKD *d, unsigned char *dst_ptr,
     ptr_base = *(d->base_pre);
     ptr = ptr_base + ptr_offset;
 
-    CL_FINISH(d->cl_commands);
+    vp8_subpix_cl_fn_t sppf;
+    if (d->sixtap_filter == CL_TRUE){
+        sppf = vp8_sixtap_predict4x4_cl;
+    } else
+        sppf = vp8_bilinear_predict4x4_cl;
 
     if (d->bmi.mv.as_mv.row & 7 || d->bmi.mv.as_mv.col & 7)
     {
-        sppf(ptr, pre_stride, d->bmi.mv.as_mv.col & 7, d->bmi.mv.as_mv.row & 7, dst_ptr, dst_stride);
+        sppf(d->cl_commands, ptr, pre_stride, d->bmi.mv.as_mv.col & 7, d->bmi.mv.as_mv.row & 7, dst_ptr, dst_stride);
     }
     else
     {

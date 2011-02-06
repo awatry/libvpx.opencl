@@ -168,8 +168,6 @@ extern const char *filter_cl_file_name;
 #define CL_SIXTAP_PREDICT_EXEC(cq, src_mem, dst_mem, kernel,src_ptr,src_len, src_pixels_per_line, \
 xoffset,yoffset,dst_ptr,dst_pitch,thread_count,dst_len,altPath) \
 \
-    CL_FINISH(cq); /* Needed for now... Eventually memory will be passed in... */ \
-\
 /*Make space for kernel input/output data. Initialize the buffer as well if needed. */ \
     CL_CREATE_BUF( cq, src_mem, CL_MEM_READ_ONLY|CL_MEM_COPY_HOST_PTR, \
         sizeof (unsigned char) * src_len, src_ptr-2, \
@@ -214,7 +212,6 @@ xoffset,yoffset,dst_ptr,dst_pitch,thread_count,dst_len,altPath) \
 #define CL_BILINEAR_EXEC(cq, src_mem, dst_mem, int_mem, kernel,src_ptr,src_len, src_pixels_per_line, \
 xoffset,yoffset,dst_ptr,dst_pitch,thread_count,dst_len,altPath) \
  \
-    CL_FINISH(cq);\
 /*Make space for kernel input/output data. Initialize the buffer as well if needed. */ \
     CL_CREATE_BUF(cq, src_mem, CL_MEM_READ_ONLY|CL_MEM_COPY_HOST_PTR, \
         sizeof (unsigned char) * src_len, src_ptr, altPath\

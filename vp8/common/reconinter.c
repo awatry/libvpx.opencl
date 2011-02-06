@@ -223,14 +223,15 @@ void vp8_build_inter_predictors2b(MACROBLOCKD *x, BLOCKD *d, int pitch)
     }
 }
 
-
+/* Encoder only */
 void vp8_build_inter_predictors_mbuv(MACROBLOCKD *x)
 {
     int i;
 
 #if CONFIG_OPENCL
-    if (cl_initialized == CL_SUCCESS){
+    if ( 0 && cl_initialized == CL_SUCCESS ){
         vp8_build_inter_predictors_mbuv_cl(x);
+        clFinish(x->cl_commands);
         return;
     }
 #endif

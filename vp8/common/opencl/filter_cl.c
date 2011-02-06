@@ -73,11 +73,6 @@ void vp8_sixtap_predict4x4_cl
     //int src_len = SRC_LEN(output1_width,output1_height,src_pixels_per_line);
     int src_len = SIXTAP_SRC_LEN(4,9,src_pixels_per_line);
 
-    if (cl_initialized != CL_SUCCESS){
-        vp8_sixtap_predict_c(src_ptr,src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch);
-        return;
-    }
-
     CL_SIXTAP_PREDICT_EXEC(cq, src_mem, dst_mem ,cl_data.vp8_sixtap_predict_kernel,(src_ptr-2*src_pixels_per_line),src_len,
             src_pixels_per_line, xoffset,yoffset,dst_ptr,dst_pitch,global,
             dst_len,
@@ -108,11 +103,6 @@ void vp8_sixtap_predict8x8_cl
     //int output1_width=8,output1_height=13;
     //int src_len = SRC_LEN(output1_width,output1_height,src_pixels_per_line);
     int src_len = SIXTAP_SRC_LEN(8,13,src_pixels_per_line);
-
-    if (cl_initialized != CL_SUCCESS){
-        vp8_sixtap_predict8x8_c(src_ptr,src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch);
-        return;
-    }
 
     CL_SIXTAP_PREDICT_EXEC(cq, src_mem, dst_mem ,cl_data.vp8_sixtap_predict8x8_kernel,(src_ptr-2*src_pixels_per_line),src_len,
             src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch,global,dst_len,
@@ -145,11 +135,6 @@ void vp8_sixtap_predict8x4_cl
     //int src_len = SRC_LEN(output1_width,output1_height,src_pixels_per_line);
     int src_len = SIXTAP_SRC_LEN(8,9,src_pixels_per_line);
 
-    if (cl_initialized != CL_SUCCESS){
-        vp8_sixtap_predict8x4_c(src_ptr,src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch);
-        return;
-    }
-
     CL_SIXTAP_PREDICT_EXEC(cq, src_mem, dst_mem, cl_data.vp8_sixtap_predict8x4_kernel,(src_ptr-2*src_pixels_per_line),src_len,
             src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch,global,dst_len,
             vp8_sixtap_predict8x4_c(src_ptr,src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch)
@@ -180,11 +165,6 @@ void vp8_sixtap_predict16x16_cl
     //int output1_width=16,output1_height=21;
     //int src_len = SRC_LEN(output1_width,output1_height,src_pixels_per_line);
     int src_len = SIXTAP_SRC_LEN(16,21,src_pixels_per_line);
-
-    if (cl_initialized != CL_SUCCESS){
-        vp8_sixtap_predict16x16_c(src_ptr,src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch);
-        return;
-    }
 
     CL_SIXTAP_PREDICT_EXEC(cq, src_mem, dst_mem, cl_data.vp8_sixtap_predict16x16_kernel,(src_ptr-2*src_pixels_per_line),src_len,
             src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch,global,dst_len,
@@ -223,11 +203,6 @@ void vp8_bilinear_predict4x4_cl
 
     cl_mem src_mem, dst_mem, int_mem;
 
-    if (cl_initialized != CL_SUCCESS){
-        vp8_bilinear_predict4x4_c(src_ptr,src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch);
-        return;
-    }
-
     CL_BILINEAR_EXEC(cq, src_mem, dst_mem, int_mem, cl_data.vp8_bilinear_predict4x4_kernel,src_ptr,src_len,
             src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch,global,dst_len,
             vp8_bilinear_predict4x4_c(src_ptr,src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch)
@@ -264,11 +239,6 @@ void vp8_bilinear_predict8x8_cl
 
     cl_mem src_mem, dst_mem, int_mem;
 
-    if (cl_initialized != CL_SUCCESS){
-        vp8_bilinear_predict8x8_c(src_ptr,src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch);
-        return;
-    }
-    
     CL_BILINEAR_EXEC(cq, src_mem, dst_mem, int_mem, cl_data.vp8_bilinear_predict8x8_kernel,src_ptr,src_len,
             src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch,global,dst_len,
             vp8_bilinear_predict8x8_c(src_ptr,src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch)
@@ -302,11 +272,6 @@ void vp8_bilinear_predict8x4_cl
 
     cl_mem src_mem, dst_mem, int_mem;
 
-    if (cl_initialized != CL_SUCCESS){
-        vp8_bilinear_predict8x4_c(src_ptr,src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch);
-        return;
-    }
-
     CL_BILINEAR_EXEC(cq, src_mem, dst_mem, int_mem, cl_data.vp8_bilinear_predict8x4_kernel,src_ptr,src_len,
             src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch,global,dst_len,
             vp8_bilinear_predict8x4_c(src_ptr,src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch)
@@ -336,11 +301,6 @@ void vp8_bilinear_predict16x16_cl
     //Element counts of output/input data
     int dst_len = DST_LEN(dst_pitch,16,16);
     int src_len = BIL_SRC_LEN(16,17,src_pixels_per_line);
-
-    if (cl_initialized != CL_SUCCESS){
-        vp8_bilinear_predict16x16_c(src_ptr,src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch);
-        return;
-    }
 
     cl_mem src_mem, dst_mem, int_mem;
 
