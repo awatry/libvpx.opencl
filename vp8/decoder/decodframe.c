@@ -231,9 +231,7 @@ void vp8_decode_macroblock(VP8D_COMP *pbi, MACROBLOCKD *xd)
     if (xd->frame_type == KEY_FRAME  ||  xd->mode_info_context->mbmi.ref_frame == INTRA_FRAME)
     {
         vp8_build_intra_predictors_mbuv(xd);
-#if CONFIG_OPENCL
-                CL_FINISH(xd->cl_commands);
-#endif
+
         if (xd->mode_info_context->mbmi.mode != B_PRED)
         {
             vp8_build_intra_predictors_mby_ptr(xd);
@@ -257,7 +255,7 @@ void vp8_decode_macroblock(VP8D_COMP *pbi, MACROBLOCKD *xd)
         short *qcoeff = b->qcoeff_base + b->qcoeff_offset;
         vp8_second_order_fn_t second_order;
 
-#if CONFIG_OPENCL
+#if CONFIG_OPENCL && 0
         if (cl_initialized == CL_SUCCESS){
             vp8_cl_block_prep(b, DEQUANT|QCOEFF);
             vp8_dequantize_b_cl(b);
@@ -287,7 +285,7 @@ void vp8_decode_macroblock(VP8D_COMP *pbi, MACROBLOCKD *xd)
             ((int *)qcoeff)[0] = 0;
         }
 
-#if CONFIG_OPENCL
+#if CONFIG_OPENCL && 0
         if (cl_initialized == CL_SUCCESS){
             CL_FINISH(b->cl_commands);
 
@@ -323,10 +321,13 @@ void vp8_decode_macroblock(VP8D_COMP *pbi, MACROBLOCKD *xd)
         {
             BLOCKD *b = &xd->block[i];
             short *qcoeff = b->qcoeff_base + b->qcoeff_offset;
+            
             vp8_predict_intra4x4(b, b->bmi.mode, b->predictor_base + b->predictor_offset);
-            size_t dst_size = (4*b->dst_stride + b->dst + 4);
-#if CONFIG_OPENCL
+
+#if CONFIG_OPENCL && 0
             if (cl_initialized == CL_SUCCESS){
+                size_t dst_size = (4*b->dst_stride + b->dst + 4);
+                
                 if (xd->eobs[i] > 1)
                 {
                     vp8_cl_block_prep(b, QCOEFF|DEQUANT|PREDICTOR);
@@ -364,7 +365,7 @@ void vp8_decode_macroblock(VP8D_COMP *pbi, MACROBLOCKD *xd)
     }
     else
     {
-#if CONFIG_OPENCL
+#if CONFIG_OPENCL && 0
         if (cl_initialized == CL_SUCCESS){
             vp8_dequant_idct_add_y_block_cl(pbi, xd);
         }
@@ -378,7 +379,7 @@ void vp8_decode_macroblock(VP8D_COMP *pbi, MACROBLOCKD *xd)
         }
     }
 
-#if CONFIG_OPENCL
+#if CONFIG_OPENCL && 0
     if (cl_initialized == CL_SUCCESS){
         vp8_dequant_idct_add_uv_block_cl(pbi, xd,  DEQUANT_INVOKE (&pbi->dequant, idct_add_uv_block));
         CL_FINISH(xd->cl_commands);

@@ -64,7 +64,7 @@ int cl_init_dequant() {
 
 void vp8_dequantize_b_cl(BLOCKD *d)
 {
-    int i,err;
+    int err;
     size_t global = 16;
 
     /* Set kernel arguments */
@@ -93,18 +93,11 @@ void vp8_dequant_idct_add_cl(BLOCKD *b, unsigned char *dest_base, int dest_offse
 {
     int err;
     size_t global = 1;
-    size_t cur_size;
     cl_mem dest_mem = NULL;
 
     //Initialize destination memory
-
-    //Dest size calculation stolen from memory allocation function for planes.
-    //dest_size = sizeof(cl_uchar)*(4*stride + dest_offset + 4);
-    cur_size = 0;
-    CL_ENSURE_BUF_SIZE(b->cl_commands, dest_mem, CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,
-            dst_size, cur_size, dest_base,
-            idct_add(b->qcoeff_base+q_offset, b->dequant,  b->predictor_base + pred_offset,
-            dest_base + dest_offset, pitch, stride)
+    CL_CREATE_BUF(b->cl_commands, dest_mem, CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,
+            dst_size, dest_base,
     );
     
     /* Set kernel arguments */
@@ -159,26 +152,17 @@ void vp8_dequant_dc_idct_add_cl(
     int Dc_offset)
 {
     int err;
-
-    int Dc = b->diff_base[Dc_offset];
-
     int dq_offset = 0;
-    short *dq = b->dequant + dq_offset;
-    short *input = &b->qcoeff_base[qcoeff_offset];
-    unsigned char *pred = b->predictor_base + pred_offset;
-
+ 
     cl_mem dest_mem = NULL;
-    size_t dest_size, cur_size;
+    size_t dest_size;
     size_t global = 1;
     int dest_offset=0;
 
-    printf("vp8_dequant_dc_idct_add_cl\n");
-
     //Initialize dest_mem
     dest_size = sizeof(cl_uchar)*(4*stride + dest_offset + 4);
-    cur_size = 0;
-    CL_ENSURE_BUF_SIZE(b->cl_commands, dest_mem, CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,
-            dest_size, cur_size, dest,
+    CL_CREATE_BUF(b->cl_commands, dest_mem, CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,
+            dest_size, dest,
     );
 
     //Assuming that all input cl_mem has been initialized outside of this Fn.

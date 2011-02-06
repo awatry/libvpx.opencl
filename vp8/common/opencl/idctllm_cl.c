@@ -164,10 +164,8 @@ void vp8_dc_only_idct_add_cl(BLOCKD *b, cl_int use_diff, int diff_offset,
     cl_mem dest_mem = NULL;
 
     CL_FINISH(b->cl_commands);
-
-    size_t cur_size = 0;
-    CL_ENSURE_BUF_SIZE(b->cl_commands, dest_mem, CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,
-            dest_size, cur_size, dst_base,
+    CL_CREATE_BUF(b->cl_commands, dest_mem, CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,
+            dest_size, dst_base,
     );
 
     //Set arguments and run kernel
