@@ -127,7 +127,6 @@ void vp8_dequant_idct_add_uv_block_cl(VP8D_COMP *pbi, MACROBLOCKD *xd,
     unsigned char *dstv = xd->dst.v_buffer;
     int stride = xd->dst.uv_stride;
     size_t dst_size = 8*(stride+1);
-    size_t cur_size = 0;
     char *eobs = xd->eobs+16;
 
     int pre_offset = block_num*16;
@@ -138,8 +137,8 @@ void vp8_dequant_idct_add_uv_block_cl(VP8D_COMP *pbi, MACROBLOCKD *xd,
     cl_mem dest_mem = NULL;
 
     //Initialize destination memory
-    CL_ENSURE_BUF_SIZE(b.cl_commands, dest_mem, CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,
-            dst_size, cur_size, dstu,
+    CL_CREATE_BUF(b.cl_commands, dest_mem, CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,
+            dst_size, dstu,
     );
 
     if (cl_initialized != CL_SUCCESS){

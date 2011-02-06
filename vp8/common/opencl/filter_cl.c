@@ -63,6 +63,9 @@ void vp8_sixtap_predict4x4_cl
     int err;
     size_t global = 36; //9*4
 
+    cl_mem src_mem;
+    cl_mem dst_mem;
+
     //Size of output data
     int dst_len = DST_LEN(dst_pitch,4,4);
 
@@ -75,7 +78,7 @@ void vp8_sixtap_predict4x4_cl
         return;
     }
 
-    CL_SIXTAP_PREDICT_EXEC(cq, cl_data.vp8_sixtap_predict_kernel,(src_ptr-2*src_pixels_per_line),src_len,
+    CL_SIXTAP_PREDICT_EXEC(cq, src_mem, dst_mem ,cl_data.vp8_sixtap_predict_kernel,(src_ptr-2*src_pixels_per_line),src_len,
             src_pixels_per_line, xoffset,yoffset,dst_ptr,dst_pitch,global,
             dst_len,
             vp8_sixtap_predict_c(src_ptr,src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch)
@@ -97,7 +100,8 @@ void vp8_sixtap_predict8x8_cl
 
     int err;
     size_t global = 104; //13*8
-
+    cl_mem src_mem;
+    cl_mem dst_mem;
     //Size of output data
     int dst_len = DST_LEN(dst_pitch,8,8);
 
@@ -110,7 +114,7 @@ void vp8_sixtap_predict8x8_cl
         return;
     }
 
-    CL_SIXTAP_PREDICT_EXEC(cq, cl_data.vp8_sixtap_predict8x8_kernel,(src_ptr-2*src_pixels_per_line),src_len,
+    CL_SIXTAP_PREDICT_EXEC(cq, src_mem, dst_mem ,cl_data.vp8_sixtap_predict8x8_kernel,(src_ptr-2*src_pixels_per_line),src_len,
             src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch,global,dst_len,
             vp8_sixtap_predict8x8_c(src_ptr,src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch)
     );
@@ -132,7 +136,8 @@ void vp8_sixtap_predict8x4_cl
 
     int err;
     size_t global = 72; //9*8
-
+    cl_mem src_mem;
+    cl_mem dst_mem;
     //Size of output data
     int dst_len = DST_LEN(dst_pitch,4,8);
 
@@ -145,7 +150,7 @@ void vp8_sixtap_predict8x4_cl
         return;
     }
 
-    CL_SIXTAP_PREDICT_EXEC(cq, cl_data.vp8_sixtap_predict8x4_kernel,(src_ptr-2*src_pixels_per_line),src_len,
+    CL_SIXTAP_PREDICT_EXEC(cq, src_mem, dst_mem, cl_data.vp8_sixtap_predict8x4_kernel,(src_ptr-2*src_pixels_per_line),src_len,
             src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch,global,dst_len,
             vp8_sixtap_predict8x4_c(src_ptr,src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch)
     );
@@ -167,7 +172,8 @@ void vp8_sixtap_predict16x16_cl
 
     int err;
     size_t global = 336; //21*16
-
+    cl_mem src_mem;
+    cl_mem dst_mem;
     //Size of output data
     int dst_len = DST_LEN(dst_pitch,16,16);
 
@@ -180,7 +186,7 @@ void vp8_sixtap_predict16x16_cl
         return;
     }
 
-    CL_SIXTAP_PREDICT_EXEC(cq, cl_data.vp8_sixtap_predict16x16_kernel,(src_ptr-2*src_pixels_per_line),src_len,
+    CL_SIXTAP_PREDICT_EXEC(cq, src_mem, dst_mem, cl_data.vp8_sixtap_predict16x16_kernel,(src_ptr-2*src_pixels_per_line),src_len,
             src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch,global,dst_len,
             vp8_sixtap_predict16x16_c(src_ptr,src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch)
     );
@@ -215,12 +221,14 @@ void vp8_bilinear_predict4x4_cl
     //int src_len = SRC_LEN(output1_width,output1_height,src_pixels_per_line);
     int src_len = BIL_SRC_LEN(4,5,src_pixels_per_line);
 
+    cl_mem src_mem, dst_mem, int_mem;
+
     if (cl_initialized != CL_SUCCESS){
         vp8_bilinear_predict4x4_c(src_ptr,src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch);
         return;
     }
 
-    CL_BILINEAR_EXEC(cq, cl_data.vp8_bilinear_predict4x4_kernel,src_ptr,src_len,
+    CL_BILINEAR_EXEC(cq, src_mem, dst_mem, int_mem, cl_data.vp8_bilinear_predict4x4_kernel,src_ptr,src_len,
             src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch,global,dst_len,
             vp8_bilinear_predict4x4_c(src_ptr,src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch)
     );
@@ -254,12 +262,14 @@ void vp8_bilinear_predict8x8_cl
     //int src_len = SRC_LEN(output1_width,output1_height,src_pixels_per_line);
     int src_len = BIL_SRC_LEN(8,9,src_pixels_per_line);
 
+    cl_mem src_mem, dst_mem, int_mem;
+
     if (cl_initialized != CL_SUCCESS){
         vp8_bilinear_predict8x8_c(src_ptr,src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch);
         return;
     }
     
-    CL_BILINEAR_EXEC(cq, cl_data.vp8_bilinear_predict8x8_kernel,src_ptr,src_len,
+    CL_BILINEAR_EXEC(cq, src_mem, dst_mem, int_mem, cl_data.vp8_bilinear_predict8x8_kernel,src_ptr,src_len,
             src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch,global,dst_len,
             vp8_bilinear_predict8x8_c(src_ptr,src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch)
     );
@@ -290,12 +300,14 @@ void vp8_bilinear_predict8x4_cl
 
     int src_len = BIL_SRC_LEN(4,9,src_pixels_per_line);
 
+    cl_mem src_mem, dst_mem, int_mem;
+
     if (cl_initialized != CL_SUCCESS){
         vp8_bilinear_predict8x4_c(src_ptr,src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch);
         return;
     }
 
-    CL_BILINEAR_EXEC(cq, cl_data.vp8_bilinear_predict8x4_kernel,src_ptr,src_len,
+    CL_BILINEAR_EXEC(cq, src_mem, dst_mem, int_mem, cl_data.vp8_bilinear_predict8x4_kernel,src_ptr,src_len,
             src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch,global,dst_len,
             vp8_bilinear_predict8x4_c(src_ptr,src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch)
     );
@@ -330,7 +342,9 @@ void vp8_bilinear_predict16x16_cl
         return;
     }
 
-    CL_BILINEAR_EXEC(cq, cl_data.vp8_bilinear_predict16x16_kernel,src_ptr,src_len,
+    cl_mem src_mem, dst_mem, int_mem;
+
+    CL_BILINEAR_EXEC(cq, src_mem, dst_mem, int_mem, cl_data.vp8_bilinear_predict16x16_kernel,src_ptr,src_len,
             src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch,global,dst_len,
             vp8_bilinear_predict16x16_c(src_ptr,src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch)
     );

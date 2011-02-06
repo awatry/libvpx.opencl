@@ -33,24 +33,6 @@ void cl_destroy(cl_command_queue cq, int new_status) {
     if (cq != NULL)
         clFinish(cq);
 
-    if (cl_data.srcData) {
-        clReleaseMemObject(cl_data.srcData);
-        cl_data.srcData = NULL;
-        cl_data.srcAlloc = 0;
-    }
-
-    if (cl_data.destData) {
-        clReleaseMemObject(cl_data.destData);
-        cl_data.destData = NULL;
-        cl_data.destAlloc = 0;
-    }
-
-    if (cl_data.intData) {
-        clReleaseMemObject(cl_data.intData);
-        cl_data.intData = NULL;
-        cl_data.destAlloc = 0;
-    }
-
     //Release the objects that we've allocated on the GPU
     if (cl_data.filter_program)
         clReleaseProgram(cl_data.filter_program);
@@ -238,14 +220,6 @@ int cl_common_init() {
 
     //Initialize command queue to null (created for each macroblock)
     //cl_data.commands = NULL;
-
-    //Initialize memory objects to null pointers
-    cl_data.srcData = NULL;
-    cl_data.srcAlloc = 0;
-    cl_data.destData = NULL;
-    cl_data.destAlloc = 0;
-    cl_data.intData = NULL;
-    cl_data.intAlloc = 0;
 
     //Initialize programs to null value
     //Enables detection of if they've been initialized as well.

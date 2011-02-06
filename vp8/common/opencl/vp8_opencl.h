@@ -104,12 +104,14 @@ extern const char *vpx_codec_lib_dir(void);
     ); \
 
 #define CL_ENSURE_BUF_SIZE(cq, bufRef, bufType, needSize, curSize, dataPtr, altPath) \
-    if ( needSize > curSize || bufRef == NULL){ \
+        /* CL_FINISH(cq); */\
+        if ( needSize > curSize || bufRef == NULL || 1){ \
         if (bufRef != NULL) \
             clReleaseMemObject(bufRef); \
         if (dataPtr != NULL){ \
             CL_CREATE_BUF(cq, bufRef, bufType, needSize, dataPtr, altPath); \
         } else {\
+            printf("Is this used\n");\
             bufRef = clCreateBuffer(cl_data.context, bufType, needSize, NULL, NULL);\
         } \
         CL_CHECK_SUCCESS(cq, !bufRef, \
@@ -164,13 +166,6 @@ typedef struct VP8_COMMON_CL {
 
     cl_kernel filter_block2d_bil_first_pass_kernel;
     cl_kernel filter_block2d_bil_second_pass_kernel;
-
-    cl_mem srcData; //Source frame data
-    size_t srcAlloc; //Amount of allocated CL memory for srcData
-    cl_mem destData; //Destination data for 2nd pass.
-    size_t destAlloc; //Amount of allocated CL memory for destData
-    cl_mem intData; //Intermediate data pointer. Used as scratch data
-    size_t intAlloc; //Size of intData
 
     cl_int cl_decode_initialized;
     cl_int cl_encode_initialized;

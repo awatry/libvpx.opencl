@@ -165,25 +165,27 @@ extern const char *filter_cl_file_name;
 #define BIL_SRC_LEN(out_width,out_height,src_px) (out_height * src_px + out_width)
 #define DST_LEN(dst_pitch,dst_height,dst_width) (dst_pitch * dst_height + dst_width)
 
-#define CL_SIXTAP_PREDICT_EXEC(cq, kernel,src_ptr,src_len, src_pixels_per_line, \
+#define CL_SIXTAP_PREDICT_EXEC(cq, src_mem, dst_mem, kernel,src_ptr,src_len, src_pixels_per_line, \
 xoffset,yoffset,dst_ptr,dst_pitch,thread_count,dst_len,altPath) \
 \
+    CL_FINISH(cq); /* Needed for now... Eventually memory will be passed in... */ \
+\
 /*Make space for kernel input/output data. Initialize the buffer as well if needed. */ \
-    CL_ENSURE_BUF_SIZE( cq, cl_data.srcData, CL_MEM_READ_ONLY|CL_MEM_COPY_HOST_PTR, \
-        sizeof (unsigned char) * src_len, cl_data.srcAlloc, src_ptr-2, \
+    CL_CREATE_BUF( cq, src_mem, CL_MEM_READ_ONLY|CL_MEM_COPY_HOST_PTR, \
+        sizeof (unsigned char) * src_len, src_ptr-2, \
     ); \
 \
-    CL_ENSURE_BUF_SIZE( cq, cl_data.destData, CL_MEM_WRITE_ONLY|CL_MEM_COPY_HOST_PTR, \
-        sizeof (unsigned char) * dst_len, cl_data.destAlloc, dst_ptr, \
+    CL_CREATE_BUF( cq, dst_mem, CL_MEM_WRITE_ONLY|CL_MEM_COPY_HOST_PTR, \
+        sizeof (unsigned char) * dst_len, dst_ptr, \
     ); \
 \
     /* Set kernel arguments */ \
     err = 0; \
-    err = clSetKernelArg(kernel, 0, sizeof (cl_mem), &cl_data.srcData); \
+    err = clSetKernelArg(kernel, 0, sizeof (cl_mem), &src_mem); \
     err |= clSetKernelArg(kernel, 1, sizeof (int), &src_pixels_per_line); \
     err |= clSetKernelArg(kernel, 2, sizeof (int), &xoffset); \
     err |= clSetKernelArg(kernel, 3, sizeof (int), &yoffset); \
-    err |= clSetKernelArg(kernel, 4, sizeof (cl_mem), &cl_data.destData); \
+    err |= clSetKernelArg(kernel, 4, sizeof (cl_mem), &dst_mem); \
     err |= clSetKernelArg(kernel, 5, sizeof (int), &dst_pitch); \
     CL_CHECK_SUCCESS( cq, err != CL_SUCCESS, \
         "Error: Failed to set kernel arguments!\n", \
@@ -198,37 +200,42 @@ xoffset,yoffset,dst_ptr,dst_pitch,thread_count,dst_len,altPath) \
     ); \
 \
     /* Read back the result data from the device */ \
-    err = clEnqueueReadBuffer(cq, cl_data.destData, CL_FALSE, 0, sizeof (unsigned char) * dst_len, dst_ptr, 0, NULL, NULL); \
+    err = clEnqueueReadBuffer(cq, dst_mem, CL_FALSE, 0, sizeof (unsigned char) * dst_len, dst_ptr, 0, NULL, NULL); \
     CL_CHECK_SUCCESS( cq, err != CL_SUCCESS, \
         "Error: Failed to read output array!\n", \
         altPath, \
     );\
+\
+    clReleaseMemObject(src_mem); \
+    clReleaseMemObject(dst_mem);\
 
 //#end define CL_SIXTAP_PREDICT_EXEC
 
-#define CL_BILINEAR_EXEC(cq,kernel,src_ptr,src_len, src_pixels_per_line, \
+#define CL_BILINEAR_EXEC(cq, src_mem, dst_mem, int_mem, kernel,src_ptr,src_len, src_pixels_per_line, \
 xoffset,yoffset,dst_ptr,dst_pitch,thread_count,dst_len,altPath) \
-    /*Make space for kernel input/output data. Initialize the buffer as well if needed. */ \
-    CL_ENSURE_BUF_SIZE(cq, cl_data.srcData, CL_MEM_READ_ONLY|CL_MEM_COPY_HOST_PTR, \
-        sizeof (unsigned char) * src_len, cl_data.srcAlloc, src_ptr, altPath\
+ \
+    CL_FINISH(cq);\
+/*Make space for kernel input/output data. Initialize the buffer as well if needed. */ \
+    CL_CREATE_BUF(cq, src_mem, CL_MEM_READ_ONLY|CL_MEM_COPY_HOST_PTR, \
+        sizeof (unsigned char) * src_len, src_ptr, altPath\
     ); \
 \
-    CL_ENSURE_BUF_SIZE(cq, cl_data.destData, CL_MEM_WRITE_ONLY|CL_MEM_COPY_HOST_PTR, \
-        sizeof (unsigned char) * dst_len, cl_data.destAlloc, dst_ptr, altPath\
+    CL_CREATE_BUF(cq, dst_mem, CL_MEM_WRITE_ONLY|CL_MEM_COPY_HOST_PTR, \
+        sizeof (unsigned char) * dst_len, dst_ptr, altPath\
     ); \
     \
-    CL_ENSURE_BUF_SIZE(cq, cl_data.intData,CL_MEM_READ_WRITE, \
-        sizeof(cl_int)*17*16, cl_data.intAlloc, NULL, altPath); \
+    CL_CREATE_BUF(cq, int_mem,CL_MEM_READ_WRITE, \
+        sizeof(cl_int)*17*16, NULL, altPath); \
 \
     /* Set kernel arguments */ \
     err = 0; \
-    err = clSetKernelArg(kernel, 0, sizeof (cl_mem), &cl_data.srcData); \
+    err = clSetKernelArg(kernel, 0, sizeof (cl_mem), &src_mem); \
     err |= clSetKernelArg(kernel, 1, sizeof (int), &src_pixels_per_line); \
     err |= clSetKernelArg(kernel, 2, sizeof (int), &xoffset); \
     err |= clSetKernelArg(kernel, 3, sizeof (int), &yoffset); \
-    err |= clSetKernelArg(kernel, 4, sizeof (cl_mem), &cl_data.destData); \
+    err |= clSetKernelArg(kernel, 4, sizeof (cl_mem), &dst_mem); \
     err |= clSetKernelArg(kernel, 5, sizeof (int), &dst_pitch); \
-    err |= clSetKernelArg(kernel, 6, sizeof (cl_mem), &cl_data.intData); \
+    err |= clSetKernelArg(kernel, 6, sizeof (cl_mem), &int_mem); \
     CL_CHECK_SUCCESS( cq, err != CL_SUCCESS, \
         "Error: Failed to set kernel arguments!\n", \
         altPath, \
@@ -242,11 +249,15 @@ xoffset,yoffset,dst_ptr,dst_pitch,thread_count,dst_len,altPath) \
     ); \
 \
     /* Read back the result data from the device */ \
-    err = clEnqueueReadBuffer(cq, cl_data.destData, CL_FALSE, 0, sizeof (unsigned char) * dst_len, dst_ptr, 0, NULL, NULL); \
+    err = clEnqueueReadBuffer(cq, dst_mem, CL_FALSE, 0, sizeof (unsigned char) * dst_len, dst_ptr, 0, NULL, NULL); \
     CL_CHECK_SUCCESS( cq, err != CL_SUCCESS, \
         "Error: Failed to read output array!\n", \
         altPath, \
     );\
+\
+    clReleaseMemObject(src_mem); \
+    clReleaseMemObject(dst_mem); \
+    clReleaseMemObject(int_mem); \
 
 //#end define CL_BILINEAR_EXEC
 

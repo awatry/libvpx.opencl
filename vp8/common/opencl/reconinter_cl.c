@@ -60,15 +60,20 @@ static void vp8_copy_mem_cl(
     size_t dst_len = (num_iter - 1)*dst_stride + num_bytes;
     size_t global[2] = {num_bytes, num_iter};
 
-    CL_FINISH(cq);
+    //CL_FINISH(cq);
 
-    CL_CREATE_BUF( cq, src_mem, CL_MEM_WRITE_ONLY|CL_MEM_COPY_HOST_PTR,
-        sizeof (unsigned char) * src_len, src,
+    //NEED TO CONVERT ALL CL_CREATE_BUF(with src pointer) to create null data,
+    //and then enqueue write
+
+    CL_CREATE_BUF( cq, src_mem, CL_MEM_WRITE_ONLY,
+        sizeof (unsigned char) * src_len, NULL,
     ); 
+    CL_SET_BUF( cq, src_mem, sizeof (unsigned char) * src_len, src, );
 
-    CL_CREATE_BUF( cq, dst_mem, CL_MEM_WRITE_ONLY|CL_MEM_COPY_HOST_PTR,
-        sizeof (unsigned char) * dst_len, dst,
+    CL_CREATE_BUF( cq, dst_mem, CL_MEM_WRITE_ONLY,
+        sizeof (unsigned char) * dst_len, NULL,
     );
+    CL_SET_BUF( cq, dst_mem, sizeof (unsigned char) * dst_len, dst, );
 
     /* Set kernel arguments */
     err = 0; \
@@ -127,6 +132,7 @@ void vp8_build_inter_predictors_b_cl(BLOCKD *d, int pitch)
     int r;
     unsigned char *ptr_base;
     unsigned char *ptr;
+    int ptr_offset = d->pre + (d->bmi.mv.as_mv.row >> 3) * d->pre_stride + (d->bmi.mv.as_mv.col >> 3);
     unsigned char *pred_ptr = d->predictor_base + d->predictor_offset;
 
     vp8_subpix_cl_fn_t sppf;
@@ -135,8 +141,6 @@ void vp8_build_inter_predictors_b_cl(BLOCKD *d, int pitch)
         sppf = vp8_sixtap_predict4x4_cl;
     else
         sppf = vp8_bilinear_predict4x4_cl;
-
-    int ptr_offset = d->pre + (d->bmi.mv.as_mv.row >> 3) * d->pre_stride + (d->bmi.mv.as_mv.col >> 3);
 
     //d->base_pre is the start of the Macroblock's y_buffer, u_buffer, or v_buffer
     ptr_base = *(d->base_pre);
