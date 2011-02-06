@@ -430,7 +430,7 @@ kernel void vp8_memcpy_kernel(
     }
 }
 
-kernel void vp8_memset_short_kernel(
+void vp8_memset_short(
     global short *mem,
     int offset,
     short newval,
