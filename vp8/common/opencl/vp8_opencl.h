@@ -81,6 +81,12 @@ extern const char *vpx_codec_lib_dir(void);
         ); \
     } \
 
+#define CL_READ_BUF(cq, bufRef, bufSize, dstPtr) \
+    err = clEnqueueReadBuffer(cq, bufRef, CL_FALSE, 0, bufSize , dstPtr, 0, NULL, NULL); \
+    CL_CHECK_SUCCESS( cq, err != CL_SUCCESS, \
+        "Error: Failed to read from GPU!\n",, err \
+    ); \
+
 #define CL_CREATE_BUF(cq, bufRef, bufType, bufSize, dataPtr, altPath) \
     if (dataPtr != NULL){ \
         bufRef = clCreateBuffer(cl_data.context, bufType, bufSize, dataPtr, &err); \
@@ -102,12 +108,7 @@ extern const char *vpx_codec_lib_dir(void);
         if (bufRef != NULL) \
             clReleaseMemObject(bufRef); \
         if (dataPtr != NULL){ \
-            bufRef = clCreateBuffer(cl_data.context, bufType, needSize, dataPtr, &err); \
-            CL_CHECK_SUCCESS(cq, \
-                err != CL_SUCCESS, \
-                "Error copying data to buffer! Using CPU path!\n", \
-                altPath, \
-            ); \
+            CL_CREATE_BUF(cq, bufRef, bufType, needSize, dataPtr, altPath); \
         } else {\
             bufRef = clCreateBuffer(cl_data.context, bufType, needSize, NULL, NULL);\
         } \
