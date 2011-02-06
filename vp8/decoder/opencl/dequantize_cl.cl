@@ -31,15 +31,14 @@ __kernel void vp8_dequantize_b_kernel(
 {
     __global short *DQ  = dqcoeff_base + dqcoeff_offset;
     __global short *Q   = qcoeff_base  + qcoeff_offset;
-    __global short *DQC = dequant;
+
 #if USE_VECTORS
-    short16 dqv = vload16(0,Q) * vload16(0,DQC);
-    vstore16(vload16(0,Q) * vload16(0,DQC), 0, DQ);
+    vstore16(vload16(0,Q) * vload16(0,dequant), 0, DQ);
 #else
-    int i;
-    for (i = 0; i < 16; i++)
+    int tid = get_global_id(0);
+    if (tid < 16)
     {
-        DQ[i] = Q[i] * DQC[i];
+        DQ[tid] = Q[tid] * dequant[tid];
     }
 
 #endif

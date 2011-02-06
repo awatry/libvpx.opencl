@@ -24,7 +24,7 @@ extern "C" {
     void sym(BLOCKD *x)
 
 #define prototype_dequant_idct_add_cl(sym) \
-    void sym(BLOCKD *b, unsigned char *dest_base,int dest_offset, int q_offset, \
+    void sym(BLOCKD *b, unsigned char *dest_base,int dest_offset, size_t dest_size, int q_offset, \
              int pred_offset, int pitch, int stride, \
              vp8_dequant_idct_add_fn_t idct_add)
 

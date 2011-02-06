@@ -152,66 +152,59 @@ void vp8_short_idct4x4llm_1_cl(BLOCKD *b, int pitch)
 
 }
 
-void vp8_dc_only_idct_add_cl(BLOCKD *b, cl_int use_diff, int diff_offset, int qcoeff_offset, int pred_offset, unsigned char *dst_ptr, int pitch, int stride)
+void vp8_dc_only_idct_add_cl(BLOCKD *b, cl_int use_diff, int diff_offset, 
+        int qcoeff_offset, int pred_offset,
+        unsigned char *dst_base, int dst_offset, size_t dest_size,
+        int pitch, int stride
+)
 {
     
     int err;
     size_t global = 16;
-    unsigned char *pred_ptr = b->predictor_base + pred_offset;
+    cl_mem dest_mem = NULL;
 
-    short input_dc;
-    if (use_diff == 1){
-        input_dc = b->diff_base[diff_offset];
-    } else {
-        input_dc = b->qcoeff_base[qcoeff_offset] * b->dequant[0];
-    }
+    CL_FINISH(b->cl_commands);
 
-    if (cl_initialized != CL_SUCCESS){
-        vp8_dc_only_idct_add_c(input_dc, pred_ptr, dst_ptr, pitch, stride);
-        return;
-    }
-
-    CL_ENSURE_BUF_SIZE(b->cl_commands, cl_data.srcData, CL_MEM_READ_ONLY|CL_MEM_COPY_HOST_PTR,
-            sizeof(unsigned char)*(4*pitch+4), cl_data.srcAlloc, pred_ptr,
-            vp8_dc_only_idct_add_c(input_dc, pred_ptr, dst_ptr, pitch, stride)
-    );
-
-    CL_ENSURE_BUF_SIZE(b->cl_commands, cl_data.destData,CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,
-            sizeof(unsigned char) * ( 4 * stride + 4), cl_data.destAlloc, dst_ptr,
-            vp8_dc_only_idct_add_c(input_dc, pred_ptr, dst_ptr, pitch, stride)
+    size_t cur_size = 0;
+    CL_ENSURE_BUF_SIZE(b->cl_commands, dest_mem, CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,
+            dest_size, cur_size, dst_base,
     );
 
     //Set arguments and run kernel
-    err =  clSetKernelArg(cl_data.vp8_dc_only_idct_add_kernel, 0, sizeof (cl_mem), &cl_data.srcData);
-    err |= clSetKernelArg(cl_data.vp8_dc_only_idct_add_kernel, 1, sizeof (cl_mem), &cl_data.destData);
-    err |= clSetKernelArg(cl_data.vp8_dc_only_idct_add_kernel, 2, sizeof (int), &pitch);
-    err |= clSetKernelArg(cl_data.vp8_dc_only_idct_add_kernel, 3, sizeof (int), &stride);
-    err |= clSetKernelArg(cl_data.vp8_dc_only_idct_add_kernel, 4, sizeof (cl_int), &use_diff);
-    err |= clSetKernelArg(cl_data.vp8_dc_only_idct_add_kernel, 5, sizeof (cl_mem), &b->cl_diff_mem);
-    err |= clSetKernelArg(cl_data.vp8_dc_only_idct_add_kernel, 6, sizeof (int), &diff_offset);
-    err |= clSetKernelArg(cl_data.vp8_dc_only_idct_add_kernel, 7, sizeof (cl_mem), &b->cl_qcoeff_mem);
-    err |= clSetKernelArg(cl_data.vp8_dc_only_idct_add_kernel, 8, sizeof (int), &qcoeff_offset);
-    err |= clSetKernelArg(cl_data.vp8_dc_only_idct_add_kernel, 9, sizeof (cl_mem), &b->cl_dequant_mem);
+    err =  clSetKernelArg(cl_data.vp8_dc_only_idct_add_kernel, 0, sizeof (cl_mem), &b->cl_predictor_mem);
+    err |= clSetKernelArg(cl_data.vp8_dc_only_idct_add_kernel, 1, sizeof (int), &pred_offset);
+    err |= clSetKernelArg(cl_data.vp8_dc_only_idct_add_kernel, 2, sizeof (cl_mem), &dest_mem);
+    err |= clSetKernelArg(cl_data.vp8_dc_only_idct_add_kernel, 3, sizeof (int), &dst_offset);
+    err |= clSetKernelArg(cl_data.vp8_dc_only_idct_add_kernel, 4, sizeof (int), &pitch);
+    err |= clSetKernelArg(cl_data.vp8_dc_only_idct_add_kernel, 5, sizeof (int), &stride);
+    err |= clSetKernelArg(cl_data.vp8_dc_only_idct_add_kernel, 6, sizeof (cl_int), &use_diff);
+    err |= clSetKernelArg(cl_data.vp8_dc_only_idct_add_kernel, 7, sizeof (cl_mem), &b->cl_diff_mem);
+    err |= clSetKernelArg(cl_data.vp8_dc_only_idct_add_kernel, 8, sizeof (int), &diff_offset);
+    err |= clSetKernelArg(cl_data.vp8_dc_only_idct_add_kernel, 9, sizeof (cl_mem), &b->cl_qcoeff_mem);
+    err |= clSetKernelArg(cl_data.vp8_dc_only_idct_add_kernel, 10, sizeof (int), &qcoeff_offset);
+    err |= clSetKernelArg(cl_data.vp8_dc_only_idct_add_kernel, 11, sizeof (cl_mem), &b->cl_dequant_mem);
     CL_CHECK_SUCCESS( b->cl_commands, err != CL_SUCCESS,
-        "Error: Failed to set kernel arguments!\n",
-        vp8_dc_only_idct_add_c(input_dc, pred_ptr, dst_ptr, pitch, stride),
+        "Error: Failed to set kernel arguments!\n",,
     );
 
     /* Execute the kernel */
     err = clEnqueueNDRangeKernel(b->cl_commands, cl_data.vp8_dc_only_idct_add_kernel, 1, NULL, &global, NULL , 0, NULL, NULL);
     CL_CHECK_SUCCESS( b->cl_commands, err != CL_SUCCESS,
         "Error: Failed to execute kernel!\n",
-        printf("err = %d\n",err);
-        vp8_dc_only_idct_add_c(input_dc, pred_ptr, dst_ptr, pitch, stride),
+        printf("err = %d\n",err);,
     );
 
     /* Read back the result data from the device */
-    err = clEnqueueReadBuffer(b->cl_commands, cl_data.destData, CL_FALSE, 0,
-            sizeof(unsigned char) * ( 4 * stride + 4), dst_ptr, 0, NULL, NULL);
+        err = clEnqueueReadBuffer(b->cl_commands, dest_mem, CL_FALSE, 0,
+            dest_size, dst_base, 0, NULL, NULL);
+
     CL_CHECK_SUCCESS(b->cl_commands, err != CL_SUCCESS,
-        "Error: Failed to read output array!\n",
-        vp8_dc_only_idct_add_c(input_dc, pred_ptr, dst_ptr, pitch, stride),
+        "Error: Failed to read output array!\n",,
     );
+
+    CL_FINISH(b->cl_commands);
+
+    clReleaseMemObject(dest_mem);
 
     return;
 }

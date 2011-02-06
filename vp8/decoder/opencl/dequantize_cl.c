@@ -65,28 +65,7 @@ int cl_init_dequant() {
 void vp8_dequantize_b_cl(BLOCKD *d)
 {
     int i,err;
-    size_t global = 1;
-
-    if (cl_initialized != CL_SUCCESS){
-        vp8_dequantize_b_c(d);
-        return;
-    }
-    
-    printf("vp8_dequantize_b_cl\n");
-
-     //Initialize memory
-    CL_SET_BUF(d->cl_commands, d->cl_dqcoeff_mem, sizeof(cl_short)*400, d->dqcoeff_base,
-        vp8_dequantize_b_c(d)
-    );
-
-    CL_SET_BUF(d->cl_commands, d->cl_qcoeff_mem, sizeof(cl_short)*400, d->qcoeff_base,
-        vp8_dequantize_b_c(d)
-    );
-
-    //Already set in decodframe.c when initializing block
-    CL_SET_BUF(d->cl_commands, d->cl_dequant_mem, sizeof(cl_short)*16, d->dequant,
-        vp8_dequantize_b_c(d)
-    );
+    size_t global = 16;
 
     /* Set kernel arguments */
     err = 0;
@@ -108,37 +87,22 @@ void vp8_dequantize_b_cl(BLOCKD *d)
         vp8_dequantize_b_c(d),
     );
 
-    /* Read back the result data from the device */
-    err = clEnqueueReadBuffer(d->cl_commands, d->cl_dqcoeff_mem, CL_FALSE, 0, sizeof(cl_short)*400, d->dqcoeff_base, 0, NULL, NULL); \
-    CL_CHECK_SUCCESS( d->cl_commands, err != CL_SUCCESS,
-        "Error: Failed to read output array!\n",
-        vp8_dequantize_b_c(d),
-    );
-
-    clFinish(d->cl_commands);
-
 }
 
-void vp8_dequant_idct_add_cl(BLOCKD *b, unsigned char *dest_base, int dest_offset, int q_offset, int pred_offset, int pitch, int stride, vp8_dequant_idct_add_fn_t idct_add)
+void vp8_dequant_idct_add_cl(BLOCKD *b, unsigned char *dest_base, int dest_offset, size_t dst_size, int q_offset, int pred_offset, int pitch, int stride, vp8_dequant_idct_add_fn_t idct_add)
 {
     int err;
     size_t global = 1;
-    size_t cur_size, dest_size;
+    size_t cur_size;
     cl_mem dest_mem = NULL;
-
-    if (cl_initialized != CL_SUCCESS){
-        idct_add(b->qcoeff_base+q_offset, b->dequant,  b->predictor_base + pred_offset,
-            dest_base + dest_offset, pitch, stride);
-        return;
-    }
 
     //Initialize destination memory
 
     //Dest size calculation stolen from memory allocation function for planes.
-    dest_size = sizeof(cl_uchar)*(4*stride + dest_offset + 4);
+    //dest_size = sizeof(cl_uchar)*(4*stride + dest_offset + 4);
     cur_size = 0;
     CL_ENSURE_BUF_SIZE(b->cl_commands, dest_mem, CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,
-            dest_size, cur_size, dest_base,
+            dst_size, cur_size, dest_base,
             idct_add(b->qcoeff_base+q_offset, b->dequant,  b->predictor_base + pred_offset,
             dest_base + dest_offset, pitch, stride)
     );
@@ -170,7 +134,7 @@ void vp8_dequant_idct_add_cl(BLOCKD *b, unsigned char *dest_base, int dest_offse
     );
 
     /* Read back the result data from the device */
-    err = clEnqueueReadBuffer(b->cl_commands, dest_mem, CL_FALSE, 0, dest_size, dest_base, 0, NULL, NULL);
+    err = clEnqueueReadBuffer(b->cl_commands, dest_mem, CL_FALSE, 0, dst_size, dest_base, 0, NULL, NULL);
     CL_CHECK_SUCCESS( b->cl_commands, err != CL_SUCCESS,
         "Error: Failed to read output array!\n",
         idct_add(b->qcoeff_base+q_offset, b->dequant,  b->predictor_base + pred_offset,

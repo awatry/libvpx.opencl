@@ -123,8 +123,10 @@ __kernel void vp8_short_idct4x4llm_1_kernel(
 }
 
 __kernel void vp8_dc_only_idct_add_kernel(
-    __global unsigned char *pred_ptr,
-    __global unsigned char *dst_ptr,
+    __global unsigned char *pred_base,
+    int pred_offset,
+    __global unsigned char *dst_base,
+    int dst_offset,
     int pitch,
     int stride,
     int use_diff,
@@ -135,9 +137,11 @@ __kernel void vp8_dc_only_idct_add_kernel(
     global short *dequant
 )
 {
-
     int r, c;
-    int pred_offset,dst_offset;
+    //int pred_offset;
+    global unsigned char *pred_ptr = &pred_base[pred_offset];
+    global unsigned char *dst_ptr = &dst_base[dst_offset];
+
     int tid = get_global_id(0);
 
     int a1;
@@ -155,7 +159,7 @@ __kernel void vp8_dc_only_idct_add_kernel(
         c = tid % 4;
 
         pred_offset = r * pitch;
-        dst_offset = r * stride;
+        dst_offset += r * stride;
         int a = a1 + pred_ptr[pred_offset + c] ;
 
         if (a < 0)
@@ -163,7 +167,7 @@ __kernel void vp8_dc_only_idct_add_kernel(
         else if (a > 255)
             a = 255;
 
-        dst_ptr[dst_offset + c] = (unsigned char) a ;
+        dst_base[dst_offset + c] = (unsigned char) a ;
     }
 }
 

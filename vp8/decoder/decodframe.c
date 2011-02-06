@@ -259,7 +259,10 @@ void vp8_decode_macroblock(VP8D_COMP *pbi, MACROBLOCKD *xd)
 
 #if CONFIG_OPENCL
         if (cl_initialized == CL_SUCCESS){
+            vp8_cl_block_prep(b, DEQUANT|QCOEFF);
             vp8_dequantize_b_cl(b);
+            vp8_cl_block_finish(b, DQCOEFF);
+            CL_FINISH(b->cl_commands);
         }
         else
 #endif
@@ -321,21 +324,21 @@ void vp8_decode_macroblock(VP8D_COMP *pbi, MACROBLOCKD *xd)
             BLOCKD *b = &xd->block[i];
             short *qcoeff = b->qcoeff_base + b->qcoeff_offset;
             vp8_predict_intra4x4(b, b->bmi.mode, b->predictor_base + b->predictor_offset);
-
+            size_t dst_size = (4*b->dst_stride + b->dst + 4);
 #if CONFIG_OPENCL
             if (cl_initialized == CL_SUCCESS){
                 if (xd->eobs[i] > 1)
                 {
-                    vp8_cl_block_prep(b, DQCOEFF|DEQUANT|PREDICTOR|BLOCK_COPY_ALL);
-                    vp8_dequant_idct_add_cl(b, *(b->base_dst), b->dst, b->qcoeff_offset, b->predictor_offset, 16, b->dst_stride, DEQUANT_INVOKE(&pbi->dequant, idct_add));
-                    vp8_cl_block_finish(b, DQCOEFF|BLOCK_COPY_ALL);
+                    vp8_cl_block_prep(b, QCOEFF|DEQUANT|PREDICTOR);
+                    vp8_dequant_idct_add_cl(b, *(b->base_dst), b->dst, dst_size, b->qcoeff_offset, b->predictor_offset, 16, b->dst_stride, DEQUANT_INVOKE(&pbi->dequant, idct_add));
+                    vp8_cl_block_finish(b, QCOEFF);
                     CL_FINISH(b->cl_commands);
                 }
                 else
                 {
-                    vp8_cl_block_prep(b, BLOCK_COPY_ALL);
+                    vp8_cl_block_prep(b, PREDICTOR|BLOCK_COPY_ALL);
                     vp8_dc_only_idct_add_cl(b, CL_FALSE, 0, b->qcoeff_offset, b->predictor_offset,
-                        *(b->base_dst) + b->dst, 16, b->dst_stride);
+                        *(b->base_dst), b->dst, dst_size, 16, b->dst_stride);
                     CL_FINISH(b->cl_commands);
                     ((int *)(b->qcoeff_base + b->qcoeff_offset))[0] = 0; //Move into follow-up kernel?
                 }
