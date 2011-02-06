@@ -52,14 +52,19 @@ int cl_init_filter() {
 void vp8_sixtap_predict4x4_cl
 (
     cl_command_queue cq,
-    unsigned char *src_ptr,
+    unsigned char *src_base,
+    int src_offset,
     int src_pixels_per_line,
     int xoffset,
     int yoffset,
-    unsigned char *dst_ptr,
+    unsigned char *dst_base,
+    int dst_offset,
     int dst_pitch
 ) {
 
+    unsigned char *src_ptr = src_base + src_offset;
+    unsigned char *dst_ptr = dst_base + dst_offset;
+    
     int err;
     size_t global = 36; //9*4
 
@@ -85,13 +90,18 @@ void vp8_sixtap_predict4x4_cl
 void vp8_sixtap_predict8x8_cl
 (
     cl_command_queue cq,
-    unsigned char *src_ptr,
+    unsigned char *src_base,
+    int src_offset,
     int src_pixels_per_line,
     int xoffset,
     int yoffset,
-    unsigned char *dst_ptr,
+    unsigned char *dst_base,
+    int dst_offset,
     int dst_pitch
 ) {
+
+    unsigned char *src_ptr = src_base + src_offset;
+    unsigned char *dst_ptr = dst_base + dst_offset;
 
     int err;
     size_t global = 104; //13*8
@@ -115,14 +125,18 @@ void vp8_sixtap_predict8x8_cl
 void vp8_sixtap_predict8x4_cl
 (
     cl_command_queue cq,
-    unsigned char *src_ptr,
+    unsigned char *src_base,
+    int src_offset,
     int src_pixels_per_line,
     int xoffset,
     int yoffset,
-    unsigned char *dst_ptr,
+    unsigned char *dst_base,
+    int dst_offset,
     int dst_pitch
-)
-{
+) {
+
+    unsigned char *src_ptr = src_base + src_offset;
+    unsigned char *dst_ptr = dst_base + dst_offset;
 
     int err;
     size_t global = 72; //9*8
@@ -145,15 +159,19 @@ void vp8_sixtap_predict8x4_cl
 
 void vp8_sixtap_predict16x16_cl
 (
-        cl_command_queue cq,
-        unsigned char *src_ptr,
-        int src_pixels_per_line,
-        int xoffset,
-        int yoffset,
-        unsigned char *dst_ptr,
-        int dst_pitch
-)
-{
+    cl_command_queue cq,
+    unsigned char *src_base,
+    int src_offset,
+    int src_pixels_per_line,
+    int xoffset,
+    int yoffset,
+    unsigned char *dst_base,
+    int dst_offset,
+    int dst_pitch
+) {
+
+    unsigned char *src_ptr = src_base + src_offset;
+    unsigned char *dst_ptr = dst_base + dst_offset;
 
     int err;
     size_t global = 336; //21*16
@@ -178,14 +196,18 @@ void vp8_sixtap_predict16x16_cl
 void vp8_bilinear_predict4x4_cl
 (
     cl_command_queue cq,
-    unsigned char *src_ptr,
+    unsigned char *src_base,
+    int src_offset,
     int src_pixels_per_line,
     int xoffset,
     int yoffset,
-    unsigned char *dst_ptr,
+    unsigned char *dst_base,
+    int dst_offset,
     int dst_pitch
-)
-{
+) {
+
+    unsigned char *src_ptr = src_base + src_offset;
+    unsigned char *dst_ptr = dst_base + dst_offset;
 
 #define CL_BILINEAR 1
 #if CL_BILINEAR
@@ -216,13 +238,18 @@ void vp8_bilinear_predict4x4_cl
 void vp8_bilinear_predict8x8_cl
 (
     cl_command_queue cq,
-    unsigned char *src_ptr,
+    unsigned char *src_base,
+    int src_offset,
     int src_pixels_per_line,
     int xoffset,
     int yoffset,
-    unsigned char *dst_ptr,
+    unsigned char *dst_base,
+    int dst_offset,
     int dst_pitch
 ) {
+
+    unsigned char *src_ptr = src_base + src_offset;
+    unsigned char *dst_ptr = dst_base + dst_offset;
 
 #if CL_BILINEAR
     int err;
@@ -251,13 +278,18 @@ void vp8_bilinear_predict8x8_cl
 void vp8_bilinear_predict8x4_cl
 (
     cl_command_queue cq,
-    unsigned char *src_ptr,
+    unsigned char *src_base,
+    int src_offset,
     int src_pixels_per_line,
     int xoffset,
     int yoffset,
-    unsigned char *dst_ptr,
+    unsigned char *dst_base,
+    int dst_offset,
     int dst_pitch
 ) {
+
+    unsigned char *src_ptr = src_base + src_offset;
+    unsigned char *dst_ptr = dst_base + dst_offset;
 
 #if CL_BILINEAR
     int err;
@@ -284,13 +316,18 @@ void vp8_bilinear_predict8x4_cl
 void vp8_bilinear_predict16x16_cl
 (
     cl_command_queue cq,
-    unsigned char *src_ptr,
+    unsigned char *src_base,
+    int src_offset,
     int src_pixels_per_line,
     int xoffset,
     int yoffset,
-    unsigned char *dst_ptr,
+    unsigned char *dst_base,
+    int dst_offset,
     int dst_pitch
 ) {
+
+    unsigned char *src_ptr = src_base + src_offset;
+    unsigned char *dst_ptr = dst_base + dst_offset;
 
 #if CL_BILINEAR
     int err;
