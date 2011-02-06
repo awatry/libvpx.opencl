@@ -850,6 +850,19 @@ int vp8_decode_frame(VP8D_COMP *pbi)
     setup_token_decoder(pbi, data + first_partition_length_in_bytes);
     xd->current_bc = &pbi->bc2;
 
+#if CONFIG_OPENCL
+    pbi->mb.cl_commands = NULL;
+    if (cl_initialized == CL_SUCCESS){
+        int err;
+        //Create command queue for macroblock.
+        pbi->mb.cl_commands = clCreateCommandQueue(cl_data.context, cl_data.device_id, 0, &err);
+        if (!pbi->mb.cl_commands || err != CL_SUCCESS) {
+            printf("Error: Failed to create a command queue!\n");
+            cl_destroy(NULL, CL_TRIED_BUT_FAILED);
+        }
+    }
+#endif
+
     /* Read the default quantizers. */
     {
         int Q, q_update;

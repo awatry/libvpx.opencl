@@ -70,6 +70,12 @@ extern const char *vpx_codec_lib_dir(void);
         CL_TRIED_BUT_FAILED \
     );
 
+#define CL_READ_BUF(cq, bufRef, bufSize, dstPtr) \
+    err = clEnqueueReadBuffer(cq, bufRef, CL_FALSE, 0, bufSize , dstPtr, 0, NULL, NULL); \
+    CL_CHECK_SUCCESS( cq, err != CL_SUCCESS, \
+        "Error: Failed to read from GPU!\n",, err \
+    ); \
+
 #define CL_SET_BUF(cq, bufRef, bufSize, dataPtr, altPath) \
     { \
         err = clEnqueueWriteBuffer(cq, bufRef, CL_FALSE, 0, \
@@ -81,47 +87,14 @@ extern const char *vpx_codec_lib_dir(void);
         ); \
     } \
 
-#define CL_READ_BUF(cq, bufRef, bufSize, dstPtr) \
-    err = clEnqueueReadBuffer(cq, bufRef, CL_FALSE, 0, bufSize , dstPtr, 0, NULL, NULL); \
-    CL_CHECK_SUCCESS( cq, err != CL_SUCCESS, \
-        "Error: Failed to read from GPU!\n",, err \
-    ); \
-
 #define CL_CREATE_BUF(cq, bufRef, bufType, bufSize, dataPtr, altPath) \
-    if (dataPtr != NULL){ \
-        bufRef = clCreateBuffer(cl_data.context, bufType, bufSize, dataPtr, &err); \
-        CL_CHECK_SUCCESS(cq, \
-            err != CL_SUCCESS, \
-            "Error copying data to buffer! Using CPU path!\n", \
-            altPath, \
-        ); \
-    } else {\
-        bufRef = clCreateBuffer(cl_data.context, bufType, bufSize, NULL, NULL);\
-    } \
+    bufRef = clCreateBuffer(cl_data.context, CL_MEM_READ_WRITE, bufSize, NULL, NULL); \
+    if (dataPtr != NULL && bufRef != NULL) \
+        CL_SET_BUF(cq, bufRef, bufSize, dataPtr, altPath)\
     CL_CHECK_SUCCESS(cq, !bufRef, \
         "Error: Failed to allocate buffer. Using CPU path!\n", \
         altPath, \
     ); \
-
-#define CL_ENSURE_BUF_SIZE(cq, bufRef, bufType, needSize, curSize, dataPtr, altPath) \
-        /* CL_FINISH(cq); */\
-        if ( needSize > curSize || bufRef == NULL || 1){ \
-        if (bufRef != NULL) \
-            clReleaseMemObject(bufRef); \
-        if (dataPtr != NULL){ \
-            CL_CREATE_BUF(cq, bufRef, bufType, needSize, dataPtr, altPath); \
-        } else {\
-            printf("Is this used\n");\
-            bufRef = clCreateBuffer(cl_data.context, bufType, needSize, NULL, NULL);\
-        } \
-        CL_CHECK_SUCCESS(cq, !bufRef, \
-            "Error: Failed to allocate buffer. Using CPU path!\n", \
-            altPath, \
-        ); \
-        curSize = needSize; \
-    } else { \
-        CL_SET_BUF(cq, bufRef, needSize, dataPtr, altPath); \
-    }
 
 #define CL_RELEASE_KERNEL(kernel) \
     if (kernel) \

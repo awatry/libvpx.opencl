@@ -125,8 +125,6 @@ void vp8_setup_block_dptrs(MACROBLOCKD *x)
     x->block[24].diff_offset = 384;
 
 #if CONFIG_OPENCL
-    //cl_data.commands =
-    x->cl_commands = NULL;
     x->cl_diff_mem = NULL;
     x->cl_predictor_mem = NULL;
     x->cl_qcoeff_mem = NULL;
@@ -136,14 +134,6 @@ void vp8_setup_block_dptrs(MACROBLOCKD *x)
     /* Set up CL memory buffers if appropriate */
     if (cl_initialized == CL_SUCCESS){
         int err;
-
-        //Create command queue for macroblock.
-        x->cl_commands = clCreateCommandQueue(cl_data.context, cl_data.device_id, 0, &err);
-        if (!x->cl_commands || err != CL_SUCCESS) {
-            printf("Error: Failed to create a command queue!\n");
-            cl_destroy(NULL, CL_TRIED_BUT_FAILED);
-            goto BUF_DONE;
-        }
 
         CL_CREATE_BUF(x->cl_commands, x->cl_diff_mem, CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,
                 sizeof(cl_short)*400, x->diff, goto BUF_DONE);
