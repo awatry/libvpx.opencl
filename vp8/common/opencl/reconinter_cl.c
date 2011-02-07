@@ -130,6 +130,7 @@ void vp8_build_inter_predictors_b_cl(BLOCKD *d, int pitch)
     }
 }
 
+
 void vp8_build_inter_predictors4b_cl(MACROBLOCKD *x, BLOCKD *d, int pitch)
 {
     unsigned char *ptr_base;
@@ -137,6 +138,7 @@ void vp8_build_inter_predictors4b_cl(MACROBLOCKD *x, BLOCKD *d, int pitch)
     int ptr_offset = d->pre + (d->bmi.mv.as_mv.row >> 3) * d->pre_stride + (d->bmi.mv.as_mv.col >> 3);
 
     ptr_base = *(d->base_pre);
+    printf("base_pre = %p\n",ptr_base);
 
     if (d->bmi.mv.as_mv.row & 7 || d->bmi.mv.as_mv.col & 7)
     {
@@ -211,11 +213,12 @@ void vp8_build_inter_predictors_mbuv_cl(MACROBLOCKD *x)
     }
     else
     {
+        // Can probably batch these operations as well, but not tested in decoder
+        // (or at least the test videos I've been using.
         for (i = 16; i < 24; i += 2)
         {
             BLOCKD *d0 = &x->block[i];
             BLOCKD *d1 = &x->block[i+1];
-
             if (d0->bmi.mv.as_int == d1->bmi.mv.as_int)
                 vp8_build_inter_predictors2b_cl(x, d0, 8);
             else
@@ -239,8 +242,6 @@ void vp8_build_inter_predictors_mb_cl(MACROBLOCKD *x)
         unsigned char *pred_base = x->predictor;
         int upred_offset = 256;
         int vpred_offset = 320;
-        //unsigned char *upred_ptr = &x->predictor[256];
-        //unsigned char *vpred_ptr = &x->predictor[320];
 
         int mv_row = x->mode_info_context->mbmi.mv.as_mv.row;
         int mv_col = x->mode_info_context->mbmi.mv.as_mv.col;
@@ -300,6 +301,8 @@ void vp8_build_inter_predictors_mb_cl(MACROBLOCKD *x)
         }
         else
         {
+            /* This loop can be done in any order... No dependencies.*/
+            /* Also, d0/d1 can be decoded simultaneously */
             for (i = 0; i < 16; i += 2)
             {
                 BLOCKD *d0 = &x->block[i];
@@ -315,6 +318,7 @@ void vp8_build_inter_predictors_mb_cl(MACROBLOCKD *x)
             }
         }
 
+        /* Another case of re-orderable/batchable loop */
         for (i = 16; i < 24; i += 2)
         {
             BLOCKD *d0 = &x->block[i];
@@ -327,11 +331,8 @@ void vp8_build_inter_predictors_mb_cl(MACROBLOCKD *x)
                 vp8_build_inter_predictors_b_cl(d0, 8);
                 vp8_build_inter_predictors_b_cl(d1, 8);
             }
-
         }
-
     }
-
 }
 
 
@@ -339,8 +340,7 @@ void vp8_build_inter_predictors_mb_cl(MACROBLOCKD *x)
  * situation, we can write the result directly to dst buffer instead of writing it to predictor
  * buffer and then copying it to dst buffer.
  */
-
-static void vp8_build_inter_predictors_b_s_cl(BLOCKD *d, unsigned char *dst_base, int dst_offset, vp8_subpix_fn_t discarc)
+static void vp8_build_inter_predictors_b_s_cl(BLOCKD *d, unsigned char *dst_base, int dst_offset)
 {
     int r;
     unsigned char *ptr_base;
@@ -366,7 +366,9 @@ static void vp8_build_inter_predictors_b_s_cl(BLOCKD *d, unsigned char *dst_base
     }
     else
     {
-//        vp8_copy_mem_cl(d->cl_commands, ptr,pre_stride,dst_ptr,dst_stride,4,4);
+#if 1
+        vp8_copy_mem_cl(d->cl_commands, ptr_base,ptr_offset,pre_stride,dst_base,dst_offset,dst_stride,4,4);
+#else
         for (r = 0; r < 4; r++)
         {
 #ifdef MUST_BE_ALIGNED
@@ -380,6 +382,7 @@ static void vp8_build_inter_predictors_b_s_cl(BLOCKD *d, unsigned char *dst_base
             dst_offset      += dst_stride;
             ptr         += pre_stride;
         }
+#endif
     }
 }
 
@@ -506,8 +509,8 @@ void vp8_build_inter_predictors_mb_s_cl(MACROBLOCKD *x)
                 }
                 else
                 {
-                    vp8_build_inter_predictors_b_s_cl(d0, dst_base, 0,  x->subpixel_predict);
-                    vp8_build_inter_predictors_b_s_cl(d1, dst_base, 0, x->subpixel_predict);
+                    vp8_build_inter_predictors_b_s_cl(d0, dst_base, 0);
+                    vp8_build_inter_predictors_b_s_cl(d1, dst_base, 0);
                 }
             }
         }
@@ -544,8 +547,8 @@ void vp8_build_inter_predictors_mb_s_cl(MACROBLOCKD *x)
             }
             else
             {
-                vp8_build_inter_predictors_b_s_cl(d0, dst_base, 0, x->subpixel_predict);
-                vp8_build_inter_predictors_b_s_cl(d1, dst_base, 0, x->subpixel_predict);
+                vp8_build_inter_predictors_b_s_cl(d0, dst_base, 0);
+                vp8_build_inter_predictors_b_s_cl(d1, dst_base, 0);
             }
         }
     }

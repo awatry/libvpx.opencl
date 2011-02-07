@@ -420,7 +420,7 @@ __kernel void vp8_bilinear_predict16x16_kernel
     vp8_filter_block2d_bil(src_ptr, dst_ptr, src_pixels_per_line, dst_pitch, xoffset, yoffset, 16, 16, FData);
 }
 
-
+//Called from reconinter_cl.c
 kernel void vp8_memcpy_kernel(
     global unsigned char *src,
     int src_stride,
@@ -444,6 +444,7 @@ kernel void vp8_memcpy_kernel(
     }
 }
 
+//Not used currently.
 void vp8_memset_short(
     global short *mem,
     int offset,
