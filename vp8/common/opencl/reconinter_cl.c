@@ -179,8 +179,7 @@ void vp8_build_inter_predictors_mbuv_cl(MACROBLOCKD *x)
     {
         unsigned char *u_base, *v_base;
 
-        unsigned char *upred_base = x->predictor;
-        unsigned char *vpred_base = x->predictor;
+        unsigned char *pred_base = x->predictor;
         int upred_offset = 256;
         int vpred_offset = 320;
 
@@ -196,18 +195,18 @@ void vp8_build_inter_predictors_mbuv_cl(MACROBLOCKD *x)
         if ((mv_row | mv_col) & 7)
         {
             if (cl_initialized == CL_SUCCESS && x->sixtap_filter == CL_TRUE){
-                vp8_sixtap_predict8x8_cl(x->block[16].cl_commands,u_base, offset, pre_stride, mv_col & 7, mv_row & 7, upred_base, upred_offset, 8);
-                vp8_sixtap_predict8x8_cl(x->block[16].cl_commands,v_base, offset, pre_stride, mv_col & 7, mv_row & 7, vpred_base, vpred_offset, 8);
+                vp8_sixtap_predict8x8_cl(x->block[16].cl_commands,u_base, offset, pre_stride, mv_col & 7, mv_row & 7, pred_base, upred_offset, 8);
+                vp8_sixtap_predict8x8_cl(x->block[16].cl_commands,v_base, offset, pre_stride, mv_col & 7, mv_row & 7, pred_base, vpred_offset, 8);
             }
             else{
-                vp8_bilinear_predict8x8_cl(x->block[16].cl_commands,u_base, offset, pre_stride, mv_col & 7, mv_row & 7, upred_base, upred_offset, 8);
-                vp8_bilinear_predict8x8_cl(x->block[16].cl_commands,v_base, offset, pre_stride, mv_col & 7, mv_row & 7, vpred_base, vpred_offset, 8);
+                vp8_bilinear_predict8x8_cl(x->block[16].cl_commands,u_base, offset, pre_stride, mv_col & 7, mv_row & 7, pred_base, upred_offset, 8);
+                vp8_bilinear_predict8x8_cl(x->block[16].cl_commands,v_base, offset, pre_stride, mv_col & 7, mv_row & 7, pred_base, vpred_offset, 8);
             }
         }
         else
         {
-            vp8_copy_mem_cl(x->block[16].cl_commands, u_base, offset, pre_stride, upred_base, upred_offset, 8, 8, 8);
-            vp8_copy_mem_cl(x->block[16].cl_commands, v_base, offset, pre_stride, vpred_base, vpred_offset, 8, 8, 8);
+            vp8_copy_mem_cl(x->block[16].cl_commands, u_base, offset, pre_stride, pred_base, upred_offset, 8, 8, 8);
+            vp8_copy_mem_cl(x->block[16].cl_commands, v_base, offset, pre_stride, pred_base, vpred_offset, 8, 8, 8);
         }
     }
     else

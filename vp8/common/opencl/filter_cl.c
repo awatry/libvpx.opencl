@@ -62,6 +62,7 @@ void vp8_sixtap_predict4x4_cl
     int dst_pitch
 ) {
 
+    int tmp_offset = 0;
     unsigned char *src_ptr = src_base + src_offset;
     unsigned char *dst_ptr = dst_base + dst_offset;
     
@@ -78,8 +79,8 @@ void vp8_sixtap_predict4x4_cl
     //int src_len = SRC_LEN(output1_width,output1_height,src_pixels_per_line);
     int src_len = SIXTAP_SRC_LEN(4,9,src_pixels_per_line);
 
-    CL_SIXTAP_PREDICT_EXEC(cq, src_mem, dst_mem ,cl_data.vp8_sixtap_predict_kernel,(src_ptr-2*src_pixels_per_line),src_len,
-            src_pixels_per_line, xoffset,yoffset,dst_ptr,dst_pitch,global,
+    CL_SIXTAP_PREDICT_EXEC(cq, src_mem, dst_mem ,cl_data.vp8_sixtap_predict_kernel,(src_ptr-2*src_pixels_per_line),tmp_offset, src_len,
+            src_pixels_per_line, xoffset,yoffset,dst_ptr,tmp_offset,dst_pitch,global,
             dst_len,
             vp8_sixtap_predict_c(src_ptr,src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch)
     );
@@ -99,7 +100,7 @@ void vp8_sixtap_predict8x8_cl
     int dst_offset,
     int dst_pitch
 ) {
-
+    int tmp_offset = 0;
     unsigned char *src_ptr = src_base + src_offset;
     unsigned char *dst_ptr = dst_base + dst_offset;
 
@@ -114,8 +115,8 @@ void vp8_sixtap_predict8x8_cl
     //int src_len = SRC_LEN(output1_width,output1_height,src_pixels_per_line);
     int src_len = SIXTAP_SRC_LEN(8,13,src_pixels_per_line);
 
-    CL_SIXTAP_PREDICT_EXEC(cq, src_mem, dst_mem ,cl_data.vp8_sixtap_predict8x8_kernel,(src_ptr-2*src_pixels_per_line),src_len,
-            src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch,global,dst_len,
+    CL_SIXTAP_PREDICT_EXEC(cq, src_mem, dst_mem ,cl_data.vp8_sixtap_predict8x8_kernel,(src_ptr-2*src_pixels_per_line),tmp_offset,src_len,
+            src_pixels_per_line,xoffset,yoffset,dst_ptr,tmp_offset,dst_pitch,global,dst_len,
             vp8_sixtap_predict8x8_c(src_ptr,src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch)
     );
 
@@ -135,6 +136,7 @@ void vp8_sixtap_predict8x4_cl
     int dst_pitch
 ) {
 
+    int tmp_offset = 0;
     unsigned char *src_ptr = src_base + src_offset;
     unsigned char *dst_ptr = dst_base + dst_offset;
 
@@ -149,8 +151,8 @@ void vp8_sixtap_predict8x4_cl
     //int src_len = SRC_LEN(output1_width,output1_height,src_pixels_per_line);
     int src_len = SIXTAP_SRC_LEN(8,9,src_pixels_per_line);
 
-    CL_SIXTAP_PREDICT_EXEC(cq, src_mem, dst_mem, cl_data.vp8_sixtap_predict8x4_kernel,(src_ptr-2*src_pixels_per_line),src_len,
-            src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch,global,dst_len,
+    CL_SIXTAP_PREDICT_EXEC(cq, src_mem, dst_mem, cl_data.vp8_sixtap_predict8x4_kernel,(src_ptr-2*src_pixels_per_line),tmp_offset,src_len,
+            src_pixels_per_line,xoffset,yoffset,dst_ptr,tmp_offset,dst_pitch,global,dst_len,
             vp8_sixtap_predict8x4_c(src_ptr,src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch)
     );
 
@@ -170,6 +172,7 @@ void vp8_sixtap_predict16x16_cl
     int dst_pitch
 ) {
 
+    int tmp_offset = 0;
     unsigned char *src_ptr = src_base + src_offset;
     unsigned char *dst_ptr = dst_base + dst_offset;
 
@@ -184,8 +187,8 @@ void vp8_sixtap_predict16x16_cl
     //int src_len = SRC_LEN(output1_width,output1_height,src_pixels_per_line);
     int src_len = SIXTAP_SRC_LEN(16,21,src_pixels_per_line);
 
-    CL_SIXTAP_PREDICT_EXEC(cq, src_mem, dst_mem, cl_data.vp8_sixtap_predict16x16_kernel,(src_ptr-2*src_pixels_per_line),src_len,
-            src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch,global,dst_len,
+    CL_SIXTAP_PREDICT_EXEC(cq, src_mem, dst_mem, cl_data.vp8_sixtap_predict16x16_kernel,(src_ptr-2*src_pixels_per_line),tmp_offset,src_len,
+            src_pixels_per_line,xoffset,yoffset,dst_ptr,tmp_offset,dst_pitch,global,dst_len,
             vp8_sixtap_predict16x16_c(src_ptr,src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch)
     );
 
@@ -206,6 +209,7 @@ void vp8_bilinear_predict4x4_cl
     int dst_pitch
 ) {
 
+    int tmp_offset = 0;
     unsigned char *src_ptr = src_base + src_offset;
     unsigned char *dst_ptr = dst_base + dst_offset;
 
@@ -248,6 +252,7 @@ void vp8_bilinear_predict8x8_cl
     int dst_pitch
 ) {
 
+    int tmp_offset = 0;
     unsigned char *src_ptr = src_base + src_offset;
     unsigned char *dst_ptr = dst_base + dst_offset;
 
@@ -288,6 +293,7 @@ void vp8_bilinear_predict8x4_cl
     int dst_pitch
 ) {
 
+    int tmp_offset = 0;
     unsigned char *src_ptr = src_base + src_offset;
     unsigned char *dst_ptr = dst_base + dst_offset;
 
@@ -326,6 +332,7 @@ void vp8_bilinear_predict16x16_cl
     int dst_pitch
 ) {
 
+    int tmp_offset = 0;
     unsigned char *src_ptr = src_base + src_offset;
     unsigned char *dst_ptr = dst_base + dst_offset;
 
