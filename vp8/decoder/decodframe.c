@@ -245,6 +245,7 @@ void vp8_decode_macroblock(VP8D_COMP *pbi, MACROBLOCKD *xd)
     }
 
 #if CONFIG_OPENCL
+    //enable this if dequant/IDCT is being done on the CPU
     CL_FINISH(xd->cl_commands);
 #endif
 
@@ -260,7 +261,7 @@ void vp8_decode_macroblock(VP8D_COMP *pbi, MACROBLOCKD *xd)
             vp8_cl_block_prep(b, DEQUANT|QCOEFF);
             vp8_dequantize_b_cl(b);
             vp8_cl_block_finish(b, DQCOEFF);
-            CL_FINISH(b->cl_commands);
+            CL_FINISH(b->cl_commands); //Keep until qcoeff memset below is CL
         }
         else
 #endif
@@ -287,8 +288,6 @@ void vp8_decode_macroblock(VP8D_COMP *pbi, MACROBLOCKD *xd)
 
 #if CONFIG_OPENCL && 0
         if (cl_initialized == CL_SUCCESS){
-            CL_FINISH(b->cl_commands);
-
             vp8_cl_block_prep(b, DQCOEFF|DIFF|BLOCK_COPY_ALL);
             if (xd->eobs[24] > 1)
             {
@@ -298,12 +297,9 @@ void vp8_decode_macroblock(VP8D_COMP *pbi, MACROBLOCKD *xd)
             }
             vp8_cl_block_finish(b, DIFF|BLOCK_COPY_ALL);
 
-            CL_FINISH(xd->cl_commands);
-
             vp8_dequant_dc_idct_add_y_block_cl(&xd->block[0], xd->qcoeff, xd->block[0].dequant,
                              xd->predictor, xd->dst.y_buffer,
                              xd->dst.y_stride, xd->eobs, xd->block[24].diff_offset);
-            CL_FINISH(xd->cl_commands);
         }
         else
 #endif
@@ -321,7 +317,9 @@ void vp8_decode_macroblock(VP8D_COMP *pbi, MACROBLOCKD *xd)
         {
             BLOCKD *b = &xd->block[i];
             short *qcoeff = b->qcoeff_base + b->qcoeff_offset;
-            
+#if CONFIG_OPENCL && 0
+            CL_FINISH(b->cl_commands);
+#endif
             vp8_predict_intra4x4(b, b->bmi.mode, b->predictor_base + b->predictor_offset);
 
 #if CONFIG_OPENCL && 0
@@ -333,7 +331,6 @@ void vp8_decode_macroblock(VP8D_COMP *pbi, MACROBLOCKD *xd)
                     vp8_cl_block_prep(b, QCOEFF|DEQUANT|PREDICTOR);
                     vp8_dequant_idct_add_cl(b, *(b->base_dst), b->dst, dst_size, b->qcoeff_offset, b->predictor_offset, 16, b->dst_stride, DEQUANT_INVOKE(&pbi->dequant, idct_add));
                     vp8_cl_block_finish(b, QCOEFF);
-                    CL_FINISH(b->cl_commands);
                 }
                 else
                 {

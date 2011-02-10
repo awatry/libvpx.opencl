@@ -151,13 +151,6 @@ void vp8_build_inter_predictors_b(BLOCKD *d, int pitch, vp8_subpix_fn_t sppf)
 
     int ptr_offset = d->pre + (d->bmi.mv.as_mv.row >> 3) * d->pre_stride + (d->bmi.mv.as_mv.col >> 3);
 
-#if CONFIG_OPENCL
-    if (cl_initialized == CL_SUCCESS){
-        vp8_build_inter_predictors_b_cl(d,pitch);
-        return;
-    }
-#endif
-
     //d->base_pre is the start of the Macroblock's y_buffer, u_buffer, or v_buffer
     ptr_base = *(d->base_pre);
     ptr = ptr_base + ptr_offset;

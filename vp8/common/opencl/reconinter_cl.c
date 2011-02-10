@@ -138,7 +138,7 @@ void vp8_build_inter_predictors4b_cl(MACROBLOCKD *x, BLOCKD *d, int pitch)
     int ptr_offset = d->pre + (d->bmi.mv.as_mv.row >> 3) * d->pre_stride + (d->bmi.mv.as_mv.col >> 3);
 
     ptr_base = *(d->base_pre);
-    printf("base_pre = %p\n",ptr_base);
+    //printf("base_pre = %p\n",ptr_base);
 
     if (d->bmi.mv.as_mv.row & 7 || d->bmi.mv.as_mv.col & 7)
     {

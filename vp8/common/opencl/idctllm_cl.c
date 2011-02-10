@@ -173,7 +173,6 @@ void vp8_dc_only_idct_add_cl(BLOCKD *b, cl_int use_diff, int diff_offset,
     size_t global = 16;
     cl_mem dest_mem = NULL;
 
-    CL_FINISH(b->cl_commands);
     CL_CREATE_BUF(b->cl_commands, dest_mem, CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,
             dest_size, dst_base,
     );
@@ -203,14 +202,12 @@ void vp8_dc_only_idct_add_cl(BLOCKD *b, cl_int use_diff, int diff_offset,
     );
 
     /* Read back the result data from the device */
-        err = clEnqueueReadBuffer(b->cl_commands, dest_mem, CL_FALSE, 0,
+    err = clEnqueueReadBuffer(b->cl_commands, dest_mem, CL_FALSE, 0,
             dest_size, dst_base, 0, NULL, NULL);
 
     CL_CHECK_SUCCESS(b->cl_commands, err != CL_SUCCESS,
         "Error: Failed to read output array!\n",,
     );
-
-    CL_FINISH(b->cl_commands);
 
     clReleaseMemObject(dest_mem);
 
