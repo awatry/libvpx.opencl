@@ -431,8 +431,8 @@ int vp8dx_receive_compressed_data(VP8D_PTR ptr, unsigned long size, const unsign
         {
             struct vpx_usec_timer lpftimer;
             vpx_usec_timer_start(&lpftimer);
-            /* Apply the loop filter if appropriate. */
 
+            /* Apply the loop filter if appropriate. */
             vp8_loop_filter_frame(cm, &pbi->mb, cm->filter_level);
 
             vpx_usec_timer_mark(&lpftimer);
