@@ -56,7 +56,7 @@ extern const char *vpx_codec_lib_dir(void);
 
 #define CL_CHECK_SUCCESS(cq,cond,msg,alt,retCode) \
     if ( cond ){ \
-        printf(msg);  \
+        fprintf(stderr, msg);  \
         cl_destroy(cq, CL_TRIED_BUT_FAILED); \
         alt; \
         return retCode; \

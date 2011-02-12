@@ -102,12 +102,12 @@ int cl_common_init() {
     err = clGetPlatformIDs(MAX_NUM_PLATFORMS, platform_ids, &num_found);
 
     if (err != CL_SUCCESS) {
-        printf("Couldn't query platform IDs\n");
+        fprintf(stderr, "Couldn't query platform IDs\n");
         return CL_TRIED_BUT_FAILED;
     }
 
     if (num_found == 0) {
-        printf("No platforms found\n");
+        fprintf(stderr, "No platforms found\n");
         return CL_TRIED_BUT_FAILED;
     }
 
@@ -121,7 +121,7 @@ int cl_common_init() {
         
     	err = clGetPlatformInfo( platform_ids[i], CL_PLATFORM_VENDOR, sizeof(buf), buf, &len);
     	if (err != CL_SUCCESS){
-            printf("Error retrieving platform vendor for platform %d",i);
+            fprintf(stderr, "Error retrieving platform vendor for platform %d",i);
             continue;
     	}
     	//printf("Platform %d: %s\n",i,buf);
@@ -129,7 +129,7 @@ int cl_common_init() {
         //First, check version. If higher than 1.0, don't bother checking extensions
         err = clGetPlatformInfo( platform_ids[i], CL_PLATFORM_VERSION, sizeof(version), version, NULL);
         if (err != CL_SUCCESS){
-            printf("Error retrieving version for platform %d (%s)\n",i,buf);
+            fprintf(stderr, "Error retrieving version for platform %d (%s)\n",i,buf);
             continue;
         }
         //printf("Version: %s\n",version);
@@ -137,7 +137,7 @@ int cl_common_init() {
             //Check if byte-addressable stores are enabled.. we need this feature
             err = clGetPlatformInfo( platform_ids[i], CL_PLATFORM_EXTENSIONS, sizeof(features), features, NULL);
             if (err != CL_SUCCESS){
-                printf("Error retrieving extension list for platform %d (%s)\n",i,buf);
+                fprintf(stderr, "Error retrieving extension list for platform %d (%s)\n",i,buf);
                 continue;
             }
             //printf("Platform: %s\nExtensions: %s\n",buf,features);
