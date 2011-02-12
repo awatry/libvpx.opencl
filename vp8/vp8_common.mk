@@ -194,6 +194,11 @@ VP8_COMMON_SRCS-$(CONFIG_OPENCL) += common/opencl/idctllm_cl.c
 VP8_COMMON_SRCS-$(CONFIG_OPENCL) += common/opencl/idctllm_cl.cl
 VP8_COMMON_SRCS-$(CONFIG_OPENCL) += common/opencl/idct_cl.h
 
+VP8_COMMON_SRCS-$(CONFIG_OPENCL) += common/opencl/loopfilter_cl.h
+VP8_COMMON_SRCS-$(CONFIG_OPENCL) += common/opencl/loopfilter_cl.c
+VP8_COMMON_SRCS-$(CONFIG_OPENCL) += common/opencl/loopfilter_cl.cl
+VP8_COMMON_SRCS-$(CONFIG_OPENCL) += common/opencl/loopfilter_filters_cl.c
+
 
 VP8_COMMON_SRCS-$(CONFIG_OPENCL) += common/opencl/opencl_systemdependent.c
 VP8_COMMON_SRCS-$(HAVE_DLOPEN) += common/opencl/dynamic_cl.c

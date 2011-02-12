@@ -26,6 +26,33 @@ const char *filter_cl_file_name = "vp8/common/opencl/filter_cl.cl";
 
 int pass=0;
 
+void cl_destroy_filter(){
+
+    if (cl_data.filter_program)
+        clReleaseProgram(cl_data.filter_program);
+
+    CL_RELEASE_KERNEL(cl_data.vp8_block_variation_kernel);
+    CL_RELEASE_KERNEL(cl_data.vp8_sixtap_predict_kernel);
+    CL_RELEASE_KERNEL(cl_data.vp8_sixtap_predict8x8_kernel);
+    CL_RELEASE_KERNEL(cl_data.vp8_sixtap_predict8x4_kernel);
+    CL_RELEASE_KERNEL(cl_data.vp8_sixtap_predict16x16_kernel);
+    CL_RELEASE_KERNEL(cl_data.vp8_bilinear_predict4x4_kernel);
+    CL_RELEASE_KERNEL(cl_data.vp8_bilinear_predict8x4_kernel);
+    CL_RELEASE_KERNEL(cl_data.vp8_bilinear_predict8x8_kernel);
+    CL_RELEASE_KERNEL(cl_data.vp8_bilinear_predict16x16_kernel);
+    CL_RELEASE_KERNEL(cl_data.vp8_memcpy_kernel);
+
+    //Older kernels that probably aren't used anymore... remove eventually.
+    if (cl_data.filter_block2d_first_pass_kernel)
+        clReleaseKernel(cl_data.filter_block2d_first_pass_kernel);
+    if (cl_data.filter_block2d_second_pass_kernel)
+        clReleaseKernel(cl_data.filter_block2d_second_pass_kernel);
+    cl_data.filter_block2d_first_pass_kernel = NULL;
+    cl_data.filter_block2d_second_pass_kernel = NULL;
+
+    cl_data.filter_program = NULL;
+}
+
 int cl_init_filter() {
     int err;
 
@@ -35,8 +62,8 @@ int cl_init_filter() {
         return CL_TRIED_BUT_FAILED;
 
     // Create the compute kernel in the program we wish to run
-    CL_CREATE_KERNEL(cl_data,filter_program,vp8_sixtap_predict_kernel,"vp8_sixtap_predict_kernel");
     CL_CREATE_KERNEL(cl_data,filter_program,vp8_block_variation_kernel,"vp8_block_variation_kernel");
+    CL_CREATE_KERNEL(cl_data,filter_program,vp8_sixtap_predict_kernel,"vp8_sixtap_predict_kernel");
     CL_CREATE_KERNEL(cl_data,filter_program,vp8_sixtap_predict8x8_kernel,"vp8_sixtap_predict8x8_kernel");
     CL_CREATE_KERNEL(cl_data,filter_program,vp8_sixtap_predict8x4_kernel,"vp8_sixtap_predict8x4_kernel");
     CL_CREATE_KERNEL(cl_data,filter_program,vp8_sixtap_predict16x16_kernel,"vp8_sixtap_predict16x16_kernel");

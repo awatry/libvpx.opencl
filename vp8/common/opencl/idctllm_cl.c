@@ -19,6 +19,22 @@
 #include "idctllm_cl.h"
 #include "blockd_cl.h"
 
+void cl_destroy_idct(){
+
+    if (cl_data.idct_program)
+        clReleaseProgram(cl_data.idct_program);
+
+    cl_data.idct_program = NULL;
+    
+    CL_RELEASE_KERNEL(cl_data.vp8_short_inv_walsh4x4_1_kernel);
+    CL_RELEASE_KERNEL(cl_data.vp8_short_inv_walsh4x4_1st_pass_kernel);
+    CL_RELEASE_KERNEL(cl_data.vp8_short_inv_walsh4x4_2nd_pass_kernel);
+    CL_RELEASE_KERNEL(cl_data.vp8_dc_only_idct_add_kernel);
+    //CL_RELEASE_KERNEL(cl_data.vp8_short_idct4x4llm_1_kernel);
+    //CL_RELEASE_KERNEL(cl_data.vp8_short_idct4x4llm_kernel);
+
+}
+
 int cl_init_idct() {
     int err;
 

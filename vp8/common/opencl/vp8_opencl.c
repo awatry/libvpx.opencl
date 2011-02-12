@@ -19,13 +19,21 @@ VP8_COMMON_CL cl_data;
 //Initialization functions for various CL programs.
 extern int cl_init_filter();
 extern int cl_init_idct();
+extern int cl_init_loop_filter();
+
+//Common CL destructors
+extern void cl_destroy_loop_filter();
+extern void cl_destroy_filter();
+extern void cl_destroy_idct();
 
 //Destructors for encoder/decoder-specific bits
 extern void cl_decode_destroy();
 extern void cl_encode_destroy();
 
 /**
- *
+ * 
+ * @param cq
+ * @param new_status
  */
 void cl_destroy(cl_command_queue cq, int new_status) {
 
@@ -34,28 +42,9 @@ void cl_destroy(cl_command_queue cq, int new_status) {
         clFinish(cq);
 
     //Release the objects that we've allocated on the GPU
-    if (cl_data.filter_program)
-        clReleaseProgram(cl_data.filter_program);
-
-    if (cl_data.idct_program)
-        clReleaseProgram(cl_data.idct_program);
-
-    CL_RELEASE_KERNEL(cl_data.vp8_block_variation_kernel);
-    CL_RELEASE_KERNEL(cl_data.vp8_sixtap_predict_kernel);
-    CL_RELEASE_KERNEL(cl_data.vp8_sixtap_predict8x8_kernel);
-    CL_RELEASE_KERNEL(cl_data.vp8_sixtap_predict8x4_kernel);
-    CL_RELEASE_KERNEL(cl_data.vp8_sixtap_predict16x16_kernel);
-    CL_RELEASE_KERNEL(cl_data.vp8_bilinear_predict4x4_kernel);
-    CL_RELEASE_KERNEL(cl_data.vp8_bilinear_predict8x4_kernel);
-    CL_RELEASE_KERNEL(cl_data.vp8_bilinear_predict8x8_kernel);
-    CL_RELEASE_KERNEL(cl_data.vp8_bilinear_predict16x16_kernel);
-
-    CL_RELEASE_KERNEL(cl_data.vp8_short_inv_walsh4x4_1_kernel);
-    CL_RELEASE_KERNEL(cl_data.vp8_short_inv_walsh4x4_1st_pass_kernel);
-    CL_RELEASE_KERNEL(cl_data.vp8_short_inv_walsh4x4_2nd_pass_kernel);
-    CL_RELEASE_KERNEL(cl_data.vp8_dc_only_idct_add_kernel);
-    //CL_RELEASE_KERNEL(cl_data.vp8_short_idct4x4llm_1_kernel);
-    //CL_RELEASE_KERNEL(cl_data.vp8_short_idct4x4llm_kernel);
+    cl_destroy_filter();
+    cl_destroy_idct();
+    cl_destroy_loop_filter();
 
 #if CONFIG_VP8_DECODER
     if (cl_data.cl_decode_initialized == CL_SUCCESS)
@@ -66,34 +55,25 @@ void cl_destroy(cl_command_queue cq, int new_status) {
     //placeholder for if/when encoder CL gets implemented
 #endif
 
-    //Older kernels that probably aren't used anymore... remove eventually.
-    if (cl_data.filter_block2d_first_pass_kernel)
-        clReleaseKernel(cl_data.filter_block2d_first_pass_kernel);
-    if (cl_data.filter_block2d_second_pass_kernel)
-        clReleaseKernel(cl_data.filter_block2d_second_pass_kernel);
-    cl_data.filter_block2d_first_pass_kernel = NULL;
-    cl_data.filter_block2d_second_pass_kernel = NULL;
-
-    if (cl_data.context)
-        clReleaseContext(cl_data.context);
-
     if (cq){
         clReleaseCommandQueue(cq);
     }
 
-    cl_data.filter_program = NULL;
-    cl_data.idct_program = NULL;
-
-    printf("Need to determine where to destroy encoder/decoder-specific items\n");
-
-    //cl_data.commands = NULL;
-    cl_data.context = NULL;
+    if (cl_data.context){
+        clReleaseContext(cl_data.context);
+        cl_data.context = NULL;
+    }
 
     cl_initialized = new_status;
 
     return;
 }
 
+/**
+ * 
+ * @param dev
+ * @return
+ */
 cl_device_type device_type(cl_device_id dev){
     cl_device_type type;
     int err;
@@ -104,6 +84,10 @@ cl_device_type device_type(cl_device_id dev){
     return type;
 }
 
+/**
+ * 
+ * @return
+ */
 int cl_common_init() {
     int err,i,dev;
     cl_platform_id platform_ids[MAX_NUM_PLATFORMS];
@@ -148,7 +132,7 @@ int cl_common_init() {
             printf("Error retrieving version for platform %d (%s)\n",i,buf);
             continue;
         }
-        printf("Version: %s\n",version);
+        //printf("Version: %s\n",version);
         if (strstr(version,"1.0")){
             //Check if byte-addressable stores are enabled.. we need this feature
             err = clGetPlatformInfo( platform_ids[i], CL_PLATFORM_EXTENSIONS, sizeof(features), features, NULL);
@@ -156,7 +140,7 @@ int cl_common_init() {
                 printf("Error retrieving extension list for platform %d (%s)\n",i,buf);
                 continue;
             }
-            printf("Platform: %s\nExtensions: %s\n",buf,features);
+            //printf("Platform: %s\nExtensions: %s\n",buf,features);
         }
         
     	//Try to find a valid compute device
@@ -167,44 +151,37 @@ int cl_common_init() {
 #else
         err = clGetDeviceIDs(platform_ids[i], CL_DEVICE_TYPE_ALL, MAX_NUM_DEVICES, devices, &num_devices);
 #endif //__APPLE__
-        printf("found %d devices\n", num_devices);
+        //printf("found %d devices\n", num_devices);
         cl_data.device_id = NULL;
         for( dev = 0; dev < num_devices; dev++ ){
             char ext[2048];
             //Get info for this device.
-            err = clGetDeviceInfo(devices[dev], CL_DEVICE_EXTENSIONS, sizeof(ext),ext,NULL);
-            CL_CHECK_SUCCESS(NULL,err != CL_SUCCESS,"Error retrieving device extension list",continue, 0);
-            printf("Device %d supports: %s\n",dev,ext);
+            err = clGetDeviceInfo(devices[dev], CL_DEVICE_EXTENSIONS,
+                    sizeof(ext),ext,NULL);
+            CL_CHECK_SUCCESS(NULL,err != CL_SUCCESS,
+                    "Error retrieving device extension list",continue, 0);
+            //printf("Device %d supports: %s\n",dev,ext);
             
-            //The kernels in VP8 require byte-addressable stores, which is an extension.
-            //It's required in OpenCL 1.1, but not all devices support it.
+            //The kernels in VP8 require byte-addressable stores, which is an
+            //extension. It's required in OpenCL 1.1, but not all devices
+            //support it.
             if (strstr(ext,"cl_khr_byte_addressable_store")){
-                //We found a valid device, so use it. But if we find a GPU (maybe this is one), prefer that.
+                //We found a valid device, so use it. But if we find a GPU
+                //(maybe this is one), prefer that.
                 cl_data.device_id = devices[dev];
 
                 if ( device_type(devices[dev]) == CL_DEVICE_TYPE_GPU ){
-                    printf("Device %d is a GPU\n",dev);
+                    //printf("Device %d is a GPU\n",dev);
                     break;
                 }
             }
         }
 
-        //If we've found a GPU, stop looking.
+        //If we've found a usable GPU, stop looking.
         if (cl_data.device_id != NULL && device_type(cl_data.device_id) == CL_DEVICE_TYPE_GPU )
             break;
 
-        //if (err != CL_SUCCESS || cl_data.device_id == NULL) {
-        //    err = clGetDeviceIDs(platform_ids[i], CL_DEVICE_TYPE_ALL, MAX_NUM_DEVICES, devices, &num_devices);
-        //    if (err != CL_SUCCESS) {
-        //        printf("Error: Failed to create a device group!\n");
-        //        continue;
-        //    }
-        //    //printf("found %d generic devices\n", num_devices);
-        //}
-        //cl_data.device_id = devices[0];
-
     }
-    //printf("Done enumerating\n");
 
     if (cl_data.device_id == NULL){
     	printf("Error: Failed to find a valid OpenCL device. Using CPU paths\n");
@@ -218,19 +195,21 @@ int cl_common_init() {
         return CL_TRIED_BUT_FAILED;
     }
 
-    //Initialize command queue to null (created for each macroblock)
-    //cl_data.commands = NULL;
-
     //Initialize programs to null value
     //Enables detection of if they've been initialized as well.
     cl_data.filter_program = NULL;
     cl_data.idct_program = NULL;
+    cl_data.loop_filter_program = NULL;
 
     err = cl_init_filter();
     if (err != CL_SUCCESS)
         return err;
 
     err = cl_init_idct();
+    if (err != CL_SUCCESS)
+        return err;
+
+    err = cl_init_loop_filter();
     if (err != CL_SUCCESS)
         return err;
 

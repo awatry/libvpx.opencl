@@ -122,12 +122,13 @@ typedef struct VP8_COMMON_CL {
     cl_kernel vp8_short_inv_walsh4x4_1_kernel;
     cl_kernel vp8_short_inv_walsh4x4_1st_pass_kernel;
     cl_kernel vp8_short_inv_walsh4x4_2nd_pass_kernel;
-
     cl_kernel vp8_dc_only_idct_add_kernel;
-
     //Note that the following 2 kernels are encoder-only. Not used in decoder.
     cl_kernel vp8_short_idct4x4llm_1_kernel;
     cl_kernel vp8_short_idct4x4llm_kernel;
+
+    cl_program loop_filter_program;
+    cl_kernel vp8_loop_filter_horizontal_edge_kernel;
 
     cl_program dequant_program;
     cl_kernel vp8_dequant_dc_idct_add_kernel;
