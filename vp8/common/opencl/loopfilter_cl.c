@@ -28,107 +28,115 @@ prototype_loopfilter_cl(vp8_loop_filter_simple_horizontal_edge_cl);
 prototype_loopfilter_cl(vp8_loop_filter_simple_vertical_edge_cl);
 
 /* Horizontal MB filtering */
-void vp8_loop_filter_mbh_cl(unsigned char *y_ptr, unsigned char *u_ptr, unsigned char *v_ptr,
-                           int y_stride, int uv_stride, loop_filter_info *lfi, int simpler_lpf)
+void vp8_loop_filter_mbh_cl(
+    MACROBLOCKD *x,
+    unsigned char *y_ptr,
+    unsigned char *u_ptr,
+    unsigned char *v_ptr,
+    int y_stride,
+    int uv_stride,
+    loop_filter_info *lfi,
+    int simpler_lpf
+)
 {
     (void) simpler_lpf;
-    vp8_mbloop_filter_horizontal_edge_cl(y_ptr, y_stride, lfi->mbflim, lfi->lim, lfi->mbthr, 2);
+    vp8_mbloop_filter_horizontal_edge_cl(x, y_ptr, y_stride, lfi->mbflim, lfi->lim, lfi->mbthr, 2);
 
     if (u_ptr)
-        vp8_mbloop_filter_horizontal_edge_cl(u_ptr, uv_stride, lfi->uvmbflim, lfi->uvlim, lfi->uvmbthr, 1);
+        vp8_mbloop_filter_horizontal_edge_cl(x, u_ptr, uv_stride, lfi->uvmbflim, lfi->uvlim, lfi->uvmbthr, 1);
 
     if (v_ptr)
-        vp8_mbloop_filter_horizontal_edge_cl(v_ptr, uv_stride, lfi->uvmbflim, lfi->uvlim, lfi->uvmbthr, 1);
+        vp8_mbloop_filter_horizontal_edge_cl(x, v_ptr, uv_stride, lfi->uvmbflim, lfi->uvlim, lfi->uvmbthr, 1);
 }
 
-void vp8_loop_filter_mbhs_cl(unsigned char *y_ptr, unsigned char *u_ptr, unsigned char *v_ptr,
+void vp8_loop_filter_mbhs_cl(MACROBLOCKD *x, unsigned char *y_ptr, unsigned char *u_ptr, unsigned char *v_ptr,
                             int y_stride, int uv_stride, loop_filter_info *lfi, int simpler_lpf)
 {
     (void) u_ptr;
     (void) v_ptr;
     (void) uv_stride;
     (void) simpler_lpf;
-    vp8_loop_filter_simple_horizontal_edge_cl(y_ptr, y_stride, lfi->mbflim, lfi->lim, lfi->mbthr, 2);
+    vp8_loop_filter_simple_horizontal_edge_cl(x, y_ptr, y_stride, lfi->mbflim, lfi->lim, lfi->mbthr, 2);
 }
 
 /* Vertical MB Filtering */
-void vp8_loop_filter_mbv_cl(unsigned char *y_ptr, unsigned char *u_ptr, unsigned char *v_ptr,
+void vp8_loop_filter_mbv_cl(MACROBLOCKD *x, unsigned char *y_ptr, unsigned char *u_ptr, unsigned char *v_ptr,
                            int y_stride, int uv_stride, loop_filter_info *lfi, int simpler_lpf)
 {
     (void) simpler_lpf;
-    vp8_mbloop_filter_vertical_edge_cl(y_ptr, y_stride, lfi->mbflim, lfi->lim, lfi->mbthr, 2);
+    vp8_mbloop_filter_vertical_edge_cl(x, y_ptr, y_stride, lfi->mbflim, lfi->lim, lfi->mbthr, 2);
 
     if (u_ptr)
-        vp8_mbloop_filter_vertical_edge_cl(u_ptr, uv_stride, lfi->uvmbflim, lfi->uvlim, lfi->uvmbthr, 1);
+        vp8_mbloop_filter_vertical_edge_cl(x, u_ptr, uv_stride, lfi->uvmbflim, lfi->uvlim, lfi->uvmbthr, 1);
 
     if (v_ptr)
-        vp8_mbloop_filter_vertical_edge_cl(v_ptr, uv_stride, lfi->uvmbflim, lfi->uvlim, lfi->uvmbthr, 1);
+        vp8_mbloop_filter_vertical_edge_cl(x, v_ptr, uv_stride, lfi->uvmbflim, lfi->uvlim, lfi->uvmbthr, 1);
 }
 
-void vp8_loop_filter_mbvs_cl(unsigned char *y_ptr, unsigned char *u_ptr, unsigned char *v_ptr,
+void vp8_loop_filter_mbvs_cl(MACROBLOCKD *x, unsigned char *y_ptr, unsigned char *u_ptr, unsigned char *v_ptr,
                             int y_stride, int uv_stride, loop_filter_info *lfi, int simpler_lpf)
 {
     (void) u_ptr;
     (void) v_ptr;
     (void) uv_stride;
     (void) simpler_lpf;
-    vp8_loop_filter_simple_vertical_edge_cl(y_ptr, y_stride, lfi->mbflim, lfi->lim, lfi->mbthr, 2);
+    vp8_loop_filter_simple_vertical_edge_cl(x, y_ptr, y_stride, lfi->mbflim, lfi->lim, lfi->mbthr, 2);
 }
 
 /* Horizontal B Filtering */
-void vp8_loop_filter_bh_cl(unsigned char *y_ptr, unsigned char *u_ptr, unsigned char *v_ptr,
+void vp8_loop_filter_bh_cl(MACROBLOCKD *x, unsigned char *y_ptr, unsigned char *u_ptr, unsigned char *v_ptr,
                           int y_stride, int uv_stride, loop_filter_info *lfi, int simpler_lpf)
 {
     (void) simpler_lpf;
-    vp8_loop_filter_horizontal_edge_cl(y_ptr + 4 * y_stride, y_stride, lfi->flim, lfi->lim, lfi->thr, 2);
-    vp8_loop_filter_horizontal_edge_cl(y_ptr + 8 * y_stride, y_stride, lfi->flim, lfi->lim, lfi->thr, 2);
-    vp8_loop_filter_horizontal_edge_cl(y_ptr + 12 * y_stride, y_stride, lfi->flim, lfi->lim, lfi->thr, 2);
+    vp8_loop_filter_horizontal_edge_cl(x, y_ptr + 4 * y_stride, y_stride, lfi->flim, lfi->lim, lfi->thr, 2);
+    vp8_loop_filter_horizontal_edge_cl(x, y_ptr + 8 * y_stride, y_stride, lfi->flim, lfi->lim, lfi->thr, 2);
+    vp8_loop_filter_horizontal_edge_cl(x, y_ptr + 12 * y_stride, y_stride, lfi->flim, lfi->lim, lfi->thr, 2);
 
     if (u_ptr)
-        vp8_loop_filter_horizontal_edge_cl(u_ptr + 4 * uv_stride, uv_stride, lfi->uvflim, lfi->uvlim, lfi->uvthr, 1);
+        vp8_loop_filter_horizontal_edge_cl(x, u_ptr + 4 * uv_stride, uv_stride, lfi->uvflim, lfi->uvlim, lfi->uvthr, 1);
 
     if (v_ptr)
-        vp8_loop_filter_horizontal_edge_cl(v_ptr + 4 * uv_stride, uv_stride, lfi->uvflim, lfi->uvlim, lfi->uvthr, 1);
+        vp8_loop_filter_horizontal_edge_cl(x, v_ptr + 4 * uv_stride, uv_stride, lfi->uvflim, lfi->uvlim, lfi->uvthr, 1);
 }
 
-void vp8_loop_filter_bhs_cl(unsigned char *y_ptr, unsigned char *u_ptr, unsigned char *v_ptr,
+void vp8_loop_filter_bhs_cl(MACROBLOCKD *x, unsigned char *y_ptr, unsigned char *u_ptr, unsigned char *v_ptr,
                            int y_stride, int uv_stride, loop_filter_info *lfi, int simpler_lpf)
 {
     (void) u_ptr;
     (void) v_ptr;
     (void) uv_stride;
     (void) simpler_lpf;
-    vp8_loop_filter_simple_horizontal_edge_cl(y_ptr + 4 * y_stride, y_stride, lfi->flim, lfi->lim, lfi->thr, 2);
-    vp8_loop_filter_simple_horizontal_edge_cl(y_ptr + 8 * y_stride, y_stride, lfi->flim, lfi->lim, lfi->thr, 2);
-    vp8_loop_filter_simple_horizontal_edge_cl(y_ptr + 12 * y_stride, y_stride, lfi->flim, lfi->lim, lfi->thr, 2);
+    vp8_loop_filter_simple_horizontal_edge_cl(x, y_ptr + 4 * y_stride, y_stride, lfi->flim, lfi->lim, lfi->thr, 2);
+    vp8_loop_filter_simple_horizontal_edge_cl(x, y_ptr + 8 * y_stride, y_stride, lfi->flim, lfi->lim, lfi->thr, 2);
+    vp8_loop_filter_simple_horizontal_edge_cl(x, y_ptr + 12 * y_stride, y_stride, lfi->flim, lfi->lim, lfi->thr, 2);
 }
 
 /* Vertical B Filtering */
-void vp8_loop_filter_bv_cl(unsigned char *y_ptr, unsigned char *u_ptr, unsigned char *v_ptr,
+void vp8_loop_filter_bv_cl(MACROBLOCKD *x, unsigned char *y_ptr, unsigned char *u_ptr, unsigned char *v_ptr,
                           int y_stride, int uv_stride, loop_filter_info *lfi, int simpler_lpf)
 {
     (void) simpler_lpf;
-    vp8_loop_filter_vertical_edge_cl(y_ptr + 4, y_stride, lfi->flim, lfi->lim, lfi->thr, 2);
-    vp8_loop_filter_vertical_edge_cl(y_ptr + 8, y_stride, lfi->flim, lfi->lim, lfi->thr, 2);
-    vp8_loop_filter_vertical_edge_cl(y_ptr + 12, y_stride, lfi->flim, lfi->lim, lfi->thr, 2);
+    vp8_loop_filter_vertical_edge_cl(x, y_ptr + 4, y_stride, lfi->flim, lfi->lim, lfi->thr, 2);
+    vp8_loop_filter_vertical_edge_cl(x, y_ptr + 8, y_stride, lfi->flim, lfi->lim, lfi->thr, 2);
+    vp8_loop_filter_vertical_edge_cl(x, y_ptr + 12, y_stride, lfi->flim, lfi->lim, lfi->thr, 2);
 
     if (u_ptr)
-        vp8_loop_filter_vertical_edge_cl(u_ptr + 4, uv_stride, lfi->uvflim, lfi->uvlim, lfi->uvthr, 1);
+        vp8_loop_filter_vertical_edge_cl(x, u_ptr + 4, uv_stride, lfi->uvflim, lfi->uvlim, lfi->uvthr, 1);
 
     if (v_ptr)
-        vp8_loop_filter_vertical_edge_cl(v_ptr + 4, uv_stride, lfi->uvflim, lfi->uvlim, lfi->uvthr, 1);
+        vp8_loop_filter_vertical_edge_cl(x, v_ptr + 4, uv_stride, lfi->uvflim, lfi->uvlim, lfi->uvthr, 1);
 }
 
-void vp8_loop_filter_bvs_cl(unsigned char *y_ptr, unsigned char *u_ptr, unsigned char *v_ptr,
+void vp8_loop_filter_bvs_cl(MACROBLOCKD *x, unsigned char *y_ptr, unsigned char *u_ptr, unsigned char *v_ptr,
                            int y_stride, int uv_stride, loop_filter_info *lfi, int simpler_lpf)
 {
     (void) u_ptr;
     (void) v_ptr;
     (void) uv_stride;
     (void) simpler_lpf;
-    vp8_loop_filter_simple_vertical_edge_cl(y_ptr + 4, y_stride, lfi->flim, lfi->lim, lfi->thr, 2);
-    vp8_loop_filter_simple_vertical_edge_cl(y_ptr + 8, y_stride, lfi->flim, lfi->lim, lfi->thr, 2);
-    vp8_loop_filter_simple_vertical_edge_cl(y_ptr + 12, y_stride, lfi->flim, lfi->lim, lfi->thr, 2);
+    vp8_loop_filter_simple_vertical_edge_cl(x, y_ptr + 4, y_stride, lfi->flim, lfi->lim, lfi->thr, 2);
+    vp8_loop_filter_simple_vertical_edge_cl(x, y_ptr + 8, y_stride, lfi->flim, lfi->lim, lfi->thr, 2);
+    vp8_loop_filter_simple_vertical_edge_cl(x, y_ptr + 12, y_stride, lfi->flim, lfi->lim, lfi->thr, 2);
 }
 
 void vp8_init_loop_filter_cl(VP8_COMMON *cm)
@@ -433,31 +441,31 @@ void vp8_loop_filter_frame_cl
             {
                 if (mb_col > 0){
                     if (filter_type == NORMAL_LOOPFILTER)
-                        vp8_loop_filter_mbv_cl(y_ptr, u_ptr, v_ptr, post->y_stride, post->uv_stride, &lfi[filter_level], cm->simpler_lpf);
+                        vp8_loop_filter_mbv_cl(mbd, y_ptr, u_ptr, v_ptr, post->y_stride, post->uv_stride, &lfi[filter_level], cm->simpler_lpf);
                     else
-                        vp8_loop_filter_mbvs_cl(y_ptr, u_ptr, v_ptr, post->y_stride, post->uv_stride, &lfi[filter_level], cm->simpler_lpf);
+                        vp8_loop_filter_mbvs_cl(mbd, y_ptr, u_ptr, v_ptr, post->y_stride, post->uv_stride, &lfi[filter_level], cm->simpler_lpf);
                 }
 
                 if (mbd->mode_info_context->mbmi.dc_diff > 0){
                     if (filter_type == NORMAL_LOOPFILTER)
-                        vp8_loop_filter_bv_cl(y_ptr, u_ptr, v_ptr, post->y_stride, post->uv_stride, &lfi[filter_level], cm->simpler_lpf);
+                        vp8_loop_filter_bv_cl(mbd, y_ptr, u_ptr, v_ptr, post->y_stride, post->uv_stride, &lfi[filter_level], cm->simpler_lpf);
                     else
-                        vp8_loop_filter_bvs_cl(y_ptr, u_ptr, v_ptr, post->y_stride, post->uv_stride, &lfi[filter_level], cm->simpler_lpf);
+                        vp8_loop_filter_bvs_cl(mbd, y_ptr, u_ptr, v_ptr, post->y_stride, post->uv_stride, &lfi[filter_level], cm->simpler_lpf);
                 }
 
                 /* don't apply across umv border */
                 if (mb_row > 0){
                     if (filter_type == NORMAL_LOOPFILTER)
-                        vp8_loop_filter_mbh_cl(y_ptr, u_ptr, v_ptr, post->y_stride, post->uv_stride, &lfi[filter_level], cm->simpler_lpf);
+                        vp8_loop_filter_mbh_cl(mbd, y_ptr, u_ptr, v_ptr, post->y_stride, post->uv_stride, &lfi[filter_level], cm->simpler_lpf);
                     else
-                        vp8_loop_filter_mbhs_cl(y_ptr, u_ptr, v_ptr, post->y_stride, post->uv_stride, &lfi[filter_level], cm->simpler_lpf);
+                        vp8_loop_filter_mbhs_cl(mbd, y_ptr, u_ptr, v_ptr, post->y_stride, post->uv_stride, &lfi[filter_level], cm->simpler_lpf);
                 }
 
                 if (mbd->mode_info_context->mbmi.dc_diff > 0){
                     if (filter_type == NORMAL_LOOPFILTER)
-                        vp8_loop_filter_bh_cl(y_ptr, u_ptr, v_ptr, post->y_stride, post->uv_stride, &lfi[filter_level], cm->simpler_lpf);
+                        vp8_loop_filter_bh_cl(mbd, y_ptr, u_ptr, v_ptr, post->y_stride, post->uv_stride, &lfi[filter_level], cm->simpler_lpf);
                     else
-                        vp8_loop_filter_bhs_cl(y_ptr, u_ptr, v_ptr, post->y_stride, post->uv_stride, &lfi[filter_level], cm->simpler_lpf);
+                        vp8_loop_filter_bhs_cl(mbd, y_ptr, u_ptr, v_ptr, post->y_stride, post->uv_stride, &lfi[filter_level], cm->simpler_lpf);
                 }
             }
 

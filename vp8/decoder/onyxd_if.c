@@ -375,6 +375,19 @@ int vp8dx_receive_compressed_data(VP8D_PTR ptr, unsigned long size, const unsign
     pbi->Source = source;
     pbi->source_sz = size;
 
+#if CONFIG_OPENCL
+    pbi->mb.cl_commands = NULL;
+    if (cl_initialized == CL_SUCCESS){
+        int err;
+        //Create command queue for macroblock.
+        pbi->mb.cl_commands = clCreateCommandQueue(cl_data.context, cl_data.device_id, 0, &err);
+        if (!pbi->mb.cl_commands || err != CL_SUCCESS) {
+            printf("Error: Failed to create a command queue!\n");
+            cl_destroy(NULL, CL_TRIED_BUT_FAILED);
+        }
+    }
+#endif
+
     retcode = vp8_decode_frame(pbi);
 
     if (retcode < 0)
@@ -444,6 +457,14 @@ int vp8dx_receive_compressed_data(VP8D_PTR ptr, unsigned long size, const unsign
         }
         vp8_yv12_extend_frame_borders_ptr(cm->frame_to_show);
     }
+
+#if CONFIG_OPENCL
+    if (cl_initialized == CL_SUCCESS){
+        if (pbi->mb.cl_commands != NULL)
+            clReleaseCommandQueue(pbi->mb.cl_commands);
+        pbi->mb.cl_commands = NULL;
+    }
+#endif
 
 #if 0
     /* DEBUG code */

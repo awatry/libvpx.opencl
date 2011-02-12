@@ -19,11 +19,11 @@
 #include "../loopfilter.h"
 
 #define prototype_loopfilter_cl(sym) \
-    void sym(unsigned char *src, int pitch, const signed char *flimit,\
+    void sym(MACROBLOCKD*, unsigned char *src, int pitch, const signed char *flimit,\
              const signed char *limit, const signed char *thresh, int count)
 
 #define prototype_loopfilter_block_cl(sym) \
-    void sym(unsigned char *y, unsigned char *u, unsigned char *v,\
+    void sym(MACROBLOCKD*, unsigned char *y, unsigned char *u, unsigned char *v,\
              int ystride, int uv_stride, loop_filter_info *lfi, int simpler)
 
 extern void vp8_loop_filter_frame_cl

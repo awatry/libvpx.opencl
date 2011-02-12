@@ -15,11 +15,22 @@ __inline signed char vp8_signed_char_clamp(int);
 kernel void vp8_filter_kernel(
     signed char mask,
     signed char hev,
-    global uc *op1,
-    global uc *op0,
-    global uc *oq0,
-    global uc *oq1)
+    global uc *op1_base,
+    int op1_off,
+    global uc *op0_base,
+    int op0_off,
+    global uc *oq0_base,
+    int oq0_off,
+    global uc *oq1_base,
+    int oq1_off
+)
 {
+
+    global uc *op1 = &op1_base[op1_off];
+    global uc *op0 = &op0_base[op0_off];
+    global uc *oq0 = &oq0_base[oq0_off];
+    global uc *oq1 = &oq1_base[oq1_off];
+
     signed char ps0, qs0;
     signed char ps1, qs1;
     signed char vp8_filter, Filter1, Filter2;
