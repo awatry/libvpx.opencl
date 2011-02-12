@@ -10,12 +10,15 @@
 
 
 #include <stdlib.h>
-#include "loopfilter_cl.h"
-#include "../onyxc_int.h"
+
+#include "vp8_opencl.h"
+
+//#include "loopfilter_cl.h"
+//#include "../onyxc_int.h"
 
 typedef unsigned char uc;
 
-static __inline signed char vp8_signed_char_clamp(int t)
+signed char vp8_signed_char_clamp(int t)
 {
     t = (t < -128 ? -128 : t);
     t = (t > 127 ? 127 : t);
@@ -24,7 +27,7 @@ static __inline signed char vp8_signed_char_clamp(int t)
 
 
 /* should we apply any filter at all ( 11111111 yes, 00000000 no) */
-static __inline signed char vp8_filter_mask(signed char limit, signed char flimit,
+signed char vp8_filter_mask(signed char limit, signed char flimit,
                                      uc p3, uc p2, uc p1, uc p0, uc q0, uc q1, uc q2, uc q3)
 {
     signed char mask = 0;
@@ -40,7 +43,7 @@ static __inline signed char vp8_filter_mask(signed char limit, signed char flimi
 }
 
 /* is there high variance internal edge ( 11111111 yes, 00000000 no) */
-static __inline signed char vp8_hevmask(signed char thresh, uc p1, uc p0, uc q0, uc q1)
+signed char vp8_hevmask(signed char thresh, uc p1, uc p0, uc q0, uc q1)
 {
     signed char hev = 0;
     hev  |= (abs(p1 - p0) > thresh) * -1;
@@ -48,7 +51,7 @@ static __inline signed char vp8_hevmask(signed char thresh, uc p1, uc p0, uc q0,
     return hev;
 }
 
-static __inline void vp8_filter(signed char mask, signed char hev, uc *op1, uc *op0, uc *oq0, uc *oq1)
+void vp8_filter(signed char mask, signed char hev, uc *op1, uc *op0, uc *oq0, uc *oq1)
 {
     signed char ps0, qs0;
     signed char ps1, qs1;
@@ -111,8 +114,7 @@ void vp8_loop_filter_horizontal_edge_cl
     /* loop filter designed to work using chars so that we can make maximum use
      * of 8 bit simd instructions.
      */
-    do
-    {
+    for (i = 0; i < count * 8; i++){
         mask = vp8_filter_mask(limit[i], flimit[i],
                                s[-4*p], s[-3*p], s[-2*p], s[-1*p],
                                s[0*p], s[1*p], s[2*p], s[3*p]);
@@ -123,7 +125,6 @@ void vp8_loop_filter_horizontal_edge_cl
 
         ++s;
     }
-    while (++i < count * 8);
 }
 
 void vp8_loop_filter_vertical_edge_cl
@@ -139,11 +140,11 @@ void vp8_loop_filter_vertical_edge_cl
     int  hev = 0; /* high edge variance */
     signed char mask = 0;
     int i = 0;
-
+    
     /* loop filter designed to work using chars so that we can make maximum use
      * of 8 bit simd instructions.
      */
-    do
+    for (i = 0; i < count * 8; i++)
     {
         mask = vp8_filter_mask(limit[i], flimit[i],
                                s[-4], s[-3], s[-2], s[-1], s[0], s[1], s[2], s[3]);
@@ -154,7 +155,6 @@ void vp8_loop_filter_vertical_edge_cl
 
         s += p;
     }
-    while (++i < count * 8);
 }
 
 static __inline void vp8_mbfilter(signed char mask, signed char hev,
@@ -229,7 +229,7 @@ void vp8_mbloop_filter_horizontal_edge_cl
     /* loop filter designed to work using chars so that we can make maximum use
      * of 8 bit simd instructions.
      */
-    do
+    for ( i = 0; i < count * 8; i++)
     {
 
         mask = vp8_filter_mask(limit[i], flimit[i],
@@ -242,8 +242,6 @@ void vp8_mbloop_filter_horizontal_edge_cl
 
         ++s;
     }
-    while (++i < count * 8);
-
 }
 
 
@@ -261,7 +259,7 @@ void vp8_mbloop_filter_vertical_edge_cl
     signed char mask = 0;
     int i = 0;
 
-    do
+    for ( i = 0; i < count * 8; i++)
     {
 
         mask = vp8_filter_mask(limit[i], flimit[i],
@@ -273,22 +271,17 @@ void vp8_mbloop_filter_vertical_edge_cl
 
         s += p;
     }
-    while (++i < count * 8);
 
 }
 
 /* should we apply any filter at all ( 11111111 yes, 00000000 no) */
-static __inline signed char vp8_simple_filter_mask(signed char limit, signed char flimit, uc p1, uc p0, uc q0, uc q1)
+signed char vp8_simple_filter_mask(signed char limit, signed char flimit, uc p1, uc p0, uc q0, uc q1)
 {
-/* Why does this cause problems for win32?
- * error C2143: syntax error : missing ';' before 'type'
- *  (void) limit;
- */
     signed char mask = (abs(p0 - q0) * 2 + abs(p1 - q1) / 2  <= flimit * 2 + limit) * -1;
     return mask;
 }
 
-static __inline void vp8_simple_filter(signed char mask, uc *op1, uc *op0, uc *oq0, uc *oq1)
+void vp8_simple_filter(signed char mask, uc *op1, uc *op0, uc *oq0, uc *oq1)
 {
     signed char vp8_filter, Filter1, Filter2;
     signed char p1 = (signed char) * op1 ^ 0x80;
@@ -329,7 +322,6 @@ void vp8_loop_filter_simple_horizontal_edge_cl
 
     do
     {
-        /*mask = vp8_simple_filter_mask( limit[i], flimit[i],s[-1*p],s[0*p]);*/
         mask = vp8_simple_filter_mask(limit[i], flimit[i], s[-2*p], s[-1*p], s[0*p], s[1*p]);
         vp8_simple_filter(mask, s - 2 * p, s - 1 * p, s, s + 1 * p);
         ++s;
