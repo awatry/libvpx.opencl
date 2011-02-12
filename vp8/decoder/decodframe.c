@@ -110,9 +110,20 @@ void mb_init_dequantizer(VP8D_COMP *pbi, MACROBLOCKD *xd)
     //one large buffer containing the entire large dequant buffer.
     if (cl_initialized == CL_SUCCESS){
         for (i=0; i < 25; i++){
+
+#if 1 //Initialize CL memory on allocation?
             CL_CREATE_BUF(xd->cl_commands, xd->block[i].cl_dequant_mem,
                 CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,
-               16*sizeof(cl_short), xd->block[i].dequant,);
+                16*sizeof(cl_short),
+                xd->block[i].dequant,
+            );
+#else
+            CL_CREATE_BUF(xd->cl_commands, xd->block[i].cl_dequant_mem,
+                CL_MEM_READ_WRITE,
+                16*sizeof(cl_short),
+                NULL,
+            );
+#endif
         }
     }
 #endif

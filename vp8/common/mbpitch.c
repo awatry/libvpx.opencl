@@ -135,11 +135,13 @@ void vp8_setup_block_dptrs(MACROBLOCKD *x)
     if (cl_initialized == CL_SUCCESS){
         int err;
 
+#define SET_ON_ALLOC 1
+#if SET_ON_ALLOC
         CL_CREATE_BUF(x->cl_commands, x->cl_diff_mem, CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,
                 sizeof(cl_short)*400, x->diff, goto BUF_DONE);
 
         CL_CREATE_BUF(x->cl_commands, x->cl_predictor_mem, CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,
-                sizeof(cl_uchar)*384, x->dqcoeff, goto BUF_DONE);
+                sizeof(cl_uchar)*384, x->predictor, goto BUF_DONE);
 
         CL_CREATE_BUF(x->cl_commands, x->cl_qcoeff_mem, CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,
                 sizeof(cl_short)*400, x->qcoeff, goto BUF_DONE);
@@ -149,6 +151,22 @@ void vp8_setup_block_dptrs(MACROBLOCKD *x)
 
         CL_CREATE_BUF(x->cl_commands, x->cl_eobs_mem, CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,
                 sizeof(cl_char)*25, x->eobs, goto BUF_DONE);
+#else
+        CL_CREATE_BUF(x->cl_commands, x->cl_diff_mem, CL_MEM_READ_WRITE,
+                sizeof(cl_short)*400, NULL, goto BUF_DONE);
+
+        CL_CREATE_BUF(x->cl_commands, x->cl_predictor_mem, CL_MEM_READ_WRITE,
+                sizeof(cl_uchar)*384, NULL, goto BUF_DONE);
+
+        CL_CREATE_BUF(x->cl_commands, x->cl_qcoeff_mem, CL_MEM_READ_WRITE,
+                sizeof(cl_short)*400, NULL, goto BUF_DONE);
+
+        CL_CREATE_BUF(x->cl_commands, x->cl_dqcoeff_mem, CL_MEM_READ_WRITE,
+                sizeof(cl_short)*400, NULL, goto BUF_DONE);
+
+        CL_CREATE_BUF(x->cl_commands, x->cl_eobs_mem, CL_MEM_READ_WRITE,
+                sizeof(cl_char) * 25, NULL, goto BUF_DONE);
+#endif
     }
 BUF_DONE:
 #endif
@@ -177,8 +195,8 @@ BUF_DONE:
             x->block[r].cl_qcoeff_mem = x->cl_qcoeff_mem;
         }
 
-		//Copy filter type to block.
-		x->block[r].sixtap_filter = x->sixtap_filter;
+        //Copy filter type to block.
+        x->block[r].sixtap_filter = x->sixtap_filter;
 #endif
     }
 

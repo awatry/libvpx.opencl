@@ -89,8 +89,9 @@ extern const char *vpx_codec_lib_dir(void);
 
 #define CL_CREATE_BUF(cq, bufRef, bufType, bufSize, dataPtr, altPath) \
     bufRef = clCreateBuffer(cl_data.context, CL_MEM_READ_WRITE, bufSize, NULL, NULL); \
-    if (dataPtr != NULL && bufRef != NULL) \
+    if (dataPtr != NULL && bufRef != NULL){ \
         CL_SET_BUF(cq, bufRef, bufSize, dataPtr, altPath)\
+    } \
     CL_CHECK_SUCCESS(cq, !bufRef, \
         "Error: Failed to allocate buffer. Using CPU path!\n", \
         altPath, \
