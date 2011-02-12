@@ -130,6 +130,7 @@ typedef struct VP8_COMMON_CL {
 
     cl_program loop_filter_program;
     cl_kernel vp8_loop_filter_horizontal_edge_kernel;
+    cl_kernel vp8_filter_kernel;
 
     cl_program dequant_program;
     cl_kernel vp8_dequant_dc_idct_add_kernel;

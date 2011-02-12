@@ -322,7 +322,7 @@ int cl_init_loop_filter() {
 
     //Note that this kernel is temporarily the memcpy kernel...
     //After implementing the loop filter kernels, this should be changed.
-    CL_CREATE_KERNEL(cl_data,loop_filter_program,vp8_loop_filter_horizontal_edge_kernel,"vp8_memcpy_kernel");
+    CL_CREATE_KERNEL(cl_data,loop_filter_program,vp8_filter_kernel,"vp8_filter_kernel");
 
     //CL_CREATE_KERNEL(cl_data,loop_filter_program,vp8_block_variation_kernel,"vp8_block_variation_kernel");
     //CL_CREATE_KERNEL(cl_data,loop_filter_program,vp8_sixtap_predict8x8_kernel,"vp8_sixtap_predict8x8_kernel");
@@ -342,7 +342,7 @@ void cl_destroy_loop_filter(){
     if (cl_data.loop_filter_program)
         clReleaseProgram(cl_data.loop_filter_program);
 
-    CL_RELEASE_KERNEL(cl_data.vp8_loop_filter_horizontal_edge_kernel);
+    CL_RELEASE_KERNEL(cl_data.vp8_filter_kernel);
 
 
     cl_data.loop_filter_program = NULL;

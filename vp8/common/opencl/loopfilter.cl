@@ -4,16 +4,15 @@
 typedef unsigned char uc;
 typedef signed char sc;
 
-signed char vp8_filter_mask(sc, sc, uc, uc, uc, uc, uc, uc, uc, uc);
-signed char vp8_simple_filter_mask(signed char, signed char, uc, uc, uc, uc);
-signed char vp8_hevmask(signed char, uc, uc, uc, uc);
-signed char vp8_signed_char_clamp(int);
+__inline signed char vp8_filter_mask(sc, sc, uc, uc, uc, uc, uc, uc, uc, uc);
+__inline signed char vp8_simple_filter_mask(signed char, signed char, uc, uc, uc, uc);
+__inline signed char vp8_hevmask(signed char, uc, uc, uc, uc);
+__inline signed char vp8_signed_char_clamp(int);
 
 
 
 
-
-kernel void vp8_filter(
+kernel void vp8_filter_kernel(
     signed char mask,
     signed char hev,
     global uc *op1,
@@ -26,10 +25,10 @@ kernel void vp8_filter(
     signed char vp8_filter, Filter1, Filter2;
     signed char u;
 
-    ps1 = (global signed char) * op1 ^ 0x80;
-    ps0 = (global signed char) * op0 ^ 0x80;
-    qs0 = (global signed char) * oq0 ^ 0x80;
-    qs1 = (global signed char) * oq1 ^ 0x80;
+    ps1 = (signed char) * op1 ^ 0x80;
+    ps0 = (signed char) * op0 ^ 0x80;
+    qs0 = (signed char) * oq0 ^ 0x80;
+    qs1 = (signed char) * oq1 ^ 0x80;
 
     /* add outer taps if we have high edge variance */
     vp8_filter = vp8_signed_char_clamp(ps1 - qs1);
@@ -73,7 +72,7 @@ kernel void vp8_filter(
 
 
 
-signed char vp8_signed_char_clamp(int t)
+__inline signed char vp8_signed_char_clamp(int t)
 {
     t = (t < -128 ? -128 : t);
     t = (t > 127 ? 127 : t);
@@ -83,7 +82,7 @@ signed char vp8_signed_char_clamp(int t)
 
 
 /* is there high variance internal edge ( 11111111 yes, 00000000 no) */
-signed char vp8_hevmask(signed char thresh, uc p1, uc p0, uc q0, uc q1)
+__inline signed char vp8_hevmask(signed char thresh, uc p1, uc p0, uc q0, uc q1)
 {
     signed char hev = 0;
     hev  |= (abs(p1 - p0) > thresh) * -1;
@@ -93,7 +92,7 @@ signed char vp8_hevmask(signed char thresh, uc p1, uc p0, uc q0, uc q1)
 
 
 /* should we apply any filter at all ( 11111111 yes, 00000000 no) */
-signed char vp8_filter_mask(
+__inline signed char vp8_filter_mask(
     signed char limit,
     signed char flimit,
      uc p3, uc p2, uc p1, uc p0, uc q0, uc q1, uc q2, uc q3)
@@ -111,32 +110,15 @@ signed char vp8_filter_mask(
 }
 
 /* should we apply any filter at all ( 11111111 yes, 00000000 no) */
-signed char vp8_simple_filter_mask(signed char limit, signed char flimit, uc p1, uc p0, uc q0, uc q1)
+__inline signed char vp8_simple_filter_mask(
+    signed char limit,
+    signed char flimit,
+    uc p1,
+    uc p0,
+    uc q0,
+    uc q1
+)
 {
     signed char mask = (abs(p0 - q0) * 2 + abs(p1 - q1) / 2  <= flimit * 2 + limit) * -1;
     return mask;
-}
-
-//Called from reconinter_cl.c
-kernel void vp8_memcpy_kernel(
-    global unsigned char *src,
-    int src_stride,
-    global unsigned char *dst,
-    int dst_stride,
-    int num_bytes,
-    int num_iter
-){
-
-    int i,r;
-    int src_offset, dst_offset;
-
-    r = get_global_id(1);
-    if (r < get_global_size(1)){
-        i = get_global_id(0);
-        if (i < get_global_size(0)){
-            src_offset = r*src_stride + i;
-            dst_offset = r*dst_stride + i;
-            dst[dst_offset] = src[src_offset];
-        }
-    }
 }

@@ -51,7 +51,7 @@ signed char vp8_hevmask(signed char thresh, uc p1, uc p0, uc q0, uc q1)
     return hev;
 }
 
-void vp8_filter(signed char mask, signed char hev, uc *op1, uc *op0, uc *oq0, uc *oq1)
+static void vp8_filter(signed char mask, signed char hev, uc *op1, uc *op0, uc *oq0, uc *oq1)
 {
     signed char ps0, qs0;
     signed char ps1, qs1;
