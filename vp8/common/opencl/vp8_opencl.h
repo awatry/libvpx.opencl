@@ -117,6 +117,10 @@ typedef struct VP8_COMMON_CL {
     cl_kernel vp8_bilinear_predict8x4_kernel;
     cl_kernel vp8_bilinear_predict8x8_kernel;
     cl_kernel vp8_bilinear_predict16x16_kernel;
+    cl_kernel vp8_filter_block2d_first_pass_kernel; // compute kernel
+    cl_kernel vp8_filter_block2d_second_pass_kernel; // compute kernel
+    cl_kernel filter_block2d_bil_first_pass_kernel;
+    cl_kernel filter_block2d_bil_second_pass_kernel;
     cl_kernel vp8_memcpy_kernel;
 
     cl_program idct_program;
@@ -140,12 +144,6 @@ typedef struct VP8_COMMON_CL {
     cl_kernel vp8_dequant_dc_idct_add_kernel;
     cl_kernel vp8_dequant_idct_add_kernel;
     cl_kernel vp8_dequantize_b_kernel;
-
-    cl_kernel filter_block2d_first_pass_kernel; // compute kernel
-    cl_kernel filter_block2d_second_pass_kernel; // compute kernel
-
-    cl_kernel filter_block2d_bil_first_pass_kernel;
-    cl_kernel filter_block2d_bil_second_pass_kernel;
 
     cl_int cl_decode_initialized;
     cl_int cl_encode_initialized;

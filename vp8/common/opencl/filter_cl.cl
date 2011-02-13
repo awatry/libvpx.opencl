@@ -24,6 +24,144 @@ __constant short sub_pel_filters[8][8] = {
     { 0, -1, 12, 123, -6, 0, 0, 0},
 };
 
+
+
+
+
+
+kernel void vp8_filter_block2d_first_pass_kernel(
+    __global unsigned char *src_base,
+    int src_offset,
+    __global int *output_ptr,
+    unsigned int src_pixels_per_line,
+    unsigned int pixel_step,
+    unsigned int output_height,
+    unsigned int output_width,
+    int filter_offset
+){
+    uint tid = get_global_id(0);
+    uint i = tid;
+
+    global unsigned char *src_ptr = &src_base[src_offset];
+    //Note that src_offset will be reset later, which is why we capture it now
+
+    int Temp;
+    int PS2 = 2*(int)pixel_step;
+    int PS3 = 3*(int)pixel_step;
+
+    __constant short *vp8_filter = sub_pel_filters[filter_offset];
+
+    if (tid < (output_width*output_height)){
+        for (i=0; i < output_width*output_height; i++){
+            src_offset = i + (i/output_width * (src_pixels_per_line - output_width)) + PS2;
+
+#if 1
+                int8 t8, s, f;
+                int4 t4;
+                int2 t2;
+
+                f = convert_int8(vload8(0,vp8_filter));
+                s = convert_int8(vload8(0,&src_ptr[src_offset-2]));
+
+                t8 = s * f;
+
+                //Collapse 8-element vector to single int and round
+                //t4 = t8.s0123 + t8.s4567;
+                //t2 = t4.xy + t4.zw;
+                t2 = t8.s01 + t8.s23 + t8.s45;
+                Temp = t2.x + t2.y + (VP8_FILTER_WEIGHT >> 1);
+#else
+                Temp = (int)(src_ptr[src_offset - PS2]      * vp8_filter[0]) +
+                   (int)(src_ptr[src_offset - (int)pixel_step] * vp8_filter[1]) +
+                   (int)(src_ptr[src_offset]                * vp8_filter[2]) +
+                   (int)(src_ptr[src_offset + pixel_step]   * vp8_filter[3]) +
+                   (int)(src_ptr[src_offset + PS2]          * vp8_filter[4]) +
+                   (int)(src_ptr[src_offset + PS3]          * vp8_filter[5]) +
+                   (VP8_FILTER_WEIGHT >> 1);      /* Rounding */
+#endif
+            /* Normalize back to 0-255 */
+            Temp = Temp >> VP8_FILTER_SHIFT;
+
+            //Temp = (int)src_ptr[2];
+            if (Temp < 0)
+                Temp = 0;
+            else if ( Temp > 255 )
+                Temp = 255;
+
+            output_ptr[i] = Temp;
+        }
+    }
+}
+
+kernel void vp8_filter_block2d_second_pass_kernel
+(
+    __global int *src_ptr,
+    __global unsigned char *output_base,
+    int output_offset,
+    int output_pitch,
+    unsigned int src_pixels_per_line,
+    unsigned int pixel_step,
+    unsigned int output_height,
+    unsigned int output_width,
+    int filter_offset
+) {
+
+    global unsigned char *output_ptr = &output_base[output_offset];
+
+    int out_offset; //Not same as output_offset...
+    int src_offset;
+    int Temp;
+    int PS2 = 2*(int)pixel_step;
+    int PS3 = 3*(int)pixel_step;
+
+    unsigned int src_increment = src_pixels_per_line - output_width;
+
+    uint i = get_global_id(0);
+
+    __constant short *vp8_filter = sub_pel_filters[filter_offset];
+
+    if (i < (output_width * output_height)){
+        out_offset = i/output_width;
+        src_offset = out_offset;
+
+        src_offset = i + (src_offset * src_increment);
+        out_offset = i%output_width + (out_offset * output_pitch);
+
+        /* Apply filter */
+        Temp = ((int)src_ptr[src_offset - PS2] * vp8_filter[0]) +
+           ((int)src_ptr[src_offset -(int)pixel_step] * vp8_filter[1]) +
+           ((int)src_ptr[src_offset]                  * vp8_filter[2]) +
+           ((int)src_ptr[src_offset + pixel_step]     * vp8_filter[3]) +
+           ((int)src_ptr[src_offset + PS2]       * vp8_filter[4]) +
+           ((int)src_ptr[src_offset + PS3]       * vp8_filter[5]) +
+           (VP8_FILTER_WEIGHT >> 1);   /* Rounding */
+
+        /* Normalize back to 0-255 */
+        Temp = Temp >> VP8_FILTER_SHIFT;
+        if (Temp < 0)
+            Temp = 0;
+        else if (Temp > 255)
+            Temp = 255;
+
+        output_ptr[out_offset] = (unsigned char)Temp;
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 void vp8_filter_block2d_first_pass(
     __global unsigned char *src_base,
     int src_offset,
@@ -419,6 +557,11 @@ __kernel void vp8_bilinear_predict16x16_kernel
 
     vp8_filter_block2d_bil(src_ptr, dst_ptr, src_pixels_per_line, dst_pitch, xoffset, yoffset, 16, 16, FData);
 }
+
+
+
+
+
 
 //Called from reconinter_cl.c
 kernel void vp8_memcpy_kernel(

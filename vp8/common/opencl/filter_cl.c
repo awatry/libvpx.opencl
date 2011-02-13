@@ -42,13 +42,8 @@ void cl_destroy_filter(){
     CL_RELEASE_KERNEL(cl_data.vp8_bilinear_predict16x16_kernel);
     CL_RELEASE_KERNEL(cl_data.vp8_memcpy_kernel);
 
-    //Older kernels that probably aren't used anymore... remove eventually.
-    if (cl_data.filter_block2d_first_pass_kernel)
-        clReleaseKernel(cl_data.filter_block2d_first_pass_kernel);
-    if (cl_data.filter_block2d_second_pass_kernel)
-        clReleaseKernel(cl_data.filter_block2d_second_pass_kernel);
-    cl_data.filter_block2d_first_pass_kernel = NULL;
-    cl_data.filter_block2d_second_pass_kernel = NULL;
+    CL_RELEASE_KERNEL(cl_data.vp8_filter_block2d_first_pass_kernel);
+    CL_RELEASE_KERNEL(cl_data.vp8_filter_block2d_second_pass_kernel);
 
     cl_data.filter_program = NULL;
 }
@@ -62,6 +57,10 @@ int cl_init_filter() {
         return CL_TRIED_BUT_FAILED;
 
     // Create the compute kernel in the program we wish to run
+    CL_CREATE_KERNEL(cl_data,filter_program,vp8_filter_block2d_first_pass_kernel,"vp8_filter_block2d_first_pass_kernel");
+    CL_CREATE_KERNEL(cl_data,filter_program,vp8_filter_block2d_second_pass_kernel,"vp8_filter_block2d_second_pass_kernel");
+    
+
     CL_CREATE_KERNEL(cl_data,filter_program,vp8_block_variation_kernel,"vp8_block_variation_kernel");
     CL_CREATE_KERNEL(cl_data,filter_program,vp8_sixtap_predict_kernel,"vp8_sixtap_predict_kernel");
     CL_CREATE_KERNEL(cl_data,filter_program,vp8_sixtap_predict8x8_kernel,"vp8_sixtap_predict8x8_kernel");
@@ -74,6 +73,52 @@ int cl_init_filter() {
     CL_CREATE_KERNEL(cl_data,filter_program,vp8_memcpy_kernel,"vp8_memcpy_kernel");
 
     return CL_SUCCESS;
+}
+
+void vp8_filter_block2d_first_pass_cl(
+    cl_command_queue cq,
+    unsigned char *src_base,
+    int src_offset,
+    cl_mem int_mem,
+    unsigned int src_pixels_per_line,
+    unsigned int pixel_step,
+    unsigned int output_height,
+    unsigned int output_width,
+    int filter_offset
+)
+{
+    cl_mem src_mem;
+    int err;
+    //int dst_len = DST_LEN(dst_pitch,4,4);
+
+    //int output1_width=4,output1_height=9;
+    //int src_len = SRC_LEN(output1_width,output1_height,src_pixels_per_line);
+    int src_len = SIXTAP_SRC_LEN(4,9,src_pixels_per_line);
+
+    CL_CREATE_BUF( cq, src_mem, CL_MEM_READ_ONLY|CL_MEM_COPY_HOST_PTR, \
+        sizeof (unsigned char) * src_len, src_base+src_offset-2, \
+    ); \
+
+    clReleaseMemObject(src_mem);
+    
+}
+
+void vp8_filter_block2d_second_pass_cl
+(
+    cl_command_queue cq,
+    cl_mem int_mem,
+    int int_offset,
+    unsigned char *output_base,
+    int output_offset,
+    int output_pitch,
+    unsigned int src_pixels_per_line,
+    unsigned int pixel_step,
+    unsigned int output_height,
+    unsigned int output_width,
+    int filter_offset
+)
+{
+
 }
 
 void vp8_sixtap_predict4x4_cl
