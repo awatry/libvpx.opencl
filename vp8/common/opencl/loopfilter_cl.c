@@ -291,7 +291,6 @@ int cl_init_loop_filter() {
         return CL_TRIED_BUT_FAILED;
 
     // Create the compute kernels in the program we wish to run
-    CL_CREATE_KERNEL(cl_data,loop_filter_program,vp8_filter_kernel,"vp8_filter_kernel");
     CL_CREATE_KERNEL(cl_data,loop_filter_program,vp8_loop_filter_horizontal_edge_kernel,"vp8_loop_filter_horizontal_edge_kernel");
     CL_CREATE_KERNEL(cl_data,loop_filter_program,vp8_loop_filter_vertical_edge_kernel,"vp8_loop_filter_vertical_edge_kernel");
     CL_CREATE_KERNEL(cl_data,loop_filter_program,vp8_mbloop_filter_horizontal_edge_kernel,"vp8_mbloop_filter_horizontal_edge_kernel");
@@ -307,7 +306,6 @@ void cl_destroy_loop_filter(){
     if (cl_data.loop_filter_program)
         clReleaseProgram(cl_data.loop_filter_program);
 
-    CL_RELEASE_KERNEL(cl_data.vp8_filter_kernel);
     CL_RELEASE_KERNEL(cl_data.vp8_loop_filter_horizontal_edge_kernel);
     CL_RELEASE_KERNEL(cl_data.vp8_loop_filter_vertical_edge_kernel);
     CL_RELEASE_KERNEL(cl_data.vp8_mbloop_filter_horizontal_edge_kernel);

@@ -14,70 +14,6 @@ __inline void vp8_mbfilter(signed char mask,signed char hev,global uc *op2,
 
 void vp8_simple_filter(signed char mask,global uc *base, int op1_off,int op0_off,int oq0_off,int oq1_off);
 
-kernel void vp8_filter_kernel(
-    signed char mask,
-    signed char hev,
-    global uc *op1_base,
-    int op1_off,
-    global uc *op0_base,
-    int op0_off,
-    global uc *oq0_base,
-    int oq0_off,
-    global uc *oq1_base,
-    int oq1_off
-)
-{
-
-    global uc *op1 = &op1_base[op1_off];
-    global uc *op0 = &op0_base[op0_off];
-    global uc *oq0 = &oq0_base[oq0_off];
-    global uc *oq1 = &oq1_base[oq1_off];
-
-    signed char ps0, qs0;
-    signed char ps1, qs1;
-    signed char vp8_filter, Filter1, Filter2;
-    signed char u;
-
-    ps1 = (signed char) * op1 ^ 0x80;
-    ps0 = (signed char) * op0 ^ 0x80;
-    qs0 = (signed char) * oq0 ^ 0x80;
-    qs1 = (signed char) * oq1 ^ 0x80;
-
-    /* add outer taps if we have high edge variance */
-    vp8_filter = vp8_signed_char_clamp(ps1 - qs1);
-    vp8_filter &= hev;
-
-    /* inner taps */
-    vp8_filter = vp8_signed_char_clamp(vp8_filter + 3 * (qs0 - ps0));
-    vp8_filter &= mask;
-
-    /* save bottom 3 bits so that we round one side +4 and the other +3
-     * if it equals 4 we'll set to adjust by -1 to account for the fact
-     * we'd round 3 the other way
-     */
-    Filter1 = vp8_signed_char_clamp(vp8_filter + 4);
-    Filter2 = vp8_signed_char_clamp(vp8_filter + 3);
-    Filter1 >>= 3;
-    Filter2 >>= 3;
-    u = vp8_signed_char_clamp(qs0 - Filter1);
-    *oq0 = u ^ 0x80;
-    u = vp8_signed_char_clamp(ps0 + Filter2);
-    *op0 = u ^ 0x80;
-    vp8_filter = Filter1;
-
-    /* outer tap adjustments */
-    vp8_filter += 1;
-    vp8_filter >>= 1;
-    vp8_filter &= ~hev;
-
-    u = vp8_signed_char_clamp(qs1 - vp8_filter);
-    *oq1 = u ^ 0x80;
-    u = vp8_signed_char_clamp(ps1 + vp8_filter);
-    *op1 = u ^ 0x80;
-
-}
-
-
 void vp8_filter(
     signed char mask,
     signed char hev,
@@ -138,8 +74,6 @@ void vp8_filter(
 }
 
 
-
-
 kernel void vp8_loop_filter_horizontal_edge_kernel
 (
     global unsigned char *s_base,
@@ -175,6 +109,7 @@ kernel void vp8_loop_filter_horizontal_edge_kernel
         }
     }
 }
+
 
 kernel void vp8_loop_filter_vertical_edge_kernel
 (
@@ -252,6 +187,7 @@ kernel void vp8_mbloop_filter_horizontal_edge_kernel
     }
 }
 
+
 kernel void vp8_mbloop_filter_vertical_edge_kernel
 (
     global unsigned char *s_base,
@@ -310,6 +246,7 @@ kernel void vp8_loop_filter_simple_horizontal_edge_kernel
         ++s_off;
     }
 }
+
 
 kernel void vp8_loop_filter_simple_vertical_edge_kernel
 (
