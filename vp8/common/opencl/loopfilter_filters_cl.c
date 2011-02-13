@@ -55,18 +55,68 @@ signed char vp8_hevmask(signed char thresh, uc p1, uc p0, uc q0, uc q1)
     return hev;
 }
 
-static int pass=0;
-static void vp8_filter(MACROBLOCKD *x, signed char mask, signed char hev, uc *op1, uc *op0, uc *oq0, uc *oq1)
+static void vp8_loop_filter_cl_run(
+    cl_command_queue cq,
+    cl_kernel kernel,
+    cl_mem buf_mem,
+    int s_off,
+    int p,
+    const signed char *flimit,
+    const signed char *limit,
+    const signed char *thresh,
+    int count
+){
+    size_t global = count * 2;
+    int err;
+
+    cl_mem flimit_mem;
+    cl_mem limit_mem;
+    cl_mem thresh_mem;
+
+    CL_CREATE_BUF(cq, flimit_mem, , sizeof(uc)*16, flimit, );
+    CL_CREATE_BUF(cq, limit_mem, , sizeof(uc)*16, limit, );
+    CL_CREATE_BUF(cq, thresh_mem, , sizeof(uc)*16, thresh, );
+
+    err = 0;
+    err = clSetKernelArg(kernel, 0, sizeof (cl_mem), &buf_mem);
+    err |= clSetKernelArg(kernel, 1, sizeof (cl_int), &s_off);
+    err |= clSetKernelArg(kernel, 2, sizeof (cl_int), &p);
+    err |= clSetKernelArg(kernel, 3, sizeof (cl_mem), &flimit_mem);
+    err |= clSetKernelArg(kernel, 4, sizeof (cl_mem), &limit_mem);
+    err |= clSetKernelArg(kernel, 5, sizeof (cl_mem), &thresh_mem);
+    err |= clSetKernelArg(kernel, 6, sizeof (cl_int), &count);
+    CL_CHECK_SUCCESS( cq, err != CL_SUCCESS,
+        "Error: Failed to set kernel arguments!\n",,
+    );
+
+    /* Execute the kernel */
+    err = clEnqueueNDRangeKernel(cq, kernel, 1, NULL, &global, NULL , 0, NULL, NULL);
+    CL_CHECK_SUCCESS( cq, err != CL_SUCCESS,
+        "Error: Failed to execute kernel!\n",
+        printf("err = %d\n",err);,
+    );
+
+    clReleaseMemObject(flimit_mem);
+    clReleaseMemObject(limit_mem);
+    clReleaseMemObject(thresh_mem);
+
+    CL_FINISH(cq);
+}
+
+
+static void vp8_filter(MACROBLOCKD *x, signed char mask, signed char hev, uc *base, int op1_off, int op0_off, int oq0_off, int oq1_off)
 {
     int err;
     cl_mem op1_mem, op0_mem, oq0_mem, oq1_mem;
-    int op1_off, op0_off, oq0_off, oq1_off;
     size_t global = 1;
 
-    cl_command_queue cq = x->cl_commands;
+    uc *op1 = base + op1_off;
+    uc *op0 = base + op0_off;
+    uc *oq0 = base + oq0_off;
+    uc *oq1 = base + oq1_off;
 
-    printf("vp8_filter CL %d\n", pass++);
-    
+    cl_command_queue cq = x->cl_commands;
+   
     op1_off = op0_off = oq0_off = oq1_off = 0;
 
     CL_CREATE_BUF(cq, op1_mem, , sizeof(uc), op1, );
@@ -111,14 +161,13 @@ static void vp8_filter(MACROBLOCKD *x, signed char mask, signed char hev, uc *op
     clReleaseMemObject(oq0_mem);
     clReleaseMemObject(oq1_mem);
 
-    CL_FINISH(cq);
-
 }
 
 void vp8_loop_filter_horizontal_edge_cl
 (
     MACROBLOCKD *x,
-    unsigned char *s,
+    cl_mem s_base,
+    int s_off,
     int p, /* pitch */
     const signed char *flimit,
     const signed char *limit,
@@ -126,30 +175,17 @@ void vp8_loop_filter_horizontal_edge_cl
     int count
 )
 {
-    int  hev = 0; /* high edge variance */
-    signed char mask = 0;
-    int i = 0;
-
-    /* loop filter designed to work using chars so that we can make maximum use
-     * of 8 bit simd instructions.
-     */
-    for (i = 0; i < count * 8; i++){
-        mask = vp8_filter_mask(limit[i], flimit[i],
-                               s[-4*p], s[-3*p], s[-2*p], s[-1*p],
-                               s[0*p], s[1*p], s[2*p], s[3*p]);
-
-        hev = vp8_hevmask(thresh[i], s[-2*p], s[-1*p], s[0*p], s[1*p]);
-
-        vp8_filter(x, mask, hev, s - 2 * p, s - 1 * p, s, s + 1 * p);
-
-        ++s;
-    }
+    vp8_loop_filter_cl_run(x->cl_commands,
+        cl_data.vp8_loop_filter_horizontal_edge_kernel, s_base, s_off,
+        p, flimit, limit, thresh, count
+    );
 }
 
 void vp8_loop_filter_vertical_edge_cl
 (
     MACROBLOCKD *x,
-    unsigned char *s,
+    cl_mem s_base,
+    int s_off,
     int p,
     const signed char *flimit,
     const signed char *limit,
@@ -157,94 +193,17 @@ void vp8_loop_filter_vertical_edge_cl
     int count
 )
 {
-    int  hev = 0; /* high edge variance */
-    signed char mask = 0;
-    int i = 0;
-    
-    /* loop filter designed to work using chars so that we can make maximum use
-     * of 8 bit simd instructions.
-     */
-    for (i = 0; i < count * 8; i++)
-    {
-        mask = vp8_filter_mask(limit[i], flimit[i],
-                               s[-4], s[-3], s[-2], s[-1], s[0], s[1], s[2], s[3]);
-
-        hev = vp8_hevmask(thresh[i], s[-2], s[-1], s[0], s[1]);
-
-        vp8_filter(x, mask, hev, s - 2, s - 1, s, s + 1);
-
-        s += p;
-    }
-}
-
-static __inline void vp8_mbfilter(
-    MACROBLOCKD *x,
-    signed char mask,
-    signed char hev,
-    uc *op2,
-    uc *op1,
-    uc *op0,
-    uc *oq0,
-    uc *oq1,
-    uc *oq2
-)
-{
-    signed char s, u;
-    signed char vp8_filter, Filter1, Filter2;
-    signed char ps2 = (signed char) * op2 ^ 0x80;
-    signed char ps1 = (signed char) * op1 ^ 0x80;
-    signed char ps0 = (signed char) * op0 ^ 0x80;
-    signed char qs0 = (signed char) * oq0 ^ 0x80;
-    signed char qs1 = (signed char) * oq1 ^ 0x80;
-    signed char qs2 = (signed char) * oq2 ^ 0x80;
-
-    /* add outer taps if we have high edge variance */
-    vp8_filter = vp8_signed_char_clamp(ps1 - qs1);
-    vp8_filter = vp8_signed_char_clamp(vp8_filter + 3 * (qs0 - ps0));
-    vp8_filter &= mask;
-
-    Filter2 = vp8_filter;
-    Filter2 &= hev;
-
-    /* save bottom 3 bits so that we round one side +4 and the other +3 */
-    Filter1 = vp8_signed_char_clamp(Filter2 + 4);
-    Filter2 = vp8_signed_char_clamp(Filter2 + 3);
-    Filter1 >>= 3;
-    Filter2 >>= 3;
-    qs0 = vp8_signed_char_clamp(qs0 - Filter1);
-    ps0 = vp8_signed_char_clamp(ps0 + Filter2);
-
-
-    /* only apply wider filter if not high edge variance */
-    vp8_filter &= ~hev;
-    Filter2 = vp8_filter;
-
-    /* roughly 3/7th difference across boundary */
-    u = vp8_signed_char_clamp((63 + Filter2 * 27) >> 7);
-    s = vp8_signed_char_clamp(qs0 - u);
-    *oq0 = s ^ 0x80;
-    s = vp8_signed_char_clamp(ps0 + u);
-    *op0 = s ^ 0x80;
-
-    /* roughly 2/7th difference across boundary */
-    u = vp8_signed_char_clamp((63 + Filter2 * 18) >> 7);
-    s = vp8_signed_char_clamp(qs1 - u);
-    *oq1 = s ^ 0x80;
-    s = vp8_signed_char_clamp(ps1 + u);
-    *op1 = s ^ 0x80;
-
-    /* roughly 1/7th difference across boundary */
-    u = vp8_signed_char_clamp((63 + Filter2 * 9) >> 7);
-    s = vp8_signed_char_clamp(qs2 - u);
-    *oq2 = s ^ 0x80;
-    s = vp8_signed_char_clamp(ps2 + u);
-    *op2 = s ^ 0x80;
+    vp8_loop_filter_cl_run(x->cl_commands,
+        cl_data.vp8_loop_filter_vertical_edge_kernel, s_base, s_off,
+        p, flimit, limit, thresh, count
+    );
 }
 
 void vp8_mbloop_filter_horizontal_edge_cl
 (
     MACROBLOCKD *x,
-    unsigned char *s,
+    cl_mem s_base,
+    int s_off,
     int p,
     const signed char *flimit,
     const signed char *limit,
@@ -252,33 +211,19 @@ void vp8_mbloop_filter_horizontal_edge_cl
     int count
 )
 {
-    signed char hev = 0; /* high edge variance */
-    signed char mask = 0;
-    int i = 0;
 
-    /* loop filter designed to work using chars so that we can make maximum use
-     * of 8 bit simd instructions.
-     */
-    for ( i = 0; i < count * 8; i++)
-    {
-
-        mask = vp8_filter_mask(limit[i], flimit[i],
-                               s[-4*p], s[-3*p], s[-2*p], s[-1*p],
-                               s[0*p], s[1*p], s[2*p], s[3*p]);
-
-        hev = vp8_hevmask(thresh[i], s[-2*p], s[-1*p], s[0*p], s[1*p]);
-
-        vp8_mbfilter(x, mask, hev, s - 3 * p, s - 2 * p, s - 1 * p, s, s + 1 * p, s + 2 * p);
-
-        ++s;
-    }
+    vp8_loop_filter_cl_run(x->cl_commands,
+        cl_data.vp8_mbloop_filter_horizontal_edge_kernel, s_base, s_off,
+        p, flimit, limit, thresh, count
+    );
 }
 
 
 void vp8_mbloop_filter_vertical_edge_cl
 (
     MACROBLOCKD *x,
-    unsigned char *s,
+    cl_mem s_base,
+    int s_off,
     int p,
     const signed char *flimit,
     const signed char *limit,
@@ -286,68 +231,19 @@ void vp8_mbloop_filter_vertical_edge_cl
     int count
 )
 {
-    signed char hev = 0; /* high edge variance */
-    signed char mask = 0;
-    int i = 0;
 
-    for ( i = 0; i < count * 8; i++)
-    {
+    vp8_loop_filter_cl_run(x->cl_commands,
+        cl_data.vp8_mbloop_filter_vertical_edge_kernel, s_base, s_off,
+        p, flimit, limit, thresh, count
+    );
 
-        mask = vp8_filter_mask(limit[i], flimit[i],
-                               s[-4], s[-3], s[-2], s[-1], s[0], s[1], s[2], s[3]);
-
-        hev = vp8_hevmask(thresh[i], s[-2], s[-1], s[0], s[1]);
-
-        vp8_mbfilter(x, mask, hev, s - 3, s - 2, s - 1, s, s + 1, s + 2);
-
-        s += p;
-    }
-
-}
-
-/* should we apply any filter at all ( 11111111 yes, 00000000 no) */
-static __inline signed char vp8_simple_filter_mask(signed char limit, signed char flimit, uc p1, uc p0, uc q0, uc q1)
-{
-    signed char mask = (abs(p0 - q0) * 2 + abs(p1 - q1) / 2  <= flimit * 2 + limit) * -1;
-    return mask;
-}
-
-static void vp8_simple_filter(
-    MACROBLOCKD *x,
-    signed char mask,
-    uc *op1,
-    uc *op0,
-    uc *oq0,
-    uc *oq1
-)
-{
-    signed char vp8_filter, Filter1, Filter2;
-    signed char p1 = (signed char) * op1 ^ 0x80;
-    signed char p0 = (signed char) * op0 ^ 0x80;
-    signed char q0 = (signed char) * oq0 ^ 0x80;
-    signed char q1 = (signed char) * oq1 ^ 0x80;
-    signed char u;
-
-    vp8_filter = vp8_signed_char_clamp(p1 - q1);
-    vp8_filter = vp8_signed_char_clamp(vp8_filter + 3 * (q0 - p0));
-    vp8_filter &= mask;
-
-    /* save bottom 3 bits so that we round one side +4 and the other +3 */
-    Filter1 = vp8_signed_char_clamp(vp8_filter + 4);
-    Filter1 >>= 3;
-    u = vp8_signed_char_clamp(q0 - Filter1);
-    *oq0  = u ^ 0x80;
-
-    Filter2 = vp8_signed_char_clamp(vp8_filter + 3);
-    Filter2 >>= 3;
-    u = vp8_signed_char_clamp(p0 + Filter2);
-    *op0 = u ^ 0x80;
 }
 
 void vp8_loop_filter_simple_horizontal_edge_cl
 (
     MACROBLOCKD *x,
-    unsigned char *s,
+    cl_mem s_base,
+    int s_off,
     int p,
     const signed char *flimit,
     const signed char *limit,
@@ -355,23 +251,18 @@ void vp8_loop_filter_simple_horizontal_edge_cl
     int count
 )
 {
-    signed char mask = 0;
-    int i = 0;
-    (void) thresh;
-
-    do
-    {
-        mask = vp8_simple_filter_mask(limit[i], flimit[i], s[-2*p], s[-1*p], s[0*p], s[1*p]);
-        vp8_simple_filter(x, mask, s - 2 * p, s - 1 * p, s, s + 1 * p);
-        ++s;
-    }
-    while (++i < count * 8);
+    
+    vp8_loop_filter_cl_run(x->cl_commands,
+        cl_data.vp8_loop_filter_simple_horizontal_edge_kernel, s_base, s_off,
+        p, flimit, limit, thresh, count
+    );
 }
 
 void vp8_loop_filter_simple_vertical_edge_cl
 (
     MACROBLOCKD *x,
-    unsigned char *s,
+    cl_mem s_base,
+    int s_off,
     int p,
     const signed char *flimit,
     const signed char *limit,
@@ -379,17 +270,10 @@ void vp8_loop_filter_simple_vertical_edge_cl
     int count
 )
 {
-    signed char mask = 0;
-    int i = 0;
-    (void) thresh;
 
-    do
-    {
-        /*mask = vp8_simple_filter_mask( limit[i], flimit[i],s[-1],s[0]);*/
-        mask = vp8_simple_filter_mask(limit[i], flimit[i], s[-2], s[-1], s[0], s[1]);
-        vp8_simple_filter(x, mask, s - 2, s - 1, s, s + 1);
-        s += p;
-    }
-    while (++i < count * 8);
+    vp8_loop_filter_cl_run(x->cl_commands,
+        cl_data.vp8_loop_filter_simple_vertical_edge_kernel, s_base, s_off,
+        p, flimit, limit, thresh, count
+    );
 
 }

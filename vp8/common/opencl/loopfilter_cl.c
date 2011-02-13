@@ -13,6 +13,7 @@
 #include "loopfilter_cl.h"
 #include "../onyxc_int.h"
 
+#include "vpx_config.h"
 #include "vp8_opencl.h"
 
 const char *loopFilterCompileOptions = "-Ivp8/common/opencl";
@@ -30,9 +31,10 @@ prototype_loopfilter_cl(vp8_loop_filter_simple_vertical_edge_cl);
 /* Horizontal MB filtering */
 void vp8_loop_filter_mbh_cl(
     MACROBLOCKD *x,
-    unsigned char *y_ptr,
-    unsigned char *u_ptr,
-    unsigned char *v_ptr,
+    cl_mem buf_base,
+    int y_off,
+    int u_off,
+    int v_off,
     int y_stride,
     int uv_stride,
     loop_filter_info *lfi,
@@ -40,103 +42,81 @@ void vp8_loop_filter_mbh_cl(
 )
 {
     (void) simpler_lpf;
-    vp8_mbloop_filter_horizontal_edge_cl(x, y_ptr, y_stride, lfi->mbflim, lfi->lim, lfi->mbthr, 2);
-
-    if (u_ptr)
-        vp8_mbloop_filter_horizontal_edge_cl(x, u_ptr, uv_stride, lfi->uvmbflim, lfi->uvlim, lfi->uvmbthr, 1);
-
-    if (v_ptr)
-        vp8_mbloop_filter_horizontal_edge_cl(x, v_ptr, uv_stride, lfi->uvmbflim, lfi->uvlim, lfi->uvmbthr, 1);
+    vp8_mbloop_filter_horizontal_edge_cl(x, buf_base, y_off, y_stride, lfi->mbflim, lfi->lim, lfi->mbthr, 2);
+    vp8_mbloop_filter_horizontal_edge_cl(x, buf_base, u_off, uv_stride, lfi->uvmbflim, lfi->uvlim, lfi->uvmbthr, 1);
+    vp8_mbloop_filter_horizontal_edge_cl(x, buf_base, v_off, uv_stride, lfi->uvmbflim, lfi->uvlim, lfi->uvmbthr, 1);
 }
 
-void vp8_loop_filter_mbhs_cl(MACROBLOCKD *x, unsigned char *y_ptr, unsigned char *u_ptr, unsigned char *v_ptr,
+void vp8_loop_filter_mbhs_cl(MACROBLOCKD *x, cl_mem buf_base, int y_off, int u_off, int v_off,
                             int y_stride, int uv_stride, loop_filter_info *lfi, int simpler_lpf)
 {
-    (void) u_ptr;
-    (void) v_ptr;
     (void) uv_stride;
     (void) simpler_lpf;
-    vp8_loop_filter_simple_horizontal_edge_cl(x, y_ptr, y_stride, lfi->mbflim, lfi->lim, lfi->mbthr, 2);
+    vp8_loop_filter_simple_horizontal_edge_cl(x, buf_base, y_off, y_stride, lfi->mbflim, lfi->lim, lfi->mbthr, 2);
 }
 
 /* Vertical MB Filtering */
-void vp8_loop_filter_mbv_cl(MACROBLOCKD *x, unsigned char *y_ptr, unsigned char *u_ptr, unsigned char *v_ptr,
+void vp8_loop_filter_mbv_cl(MACROBLOCKD *x, cl_mem buf_base, int y_off, int u_off, int v_off,
                            int y_stride, int uv_stride, loop_filter_info *lfi, int simpler_lpf)
 {
     (void) simpler_lpf;
-    vp8_mbloop_filter_vertical_edge_cl(x, y_ptr, y_stride, lfi->mbflim, lfi->lim, lfi->mbthr, 2);
-
-    if (u_ptr)
-        vp8_mbloop_filter_vertical_edge_cl(x, u_ptr, uv_stride, lfi->uvmbflim, lfi->uvlim, lfi->uvmbthr, 1);
-
-    if (v_ptr)
-        vp8_mbloop_filter_vertical_edge_cl(x, v_ptr, uv_stride, lfi->uvmbflim, lfi->uvlim, lfi->uvmbthr, 1);
+    vp8_mbloop_filter_vertical_edge_cl(x, buf_base, y_off, y_stride, lfi->mbflim, lfi->lim, lfi->mbthr, 2);
+    vp8_mbloop_filter_vertical_edge_cl(x, buf_base, u_off,  uv_stride, lfi->uvmbflim, lfi->uvlim, lfi->uvmbthr, 1);
+    vp8_mbloop_filter_vertical_edge_cl(x, buf_base, v_off, uv_stride, lfi->uvmbflim, lfi->uvlim, lfi->uvmbthr, 1);
 }
 
-void vp8_loop_filter_mbvs_cl(MACROBLOCKD *x, unsigned char *y_ptr, unsigned char *u_ptr, unsigned char *v_ptr,
+void vp8_loop_filter_mbvs_cl(MACROBLOCKD *x, cl_mem buf_base, int y_off, int u_off, int v_off,
                             int y_stride, int uv_stride, loop_filter_info *lfi, int simpler_lpf)
 {
-    (void) u_ptr;
-    (void) v_ptr;
     (void) uv_stride;
     (void) simpler_lpf;
-    vp8_loop_filter_simple_vertical_edge_cl(x, y_ptr, y_stride, lfi->mbflim, lfi->lim, lfi->mbthr, 2);
+    vp8_loop_filter_simple_vertical_edge_cl(x, buf_base, y_off, y_stride, lfi->mbflim, lfi->lim, lfi->mbthr, 2);
 }
 
 /* Horizontal B Filtering */
-void vp8_loop_filter_bh_cl(MACROBLOCKD *x, unsigned char *y_ptr, unsigned char *u_ptr, unsigned char *v_ptr,
+void vp8_loop_filter_bh_cl(MACROBLOCKD *x, cl_mem buf_base, int y_off, int u_off, int v_off,
                           int y_stride, int uv_stride, loop_filter_info *lfi, int simpler_lpf)
 {
     (void) simpler_lpf;
-    vp8_loop_filter_horizontal_edge_cl(x, y_ptr + 4 * y_stride, y_stride, lfi->flim, lfi->lim, lfi->thr, 2);
-    vp8_loop_filter_horizontal_edge_cl(x, y_ptr + 8 * y_stride, y_stride, lfi->flim, lfi->lim, lfi->thr, 2);
-    vp8_loop_filter_horizontal_edge_cl(x, y_ptr + 12 * y_stride, y_stride, lfi->flim, lfi->lim, lfi->thr, 2);
 
-    if (u_ptr)
-        vp8_loop_filter_horizontal_edge_cl(x, u_ptr + 4 * uv_stride, uv_stride, lfi->uvflim, lfi->uvlim, lfi->uvthr, 1);
-
-    if (v_ptr)
-        vp8_loop_filter_horizontal_edge_cl(x, v_ptr + 4 * uv_stride, uv_stride, lfi->uvflim, lfi->uvlim, lfi->uvthr, 1);
+    vp8_loop_filter_horizontal_edge_cl(x, buf_base, y_off + 4 * y_stride, y_stride, lfi->flim, lfi->lim, lfi->thr, 2);
+    vp8_loop_filter_horizontal_edge_cl(x, buf_base, y_off + 8 * y_stride, y_stride, lfi->flim, lfi->lim, lfi->thr, 2);
+    vp8_loop_filter_horizontal_edge_cl(x, buf_base, y_off + 12 * y_stride, y_stride, lfi->flim, lfi->lim, lfi->thr, 2);
+    vp8_loop_filter_horizontal_edge_cl(x, buf_base, u_off + 4 * uv_stride, uv_stride, lfi->uvflim, lfi->uvlim, lfi->uvthr, 1);
+    vp8_loop_filter_horizontal_edge_cl(x, buf_base, v_off + 4 * uv_stride, uv_stride, lfi->uvflim, lfi->uvlim, lfi->uvthr, 1);
 }
 
-void vp8_loop_filter_bhs_cl(MACROBLOCKD *x, unsigned char *y_ptr, unsigned char *u_ptr, unsigned char *v_ptr,
+void vp8_loop_filter_bhs_cl(MACROBLOCKD *x, cl_mem buf_base, int y_off, int u_off, int v_off,
                            int y_stride, int uv_stride, loop_filter_info *lfi, int simpler_lpf)
 {
-    (void) u_ptr;
-    (void) v_ptr;
     (void) uv_stride;
     (void) simpler_lpf;
-    vp8_loop_filter_simple_horizontal_edge_cl(x, y_ptr + 4 * y_stride, y_stride, lfi->flim, lfi->lim, lfi->thr, 2);
-    vp8_loop_filter_simple_horizontal_edge_cl(x, y_ptr + 8 * y_stride, y_stride, lfi->flim, lfi->lim, lfi->thr, 2);
-    vp8_loop_filter_simple_horizontal_edge_cl(x, y_ptr + 12 * y_stride, y_stride, lfi->flim, lfi->lim, lfi->thr, 2);
+    vp8_loop_filter_simple_horizontal_edge_cl(x, buf_base, y_off + 4 * y_stride, y_stride, lfi->flim, lfi->lim, lfi->thr, 2);
+    vp8_loop_filter_simple_horizontal_edge_cl(x, buf_base, y_off + 8 * y_stride, y_stride, lfi->flim, lfi->lim, lfi->thr, 2);
+    vp8_loop_filter_simple_horizontal_edge_cl(x, buf_base, y_off + 12 * y_stride, y_stride, lfi->flim, lfi->lim, lfi->thr, 2);
 }
 
 /* Vertical B Filtering */
-void vp8_loop_filter_bv_cl(MACROBLOCKD *x, unsigned char *y_ptr, unsigned char *u_ptr, unsigned char *v_ptr,
+void vp8_loop_filter_bv_cl(MACROBLOCKD *x, cl_mem buf_base, int y_off, int u_off, int v_off,
                           int y_stride, int uv_stride, loop_filter_info *lfi, int simpler_lpf)
 {
     (void) simpler_lpf;
-    vp8_loop_filter_vertical_edge_cl(x, y_ptr + 4, y_stride, lfi->flim, lfi->lim, lfi->thr, 2);
-    vp8_loop_filter_vertical_edge_cl(x, y_ptr + 8, y_stride, lfi->flim, lfi->lim, lfi->thr, 2);
-    vp8_loop_filter_vertical_edge_cl(x, y_ptr + 12, y_stride, lfi->flim, lfi->lim, lfi->thr, 2);
+    vp8_loop_filter_vertical_edge_cl(x, buf_base, y_off + 4, y_stride, lfi->flim, lfi->lim, lfi->thr, 2);
+    vp8_loop_filter_vertical_edge_cl(x, buf_base, y_off + 8, y_stride, lfi->flim, lfi->lim, lfi->thr, 2);
+    vp8_loop_filter_vertical_edge_cl(x, buf_base, y_off + 12, y_stride, lfi->flim, lfi->lim, lfi->thr, 2);
 
-    if (u_ptr)
-        vp8_loop_filter_vertical_edge_cl(x, u_ptr + 4, uv_stride, lfi->uvflim, lfi->uvlim, lfi->uvthr, 1);
-
-    if (v_ptr)
-        vp8_loop_filter_vertical_edge_cl(x, v_ptr + 4, uv_stride, lfi->uvflim, lfi->uvlim, lfi->uvthr, 1);
+    vp8_loop_filter_vertical_edge_cl(x, buf_base, u_off + 4, uv_stride, lfi->uvflim, lfi->uvlim, lfi->uvthr, 1);
+    vp8_loop_filter_vertical_edge_cl(x, buf_base, v_off + 4, uv_stride, lfi->uvflim, lfi->uvlim, lfi->uvthr, 1);
 }
 
-void vp8_loop_filter_bvs_cl(MACROBLOCKD *x, unsigned char *y_ptr, unsigned char *u_ptr, unsigned char *v_ptr,
+void vp8_loop_filter_bvs_cl(MACROBLOCKD *x, cl_mem buf_base, int y_off, int u_off, int v_off,
                            int y_stride, int uv_stride, loop_filter_info *lfi, int simpler_lpf)
 {
-    (void) u_ptr;
-    (void) v_ptr;
     (void) uv_stride;
     (void) simpler_lpf;
-    vp8_loop_filter_simple_vertical_edge_cl(x, y_ptr + 4, y_stride, lfi->flim, lfi->lim, lfi->thr, 2);
-    vp8_loop_filter_simple_vertical_edge_cl(x, y_ptr + 8, y_stride, lfi->flim, lfi->lim, lfi->thr, 2);
-    vp8_loop_filter_simple_vertical_edge_cl(x, y_ptr + 12, y_stride, lfi->flim, lfi->lim, lfi->thr, 2);
+    vp8_loop_filter_simple_vertical_edge_cl(x, buf_base, y_off + 4, y_stride, lfi->flim, lfi->lim, lfi->thr, 2);
+    vp8_loop_filter_simple_vertical_edge_cl(x, buf_base, y_off + 8, y_stride, lfi->flim, lfi->lim, lfi->thr, 2);
+    vp8_loop_filter_simple_vertical_edge_cl(x, buf_base, y_off + 12, y_stride, lfi->flim, lfi->lim, lfi->thr, 2);
 }
 
 void vp8_init_loop_filter_cl(VP8_COMMON *cm)
@@ -205,22 +185,6 @@ void vp8_init_loop_filter_cl(VP8_COMMON *cm)
             lfi[i].uvthr[j] = HEVThresh;
         }
 
-    }
-
-    /* Set up the function pointers depending on the type of loop filtering selected */
-    if (lft == NORMAL_LOOPFILTER)
-    {
-        cm->lf_mbv = LF_INVOKE(&cm->rtcd.loopfilter, normal_mb_v);
-        cm->lf_bv  = LF_INVOKE(&cm->rtcd.loopfilter, normal_b_v);
-        cm->lf_mbh = LF_INVOKE(&cm->rtcd.loopfilter, normal_mb_h);
-        cm->lf_bh  = LF_INVOKE(&cm->rtcd.loopfilter, normal_b_h);
-    }
-    else
-    {
-        cm->lf_mbv = LF_INVOKE(&cm->rtcd.loopfilter, simple_mb_v);
-        cm->lf_bv  = LF_INVOKE(&cm->rtcd.loopfilter, simple_b_v);
-        cm->lf_mbh = LF_INVOKE(&cm->rtcd.loopfilter, simple_mb_h);
-        cm->lf_bh  = LF_INVOKE(&cm->rtcd.loopfilter, simple_b_h);
     }
 }
 
@@ -326,21 +290,14 @@ int cl_init_loop_filter() {
             loopFilterCompileOptions) != CL_SUCCESS )
         return CL_TRIED_BUT_FAILED;
 
-    // Create the compute kernel in the program we wish to run
-
-    //Note that this kernel is temporarily the memcpy kernel...
-    //After implementing the loop filter kernels, this should be changed.
+    // Create the compute kernels in the program we wish to run
     CL_CREATE_KERNEL(cl_data,loop_filter_program,vp8_filter_kernel,"vp8_filter_kernel");
-
-    //CL_CREATE_KERNEL(cl_data,loop_filter_program,vp8_block_variation_kernel,"vp8_block_variation_kernel");
-    //CL_CREATE_KERNEL(cl_data,loop_filter_program,vp8_sixtap_predict8x8_kernel,"vp8_sixtap_predict8x8_kernel");
-    //CL_CREATE_KERNEL(cl_data,loop_filter_program,vp8_sixtap_predict8x4_kernel,"vp8_sixtap_predict8x4_kernel");
-    //CL_CREATE_KERNEL(cl_data,loop_filter_program,vp8_sixtap_predict16x16_kernel,"vp8_sixtap_predict16x16_kernel");
-    //CL_CREATE_KERNEL(cl_data,loop_filter_program,vp8_bilinear_predict4x4_kernel,"vp8_bilinear_predict4x4_kernel");
-    //CL_CREATE_KERNEL(cl_data,loop_filter_program,vp8_bilinear_predict8x4_kernel,"vp8_bilinear_predict8x4_kernel");
-    //CL_CREATE_KERNEL(cl_data,loop_filter_program,vp8_bilinear_predict8x8_kernel,"vp8_bilinear_predict8x8_kernel");
-    //CL_CREATE_KERNEL(cl_data,loop_filter_program,vp8_bilinear_predict16x16_kernel,"vp8_bilinear_predict16x16_kernel");
-    //CL_CREATE_KERNEL(cl_data,loop_filter_program,vp8_memcpy_kernel,"vp8_memcpy_kernel");
+    CL_CREATE_KERNEL(cl_data,loop_filter_program,vp8_loop_filter_horizontal_edge_kernel,"vp8_loop_filter_horizontal_edge_kernel");
+    CL_CREATE_KERNEL(cl_data,loop_filter_program,vp8_loop_filter_vertical_edge_kernel,"vp8_loop_filter_vertical_edge_kernel");
+    CL_CREATE_KERNEL(cl_data,loop_filter_program,vp8_mbloop_filter_horizontal_edge_kernel,"vp8_mbloop_filter_horizontal_edge_kernel");
+    CL_CREATE_KERNEL(cl_data,loop_filter_program,vp8_mbloop_filter_vertical_edge_kernel,"vp8_mbloop_filter_vertical_edge_kernel");
+    CL_CREATE_KERNEL(cl_data,loop_filter_program,vp8_loop_filter_simple_horizontal_edge_kernel,"vp8_loop_filter_simple_horizontal_edge_kernel");
+    CL_CREATE_KERNEL(cl_data,loop_filter_program,vp8_loop_filter_simple_vertical_edge_kernel,"vp8_loop_filter_simple_vertical_edge_kernel");
 
     return CL_SUCCESS;
 }
@@ -351,7 +308,12 @@ void cl_destroy_loop_filter(){
         clReleaseProgram(cl_data.loop_filter_program);
 
     CL_RELEASE_KERNEL(cl_data.vp8_filter_kernel);
-
+    CL_RELEASE_KERNEL(cl_data.vp8_loop_filter_horizontal_edge_kernel);
+    CL_RELEASE_KERNEL(cl_data.vp8_loop_filter_vertical_edge_kernel);
+    CL_RELEASE_KERNEL(cl_data.vp8_mbloop_filter_horizontal_edge_kernel);
+    CL_RELEASE_KERNEL(cl_data.vp8_mbloop_filter_vertical_edge_kernel);
+    CL_RELEASE_KERNEL(cl_data.vp8_loop_filter_simple_horizontal_edge_kernel);
+    CL_RELEASE_KERNEL(cl_data.vp8_loop_filter_simple_vertical_edge_kernel);
 
     cl_data.loop_filter_program = NULL;
 }
@@ -402,8 +364,10 @@ void vp8_loop_filter_frame_cl
     int filter_level;
     int alt_flt_enabled = mbd->segmentation_enabled;
 
-    int i;
-    unsigned char *y_ptr, *u_ptr, *v_ptr;
+    int err;
+    unsigned char *buf_base;
+    int y_off, u_off, v_off;
+    //unsigned char *y_ptr, *u_ptr, *v_ptr;
 
     mbd->mode_info_context = cm->mi;          /* Point at base of Mb MODE_INFO list */
 
@@ -417,9 +381,13 @@ void vp8_loop_filter_frame_cl
         vp8_frame_init_loop_filter_cl(lfi, frame_type);
 
     /* Set up the buffer pointers */
-    y_ptr = post->y_buffer;
-    u_ptr = post->u_buffer;
-    v_ptr = post->v_buffer;
+
+    buf_base = post->buffer_alloc;
+    y_off = post->y_buffer - buf_base;
+    u_off = post->u_buffer - buf_base;
+    v_off = post->v_buffer - buf_base;
+
+    CL_SET_BUF(mbd->cl_commands, post->buffer_mem, post->buffer_size, post->buffer_alloc,);
 
     /* vp8_filter each macro block */
     for (mb_row = 0; mb_row < cm->mb_rows; mb_row++)
@@ -441,45 +409,54 @@ void vp8_loop_filter_frame_cl
             {
                 if (mb_col > 0){
                     if (filter_type == NORMAL_LOOPFILTER)
-                        vp8_loop_filter_mbv_cl(mbd, y_ptr, u_ptr, v_ptr, post->y_stride, post->uv_stride, &lfi[filter_level], cm->simpler_lpf);
+                        vp8_loop_filter_mbv_cl(mbd, post->buffer_mem, y_off, u_off, v_off, post->y_stride, post->uv_stride, &lfi[filter_level], cm->simpler_lpf);
                     else
-                        vp8_loop_filter_mbvs_cl(mbd, y_ptr, u_ptr, v_ptr, post->y_stride, post->uv_stride, &lfi[filter_level], cm->simpler_lpf);
+                        vp8_loop_filter_mbvs_cl(mbd, post->buffer_mem, y_off, u_off, v_off, post->y_stride, post->uv_stride, &lfi[filter_level], cm->simpler_lpf);
                 }
 
                 if (mbd->mode_info_context->mbmi.dc_diff > 0){
                     if (filter_type == NORMAL_LOOPFILTER)
-                        vp8_loop_filter_bv_cl(mbd, y_ptr, u_ptr, v_ptr, post->y_stride, post->uv_stride, &lfi[filter_level], cm->simpler_lpf);
+                        vp8_loop_filter_bv_cl(mbd, post->buffer_mem, y_off, u_off, v_off, post->y_stride, post->uv_stride, &lfi[filter_level], cm->simpler_lpf);
                     else
-                        vp8_loop_filter_bvs_cl(mbd, y_ptr, u_ptr, v_ptr, post->y_stride, post->uv_stride, &lfi[filter_level], cm->simpler_lpf);
+                        vp8_loop_filter_bvs_cl(mbd, post->buffer_mem, y_off, u_off, v_off, post->y_stride, post->uv_stride, &lfi[filter_level], cm->simpler_lpf);
                 }
 
                 /* don't apply across umv border */
                 if (mb_row > 0){
                     if (filter_type == NORMAL_LOOPFILTER)
-                        vp8_loop_filter_mbh_cl(mbd, y_ptr, u_ptr, v_ptr, post->y_stride, post->uv_stride, &lfi[filter_level], cm->simpler_lpf);
+                        vp8_loop_filter_mbh_cl(mbd, post->buffer_mem, y_off, u_off, v_off, post->y_stride, post->uv_stride, &lfi[filter_level], cm->simpler_lpf);
                     else
-                        vp8_loop_filter_mbhs_cl(mbd, y_ptr, u_ptr, v_ptr, post->y_stride, post->uv_stride, &lfi[filter_level], cm->simpler_lpf);
+                        vp8_loop_filter_mbhs_cl(mbd, post->buffer_mem, y_off, u_off, v_off, post->y_stride, post->uv_stride, &lfi[filter_level], cm->simpler_lpf);
                 }
 
                 if (mbd->mode_info_context->mbmi.dc_diff > 0){
                     if (filter_type == NORMAL_LOOPFILTER)
-                        vp8_loop_filter_bh_cl(mbd, y_ptr, u_ptr, v_ptr, post->y_stride, post->uv_stride, &lfi[filter_level], cm->simpler_lpf);
+                        vp8_loop_filter_bh_cl(mbd, post->buffer_mem, y_off, u_off, v_off, post->y_stride, post->uv_stride, &lfi[filter_level], cm->simpler_lpf);
                     else
-                        vp8_loop_filter_bhs_cl(mbd, y_ptr, u_ptr, v_ptr, post->y_stride, post->uv_stride, &lfi[filter_level], cm->simpler_lpf);
+                        vp8_loop_filter_bhs_cl(mbd, post->buffer_mem, y_off, u_off, v_off, post->y_stride, post->uv_stride, &lfi[filter_level], cm->simpler_lpf);
                 }
             }
 
-            y_ptr += 16;
-            u_ptr += 8;
-            v_ptr += 8;
+            y_off += 16;
+            u_off += 8;
+            v_off += 8;
 
             mbd->mode_info_context++;     /* step to next MB */
         }
 
-        y_ptr += post->y_stride  * 16 - post->y_width;
-        u_ptr += post->uv_stride *  8 - post->uv_width;
-        v_ptr += post->uv_stride *  8 - post->uv_width;
+        y_off += post->y_stride  * 16 - post->y_width;
+        u_off += post->uv_stride *  8 - post->uv_width;
+        v_off += post->uv_stride *  8 - post->uv_width;
 
         mbd->mode_info_context++;         /* Skip border mb */
     }
+
+    //Retrieve buffer contents
+    err = clEnqueueReadBuffer(mbd->cl_commands, post->buffer_mem, CL_FALSE, 0, post->buffer_size, post->buffer_alloc, 0, NULL, NULL);
+    CL_CHECK_SUCCESS(mbd->cl_commands, err != CL_SUCCESS,
+        "Error: Failed to read loop filter output!\n",
+        ,
+    );
+
+    CL_FINISH(mbd->cl_commands);
 }

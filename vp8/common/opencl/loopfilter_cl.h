@@ -19,7 +19,8 @@
 #include "../loopfilter.h"
 
 #define prototype_loopfilter_cl(sym) \
-    void sym(MACROBLOCKD*, unsigned char *src, int pitch, const signed char *flimit,\
+    void sym(MACROBLOCKD*, cl_mem src_base, int src_offset,  \
+             int pitch, const signed char *flimit, \
              const signed char *limit, const signed char *thresh, int count)
 
 #define prototype_loopfilter_block_cl(sym) \
