@@ -13,7 +13,7 @@ __constant int bilinear_filters[8][2] = {
 };
 
 __constant short sub_pel_filters[8][8] = {
-    //Note that these were originally 8x6, but are padded for vector ops
+    //These were originally 8x6, but are padded for vector ops
     { 0, 0, 128, 0, 0, 0, 0, 0}, /* note that 1/8 pel positions are just as per alpha -0.5 bicubic */
     { 0, -6, 123, 12, -1, 0, 0, 0},
     { 2, -11, 108, 36, -8, 1, 0, 0}, /* New 1/4 pel 6 tap filter */
@@ -52,45 +52,29 @@ kernel void vp8_filter_block2d_first_pass_kernel(
     __constant short *vp8_filter = sub_pel_filters[filter_offset];
 
     if (tid < (output_width*output_height)){
-        for (i=0; i < output_width*output_height; i++){
-            src_offset = i + (i/output_width * (src_pixels_per_line - output_width)) + PS2;
+        src_offset = i + (i/output_width * (src_pixels_per_line - output_width))+PS2;
 
-#if 1
-                int8 t8, s, f;
-                int4 t4;
-                int2 t2;
+            Temp = (int)(src_ptr[src_offset - PS2]      * vp8_filter[0]) +
+               (int)(src_ptr[src_offset - (int)pixel_step] * vp8_filter[1]) +
+               (int)(src_ptr[src_offset]                * vp8_filter[2]) +
+               (int)(src_ptr[src_offset + pixel_step]   * vp8_filter[3]) +
+               (int)(src_ptr[src_offset + PS2]          * vp8_filter[4]) +
+               (int)(src_ptr[src_offset + PS3]          * vp8_filter[5]) +
+               (VP8_FILTER_WEIGHT >> 1);      /* Rounding */
 
-                f = convert_int8(vload8(0,vp8_filter));
-                s = convert_int8(vload8(0,&src_ptr[src_offset-2]));
+        /* Normalize back to 0-255 */
+        Temp = Temp >> VP8_FILTER_SHIFT;
 
-                t8 = s * f;
+        //Temp = (int)src_ptr[2];
+        if (Temp < 0)
+            Temp = 0;
+        else if ( Temp > 255 )
+            Temp = 255;
 
-                //Collapse 8-element vector to single int and round
-                //t4 = t8.s0123 + t8.s4567;
-                //t2 = t4.xy + t4.zw;
-                t2 = t8.s01 + t8.s23 + t8.s45;
-                Temp = t2.x + t2.y + (VP8_FILTER_WEIGHT >> 1);
-#else
-                Temp = (int)(src_ptr[src_offset - PS2]      * vp8_filter[0]) +
-                   (int)(src_ptr[src_offset - (int)pixel_step] * vp8_filter[1]) +
-                   (int)(src_ptr[src_offset]                * vp8_filter[2]) +
-                   (int)(src_ptr[src_offset + pixel_step]   * vp8_filter[3]) +
-                   (int)(src_ptr[src_offset + PS2]          * vp8_filter[4]) +
-                   (int)(src_ptr[src_offset + PS3]          * vp8_filter[5]) +
-                   (VP8_FILTER_WEIGHT >> 1);      /* Rounding */
-#endif
-            /* Normalize back to 0-255 */
-            Temp = Temp >> VP8_FILTER_SHIFT;
-
-            //Temp = (int)src_ptr[2];
-            if (Temp < 0)
-                Temp = 0;
-            else if ( Temp > 255 )
-                Temp = 255;
-
-            output_ptr[i] = Temp;
-        }
+        output_ptr[i] = Temp;
     }
+
+    //barrier(CLK_GLOBAL_MEM_FENCE);
 }
 
 kernel void vp8_filter_block2d_second_pass_kernel
