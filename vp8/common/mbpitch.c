@@ -124,53 +124,6 @@ void vp8_setup_block_dptrs(MACROBLOCKD *x)
 
     x->block[24].diff_offset = 384;
 
-#if CONFIG_OPENCL
-    x->cl_diff_mem = NULL;
-    x->cl_predictor_mem = NULL;
-    x->cl_qcoeff_mem = NULL;
-    x->cl_dqcoeff_mem = NULL;
-    x->cl_eobs_mem = NULL;
-
-    /* Set up CL memory buffers if appropriate */
-    if (cl_initialized == CL_SUCCESS){
-        int err;
-
-#define SET_ON_ALLOC 1
-#if SET_ON_ALLOC
-        CL_CREATE_BUF(x->cl_commands, x->cl_diff_mem, CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,
-                sizeof(cl_short)*400, x->diff, goto BUF_DONE);
-
-        CL_CREATE_BUF(x->cl_commands, x->cl_predictor_mem, CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,
-                sizeof(cl_uchar)*384, x->predictor, goto BUF_DONE);
-
-        CL_CREATE_BUF(x->cl_commands, x->cl_qcoeff_mem, CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,
-                sizeof(cl_short)*400, x->qcoeff, goto BUF_DONE);
-
-        CL_CREATE_BUF(x->cl_commands, x->cl_dqcoeff_mem, CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,
-                sizeof(cl_short)*400, x->dqcoeff, goto BUF_DONE);
-
-        CL_CREATE_BUF(x->cl_commands, x->cl_eobs_mem, CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,
-                sizeof(cl_char)*25, x->eobs, goto BUF_DONE);
-#else
-        CL_CREATE_BUF(x->cl_commands, x->cl_diff_mem, CL_MEM_READ_WRITE,
-                sizeof(cl_short)*400, NULL, goto BUF_DONE);
-
-        CL_CREATE_BUF(x->cl_commands, x->cl_predictor_mem, CL_MEM_READ_WRITE,
-                sizeof(cl_uchar)*384, NULL, goto BUF_DONE);
-
-        CL_CREATE_BUF(x->cl_commands, x->cl_qcoeff_mem, CL_MEM_READ_WRITE,
-                sizeof(cl_short)*400, NULL, goto BUF_DONE);
-
-        CL_CREATE_BUF(x->cl_commands, x->cl_dqcoeff_mem, CL_MEM_READ_WRITE,
-                sizeof(cl_short)*400, NULL, goto BUF_DONE);
-
-        CL_CREATE_BUF(x->cl_commands, x->cl_eobs_mem, CL_MEM_READ_WRITE,
-                sizeof(cl_char) * 25, NULL, goto BUF_DONE);
-#endif
-    }
-BUF_DONE:
-#endif
-
     for (r = 0; r < 25; r++)
     {
     	x->block[r].qcoeff_base = x->qcoeff;

@@ -385,7 +385,47 @@ int vp8dx_receive_compressed_data(VP8D_PTR ptr, unsigned long size, const unsign
             printf("Error: Failed to create a command queue!\n");
             cl_destroy(NULL, CL_TRIED_BUT_FAILED);
         }
+
+        pbi->mb.cl_diff_mem = NULL;
+        pbi->mb.cl_predictor_mem = NULL;
+        pbi->mb.cl_qcoeff_mem = NULL;
+        pbi->mb.cl_dqcoeff_mem = NULL;
+        pbi->mb.cl_eobs_mem = NULL;
+
+#define SET_ON_ALLOC 1
+#if SET_ON_ALLOC
+            CL_CREATE_BUF(pbi->mb.cl_commands, pbi->mb.cl_diff_mem, CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,
+                    sizeof(cl_short)*400, pbi->mb.diff, goto BUF_DONE);
+
+            CL_CREATE_BUF(pbi->mb.cl_commands, pbi->mb.cl_predictor_mem, CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,
+                    sizeof(cl_uchar)*384, pbi->mb.predictor, goto BUF_DONE);
+
+            CL_CREATE_BUF(pbi->mb.cl_commands, pbi->mb.cl_qcoeff_mem, CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,
+                    sizeof(cl_short)*400, pbi->mb.qcoeff, goto BUF_DONE);
+
+            CL_CREATE_BUF(pbi->mb.cl_commands, pbi->mb.cl_dqcoeff_mem, CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,
+                    sizeof(cl_short)*400, pbi->mb.dqcoeff, goto BUF_DONE);
+
+            CL_CREATE_BUF(pbi->mb.cl_commands, pbi->mb.cl_eobs_mem, CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,
+                    sizeof(cl_char)*25, pbi->mb.eobs, goto BUF_DONE);
+#else
+            CL_CREATE_BUF(pbi->mb.cl_commands, pbi->mb.cl_diff_mem, CL_MEM_READ_WRITE,
+                    sizeof(cl_short)*400, NULL, goto BUF_DONE);
+
+            CL_CREATE_BUF(pbi->mb.cl_commands, pbi->mb.cl_predictor_mem, CL_MEM_READ_WRITE,
+                    sizeof(cl_uchar)*384, NULL, goto BUF_DONE);
+
+            CL_CREATE_BUF(pbi->mb.cl_commands, pbi->mb.cl_qcoeff_mem, CL_MEM_READ_WRITE,
+                    sizeof(cl_short)*400, NULL, goto BUF_DONE);
+
+            CL_CREATE_BUF(pbi->mb.cl_commands, pbi->mb.cl_dqcoeff_mem, CL_MEM_READ_WRITE,
+                    sizeof(cl_short)*400, NULL, goto BUF_DONE);
+
+            CL_CREATE_BUF(pbi->mb.cl_commands, pbi->mb.cl_eobs_mem, CL_MEM_READ_WRITE,
+                    sizeof(cl_char) * 25, NULL, goto BUF_DONE);
+#endif
     }
+BUF_DONE:
 #endif
 
     retcode = vp8_decode_frame(pbi);
