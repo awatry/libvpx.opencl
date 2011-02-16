@@ -47,7 +47,6 @@ kernel void vp8_filter_block2d_first_pass_kernel(
     //Note that src_offset will be reset later, which is why we capture it now
     src_offset = 0;
 
-
     int Temp;
     int PS2 = 2*(int)pixel_step;
     int PS3 = 3*(int)pixel_step;
@@ -55,7 +54,7 @@ kernel void vp8_filter_block2d_first_pass_kernel(
     __constant short *vp8_filter = sub_pel_filters[filter_offset];
 
     if (tid < (output_width*output_height)){
-        for (i=0; i < output_width*output_height; i++){
+        //for (i=0; i < output_width*output_height; i++){
             src_offset = i + (i/output_width * (src_pixels_per_line - output_width)) + PS2;
 
 #if 1
@@ -92,7 +91,7 @@ kernel void vp8_filter_block2d_first_pass_kernel(
                 Temp = 255;
 
             output_ptr[i] = Temp;
-        }
+        //}
     }
 
     //Add a fence so that no 2nd pass stuff starts before 1st pass writes are done.

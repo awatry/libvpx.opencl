@@ -121,6 +121,41 @@ void vp8_filter_block2d_second_pass_cl
 
 }
 
+void vp8_sixtap_first_pass(
+    cl_command_queue cq,
+    size_t global,
+    cl_mem src_mem,
+    int src_offset,
+    cl_mem int_mem,
+    unsigned int src_pixels_per_line,
+    unsigned int pixel_step,
+    unsigned int FData_height,
+    unsigned int FData_width,
+    int xoffset
+){
+    int err;
+
+    err =  clSetKernelArg(cl_data.vp8_filter_block2d_first_pass_kernel, 0, sizeof (cl_mem), &src_mem);
+    err |= clSetKernelArg(cl_data.vp8_filter_block2d_first_pass_kernel, 1, sizeof (int), &src_offset);
+    err |= clSetKernelArg(cl_data.vp8_filter_block2d_first_pass_kernel, 2, sizeof (cl_mem), &int_mem);
+    err |= clSetKernelArg(cl_data.vp8_filter_block2d_first_pass_kernel, 3, sizeof (cl_uint), &src_pixels_per_line);
+    err |= clSetKernelArg(cl_data.vp8_filter_block2d_first_pass_kernel, 4, sizeof (cl_uint), &pixel_step);
+    err |= clSetKernelArg(cl_data.vp8_filter_block2d_first_pass_kernel, 5, sizeof (cl_uint), &FData_height);
+    err |= clSetKernelArg(cl_data.vp8_filter_block2d_first_pass_kernel, 6, sizeof (cl_int), &FData_width);
+    err |= clSetKernelArg(cl_data.vp8_filter_block2d_first_pass_kernel, 7, sizeof (int), &xoffset);
+    CL_CHECK_SUCCESS( cq, err != CL_SUCCESS,
+        "Error: Failed to set kernel arguments!\n",
+        ,
+    );
+
+    /* Execute the kernel */
+    err = clEnqueueNDRangeKernel( cq, cl_data.vp8_filter_block2d_first_pass_kernel, 1, NULL, &global, NULL , 0, NULL, NULL);
+    CL_CHECK_SUCCESS( cq, err != CL_SUCCESS,
+        "Error: Failed to execute kernel!\n",
+        printf("err = %d\n",err);,
+    );
+}
+
 void vp8_sixtap_second_pass(
     cl_command_queue cq,
     size_t global,
@@ -176,8 +211,8 @@ void vp8_sixtap_run_cl(
     size_t thread_count,
     size_t dst_len,
     unsigned int pixel_step,
-    unsigned int FData_width,
     unsigned int FData_height,
+    unsigned int FData_width,
     unsigned int output_height,
     unsigned int output_width,
     int int_offset
@@ -192,26 +227,11 @@ void vp8_sixtap_run_cl(
     CL_CREATE_BUF( cq, dst_mem,, sizeof (unsigned char) * dst_len, dst_ptr, );
     CL_CREATE_BUF( cq, int_mem,, sizeof(cl_int)*13*21, NULL, );
 
-#define TWO_PASS 0
+#define TWO_PASS 1
 #if TWO_PASS
-    err =  clSetKernelArg(cl_data.vp8_filter_block2d_first_pass_kernel, 0, sizeof (cl_mem), &src_mem);
-    err |= clSetKernelArg(cl_data.vp8_filter_block2d_first_pass_kernel, 1, sizeof (int), &src_offset);
-    err |= clSetKernelArg(cl_data.vp8_filter_block2d_first_pass_kernel, 2, sizeof (cl_mem), &int_mem);
-    err |= clSetKernelArg(cl_data.vp8_filter_block2d_first_pass_kernel, 3, sizeof (int), &src_pixels_per_line);
-    err |= clSetKernelArg(cl_data.vp8_filter_block2d_first_pass_kernel, 4, sizeof (int), &pixel_step);
-    err |= clSetKernelArg(cl_data.vp8_filter_block2d_first_pass_kernel, 5, sizeof (int), &FData_height);
-    err |= clSetKernelArg(cl_data.vp8_filter_block2d_first_pass_kernel, 6, sizeof (int), &FData_width);
-    err |= clSetKernelArg(cl_data.vp8_filter_block2d_first_pass_kernel, 7, sizeof (int), &xoffset);
-    CL_CHECK_SUCCESS( cq, err != CL_SUCCESS,
-        "Error: Failed to set kernel arguments!\n",
-        ,
-    );
-
-    /* Execute the kernel */
-    err = clEnqueueNDRangeKernel( cq, cl_data.vp8_filter_block2d_first_pass_kernel, 1, NULL, &global, NULL , 0, NULL, NULL);
-    CL_CHECK_SUCCESS( cq, err != CL_SUCCESS,
-        "Error: Failed to execute kernel!\n",
-        printf("err = %d\n",err);,
+    vp8_sixtap_first_pass(
+        cq, global, src_mem, src_offset, int_mem, src_pixels_per_line, pixel_step,
+        FData_height, FData_width, xoffset
     );
 
     vp8_sixtap_second_pass(cq,global,int_mem,int_offset,dst_mem,dst_offset,dst_pitch,
