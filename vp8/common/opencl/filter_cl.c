@@ -75,78 +75,39 @@ int cl_init_filter() {
     return CL_SUCCESS;
 }
 
-int vp8_filter_block2d_first_pass_cl
-(
+void vp8_filter_block2d_first_pass_cl(
     cl_command_queue cq,
     unsigned char *src_base,
     int src_offset,
+    cl_mem int_mem,
     unsigned int src_pixels_per_line,
     unsigned int pixel_step,
     unsigned int output_height,
     unsigned int output_width,
-    int filter_offset,
-    cl_mem int_mem
-) {
-
-    int err;
-    size_t global;
-
+    int filter_offset
+)
+{
     cl_mem src_mem;
+    int err;
+    //int dst_len = DST_LEN(dst_pitch,4,4);
 
-    //Calculate size of input and output arrays
-    int dest_len = output_height * output_width;
+    //int output1_width=4,output1_height=9;
+    //int src_len = SRC_LEN(output1_width,output1_height,src_pixels_per_line);
+    int src_len = SIXTAP_SRC_LEN(4,9,src_pixels_per_line);
 
-    //Copy the -2*pixel_step bytes because the filter algorithm accesses negative indexes
-    src_offset += (2*(int)pixel_step);
-    int src_len = src_offset+(dest_len + ((dest_len-1)/output_width)*(src_pixels_per_line - output_width) + 3 * (int)pixel_step);
-
-    //Make space for kernel input data. Initialize the buffer as well.
-    CL_CREATE_BUF( cq, src_mem, ,
-        sizeof (unsigned char) * src_len, src_base-(2*(int)pixel_step),
-    );
-
-    // Set kernel arguments
-    err = 0;
-    err = clSetKernelArg(cl_data.vp8_filter_block2d_first_pass_kernel, 0, sizeof (cl_mem), &src_mem);
-    err |= clSetKernelArg(cl_data.vp8_filter_block2d_first_pass_kernel, 1, sizeof (int), &src_offset);
-    err |= clSetKernelArg(cl_data.vp8_filter_block2d_first_pass_kernel, 2, sizeof (cl_mem), &int_mem);
-    err |= clSetKernelArg(cl_data.vp8_filter_block2d_first_pass_kernel, 3, sizeof (unsigned int), &src_pixels_per_line);
-    err |= clSetKernelArg(cl_data.vp8_filter_block2d_first_pass_kernel, 4, sizeof (unsigned int), &pixel_step);
-    err |= clSetKernelArg(cl_data.vp8_filter_block2d_first_pass_kernel, 5, sizeof (unsigned int), &output_height);
-    err |= clSetKernelArg(cl_data.vp8_filter_block2d_first_pass_kernel, 6, sizeof (unsigned int), &output_width);
-    err |= clSetKernelArg(cl_data.vp8_filter_block2d_first_pass_kernel, 7, sizeof (int), &filter_offset);
-    CL_CHECK_SUCCESS( cq, err != CL_SUCCESS,
-        "Error: Failed to set kernel arguments!\n",
-        ,
-        CL_TRIED_BUT_FAILED
-    );
-
-    // Execute the kernel
-    global = output_width*output_height; //How many threads do we need?
-#if USE_LOCAL_SIZE
-    //NOTE: if local<global, global MUST be evenly divisible by local or the
-    // kernel will fail.
-    printf("local=%d, global=%d\n", local, global);
-    err = clEnqueueNDRangeKernel(cq, cl_data.vp8_filter_block2d_first_pass_kernel, 1, NULL, &global, ((local<global)? &local: &global) , 0, NULL, NULL);
-#else
-    err = clEnqueueNDRangeKernel(cq, cl_data.vp8_filter_block2d_first_pass_kernel, 1, NULL, &global, NULL , 0, NULL, NULL);
-#endif
-    CL_CHECK_SUCCESS( cq, err != CL_SUCCESS,
-        "Error: Failed to execute kernel!\n",
-        ,
-        CL_TRIED_BUT_FAILED
-    );
+    CL_CREATE_BUF( cq, src_mem, CL_MEM_READ_ONLY|CL_MEM_COPY_HOST_PTR, \
+        sizeof (unsigned char) * src_len, src_base+src_offset-2, \
+    ); \
 
     clReleaseMemObject(src_mem);
-
-    return CL_SUCCESS;
+    
 }
 
-int vp8_filter_block2d_second_pass_cl
+void vp8_filter_block2d_second_pass_cl
 (
     cl_command_queue cq,
     cl_mem int_mem,
-    int offset,
+    int int_offset,
     unsigned char *output_base,
     int output_offset,
     int output_pitch,
@@ -158,61 +119,6 @@ int vp8_filter_block2d_second_pass_cl
 )
 {
 
-    int err; //capture CL error/return codes
-
-    //Calculate size of output array
-    cl_mem dest_mem;
-    int dest_len = output_offset + output_width+(output_pitch*output_height);
-
-    size_t global;
-
-    CL_CREATE_BUF(cq, dest_mem,,sizeof (unsigned char) * dest_len, output_base,);
-
-    // Set kernel arguments
-    err = 0;
-    err = clSetKernelArg(cl_data.vp8_filter_block2d_second_pass_kernel, 0, sizeof (cl_mem), &int_mem);
-    err |= clSetKernelArg(cl_data.vp8_filter_block2d_second_pass_kernel, 1, sizeof (int), &offset);
-    err |= clSetKernelArg(cl_data.vp8_filter_block2d_second_pass_kernel, 2, sizeof (cl_mem), &dest_mem);
-    err |= clSetKernelArg(cl_data.vp8_filter_block2d_second_pass_kernel, 3, sizeof (int), &output_offset);
-    err |= clSetKernelArg(cl_data.vp8_filter_block2d_second_pass_kernel, 4, sizeof (int), &output_pitch);
-    err |= clSetKernelArg(cl_data.vp8_filter_block2d_second_pass_kernel, 5, sizeof (unsigned int), &src_pixels_per_line);
-    err |= clSetKernelArg(cl_data.vp8_filter_block2d_second_pass_kernel, 6, sizeof (unsigned int), &pixel_step);
-    err |= clSetKernelArg(cl_data.vp8_filter_block2d_second_pass_kernel, 7, sizeof (unsigned int), &output_height);
-    err |= clSetKernelArg(cl_data.vp8_filter_block2d_second_pass_kernel, 8, sizeof (unsigned int), &output_width);
-    err |= clSetKernelArg(cl_data.vp8_filter_block2d_second_pass_kernel, 9, sizeof (int), &filter_offset);
-    CL_CHECK_SUCCESS( cq, err != CL_SUCCESS,
-        "Error: Failed to set kernel arguments!\n",
-        ,
-        CL_TRIED_BUT_FAILED
-    );
-
-    // Execute the kernel
-    global = output_width*output_height; //How many threads do we need?
-#if USE_LOCAL_SIZE
-    //NOTE: if local<global, global MUST be evenly divisible by local or the
-    // kernel will fail.
-    printf("local=%d, global=%d\n", local, global);
-    err = clEnqueueNDRangeKernel(cq, cl_data.vp8_filter_block2d_second_pass_kernel, 1, NULL, &global, ((local<global)? &local: &global) , 0, NULL, NULL);
-#else
-    err = clEnqueueNDRangeKernel(cq, cl_data.vp8_filter_block2d_second_pass_kernel, 1, NULL, &global, NULL , 0, NULL, NULL);
-#endif
-    CL_CHECK_SUCCESS( cq, err != CL_SUCCESS,
-        "Error: Failed to execute kernel!\n",
-        ,
-        CL_TRIED_BUT_FAILED
-    );
-
-    // Read back the result data from the device
-    err = clEnqueueReadBuffer(cq, dest_mem, CL_FALSE, 0, sizeof (unsigned char) * dest_len, output_base, 0, NULL, NULL);
-    CL_CHECK_SUCCESS( cq, err != CL_SUCCESS,
-        "Error: Failed to read output array!\n",
-        ,
-        CL_TRIED_BUT_FAILED
-    );
-
-    clReleaseMemObject(dest_mem);
-    
-    return CL_SUCCESS;
 }
 
 void vp8_sixtap_predict4x4_cl
@@ -226,45 +132,32 @@ void vp8_sixtap_predict4x4_cl
     unsigned char *dst_base,
     int dst_offset,
     int dst_pitch
-)
-{
+) {
 
-    int ret;
+    int tmp_offset = 0;
+    unsigned char *src_ptr = src_base + src_offset;
+    unsigned char *dst_ptr = dst_base + dst_offset;
+    
     int err;
+    size_t global = 36; //9*4
 
-    CL_FINISH(cq);
-    vp8_sixtap_predict_c(src_base+src_offset, src_pixels_per_line,xoffset,yoffset,dst_base+dst_offset, dst_pitch);
-    return;
+    cl_mem src_mem;
+    cl_mem dst_mem;
 
-    cl_mem int_mem;
-    CL_CREATE_BUF(cq, int_mem,, sizeof(cl_int)*13*16,NULL,);
+    //Size of output data
+    int dst_len = DST_LEN(dst_pitch,4,4);
 
-    //The return of the C comparison...
-    int i;
-    int dest_len = dst_offset + 4+(dst_pitch*4);
-    unsigned char c_output[dest_len];
+    //int output1_width=4,output1_height=9;
+    //int src_len = SRC_LEN(output1_width,output1_height,src_pixels_per_line);
+    int src_len = SIXTAP_SRC_LEN(4,9,src_pixels_per_line);
 
-    vp8_sixtap_predict_c( src_base+src_offset,
-        src_pixels_per_line,
-        xoffset,
-        yoffset,
-        c_output,
-        dst_pitch
+    CL_SIXTAP_PREDICT_EXEC(cq, src_mem, dst_mem ,cl_data.vp8_sixtap_predict_kernel,(src_ptr-2*src_pixels_per_line),tmp_offset, src_len,
+            src_pixels_per_line, xoffset,yoffset,dst_ptr,tmp_offset,dst_pitch,global,
+            dst_len,
+            vp8_sixtap_predict_c(src_ptr,src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch)
     );
 
-    /* First filter 1-D horizontally... */
-    ret = vp8_filter_block2d_first_pass_cl(cq, src_base, src_offset, src_pixels_per_line, 1, 9, 4, xoffset, int_mem);
-
-    /* then filter vertically... */
-    ret = vp8_filter_block2d_second_pass_cl(cq, int_mem, 8, dst_base, dst_offset, dst_pitch, 4, 4, 4, 4, yoffset);
-
-    CL_FINISH(cq);
-
-    for(i = 0; i < dest_len; i++){
-        printf("i=%d, expected %d, got %d\n", i, c_output[i], dst_base[dst_offset+i]);
-    }
-
-    clReleaseMemObject(int_mem);
+    return;
 }
 
 void vp8_sixtap_predict8x8_cl
@@ -278,27 +171,28 @@ void vp8_sixtap_predict8x8_cl
     unsigned char *dst_base,
     int dst_offset,
     int dst_pitch
-)
-{
+) {
+    int tmp_offset = 0;
+    unsigned char *src_ptr = src_base + src_offset;
+    unsigned char *dst_ptr = dst_base + dst_offset;
 
-    int ret;
     int err;
+    size_t global = 104; //13*8
+    cl_mem src_mem;
+    cl_mem dst_mem;
+    //Size of output data
+    int dst_len = DST_LEN(dst_pitch,8,8);
 
-    CL_FINISH(cq);
-    vp8_sixtap_predict8x8_c(src_base+src_offset, src_pixels_per_line,xoffset,yoffset,dst_base+dst_offset, dst_pitch);
+    //int output1_width=8,output1_height=13;
+    //int src_len = SRC_LEN(output1_width,output1_height,src_pixels_per_line);
+    int src_len = SIXTAP_SRC_LEN(8,13,src_pixels_per_line);
+
+    CL_SIXTAP_PREDICT_EXEC(cq, src_mem, dst_mem ,cl_data.vp8_sixtap_predict8x8_kernel,(src_ptr-2*src_pixels_per_line),tmp_offset,src_len,
+            src_pixels_per_line,xoffset,yoffset,dst_ptr,tmp_offset,dst_pitch,global,dst_len,
+            vp8_sixtap_predict8x8_c(src_ptr,src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch)
+    );
+
     return;
-
-
-    cl_mem int_mem;
-    CL_CREATE_BUF(cq, int_mem,, sizeof(cl_int)*13*16,NULL,);
-
-    /* First filter 1-D horizontally... */
-    ret = vp8_filter_block2d_first_pass_cl(cq, src_base, src_offset, src_pixels_per_line, 1, 13, 8, xoffset, int_mem);
-
-    /* then filter vertically... */
-    ret = vp8_filter_block2d_second_pass_cl(cq, int_mem, 16, dst_base, dst_offset, dst_pitch, 8, 8, 8, 8, yoffset);
-
-    clReleaseMemObject(int_mem);
 }
 
 void vp8_sixtap_predict8x4_cl
@@ -312,26 +206,29 @@ void vp8_sixtap_predict8x4_cl
     unsigned char *dst_base,
     int dst_offset,
     int dst_pitch
-)
-{
+) {
 
-    int ret;
+    int tmp_offset = 0;
+    unsigned char *src_ptr = src_base + src_offset;
+    unsigned char *dst_ptr = dst_base + dst_offset;
+
     int err;
+    size_t global = 72; //9*8
+    cl_mem src_mem;
+    cl_mem dst_mem;
+    //Size of output data
+    int dst_len = DST_LEN(dst_pitch,4,8);
 
-    CL_FINISH(cq);
-    vp8_sixtap_predict8x4_c(src_base+src_offset, src_pixels_per_line,xoffset,yoffset,dst_base+dst_offset, dst_pitch);
+    //int output1_width=8,output1_height=9;
+    //int src_len = SRC_LEN(output1_width,output1_height,src_pixels_per_line);
+    int src_len = SIXTAP_SRC_LEN(8,9,src_pixels_per_line);
+
+    CL_SIXTAP_PREDICT_EXEC(cq, src_mem, dst_mem, cl_data.vp8_sixtap_predict8x4_kernel,(src_ptr-2*src_pixels_per_line),tmp_offset,src_len,
+            src_pixels_per_line,xoffset,yoffset,dst_ptr,tmp_offset,dst_pitch,global,dst_len,
+            vp8_sixtap_predict8x4_c(src_ptr,src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch)
+    );
+
     return;
-
-    cl_mem int_mem;
-    CL_CREATE_BUF(cq, int_mem,, sizeof(cl_int)*13*16,NULL,);
-
-    /* First filter 1-D horizontally... */
-    ret = vp8_filter_block2d_first_pass_cl(cq, src_base, src_offset, src_pixels_per_line, 1, 9, 8, xoffset, int_mem);
-
-    /* then filter vertically... */
-    ret = vp8_filter_block2d_second_pass_cl(cq, int_mem, 16, dst_base, dst_offset, dst_pitch, 8, 8, 4, 8, yoffset);
-
-    clReleaseMemObject(int_mem);
 }
 
 void vp8_sixtap_predict16x16_cl
@@ -345,29 +242,31 @@ void vp8_sixtap_predict16x16_cl
     unsigned char *dst_base,
     int dst_offset,
     int dst_pitch
-)
-{
-    int ret;
-    int err;
+) {
 
-    CL_FINISH(cq);
-    vp8_sixtap_predict16x16_c(src_base+src_offset, src_pixels_per_line,xoffset,yoffset,dst_base+dst_offset, dst_pitch);
+    int tmp_offset = 0;
+    unsigned char *src_ptr = src_base + src_offset;
+    unsigned char *dst_ptr = dst_base + dst_offset;
+
+    int err;
+    size_t global = 336; //21*16
+    cl_mem src_mem;
+    cl_mem dst_mem;
+    //Size of output data
+    int dst_len = DST_LEN(dst_pitch,16,16);
+
+    //int output1_width=16,output1_height=21;
+    //int src_len = SRC_LEN(output1_width,output1_height,src_pixels_per_line);
+    int src_len = SIXTAP_SRC_LEN(16,21,src_pixels_per_line);
+
+    CL_SIXTAP_PREDICT_EXEC(cq, src_mem, dst_mem, cl_data.vp8_sixtap_predict16x16_kernel,(src_ptr-2*src_pixels_per_line),tmp_offset,src_len,
+            src_pixels_per_line,xoffset,yoffset,dst_ptr,tmp_offset,dst_pitch,global,dst_len,
+            vp8_sixtap_predict16x16_c(src_ptr,src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch)
+    );
+
     return;
 
-    cl_mem int_mem;
-    CL_CREATE_BUF(cq, int_mem,, sizeof(cl_int)*13*16,NULL,);
-
-    /* First filter 1-D horizontally... */
-    ret = vp8_filter_block2d_first_pass_cl(cq, src_base, src_offset, src_pixels_per_line, 1, 21, 16, xoffset, int_mem);
-
-    /* then filter vertically... */
-    ret = vp8_filter_block2d_second_pass_cl(cq, int_mem, 32, dst_base, dst_offset, dst_pitch, 16, 16, 16, 16, yoffset);
-
-    clReleaseMemObject(int_mem);
-
 }
-
-
 
 void vp8_bilinear_predict4x4_cl
 (

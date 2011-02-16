@@ -79,8 +79,7 @@ kernel void vp8_filter_block2d_first_pass_kernel(
 
 kernel void vp8_filter_block2d_second_pass_kernel
 (
-    __global int *int_base,
-    int int_offset,
+    __global int *src_ptr,
     __global unsigned char *output_base,
     int output_offset,
     int output_pitch,
@@ -91,7 +90,6 @@ kernel void vp8_filter_block2d_second_pass_kernel
     int filter_offset
 ) {
 
-    global int *src_ptr = int_base + int_offset;
     global unsigned char *output_ptr = &output_base[output_offset];
 
     int out_offset; //Not same as output_offset...
