@@ -60,21 +60,33 @@ void vp8_setup_macroblock(MACROBLOCKD *x, BLOCKSET bs)
     if (bs == DEST)
     {
         buf_base = &x->dst.buffer_alloc;
-        y_off = x->dst.y_buffer - *buf_base;
-        //printf("buf_base = %p, y_off = %d\n", *buf_base, y_off);
-        y_off = 0;
+        y_off = x->dst.y_buffer - x->dst.buffer_alloc;
+        u_off = x->dst.u_buffer - x->dst.buffer_alloc;
+        v_off = x->dst.v_buffer - x->dst.buffer_alloc;
         y = &x->dst.y_buffer;
         u = &x->dst.u_buffer;
         v = &x->dst.v_buffer;
+        y_off = 0;
+
+        //y = buf_base;
+        //y_off = x->dst.y_buffer - x->dst.buffer_alloc;
+        
+        u = buf_base;
+        v = buf_base;
+
+        u_off = x->dst.u_buffer - x->dst.buffer_alloc;
+        v_off = x->dst.v_buffer - x->dst.buffer_alloc;
     }
     else
     {
         buf_base = &x->pre.buffer_alloc;
-        y_off = x->pre.y_buffer - *buf_base;
-        y_off=0;
+        y_off = x->pre.y_buffer - x->pre.buffer_alloc;
+        u_off = x->pre.u_buffer - x->pre.buffer_alloc;
+        v_off = x->pre.v_buffer - x->pre.buffer_alloc;
         y = &x->pre.y_buffer;
         u = &x->pre.u_buffer;
         v = &x->pre.v_buffer;
+        y_off = u_off = v_off = 0;
     }
 
     for (block = 0; block < 16; block++) /* y blocks */
@@ -86,10 +98,10 @@ void vp8_setup_macroblock(MACROBLOCKD *x, BLOCKSET bs)
     for (block = 16; block < 20; block++) /* U and V blocks */
     {
         vp8_setup_block(&x->block[block], x->dst.uv_stride, u, x->dst.uv_stride,
-                        ((block - 16) >> 1) * 4 * x->dst.uv_stride + (block & 1) * 4, bs);
+                        u_off + ((block - 16) >> 1) * 4 * x->dst.uv_stride + (block & 1) * 4, bs);
 
         vp8_setup_block(&x->block[block+4], x->dst.uv_stride, v, x->dst.uv_stride,
-                        ((block - 16) >> 1) * 4 * x->dst.uv_stride + (block & 1) * 4, bs);
+                        v_off + ((block - 16) >> 1) * 4 * x->dst.uv_stride + (block & 1) * 4, bs);
     }
 }
 
