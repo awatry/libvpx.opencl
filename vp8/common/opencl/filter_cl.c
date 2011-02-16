@@ -121,6 +121,68 @@ void vp8_filter_block2d_second_pass_cl
 
 }
 
+void vp8_sixtap_run_cl(
+    cl_command_queue cq,
+    cl_mem src_mem,
+    cl_mem dst_mem,
+    cl_kernel kernel,
+    unsigned char *src_base,
+    int src_offset,
+    size_t src_len,
+    int src_pixels_per_line,
+    int xoffset,
+    int yoffset,
+    unsigned char *dst_ptr,
+    int dst_offset,
+    int dst_pitch,
+    size_t thread_count,
+    size_t dst_len
+)
+{
+    int err;
+    size_t global = thread_count;
+    cl_mem int_mem;
+
+/*Make space for kernel input/output data. Initialize the buffer as well if needed. */
+    CL_CREATE_BUF( cq, src_mem,, sizeof (unsigned char) * src_len, src_base-2, );
+    CL_CREATE_BUF( cq, dst_mem,, sizeof (unsigned char) * dst_len, dst_ptr, );
+    CL_CREATE_BUF( cq, int_mem,, sizeof(cl_int)*13*21, NULL, );
+
+    /* Set kernel arguments */
+    err = 0;
+    err =  clSetKernelArg(kernel, 0, sizeof (cl_mem), &src_mem);
+    err |= clSetKernelArg(kernel, 1, sizeof (int), &src_offset);
+    err |= clSetKernelArg(kernel, 2, sizeof (int), &src_pixels_per_line);
+    err |= clSetKernelArg(kernel, 3, sizeof (int), &xoffset);
+    err |= clSetKernelArg(kernel, 4, sizeof (int), &yoffset);
+    err |= clSetKernelArg(kernel, 5, sizeof (cl_mem), &dst_mem);
+    err |= clSetKernelArg(kernel, 6, sizeof (int), &dst_offset);
+    err |= clSetKernelArg(kernel, 7, sizeof (int), &dst_pitch);
+    err |= clSetKernelArg(kernel, 8, sizeof (cl_mem), &int_mem);
+    CL_CHECK_SUCCESS( cq, err != CL_SUCCESS,
+        "Error: Failed to set kernel arguments!\n",
+        ,
+    );
+
+    /* Execute the kernel */
+    err = clEnqueueNDRangeKernel( cq, kernel, 1, NULL, &global, NULL , 0, NULL, NULL);
+    CL_CHECK_SUCCESS( cq, err != CL_SUCCESS,
+        "Error: Failed to execute kernel!\n",
+        printf("err = %d\n",err);,
+    );
+
+    /* Read back the result data from the device */
+    err = clEnqueueReadBuffer(cq, dst_mem, CL_FALSE, 0, sizeof (unsigned char) * dst_len, dst_ptr, 0, NULL, NULL);
+    CL_CHECK_SUCCESS( cq, err != CL_SUCCESS,
+        "Error: Failed to read output array!\n",
+        ,
+    );
+
+    clReleaseMemObject(src_mem);
+    clReleaseMemObject(dst_mem);
+    clReleaseMemObject(int_mem);
+}
+
 void vp8_sixtap_predict4x4_cl
 (
     cl_command_queue cq,
@@ -141,8 +203,8 @@ void vp8_sixtap_predict4x4_cl
     int err;
     size_t global = 36; //9*4
 
-    cl_mem src_mem;
-    cl_mem dst_mem;
+    cl_mem src_mem = NULL;
+    cl_mem dst_mem = NULL;
 
     //Size of output data
     int dst_len = DST_LEN(dst_pitch,4,4);
@@ -151,10 +213,10 @@ void vp8_sixtap_predict4x4_cl
     //int src_len = SRC_LEN(output1_width,output1_height,src_pixels_per_line);
     int src_len = SIXTAP_SRC_LEN(4,9,src_pixels_per_line);
 
-    CL_SIXTAP_PREDICT_EXEC(cq, src_mem, dst_mem ,cl_data.vp8_sixtap_predict_kernel,(src_ptr-2*src_pixels_per_line),tmp_offset, src_len,
-            src_pixels_per_line, xoffset,yoffset,dst_ptr,tmp_offset,dst_pitch,global,
-            dst_len,
-            vp8_sixtap_predict_c(src_ptr,src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch)
+    vp8_sixtap_run_cl(cq, src_mem, dst_mem ,cl_data.vp8_sixtap_predict_kernel,
+            (src_ptr-2*src_pixels_per_line),tmp_offset, src_len,
+            src_pixels_per_line, xoffset,yoffset,dst_ptr,tmp_offset,
+            dst_pitch,global,dst_len
     );
 
     return;

@@ -29,6 +29,7 @@ __constant short sub_pel_filters[8][8] = {
 
 
 
+
 kernel void vp8_filter_block2d_first_pass_kernel(
     __global unsigned char *src_base,
     int src_offset,
@@ -44,6 +45,8 @@ kernel void vp8_filter_block2d_first_pass_kernel(
 
     global unsigned char *src_ptr = &src_base[src_offset];
     //Note that src_offset will be reset later, which is why we capture it now
+    src_offset = 0;
+
 
     int Temp;
     int PS2 = 2*(int)pixel_step;
@@ -52,29 +55,48 @@ kernel void vp8_filter_block2d_first_pass_kernel(
     __constant short *vp8_filter = sub_pel_filters[filter_offset];
 
     if (tid < (output_width*output_height)){
-        src_offset = i + (i/output_width * (src_pixels_per_line - output_width))+PS2;
+        for (i=0; i < output_width*output_height; i++){
+            src_offset = i + (i/output_width * (src_pixels_per_line - output_width)) + PS2;
 
-            Temp = (int)(src_ptr[src_offset - PS2]      * vp8_filter[0]) +
-               (int)(src_ptr[src_offset - (int)pixel_step] * vp8_filter[1]) +
-               (int)(src_ptr[src_offset]                * vp8_filter[2]) +
-               (int)(src_ptr[src_offset + pixel_step]   * vp8_filter[3]) +
-               (int)(src_ptr[src_offset + PS2]          * vp8_filter[4]) +
-               (int)(src_ptr[src_offset + PS3]          * vp8_filter[5]) +
-               (VP8_FILTER_WEIGHT >> 1);      /* Rounding */
+#if 1
+                int8 t8, s, f;
+                int4 t4;
+                int2 t2;
 
-        /* Normalize back to 0-255 */
-        Temp = Temp >> VP8_FILTER_SHIFT;
+                f = convert_int8(vload8(0,vp8_filter));
+                s = convert_int8(vload8(0,&src_ptr[src_offset-2]));
 
-        //Temp = (int)src_ptr[2];
-        if (Temp < 0)
-            Temp = 0;
-        else if ( Temp > 255 )
-            Temp = 255;
+                t8 = s * f;
 
-        output_ptr[i] = Temp;
+                //Collapse 8-element vector to single int and round
+                //t4 = t8.s0123 + t8.s4567;
+                //t2 = t4.xy + t4.zw;
+                t2 = t8.s01 + t8.s23 + t8.s45;
+                Temp = t2.x + t2.y + (VP8_FILTER_WEIGHT >> 1);
+#else
+                Temp = (int)(src_ptr[src_offset - PS2]      * vp8_filter[0]) +
+                   (int)(src_ptr[src_offset - (int)pixel_step] * vp8_filter[1]) +
+                   (int)(src_ptr[src_offset]                * vp8_filter[2]) +
+                   (int)(src_ptr[src_offset + pixel_step]   * vp8_filter[3]) +
+                   (int)(src_ptr[src_offset + PS2]          * vp8_filter[4]) +
+                   (int)(src_ptr[src_offset + PS3]          * vp8_filter[5]) +
+                   (VP8_FILTER_WEIGHT >> 1);      /* Rounding */
+#endif
+            /* Normalize back to 0-255 */
+            Temp = Temp >> VP8_FILTER_SHIFT;
+
+            //Temp = (int)src_ptr[2];
+            if (Temp < 0)
+                Temp = 0;
+            else if ( Temp > 255 )
+                Temp = 255;
+
+            output_ptr[i] = Temp;
+        }
     }
 
-    //barrier(CLK_GLOBAL_MEM_FENCE);
+    //Add a fence so that no 2nd pass stuff starts before 1st pass writes are done.
+    write_mem_fence(CLK_GLOBAL_MEM_FENCE);
 }
 
 kernel void vp8_filter_block2d_second_pass_kernel
@@ -141,11 +163,6 @@ kernel void vp8_filter_block2d_second_pass_kernel
 
 
 
-
-
-
-
-
 void vp8_filter_block2d_first_pass(
     __global unsigned char *src_base,
     int src_offset,
@@ -161,6 +178,8 @@ void vp8_filter_block2d_first_pass(
 
     global unsigned char *src_ptr = &src_base[src_offset];
     //Note that src_offset will be reset later, which is why we capture it now
+    src_offset = 0;
+    
 
     int Temp;
     int PS2 = 2*(int)pixel_step;
@@ -300,16 +319,15 @@ __kernel void vp8_sixtap_predict_kernel
     int  yoffset,
     __global unsigned char *dst_ptr,
     int dst_offset,
-    int  dst_pitch
+    int  dst_pitch,
+    __global int *int_data
         ) {
 
-    __private int FData[9*4]; /* Temp data buffer used in filtering */
-
     /* First filter 1-D horizontally... */
-    vp8_filter_block2d_first_pass(src_ptr, src_offset, FData, src_pixels_per_line, 1, 9, 4, xoffset);
+    vp8_filter_block2d_first_pass_kernel(src_ptr, src_offset, int_data, src_pixels_per_line, 1, 9, 4, xoffset);
 
     /* then filter verticaly... */
-    vp8_filter_block2d_second_pass(&FData[8], dst_ptr, dst_offset, dst_pitch, 4, 4, 4, 4, yoffset);
+    vp8_filter_block2d_second_pass_kernel(&int_data[8], dst_ptr, dst_offset, dst_pitch, 4, 4, 4, 4, yoffset);
 }
 
 __kernel void vp8_sixtap_predict8x8_kernel
