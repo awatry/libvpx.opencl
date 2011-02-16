@@ -24,7 +24,6 @@ void vp8_arch_opencl_decode_init(VP8D_COMP *pbi)
 
 #if CONFIG_OPENCL
     if (cl_initialized == CL_SUCCESS){
-        printf("CL already initialized\n");
         cl_decode_init();
     } else
         printf("Need to initialize CL\n");
@@ -32,7 +31,7 @@ void vp8_arch_opencl_decode_init(VP8D_COMP *pbi)
 
     /* Override current functions with OpenCL replacements: */
 #if CONFIG_RUNTIME_CPU_DETECT
-    pbi->mb.rtcd                     = &pbi->common.rtcd;
+    //pbi->mb.rtcd                     = &pbi->common.rtcd;
 
     //pbi->dequant.block               = vp8_dequantize_b_cl;
 
