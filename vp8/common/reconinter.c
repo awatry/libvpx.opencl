@@ -146,18 +146,17 @@ void vp8_build_inter_predictors_b(BLOCKD *d, int pitch, vp8_subpix_fn_t sppf)
 {
     int r;
     unsigned char *ptr_base;
-    unsigned char *ptr;
-    unsigned char *pred_ptr = d->predictor_base + d->predictor_offset;
-
     int ptr_offset = d->pre + (d->bmi.mv.as_mv.row >> 3) * d->pre_stride + (d->bmi.mv.as_mv.col >> 3);
 
+    unsigned char *pred_ptr = d->predictor_base + d->predictor_offset;
+
+    
     //d->base_pre is the start of the Macroblock's y_buffer, u_buffer, or v_buffer
     ptr_base = *(d->base_pre);
-    ptr = ptr_base + ptr_offset;
 
     if (d->bmi.mv.as_mv.row & 7 || d->bmi.mv.as_mv.col & 7)
     {
-        sppf(ptr, d->pre_stride, d->bmi.mv.as_mv.col & 7, d->bmi.mv.as_mv.row & 7, pred_ptr, pitch);
+        sppf(ptr_base+ptr_offset, d->pre_stride, d->bmi.mv.as_mv.col & 7, d->bmi.mv.as_mv.row & 7, pred_ptr, pitch);
     }
     else
     {
@@ -165,15 +164,15 @@ void vp8_build_inter_predictors_b(BLOCKD *d, int pitch, vp8_subpix_fn_t sppf)
         for (r = 0; r < 4; r++)
         {
 #ifdef MUST_BE_ALIGNED
-            pred_ptr[0]  = ptr[0];
-            pred_ptr[1]  = ptr[1];
-            pred_ptr[2]  = ptr[2];
-            pred_ptr[3]  = ptr[3];
+            pred_ptr[0]  = ptr_base[ptr_offset];
+            pred_ptr[1]  = ptr_base[ptr_offset+1];
+            pred_ptr[2]  = ptr_base[ptr_offset+2];
+            pred_ptr[3]  = ptr_base[ptr_offset+3];
 #else
-            *(int *)pred_ptr = *(int *)ptr ;
+            *(int *)pred_ptr = *(int *)(ptr_base+ptr_offset) ;
 #endif
             pred_ptr     += pitch;
-            ptr         += d->pre_stride;
+            ptr_offset         += d->pre_stride;
         }
     }
 }

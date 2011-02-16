@@ -133,12 +133,8 @@ void vp8_build_inter_predictors_b_cl(BLOCKD *d, int pitch)
 
 void vp8_build_inter_predictors4b_cl(MACROBLOCKD *x, BLOCKD *d, int pitch)
 {
-    unsigned char *ptr_base;
-
+    unsigned char *ptr_base = *(d->base_pre);
     int ptr_offset = d->pre + (d->bmi.mv.as_mv.row >> 3) * d->pre_stride + (d->bmi.mv.as_mv.col >> 3);
-
-    ptr_base = *(d->base_pre);
-    //printf("base_pre = %p\n",ptr_base);
 
     if (d->bmi.mv.as_mv.row & 7 || d->bmi.mv.as_mv.col & 7)
     {
@@ -343,17 +339,11 @@ void vp8_build_inter_predictors_mb_cl(MACROBLOCKD *x)
 static void vp8_build_inter_predictors_b_s_cl(BLOCKD *d, unsigned char *dst_base, int dst_offset)
 {
     int r;
-    unsigned char *ptr_base;
-    unsigned char *ptr;
-    /*unsigned char *pred_ptr = d->predictor_base + d->predictor_offset;*/
+    unsigned char *ptr_base = *(d->base_pre);
     int dst_stride = d->dst_stride;
     int pre_stride = d->pre_stride;
     int ptr_offset = d->pre + (d->bmi.mv.as_mv.row >> 3) * d->pre_stride + (d->bmi.mv.as_mv.col >> 3);
     vp8_subpix_cl_fn_t sppf;
-    
-
-    ptr_base = *(d->base_pre);
-    ptr = ptr_base + ptr_offset;
 
     if (d->sixtap_filter == CL_TRUE){
         sppf = vp8_sixtap_predict4x4_cl;
@@ -366,23 +356,7 @@ static void vp8_build_inter_predictors_b_s_cl(BLOCKD *d, unsigned char *dst_base
     }
     else
     {
-#if 1
         vp8_copy_mem_cl(d->cl_commands, ptr_base,ptr_offset,pre_stride,dst_base,dst_offset,dst_stride,4,4);
-#else
-        for (r = 0; r < 4; r++)
-        {
-#ifdef MUST_BE_ALIGNED
-            dst_ptr[0]   = ptr[0];
-            dst_ptr[1]   = ptr[1];
-            dst_ptr[2]   = ptr[2];
-            dst_ptr[3]   = ptr[3];
-#else
-            *(int *)(dst_base+dst_offset) = *(int *)ptr ;
-#endif
-            dst_offset      += dst_stride;
-            ptr         += pre_stride;
-        }
-#endif
     }
 }
 
@@ -523,10 +497,8 @@ void vp8_build_inter_predictors_mb_s_cl(MACROBLOCKD *x)
             if (d0->bmi.mv.as_int == d1->bmi.mv.as_int)
             {
                 /*vp8_build_inter_predictors2b(x, d0, 8);*/
-                unsigned char *ptr_base;
+                unsigned char *ptr_base = *(d0->base_pre);
                 int ptr_offset = d0->pre + (d0->bmi.mv.as_mv.row >> 3) * d0->pre_stride + (d0->bmi.mv.as_mv.col >> 3);
-                ptr_base = *(d0->base_pre);
-
 
                 if (d0->bmi.mv.as_mv.row & 7 || d0->bmi.mv.as_mv.col & 7)
                 {
