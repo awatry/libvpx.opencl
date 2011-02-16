@@ -101,7 +101,8 @@ kernel void vp8_filter_block2d_first_pass_kernel(
 
 kernel void vp8_filter_block2d_second_pass_kernel
 (
-    __global int *src_ptr,
+    __global int *src_base,
+    int src_offset,
     __global unsigned char *output_base,
     int output_offset,
     int output_pitch,
@@ -112,10 +113,11 @@ kernel void vp8_filter_block2d_second_pass_kernel
     int filter_offset
 ) {
 
+    global int *src_ptr = &src_base[src_offset];
     global unsigned char *output_ptr = &output_base[output_offset];
 
     int out_offset; //Not same as output_offset...
-    int src_offset;
+    //int src_offset;
     int Temp;
     int PS2 = 2*(int)pixel_step;
     int PS3 = 3*(int)pixel_step;
@@ -327,7 +329,7 @@ __kernel void vp8_sixtap_predict_kernel
     vp8_filter_block2d_first_pass_kernel(src_ptr, src_offset, int_data, src_pixels_per_line, 1, 9, 4, xoffset);
 
     /* then filter verticaly... */
-    vp8_filter_block2d_second_pass_kernel(&int_data[8], dst_ptr, dst_offset, dst_pitch, 4, 4, 4, 4, yoffset);
+    //vp8_filter_block2d_second_pass_kernel(int_data, 8, dst_ptr, dst_offset, dst_pitch, 4, 4, 4, 4, yoffset);
 }
 
 __kernel void vp8_sixtap_predict8x8_kernel
