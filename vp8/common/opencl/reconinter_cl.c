@@ -175,7 +175,6 @@ void vp8_build_inter_predictors_mbuv_cl(MACROBLOCKD *x)
     if (x->mode_info_context->mbmi.ref_frame != INTRA_FRAME &&
         x->mode_info_context->mbmi.mode != SPLITMV)
     {
-        unsigned char *u_base, *v_base;
 
         unsigned char *pred_base = x->predictor;
         int upred_offset = 256;
@@ -184,27 +183,29 @@ void vp8_build_inter_predictors_mbuv_cl(MACROBLOCKD *x)
         int mv_row = x->block[16].bmi.mv.as_mv.row;
         int mv_col = x->block[16].bmi.mv.as_mv.col;
         int offset;
-        int pre_stride = x->block[16].pre_stride;
 
+        unsigned char *pre_base = x->pre.buffer_alloc;
+        int upre_off = x->pre.u_buffer - pre_base;
+        int vpre_off = x->pre.v_buffer - pre_base;
+        int pre_stride = x->block[16].pre_stride;
+        
         offset = (mv_row >> 3) * pre_stride + (mv_col >> 3);
-        u_base = x->pre.u_buffer;
-        v_base = x->pre.v_buffer;
 
         if ((mv_row | mv_col) & 7)
         {
             if (cl_initialized == CL_SUCCESS && x->sixtap_filter == CL_TRUE){
-                vp8_sixtap_predict8x8_cl(x->block[16].cl_commands,u_base, offset, pre_stride, mv_col & 7, mv_row & 7, pred_base, upred_offset, 8);
-                vp8_sixtap_predict8x8_cl(x->block[16].cl_commands,v_base, offset, pre_stride, mv_col & 7, mv_row & 7, pred_base, vpred_offset, 8);
+                vp8_sixtap_predict8x8_cl(x->block[16].cl_commands,pre_base, upre_off+offset, pre_stride, mv_col & 7, mv_row & 7, pred_base, upred_offset, 8);
+                vp8_sixtap_predict8x8_cl(x->block[16].cl_commands,pre_base, vpre_off+offset, pre_stride, mv_col & 7, mv_row & 7, pred_base, vpred_offset, 8);
             }
             else{
-                vp8_bilinear_predict8x8_cl(x->block[16].cl_commands,u_base, offset, pre_stride, mv_col & 7, mv_row & 7, pred_base, upred_offset, 8);
-                vp8_bilinear_predict8x8_cl(x->block[16].cl_commands,v_base, offset, pre_stride, mv_col & 7, mv_row & 7, pred_base, vpred_offset, 8);
+                vp8_bilinear_predict8x8_cl(x->block[16].cl_commands,pre_base, upre_off+offset, pre_stride, mv_col & 7, mv_row & 7, pred_base, upred_offset, 8);
+                vp8_bilinear_predict8x8_cl(x->block[16].cl_commands,pre_base, vpre_off+offset, pre_stride, mv_col & 7, mv_row & 7, pred_base, vpred_offset, 8);
             }
         }
         else
         {
-            vp8_copy_mem_cl(x->block[16].cl_commands, u_base, offset, pre_stride, pred_base, upred_offset, 8, 8, 8);
-            vp8_copy_mem_cl(x->block[16].cl_commands, v_base, offset, pre_stride, pred_base, vpred_offset, 8, 8, 8);
+            vp8_copy_mem_cl(x->block[16].cl_commands, pre_base, upre_off+offset, pre_stride, pred_base, upred_offset, 8, 8, 8);
+            vp8_copy_mem_cl(x->block[16].cl_commands, pre_base, vpre_off+offset, pre_stride, pred_base, vpred_offset, 8, 8, 8);
         }
     }
     else
@@ -233,54 +234,54 @@ void vp8_build_inter_predictors_mb_cl(MACROBLOCKD *x)
         x->mode_info_context->mbmi.mode != SPLITMV)
     {
         int offset;
-        unsigned char *ptr_base;
-        unsigned char *u_base, *v_base;
         unsigned char *pred_base = x->predictor;
         int upred_offset = 256;
         int vpred_offset = 320;
 
+        unsigned char *pre_base = x->pre.buffer_alloc;
+        int ypre_off = x->pre.y_buffer - pre_base;
+        int upre_off = x->pre.u_buffer - pre_base;
+        int vpre_off = x->pre.v_buffer - pre_base;
+
         int mv_row = x->mode_info_context->mbmi.mv.as_mv.row;
         int mv_col = x->mode_info_context->mbmi.mv.as_mv.col;
         int pre_stride = x->block[0].pre_stride;
-        int ptr_offset = (mv_row >> 3) * pre_stride + (mv_col >> 3);
-
-        ptr_base = x->pre.y_buffer;
+        ypre_off += (mv_row >> 3) * pre_stride + (mv_col >> 3);
+        //int ptr_offset = (mv_row >> 3) * pre_stride + (mv_col >> 3);
 
         if ((mv_row | mv_col) & 7)
         {
             if (cl_initialized == CL_SUCCESS && x->sixtap_filter == CL_TRUE)
-                vp8_sixtap_predict16x16_cl(x->cl_commands, ptr_base, ptr_offset, pre_stride, mv_col & 7, mv_row & 7, pred_base, 0, 16);
+                vp8_sixtap_predict16x16_cl(x->cl_commands, pre_base, ypre_off, pre_stride, mv_col & 7, mv_row & 7, pred_base, 0, 16);
             else
-                vp8_bilinear_predict16x16_cl(x->cl_commands, ptr_base, ptr_offset, pre_stride, mv_col & 7, mv_row & 7, pred_base, 0, 16);
+                vp8_bilinear_predict16x16_cl(x->cl_commands, pre_base, ypre_off, pre_stride, mv_col & 7, mv_row & 7, pred_base, 0, 16);
         }
         else
         {
             //16x16 copy
-            vp8_copy_mem_cl(x->cl_commands, ptr_base, ptr_offset, pre_stride, pred_base, 0, 16, 16, 16);
+            vp8_copy_mem_cl(x->cl_commands, pre_base, ypre_off, pre_stride, pred_base, 0, 16, 16, 16);
         }
 
         mv_row = x->block[16].bmi.mv.as_mv.row;
         mv_col = x->block[16].bmi.mv.as_mv.col;
         pre_stride >>= 1;
         offset = (mv_row >> 3) * pre_stride + (mv_col >> 3);
-        u_base = x->pre.u_buffer;
-        v_base = x->pre.v_buffer;
-
+        
         if ((mv_row | mv_col) & 7)
         {
             if (x->sixtap_filter == CL_TRUE){
-                vp8_sixtap_predict8x8_cl(x->cl_commands, u_base, offset, pre_stride, mv_col & 7, mv_row & 7, pred_base, upred_offset, 8);
-                vp8_sixtap_predict8x8_cl(x->cl_commands, v_base, offset, pre_stride, mv_col & 7, mv_row & 7, pred_base, vpred_offset, 8);
+                vp8_sixtap_predict8x8_cl(x->cl_commands, pre_base, upre_off+offset, pre_stride, mv_col & 7, mv_row & 7, pred_base, upred_offset, 8);
+                vp8_sixtap_predict8x8_cl(x->cl_commands, pre_base, vpre_off+offset, pre_stride, mv_col & 7, mv_row & 7, pred_base, vpred_offset, 8);
             }
             else {
-                vp8_bilinear_predict8x8_cl(x->cl_commands, u_base, offset, pre_stride, mv_col & 7, mv_row & 7, pred_base, upred_offset, 8);
-                vp8_bilinear_predict8x8_cl(x->cl_commands, v_base, offset, pre_stride, mv_col & 7, mv_row & 7, pred_base, vpred_offset, 8);
+                vp8_bilinear_predict8x8_cl(x->cl_commands, pre_base, upre_off+offset, pre_stride, mv_col & 7, mv_row & 7, pred_base, upred_offset, 8);
+                vp8_bilinear_predict8x8_cl(x->cl_commands, pre_base, vpre_off+offset, pre_stride, mv_col & 7, mv_row & 7, pred_base, vpred_offset, 8);
             }
         }
         else
         {
-            vp8_copy_mem_cl(x->cl_commands, u_base, offset, pre_stride, pred_base, upred_offset, 8, 8, 8);
-            vp8_copy_mem_cl(x->cl_commands, v_base, offset, pre_stride, pred_base, vpred_offset, 8, 8, 8);
+            vp8_copy_mem_cl(x->cl_commands, pre_base, upre_off+offset, pre_stride, pred_base, upred_offset, 8, 8, 8);
+            vp8_copy_mem_cl(x->cl_commands, pre_base, vpre_off+offset, pre_stride, pred_base, vpred_offset, 8, 8, 8);
         }
     }
     else
