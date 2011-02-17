@@ -371,9 +371,6 @@ void vp8_bilinear_run_cl(
     //Remove this after untangling base_pre/base_dst stuff in mbpitch.c
     src_offset = 0;
 
-    CL_CREATE_BUF(cq, int_mem,CL_MEM_READ_WRITE,
-        sizeof(cl_int)*17*16, NULL,);
-
     /* Set kernel arguments */
     err =  clSetKernelArg(kernel, 0, sizeof (cl_mem), &src_mem);
     err |= clSetKernelArg(kernel, 1, sizeof (int), &src_offset);
@@ -397,8 +394,19 @@ void vp8_bilinear_run_cl(
     );
 
     clReleaseMemObject(src_mem);
-    clReleaseMemObject(int_mem);
+}
 
+void vp8_filter_block2d_bil_first_pass_cl(
+    unsigned char *src_base,
+    int src_offset,
+    cl_mem int_mem,
+    int src_pixels_per_line,
+    int height,
+    int width,
+    int xoffset
+)
+{
+    
 }
 
 
@@ -417,6 +425,10 @@ void vp8_bilinear_predict4x4_cl
 
     int err;
 
+    int Height = 4, Width = 4;
+
+
+
     //global is the max of width*height for 1st and 2nd pass filters
     size_t global = 20; //5*4
 
@@ -431,29 +443,34 @@ void vp8_bilinear_predict4x4_cl
     cl_mem int_mem = NULL;
     cl_mem dst_mem = NULL;
 
-    //if (src_offset < 0){
-    //    printf("src_offset < 0\n");
-    //}
-    //if ( dst_offset < 0){
-    //    printf("dst_offset < 0\n");
-    //}
-
     CL_CREATE_BUF(cq, dst_mem, CL_MEM_WRITE_ONLY|CL_MEM_COPY_HOST_PTR,
         sizeof (unsigned char) * dst_len + dst_offset, dst_base,
     );
 
+    CL_CREATE_BUF(cq, int_mem,CL_MEM_READ_WRITE,
+        sizeof(cl_int)*17*16, NULL,);
+    
+#if 0
+    /* First filter 1-D horizontally... */
+    vp8_filter_block2d_bil_first_pass_cl(src_base, src_offset, int_mem, src_pixels_per_line, Height + 1, Width, xoffset);
+
+    /* then 1-D vertically... */
+    vp8_filter_block2d_bil_second_pass_cl(int_mem, dst_mem, dst_offset, dst_pitch, Height, Width, yoffset);
+#else
     vp8_bilinear_run_cl(cq, src_mem, dst_mem, int_mem,
             cl_data.vp8_bilinear_predict4x4_kernel,src_base,src_offset,src_len,
             src_pixels_per_line,xoffset,yoffset,dst_offset,dst_pitch,global
     );
-    
+#endif
+
     /* Read back the result data from the device */
     err = clEnqueueReadBuffer(cq, dst_mem, CL_FALSE, 0, sizeof (unsigned char) * dst_len + dst_offset, dst_base, 0, NULL, NULL);
     CL_CHECK_SUCCESS( cq, err != CL_SUCCESS,
         "Error: Failed to read output array!\n",
         ,
     );
-    
+
+    clReleaseMemObject(int_mem);
     clReleaseMemObject(dst_mem);
 }
 
@@ -500,7 +517,11 @@ void vp8_bilinear_predict8x8_cl
     CL_CREATE_BUF(cq, dst_mem, CL_MEM_WRITE_ONLY|CL_MEM_COPY_HOST_PTR,
         sizeof (unsigned char) * dst_len + dst_offset, dst_base,
     );
-
+    
+    CL_CREATE_BUF(cq, int_mem,CL_MEM_READ_WRITE,
+        sizeof(cl_int)*17*16, NULL,
+    );
+    
     vp8_bilinear_run_cl(cq, src_mem, dst_mem, int_mem,
             cl_data.vp8_bilinear_predict8x8_kernel,src_base,src_offset,src_len,
             src_pixels_per_line,xoffset,yoffset,dst_offset,dst_pitch,global
@@ -513,6 +534,7 @@ void vp8_bilinear_predict8x8_cl
         ,
     );
 
+    clReleaseMemObject(int_mem);
     clReleaseMemObject(dst_mem);
 }
 
@@ -558,6 +580,10 @@ void vp8_bilinear_predict8x4_cl
         sizeof (unsigned char) * dst_len + dst_offset, dst_base,
     );
 
+    CL_CREATE_BUF(cq, int_mem,CL_MEM_READ_WRITE,
+        sizeof(cl_int)*17*16, NULL,
+    );
+
     vp8_bilinear_run_cl(cq, src_mem, dst_mem, int_mem,
             cl_data.vp8_bilinear_predict8x4_kernel,src_base,src_offset,src_len,
             src_pixels_per_line,xoffset,yoffset,dst_offset,dst_pitch,global
@@ -571,6 +597,7 @@ void vp8_bilinear_predict8x4_cl
     );
 
     clReleaseMemObject(dst_mem);
+    clReleaseMemObject(int_mem);
 }
 
 void vp8_bilinear_predict16x16_cl
@@ -614,6 +641,10 @@ void vp8_bilinear_predict16x16_cl
         sizeof (unsigned char) * dst_len + dst_offset, dst_base,
     );
 
+    CL_CREATE_BUF(cq, int_mem,CL_MEM_READ_WRITE,
+        sizeof(cl_int)*17*16, NULL,
+    );
+
     vp8_bilinear_run_cl(cq, src_mem, dst_mem, int_mem,
             cl_data.vp8_bilinear_predict16x16_kernel,src_base,src_offset,src_len,
             src_pixels_per_line,xoffset,yoffset,dst_offset,dst_pitch,global
@@ -627,4 +658,5 @@ void vp8_bilinear_predict16x16_cl
     );
 
     clReleaseMemObject(dst_mem);
+    clReleaseMemObject(int_mem);
 }
