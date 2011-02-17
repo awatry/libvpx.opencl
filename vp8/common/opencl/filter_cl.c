@@ -343,6 +343,65 @@ void vp8_sixtap_predict16x16_cl
 
 }
 
+
+
+
+
+void vp8_bilinear_run_cl(
+    cl_command_queue cq,
+        cl_mem src_mem,
+        cl_mem dst_mem,
+        cl_mem int_mem,
+        cl_kernel kernel,
+        unsigned char *src_base,
+        int src_offset,
+        int src_len,
+        int src_pixels_per_line,
+        int xoffset,
+        int yoffset,
+        int dst_offset,
+        int dst_pitch,
+        size_t global
+)
+{
+    int err;
+
+    /*Make space for kernel input/output data. Initialize the buffer as well if needed. */
+    CL_CREATE_BUF(cq, src_mem, CL_MEM_READ_ONLY|CL_MEM_COPY_HOST_PTR,
+        sizeof (unsigned char) * src_len, src_base+src_offset,
+    );
+
+    CL_CREATE_BUF(cq, int_mem,CL_MEM_READ_WRITE,
+        sizeof(cl_int)*17*16, NULL,);
+
+    /* Set kernel arguments */
+    err = 0;
+    err = clSetKernelArg(kernel, 0, sizeof (cl_mem), &src_mem);
+    err |= clSetKernelArg(kernel, 1, sizeof (int), &src_pixels_per_line);
+    err |= clSetKernelArg(kernel, 2, sizeof (int), &xoffset);
+    err |= clSetKernelArg(kernel, 3, sizeof (int), &yoffset);
+    err |= clSetKernelArg(kernel, 4, sizeof (cl_mem), &dst_mem);
+    err |= clSetKernelArg(kernel, 5, sizeof (int), &dst_offset);
+    err |= clSetKernelArg(kernel, 6, sizeof (int), &dst_pitch);
+    err |= clSetKernelArg(kernel, 7, sizeof (cl_mem), &int_mem);
+    CL_CHECK_SUCCESS( cq, err != CL_SUCCESS,
+        "Error: Failed to set kernel arguments!\n",
+        ,
+    );
+
+    /* Execute the kernel */
+    err = clEnqueueNDRangeKernel(cq, kernel, 1, NULL, &global, NULL , 0, NULL, NULL);
+    CL_CHECK_SUCCESS( cq, err != CL_SUCCESS,
+        "Error: Failed to execute kernel!\n",
+        printf("err = %dn",err);,
+    );
+
+    clReleaseMemObject(src_mem);
+    clReleaseMemObject(int_mem);
+
+}
+
+
 void vp8_bilinear_predict4x4_cl
 (
     cl_command_queue cq,
@@ -356,12 +415,6 @@ void vp8_bilinear_predict4x4_cl
     int dst_pitch
 ) {
 
-    int tmp_offset = 0;
-    unsigned char *src_ptr = src_base + src_offset;
-    unsigned char *dst_ptr = dst_base + dst_offset;
-
-#define CL_BILINEAR 1
-#if CL_BILINEAR
     int err;
 
     //global is the max of width*height for 1st and 2nd pass filters
@@ -374,16 +427,34 @@ void vp8_bilinear_predict4x4_cl
     //int src_len = SRC_LEN(output1_width,output1_height,src_pixels_per_line);
     int src_len = BIL_SRC_LEN(4,5,src_pixels_per_line);
 
-    cl_mem src_mem, dst_mem, int_mem;
+    cl_mem src_mem = NULL;
+    cl_mem int_mem = NULL;
+    cl_mem dst_mem = NULL;
 
-    CL_BILINEAR_EXEC(cq, src_mem, dst_mem, int_mem, cl_data.vp8_bilinear_predict4x4_kernel,src_ptr,src_len,
-            src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch,global,dst_len,
-            vp8_bilinear_predict4x4_c(src_ptr,src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch)
+    //if (src_offset < 0){
+    //    printf("src_offset < 0\n");
+    //}
+    //if ( dst_offset < 0){
+    //    printf("dst_offset < 0\n");
+    //}
+
+    CL_CREATE_BUF(cq, dst_mem, CL_MEM_WRITE_ONLY|CL_MEM_COPY_HOST_PTR,
+        sizeof (unsigned char) * dst_len + dst_offset, dst_base,
     );
-#else
-    vp8_bilinear_predict4x4_c(src_ptr,src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch);
-#endif
 
+    vp8_bilinear_run_cl(cq, src_mem, dst_mem, int_mem,
+            cl_data.vp8_bilinear_predict4x4_kernel,src_base,src_offset,src_len,
+            src_pixels_per_line,xoffset,yoffset,dst_offset,dst_pitch,global
+    );
+    
+    /* Read back the result data from the device */
+    err = clEnqueueReadBuffer(cq, dst_mem, CL_FALSE, 0, sizeof (unsigned char) * dst_len + dst_offset, dst_base, 0, NULL, NULL);
+    CL_CHECK_SUCCESS( cq, err != CL_SUCCESS,
+        "Error: Failed to read output array!\n",
+        ,
+    );
+    
+    clReleaseMemObject(dst_mem);
 }
 
 void vp8_bilinear_predict8x8_cl
@@ -403,7 +474,6 @@ void vp8_bilinear_predict8x8_cl
     unsigned char *src_ptr = src_base + src_offset;
     unsigned char *dst_ptr = dst_base + dst_offset;
 
-#if CL_BILINEAR
     int err;
     
     //global is the max of width*height for 1st and 2nd pass filters
@@ -416,15 +486,34 @@ void vp8_bilinear_predict8x8_cl
     //int src_len = SRC_LEN(output1_width,output1_height,src_pixels_per_line);
     int src_len = BIL_SRC_LEN(8,9,src_pixels_per_line);
 
-    cl_mem src_mem, dst_mem, int_mem;
+    cl_mem src_mem = NULL;
+    cl_mem int_mem = NULL;
+    cl_mem dst_mem = NULL;
 
-    CL_BILINEAR_EXEC(cq, src_mem, dst_mem, int_mem, cl_data.vp8_bilinear_predict8x8_kernel,src_ptr,src_len,
-            src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch,global,dst_len,
-            vp8_bilinear_predict8x8_c(src_ptr,src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch)
+    //if (src_offset < 0){
+    //    printf("src_offset < 0\n");
+    //}
+    //if ( dst_offset < 0){
+    //    printf("dst_offset < 0\n");
+    //}
+
+    CL_CREATE_BUF(cq, dst_mem, CL_MEM_WRITE_ONLY|CL_MEM_COPY_HOST_PTR,
+        sizeof (unsigned char) * dst_len + dst_offset, dst_base,
     );
-#else
-    vp8_bilinear_predict8x8_c(src_ptr,src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch);
-#endif
+
+    vp8_bilinear_run_cl(cq, src_mem, dst_mem, int_mem,
+            cl_data.vp8_bilinear_predict8x8_kernel,src_base,src_offset,src_len,
+            src_pixels_per_line,xoffset,yoffset,dst_offset,dst_pitch,global
+    );
+
+    /* Read back the result data from the device */
+    err = clEnqueueReadBuffer(cq, dst_mem, CL_FALSE, 0, sizeof (unsigned char) * dst_len + dst_offset, dst_base, 0, NULL, NULL);
+    CL_CHECK_SUCCESS( cq, err != CL_SUCCESS,
+        "Error: Failed to read output array!\n",
+        ,
+    );
+
+    clReleaseMemObject(dst_mem);
 }
 
 void vp8_bilinear_predict8x4_cl
@@ -444,7 +533,6 @@ void vp8_bilinear_predict8x4_cl
     unsigned char *src_ptr = src_base + src_offset;
     unsigned char *dst_ptr = dst_base + dst_offset;
 
-#if CL_BILINEAR
     int err;
 
     //global is the max of width*height for 1st and 2nd pass filters
@@ -455,15 +543,34 @@ void vp8_bilinear_predict8x4_cl
 
     int src_len = BIL_SRC_LEN(4,9,src_pixels_per_line);
 
-    cl_mem src_mem, dst_mem, int_mem;
+    cl_mem src_mem = NULL;
+    cl_mem int_mem = NULL;
+    cl_mem dst_mem = NULL;
 
-    CL_BILINEAR_EXEC(cq, src_mem, dst_mem, int_mem, cl_data.vp8_bilinear_predict8x4_kernel,src_ptr,src_len,
-            src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch,global,dst_len,
-            vp8_bilinear_predict8x4_c(src_ptr,src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch)
+    //if (src_offset < 0){
+    //    printf("src_offset < 0\n");
+    //}
+    //if ( dst_offset < 0){
+    //    printf("dst_offset < 0\n");
+    //}
+
+    CL_CREATE_BUF(cq, dst_mem, CL_MEM_WRITE_ONLY|CL_MEM_COPY_HOST_PTR,
+        sizeof (unsigned char) * dst_len + dst_offset, dst_base,
     );
-#else
-    vp8_bilinear_predict8x4_c(src_ptr,src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch);
-#endif
+
+    vp8_bilinear_run_cl(cq, src_mem, dst_mem, int_mem,
+            cl_data.vp8_bilinear_predict8x4_kernel,src_base,src_offset,src_len,
+            src_pixels_per_line,xoffset,yoffset,dst_offset,dst_pitch,global
+    );
+
+    /* Read back the result data from the device */
+    err = clEnqueueReadBuffer(cq, dst_mem, CL_FALSE, 0, sizeof (unsigned char) * dst_len + dst_offset, dst_base, 0, NULL, NULL);
+    CL_CHECK_SUCCESS( cq, err != CL_SUCCESS,
+        "Error: Failed to read output array!\n",
+        ,
+    );
+
+    clReleaseMemObject(dst_mem);
 }
 
 void vp8_bilinear_predict16x16_cl
@@ -483,7 +590,6 @@ void vp8_bilinear_predict16x16_cl
     unsigned char *src_ptr = src_base + src_offset;
     unsigned char *dst_ptr = dst_base + dst_offset;
 
-#if CL_BILINEAR
     int err;
 
     //global is the max of width*height for 1st and 2nd pass filters
@@ -493,13 +599,32 @@ void vp8_bilinear_predict16x16_cl
     int dst_len = DST_LEN(dst_pitch,16,16);
     int src_len = BIL_SRC_LEN(16,17,src_pixels_per_line);
 
-    cl_mem src_mem, dst_mem, int_mem;
+    cl_mem src_mem = NULL;
+    cl_mem int_mem = NULL;
+    cl_mem dst_mem = NULL;
 
-    CL_BILINEAR_EXEC(cq, src_mem, dst_mem, int_mem, cl_data.vp8_bilinear_predict16x16_kernel,src_ptr,src_len,
-            src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch,global,dst_len,
-            vp8_bilinear_predict16x16_c(src_ptr,src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch)
+    //if (src_offset < 0){
+    //    printf("src_offset < 0\n");
+    //}
+    //if ( dst_offset < 0){
+    //    printf("dst_offset < 0\n");
+    //}
+
+    CL_CREATE_BUF(cq, dst_mem, CL_MEM_WRITE_ONLY|CL_MEM_COPY_HOST_PTR,
+        sizeof (unsigned char) * dst_len + dst_offset, dst_base,
     );
-#else
-    vp8_bilinear_predict16x16_c(src_ptr,src_pixels_per_line,xoffset,yoffset,dst_ptr,dst_pitch);
-#endif
+
+    vp8_bilinear_run_cl(cq, src_mem, dst_mem, int_mem,
+            cl_data.vp8_bilinear_predict16x16_kernel,src_base,src_offset,src_len,
+            src_pixels_per_line,xoffset,yoffset,dst_offset,dst_pitch,global
+    );
+
+    /* Read back the result data from the device */
+    err = clEnqueueReadBuffer(cq, dst_mem, CL_FALSE, 0, sizeof (unsigned char) * dst_len + dst_offset, dst_base, 0, NULL, NULL);
+    CL_CHECK_SUCCESS( cq, err != CL_SUCCESS,
+        "Error: Failed to read output array!\n",
+        ,
+    );
+
+    clReleaseMemObject(dst_mem);
 }

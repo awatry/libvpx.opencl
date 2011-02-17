@@ -173,7 +173,8 @@ void vp8_filter_block2d_bil_first_pass(
 void vp8_filter_block2d_bil_second_pass
 (
     __global int *src_ptr,
-    __global unsigned char *output_ptr,
+    __global unsigned char *output_base,
+    int output_offset,
     int output_pitch,
     unsigned int src_pixels_per_line,
     unsigned int pixel_step,
@@ -182,6 +183,8 @@ void vp8_filter_block2d_bil_second_pass
     int filter_offset
 ) {
     uint tid = get_global_id(0);
+
+    global unsigned char *output_ptr = &output_base[output_offset];
 
     unsigned int i, j;
     int Temp;
@@ -214,6 +217,7 @@ void vp8_filter_block2d_bil
 (
     __global unsigned char *src_ptr,
     __global unsigned char *output_ptr,
+    int output_offset,
     unsigned int   src_pixels_per_line,
     unsigned int   dst_pitch,
     int      xoffset,
@@ -230,7 +234,7 @@ void vp8_filter_block2d_bil
     vp8_filter_block2d_bil_first_pass(src_ptr, FData, src_pixels_per_line, 1, Height + 1, Width, xoffset);
 
     /* then 1-D vertically... */
-    vp8_filter_block2d_bil_second_pass(FData, output_ptr, dst_pitch, Width, Width, Height, Width, yoffset);
+    vp8_filter_block2d_bil_second_pass(FData, output_ptr, output_offset, dst_pitch, Width, Width, Height, Width, yoffset);
 }
 
 
@@ -240,12 +244,13 @@ __kernel void vp8_bilinear_predict4x4_kernel
         int src_pixels_per_line,
         int xoffset,
         int yoffset,
-        __global unsigned char *dst_ptr,
+        __global unsigned char *dst_base,
+        int dst_offset,
         int dst_pitch,
         __global int *FData
  ) {
 
-    vp8_filter_block2d_bil(src_ptr, dst_ptr, src_pixels_per_line, dst_pitch, xoffset, yoffset, 4, 4, FData);
+    vp8_filter_block2d_bil(src_ptr, dst_base, dst_offset, src_pixels_per_line, dst_pitch, xoffset, yoffset, 4, 4, FData);
 }
 
 __kernel void vp8_bilinear_predict8x8_kernel
@@ -254,12 +259,13 @@ __kernel void vp8_bilinear_predict8x8_kernel
         int src_pixels_per_line,
         int xoffset,
         int yoffset,
-        __global unsigned char *dst_ptr,
+        __global unsigned char *dst_base,
+        int dst_offset,
         int dst_pitch,
         __global int *FData
         ) {
 
-    vp8_filter_block2d_bil(src_ptr, dst_ptr, src_pixels_per_line, dst_pitch, xoffset, yoffset, 8, 8, FData);
+    vp8_filter_block2d_bil(src_ptr, dst_base, dst_offset, src_pixels_per_line, dst_pitch, xoffset, yoffset, 8, 8, FData);
 
 }
 
@@ -269,12 +275,13 @@ __kernel void vp8_bilinear_predict8x4_kernel
         int src_pixels_per_line,
         int xoffset,
         int yoffset,
-        __global unsigned char *dst_ptr,
+        __global unsigned char *dst_base,
+        int dst_offset,
         int dst_pitch,
         __global int *FData
         ) {
 
-    vp8_filter_block2d_bil(src_ptr, dst_ptr, src_pixels_per_line, dst_pitch, xoffset, yoffset, 8, 4, FData);
+    vp8_filter_block2d_bil(src_ptr, dst_base, dst_offset, src_pixels_per_line, dst_pitch, xoffset, yoffset, 8, 4, FData);
 }
 
 __kernel void vp8_bilinear_predict16x16_kernel
@@ -283,12 +290,13 @@ __kernel void vp8_bilinear_predict16x16_kernel
         int src_pixels_per_line,
         int xoffset,
         int yoffset,
-        __global unsigned char *dst_ptr,
+        __global unsigned char *dst_base,
+        int dst_offset,
         int dst_pitch,
         __global int *FData
         ) {
 
-    vp8_filter_block2d_bil(src_ptr, dst_ptr, src_pixels_per_line, dst_pitch, xoffset, yoffset, 16, 16, FData);
+    vp8_filter_block2d_bil(src_ptr, dst_base, dst_offset, src_pixels_per_line, dst_pitch, xoffset, yoffset, 16, 16, FData);
 }
 
 
