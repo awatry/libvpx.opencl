@@ -26,7 +26,6 @@ typedef enum
 void vp8_setup_block
 (
     BLOCKD *b,
-    int mv_stride,
     unsigned char **base,
     int Stride,
     int offset,
@@ -91,17 +90,19 @@ void vp8_setup_macroblock(MACROBLOCKD *x, BLOCKSET bs)
 
     for (block = 0; block < 16; block++) /* y blocks */
     {
-        vp8_setup_block(&x->block[block], x->dst.y_stride, y, x->dst.y_stride,
+        vp8_setup_block(&x->block[block], y, x->dst.y_stride,
                         y_off + ((block >> 2) * 4 * x->dst.y_stride + (block & 3) * 4), bs);
     }
 
     for (block = 16; block < 20; block++) /* U and V blocks */
     {
-        vp8_setup_block(&x->block[block], x->dst.uv_stride, u, x->dst.uv_stride,
-                        u_off + ((block - 16) >> 1) * 4 * x->dst.uv_stride + (block & 1) * 4, bs);
+        int block_off = ((block - 16) >> 1) * 4 * x->dst.uv_stride + (block & 1) * 4;
 
-        vp8_setup_block(&x->block[block+4], x->dst.uv_stride, v, x->dst.uv_stride,
-                        v_off + ((block - 16) >> 1) * 4 * x->dst.uv_stride + (block & 1) * 4, bs);
+        vp8_setup_block(&x->block[block], u, x->dst.uv_stride,
+                        u_off + block_off, bs);
+
+        vp8_setup_block(&x->block[block+4], v, x->dst.uv_stride,
+                        v_off + block_off, bs);
     }
 }
 
@@ -208,7 +209,7 @@ BUF_DONE:
             /* Copy command queue reference from macroblock */
             x->block[r].cl_commands = x->cl_commands;
 
-            /* Set up CL memory buffers if appropriate */
+            /* Set up CL memory buffers as appropriate */
             x->block[r].cl_diff_mem = x->cl_diff_mem;
             x->block[r].cl_dqcoeff_mem = x->cl_dqcoeff_mem;
             x->block[r].cl_eobs_mem = x->cl_eobs_mem;
