@@ -81,7 +81,6 @@ void vp8_filter_block2d_first_pass_cl(
     int src_offset,
     cl_mem int_mem,
     unsigned int src_pixels_per_line,
-    unsigned int pixel_step,
     unsigned int int_height,
     unsigned int int_width,
     int xoffset
@@ -93,10 +92,9 @@ void vp8_filter_block2d_first_pass_cl(
     err |= clSetKernelArg(cl_data.vp8_filter_block2d_first_pass_kernel, 1, sizeof (int), &src_offset);
     err |= clSetKernelArg(cl_data.vp8_filter_block2d_first_pass_kernel, 2, sizeof (cl_mem), &int_mem);
     err |= clSetKernelArg(cl_data.vp8_filter_block2d_first_pass_kernel, 3, sizeof (cl_uint), &src_pixels_per_line);
-    err |= clSetKernelArg(cl_data.vp8_filter_block2d_first_pass_kernel, 4, sizeof (cl_uint), &pixel_step);
-    err |= clSetKernelArg(cl_data.vp8_filter_block2d_first_pass_kernel, 5, sizeof (cl_uint), &int_height);
-    err |= clSetKernelArg(cl_data.vp8_filter_block2d_first_pass_kernel, 6, sizeof (cl_int), &int_width);
-    err |= clSetKernelArg(cl_data.vp8_filter_block2d_first_pass_kernel, 7, sizeof (int), &xoffset);
+    err |= clSetKernelArg(cl_data.vp8_filter_block2d_first_pass_kernel, 4, sizeof (cl_uint), &int_height);
+    err |= clSetKernelArg(cl_data.vp8_filter_block2d_first_pass_kernel, 5, sizeof (cl_int), &int_width);
+    err |= clSetKernelArg(cl_data.vp8_filter_block2d_first_pass_kernel, 6, sizeof (int), &xoffset);
     CL_CHECK_SUCCESS( cq, err != CL_SUCCESS,
         "Error: Failed to set kernel arguments!\n",
         ,
@@ -162,7 +160,6 @@ void vp8_sixtap_run_cl(
     int dst_offset,
     int dst_pitch,
     size_t dst_len,
-    unsigned int pixel_step,
     unsigned int FData_height,
     unsigned int FData_width,
     unsigned int output_height,
@@ -179,7 +176,7 @@ void vp8_sixtap_run_cl(
     CL_CREATE_BUF( cq, int_mem,, sizeof(cl_int)*13*21, NULL, );
 
     vp8_filter_block2d_first_pass_cl(
-        cq, src_mem, src_offset, int_mem, src_pixels_per_line, pixel_step,
+        cq, src_mem, src_offset, int_mem, src_pixels_per_line,
         FData_height, FData_width, xoffset
     );
 
@@ -227,7 +224,7 @@ void vp8_sixtap_predict4x4_cl
     vp8_sixtap_run_cl(cq, src_mem, dst_mem,
             (src_ptr-2*src_pixels_per_line),tmp_offset, src_len,
             src_pixels_per_line, xoffset,yoffset,dst_ptr,tmp_offset,
-            dst_pitch,dst_len,1,FData_height,FData_width,output_height,
+            dst_pitch,dst_len,FData_height,FData_width,output_height,
             output_width,int_offset
     );
 
@@ -262,7 +259,7 @@ void vp8_sixtap_predict8x8_cl
     vp8_sixtap_run_cl(cq, src_mem, dst_mem,
             (src_ptr-2*src_pixels_per_line),tmp_offset, src_len,
             src_pixels_per_line, xoffset,yoffset,dst_ptr,tmp_offset,
-            dst_pitch,dst_len,1,FData_height,FData_width,output_height,
+            dst_pitch,dst_len,FData_height,FData_width,output_height,
             output_width,int_offset
     );
 
@@ -299,7 +296,7 @@ void vp8_sixtap_predict8x4_cl
     vp8_sixtap_run_cl(cq, src_mem, dst_mem,
             (src_ptr-2*src_pixels_per_line),tmp_offset, src_len,
             src_pixels_per_line, xoffset,yoffset,dst_ptr,tmp_offset,
-            dst_pitch,dst_len,1,FData_height,FData_width,output_height,
+            dst_pitch,dst_len,FData_height,FData_width,output_height,
             output_width,int_offset
     );
 
@@ -335,7 +332,7 @@ void vp8_sixtap_predict16x16_cl
     vp8_sixtap_run_cl(cq, src_mem, dst_mem,
             (src_ptr-2*src_pixels_per_line),tmp_offset, src_len,
             src_pixels_per_line, xoffset,yoffset,dst_ptr,tmp_offset,
-            dst_pitch,dst_len,1,FData_height,FData_width,output_height,
+            dst_pitch,dst_len,FData_height,FData_width,output_height,
             output_width,int_offset
     );
 
@@ -371,19 +368,22 @@ void vp8_bilinear_run_cl(
         sizeof (unsigned char) * src_len, src_base+src_offset,
     );
 
+    //Remove this after untangling base_pre/base_dst stuff in mbpitch.c
+    src_offset = 0;
+
     CL_CREATE_BUF(cq, int_mem,CL_MEM_READ_WRITE,
         sizeof(cl_int)*17*16, NULL,);
 
     /* Set kernel arguments */
-    err = 0;
-    err = clSetKernelArg(kernel, 0, sizeof (cl_mem), &src_mem);
-    err |= clSetKernelArg(kernel, 1, sizeof (int), &src_pixels_per_line);
-    err |= clSetKernelArg(kernel, 2, sizeof (int), &xoffset);
-    err |= clSetKernelArg(kernel, 3, sizeof (int), &yoffset);
-    err |= clSetKernelArg(kernel, 4, sizeof (cl_mem), &dst_mem);
-    err |= clSetKernelArg(kernel, 5, sizeof (int), &dst_offset);
-    err |= clSetKernelArg(kernel, 6, sizeof (int), &dst_pitch);
-    err |= clSetKernelArg(kernel, 7, sizeof (cl_mem), &int_mem);
+    err =  clSetKernelArg(kernel, 0, sizeof (cl_mem), &src_mem);
+    err |= clSetKernelArg(kernel, 1, sizeof (int), &src_offset);
+    err |= clSetKernelArg(kernel, 2, sizeof (int), &src_pixels_per_line);
+    err |= clSetKernelArg(kernel, 3, sizeof (int), &xoffset);
+    err |= clSetKernelArg(kernel, 4, sizeof (int), &yoffset);
+    err |= clSetKernelArg(kernel, 5, sizeof (cl_mem), &dst_mem);
+    err |= clSetKernelArg(kernel, 6, sizeof (int), &dst_offset);
+    err |= clSetKernelArg(kernel, 7, sizeof (int), &dst_pitch);
+    err |= clSetKernelArg(kernel, 8, sizeof (cl_mem), &int_mem);
     CL_CHECK_SUCCESS( cq, err != CL_SUCCESS,
         "Error: Failed to set kernel arguments!\n",
         ,
