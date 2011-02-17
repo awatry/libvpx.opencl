@@ -145,14 +145,12 @@ void vp8_copy_mem8x4_c(
 void vp8_build_inter_predictors_b(BLOCKD *d, int pitch, vp8_subpix_fn_t sppf)
 {
     int r;
-    unsigned char *ptr_base;
+
+    //d->base_pre is the start of the previous frame's y_buffer, u_buffer, or v_buffer
+    unsigned char *ptr_base = *(d->base_pre);
     int ptr_offset = d->pre + (d->bmi.mv.as_mv.row >> 3) * d->pre_stride + (d->bmi.mv.as_mv.col >> 3);
 
     unsigned char *pred_ptr = d->predictor_base + d->predictor_offset;
-
-    
-    //d->base_pre is the start of the Macroblock's y_buffer, u_buffer, or v_buffer
-    ptr_base = *(d->base_pre);
 
     if (d->bmi.mv.as_mv.row & 7 || d->bmi.mv.as_mv.col & 7)
     {
@@ -172,7 +170,7 @@ void vp8_build_inter_predictors_b(BLOCKD *d, int pitch, vp8_subpix_fn_t sppf)
             *(int *)pred_ptr = *(int *)(ptr_base+ptr_offset) ;
 #endif
             pred_ptr     += pitch;
-            ptr_offset         += d->pre_stride;
+            ptr_offset   += d->pre_stride;
         }
     }
 }

@@ -79,13 +79,18 @@ void vp8_setup_macroblock(MACROBLOCKD *x, BLOCKSET bs)
     else
     {
         buf_base = &x->pre.buffer_alloc;
-        y_off = x->pre.y_buffer - x->pre.buffer_alloc;
-        u_off = x->pre.u_buffer - x->pre.buffer_alloc;
-        v_off = x->pre.v_buffer - x->pre.buffer_alloc;
         y = &x->pre.y_buffer;
         u = &x->pre.u_buffer;
         v = &x->pre.v_buffer;
         y_off = u_off = v_off = 0;
+
+        //y = buf_base;
+        //y_off = x->pre.y_buffer - x->pre.buffer_alloc;
+        //u = buf_base;
+        //u_off = x->pre.u_buffer - x->pre.buffer_alloc;
+        //v = buf_base;
+        //v_off = x->pre.v_buffer - x->pre.buffer_alloc;
+
     }
 
     for (block = 0; block < 16; block++) /* y blocks */
