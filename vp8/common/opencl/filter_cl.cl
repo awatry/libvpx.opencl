@@ -168,8 +168,6 @@ kernel void vp8_filter_block2d_bil_second_pass
     __global unsigned char *output_base,
     int output_offset,
     int output_pitch,
-    unsigned int src_pixels_per_line,
-    unsigned int pixel_step,
     unsigned int output_height,
     unsigned int output_width,
     int filter_offset
@@ -187,19 +185,16 @@ kernel void vp8_filter_block2d_bil_second_pass
 
         int out_offset;
         int src_offset;
-        int src_increment;
-
-        src_increment = src_pixels_per_line - output_width;
 
         i = tid / output_width;
         j = tid % output_width;
 
-        src_offset = i*(output_width+src_increment) + j;
+        src_offset = i*(output_width) + j;
         out_offset = i*output_pitch + j;
 
         /* Apply filter */
         Temp = ((int)src_ptr[src_offset]         * vp8_filter[0]) +
-               ((int)src_ptr[src_offset+pixel_step] * vp8_filter[1]) +
+               ((int)src_ptr[src_offset+output_width] * vp8_filter[1]) +
                (VP8_FILTER_WEIGHT / 2);
 
         output_ptr[out_offset++] = (unsigned int)(Temp >> VP8_FILTER_SHIFT);
@@ -226,7 +221,7 @@ __kernel void vp8_bilinear_predict4x4_kernel
     vp8_filter_block2d_bil_first_pass(src_base, src_offset, int_mem, src_pixels_per_line, Height + 1, Width, xoffset);
 
     /* then 1-D vertically... */
-    vp8_filter_block2d_bil_second_pass(int_mem, dst_base, dst_offset, dst_pitch, Width, Width, Height, Width, yoffset);
+    vp8_filter_block2d_bil_second_pass(int_mem, dst_base, dst_offset, dst_pitch, Height, Width, yoffset);
 }
 
 __kernel void vp8_bilinear_predict8x8_kernel
@@ -248,7 +243,7 @@ __kernel void vp8_bilinear_predict8x8_kernel
     vp8_filter_block2d_bil_first_pass(src_base, src_offset, int_mem, src_pixels_per_line, Height + 1, Width, xoffset);
 
     /* then 1-D vertically... */
-    vp8_filter_block2d_bil_second_pass(int_mem, dst_base, dst_offset, dst_pitch, Width, Width, Height, Width, yoffset);
+    vp8_filter_block2d_bil_second_pass(int_mem, dst_base, dst_offset, dst_pitch, Height, Width, yoffset);
 
 }
 
@@ -271,7 +266,7 @@ __kernel void vp8_bilinear_predict8x4_kernel
     vp8_filter_block2d_bil_first_pass(src_base, src_offset, int_mem, src_pixels_per_line, Height + 1, Width, xoffset);
 
     /* then 1-D vertically... */
-    vp8_filter_block2d_bil_second_pass(int_mem, dst_base, dst_offset, dst_pitch, Width, Width, Height, Width, yoffset);
+    vp8_filter_block2d_bil_second_pass(int_mem, dst_base, dst_offset, dst_pitch, Height, Width, yoffset);
 }
 
 __kernel void vp8_bilinear_predict16x16_kernel
@@ -294,7 +289,7 @@ __kernel void vp8_bilinear_predict16x16_kernel
     vp8_filter_block2d_bil_first_pass(src_base, src_offset, int_mem, src_pixels_per_line, Height + 1, Width, xoffset);
 
     /* then 1-D vertically... */
-    vp8_filter_block2d_bil_second_pass(int_mem, dst_base, dst_offset, dst_pitch, Width, Width, Height, Width, yoffset);
+    vp8_filter_block2d_bil_second_pass(int_mem, dst_base, dst_offset, dst_pitch, Height, Width, yoffset);
 
 }
 
