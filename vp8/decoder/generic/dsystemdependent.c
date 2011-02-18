@@ -44,7 +44,7 @@ void vp8_dmachine_specific_config(VP8D_COMP *pbi)
     vp8_arch_arm_decode_init(pbi);
 #endif
 
-#if CONFIG_OPENCL
+#if CONFIG_OPENCL && (ENABLE_CL_IDCT_DEQUANT)
     vp8_arch_opencl_decode_init(pbi);
 #endif
 }

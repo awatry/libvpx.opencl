@@ -86,7 +86,7 @@ void vp8_machine_specific_config(VP8_COMMON *ctx)
     vp8_arch_arm_common_init(ctx);
 #endif
 
-#if CONFIG_OPENCL
+#if CONFIG_OPENCL && (ENABLE_CL_IDCT_DEQUANT || ENABLE_CL_SUBPIXEL || ENABLE_CL_LOOPFILTER)
     vp8_arch_opencl_common_init(ctx);
 #endif
 

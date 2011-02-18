@@ -37,19 +37,31 @@ extern void cl_encode_destroy();
  */
 void cl_destroy(cl_command_queue cq, int new_status) {
 
+    if (cl_initialized != CL_SUCCESS)
+        return;
+
     //Wait on any pending operations to complete... frees up all of our pointers
     if (cq != NULL)
         clFinish(cq);
 
+#if ENABLE_CL_SUBPIXEL
     //Release the objects that we've allocated on the GPU
     cl_destroy_filter();
+#endif
+
+#if ENABLE_CL_IDCT_DEQUANT
     cl_destroy_idct();
-    cl_destroy_loop_filter();
 
 #if CONFIG_VP8_DECODER
     if (cl_data.cl_decode_initialized == CL_SUCCESS)
         cl_decode_destroy();
 #endif
+
+#endif
+#if ENABLE_CL_LOOPFILTER
+    cl_destroy_loop_filter();
+#endif
+
 
 #if CONFIG_VP8_ENCODER
     //placeholder for if/when encoder CL gets implemented
@@ -184,17 +196,24 @@ int cl_common_init() {
     cl_data.idct_program = NULL;
     cl_data.loop_filter_program = NULL;
 
+#if ENABLE_CL_SUBPIXEL
     err = cl_init_filter();
     if (err != CL_SUCCESS)
         return err;
+#endif
 
+#if ENABLE_CL_IDCT_DEQUANT
     err = cl_init_idct();
     if (err != CL_SUCCESS)
         return err;
+#endif
+
+#if ENABLE_CL_LOOPFILTER
 
     err = cl_init_loop_filter();
     if (err != CL_SUCCESS)
         return err;
+#endif
 
     return CL_SUCCESS;
 }
