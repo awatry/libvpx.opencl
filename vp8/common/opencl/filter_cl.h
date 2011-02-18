@@ -161,55 +161,9 @@ extern const char *filter_cl_file_name;
 
 //Copy the -2*pixel_step (and ps*3) bytes because the filter algorithm
 //accesses negative indexes
-#define SIXTAP_SRC_LEN(out_width,out_height,src_px) (out_width*out_height + ((out_width*out_height-1)/out_width)*(src_px - out_width) + 5)
-#define BIL_SRC_LEN(out_width,out_height,src_px) (out_height * src_px + out_width)
-#define DST_LEN(dst_pitch,dst_height,dst_width) (dst_pitch * dst_height + dst_width)
-
-#define CL_SIXTAP_PREDICT_EXEC(cq, src_mem, dst_mem, kernel,src_ptr,src_offset,src_len, src_pixels_per_line, \
-xoffset,yoffset,dst_ptr,dst_offset,dst_pitch,thread_count,dst_len,altPath) \
-\
-/*Make space for kernel input/output data. Initialize the buffer as well if needed. */ \
-    CL_CREATE_BUF( cq, src_mem, CL_MEM_READ_ONLY|CL_MEM_COPY_HOST_PTR, \
-        sizeof (unsigned char) * src_len, src_ptr-2, \
-    ); \
-\
-    CL_CREATE_BUF( cq, dst_mem, CL_MEM_WRITE_ONLY|CL_MEM_COPY_HOST_PTR, \
-        sizeof (unsigned char) * dst_len, dst_ptr, \
-    ); \
-\
-    /* Set kernel arguments */ \
-    err = 0; \
-    err =  clSetKernelArg(kernel, 0, sizeof (cl_mem), &src_mem); \
-    err |= clSetKernelArg(kernel, 1, sizeof (int), &src_offset); \
-    err |= clSetKernelArg(kernel, 2, sizeof (int), &src_pixels_per_line); \
-    err |= clSetKernelArg(kernel, 3, sizeof (int), &xoffset); \
-    err |= clSetKernelArg(kernel, 4, sizeof (int), &yoffset); \
-    err |= clSetKernelArg(kernel, 5, sizeof (cl_mem), &dst_mem); \
-    err |= clSetKernelArg(kernel, 6, sizeof (int), &dst_offset); \
-    err |= clSetKernelArg(kernel, 7, sizeof (int), &dst_pitch); \
-    CL_CHECK_SUCCESS( cq, err != CL_SUCCESS, \
-        "Error: Failed to set kernel arguments!\n", \
-        altPath, \
-    ); \
-\
-    /* Execute the kernel */ \
-    err = clEnqueueNDRangeKernel( cq, kernel, 1, NULL, &global, NULL , 0, NULL, NULL); \
-    CL_CHECK_SUCCESS( cq, err != CL_SUCCESS, \
-        "Error: Failed to execute kernel!\n", \
-        printf("err = %d\n",err);altPath, \
-    ); \
-\
-    /* Read back the result data from the device */ \
-    err = clEnqueueReadBuffer(cq, dst_mem, CL_FALSE, 0, sizeof (unsigned char) * dst_len, dst_ptr, 0, NULL, NULL); \
-    CL_CHECK_SUCCESS( cq, err != CL_SUCCESS, \
-        "Error: Failed to read output array!\n", \
-        altPath, \
-    );\
-\
-    clReleaseMemObject(src_mem); \
-    clReleaseMemObject(dst_mem);\
-
-//#end define CL_SIXTAP_PREDICT_EXEC
+#define SIXTAP_SRC_LEN(out_width,out_height,src_px) ((out_width)*(out_height) + (((out_width)*(out_height)-1)/(out_width))*(src_px - out_width) + 5)
+#define BIL_SRC_LEN(out_width,out_height,src_px) ((out_height) * src_px + out_width)
+#define DST_LEN(dst_pitch,dst_height,dst_width) (dst_pitch * (dst_height) + (dst_width))
 
 #define CL_BILINEAR_EXEC(cq, src_mem, dst_mem, int_mem, kernel,src_ptr,src_len, src_pixels_per_line, \
 xoffset,yoffset,dst_ptr,dst_pitch,thread_count,dst_len,altPath) \

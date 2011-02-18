@@ -36,14 +36,16 @@ void cl_destroy_filter(){
     //CL_RELEASE_KERNEL(cl_data.vp8_sixtap_predict8x8_kernel);
     //CL_RELEASE_KERNEL(cl_data.vp8_sixtap_predict8x4_kernel);
     //CL_RELEASE_KERNEL(cl_data.vp8_sixtap_predict16x16_kernel);
-    CL_RELEASE_KERNEL(cl_data.vp8_bilinear_predict4x4_kernel);
-    CL_RELEASE_KERNEL(cl_data.vp8_bilinear_predict8x4_kernel);
-    CL_RELEASE_KERNEL(cl_data.vp8_bilinear_predict8x8_kernel);
-    CL_RELEASE_KERNEL(cl_data.vp8_bilinear_predict16x16_kernel);
+    //CL_RELEASE_KERNEL(cl_data.vp8_bilinear_predict4x4_kernel);
+    //CL_RELEASE_KERNEL(cl_data.vp8_bilinear_predict8x4_kernel);
+    //CL_RELEASE_KERNEL(cl_data.vp8_bilinear_predict8x8_kernel);
+    //CL_RELEASE_KERNEL(cl_data.vp8_bilinear_predict16x16_kernel);
     CL_RELEASE_KERNEL(cl_data.vp8_memcpy_kernel);
 
     CL_RELEASE_KERNEL(cl_data.vp8_filter_block2d_first_pass_kernel);
     CL_RELEASE_KERNEL(cl_data.vp8_filter_block2d_second_pass_kernel);
+    CL_RELEASE_KERNEL(cl_data.vp8_filter_block2d_bil_first_pass_kernel);
+    CL_RELEASE_KERNEL(cl_data.vp8_filter_block2d_bil_second_pass_kernel);
 
     cl_data.filter_program = NULL;
 }
@@ -59,17 +61,14 @@ int cl_init_filter() {
     // Create the compute kernel in the program we wish to run
     CL_CREATE_KERNEL(cl_data,filter_program,vp8_filter_block2d_first_pass_kernel,"vp8_filter_block2d_first_pass_kernel");
     CL_CREATE_KERNEL(cl_data,filter_program,vp8_filter_block2d_second_pass_kernel,"vp8_filter_block2d_second_pass_kernel");
-    
+    CL_CREATE_KERNEL(cl_data,filter_program,vp8_filter_block2d_bil_first_pass_kernel,"vp8_filter_block2d_bil_first_pass_kernel");
+    CL_CREATE_KERNEL(cl_data,filter_program,vp8_filter_block2d_bil_second_pass_kernel,"vp8_filter_block2d_bil_second_pass_kernel");
 
-    //CL_CREATE_KERNEL(cl_data,filter_program,vp8_block_variation_kernel,"vp8_block_variation_kernel");
-    //CL_CREATE_KERNEL(cl_data,filter_program,vp8_sixtap_predict_kernel,"vp8_sixtap_predict_kernel");
-    //CL_CREATE_KERNEL(cl_data,filter_program,vp8_sixtap_predict8x8_kernel,"vp8_sixtap_predict8x8_kernel");
-    //CL_CREATE_KERNEL(cl_data,filter_program,vp8_sixtap_predict8x4_kernel,"vp8_sixtap_predict8x4_kernel");
-    //CL_CREATE_KERNEL(cl_data,filter_program,vp8_sixtap_predict16x16_kernel,"vp8_sixtap_predict16x16_kernel");
-    CL_CREATE_KERNEL(cl_data,filter_program,vp8_bilinear_predict4x4_kernel,"vp8_bilinear_predict4x4_kernel");
-    CL_CREATE_KERNEL(cl_data,filter_program,vp8_bilinear_predict8x4_kernel,"vp8_bilinear_predict8x4_kernel");
-    CL_CREATE_KERNEL(cl_data,filter_program,vp8_bilinear_predict8x8_kernel,"vp8_bilinear_predict8x8_kernel");
-    CL_CREATE_KERNEL(cl_data,filter_program,vp8_bilinear_predict16x16_kernel,"vp8_bilinear_predict16x16_kernel");
+    //CL_CREATE_KERNEL(cl_data,filter_program,vp8_bilinear_predict4x4_kernel,"vp8_bilinear_predict4x4_kernel");
+    //CL_CREATE_KERNEL(cl_data,filter_program,vp8_bilinear_predict8x4_kernel,"vp8_bilinear_predict8x4_kernel");
+    //CL_CREATE_KERNEL(cl_data,filter_program,vp8_bilinear_predict8x8_kernel,"vp8_bilinear_predict8x8_kernel");
+    //CL_CREATE_KERNEL(cl_data,filter_program,vp8_bilinear_predict16x16_kernel,"vp8_bilinear_predict16x16_kernel");
+
     CL_CREATE_KERNEL(cl_data,filter_program,vp8_memcpy_kernel,"vp8_memcpy_kernel");
 
     return CL_SUCCESS;
@@ -342,6 +341,87 @@ void vp8_sixtap_predict16x16_cl
 
 
 
+void vp8_filter_block2d_bil_first_pass_cl(
+    cl_command_queue cq,
+    unsigned char *src_base,
+    int src_offset,
+    cl_mem int_mem,
+    int src_pixels_per_line,
+    int height,
+    int width,
+    int xoffset
+)
+{
+    int err;
+    size_t global = width*height;
+
+    cl_mem src_mem = NULL;
+    int src_len = BIL_SRC_LEN(width,height,src_pixels_per_line);
+
+    /*Make space for kernel input/output data. Initialize the buffer as well if needed. */
+    CL_CREATE_BUF(cq, src_mem, CL_MEM_READ_ONLY|CL_MEM_COPY_HOST_PTR,
+        sizeof (unsigned char) * src_len, src_base+src_offset,
+    );
+    src_offset = 0; //Set to zero as long as src_mem starts at base+offset
+
+    err =  clSetKernelArg(cl_data.vp8_filter_block2d_bil_first_pass_kernel, 0, sizeof (cl_mem), &src_mem);
+    err |= clSetKernelArg(cl_data.vp8_filter_block2d_bil_first_pass_kernel, 1, sizeof (int), &src_offset);
+    err |= clSetKernelArg(cl_data.vp8_filter_block2d_bil_first_pass_kernel, 2, sizeof (cl_mem), &int_mem);
+    err |= clSetKernelArg(cl_data.vp8_filter_block2d_bil_first_pass_kernel, 3, sizeof (int), &src_pixels_per_line);
+    err |= clSetKernelArg(cl_data.vp8_filter_block2d_bil_first_pass_kernel, 4, sizeof (int), &height);
+    err |= clSetKernelArg(cl_data.vp8_filter_block2d_bil_first_pass_kernel, 5, sizeof (int), &width);
+    err |= clSetKernelArg(cl_data.vp8_filter_block2d_bil_first_pass_kernel, 6, sizeof (int), &xoffset);
+    CL_CHECK_SUCCESS( cq, err != CL_SUCCESS,
+        "Error: Failed to set kernel arguments!\n",
+        ,
+    );
+
+    /* Execute the kernel */
+    err = clEnqueueNDRangeKernel( cq, cl_data.vp8_filter_block2d_bil_first_pass_kernel, 1, NULL, &global, NULL , 0, NULL, NULL);
+    CL_CHECK_SUCCESS( cq, err != CL_SUCCESS,
+        "Error: Failed to execute kernel!\n",
+        printf("err = %d\n",err);,
+    );
+
+    clReleaseMemObject(src_mem);
+}
+
+
+void vp8_filter_block2d_bil_second_pass_cl(
+    cl_command_queue cq,
+    cl_mem int_mem,
+    cl_mem dst_mem,
+    int dst_offset,
+    int dst_pitch,
+    int height,
+    int width,
+    int yoffset
+)
+{
+    int err;
+    size_t global = width*height;
+
+    err =  clSetKernelArg(cl_data.vp8_filter_block2d_bil_second_pass_kernel, 0, sizeof (cl_mem), &int_mem);
+    err |= clSetKernelArg(cl_data.vp8_filter_block2d_bil_second_pass_kernel, 1, sizeof (cl_mem), &dst_mem);
+    err |= clSetKernelArg(cl_data.vp8_filter_block2d_bil_second_pass_kernel, 2, sizeof (int), &dst_offset);
+    err |= clSetKernelArg(cl_data.vp8_filter_block2d_bil_second_pass_kernel, 3, sizeof (int), &dst_pitch);
+    err |= clSetKernelArg(cl_data.vp8_filter_block2d_bil_second_pass_kernel, 4, sizeof (int), &height);
+    err |= clSetKernelArg(cl_data.vp8_filter_block2d_bil_second_pass_kernel, 5, sizeof (int), &width);
+    err |= clSetKernelArg(cl_data.vp8_filter_block2d_bil_second_pass_kernel, 6, sizeof (int), &yoffset);
+    CL_CHECK_SUCCESS( cq, err != CL_SUCCESS,
+        "Error: Failed to set kernel arguments!\n",
+        ,
+    );
+
+    /* Execute the kernel */
+    err = clEnqueueNDRangeKernel( cq, cl_data.vp8_filter_block2d_bil_second_pass_kernel, 1, NULL, &global, NULL , 0, NULL, NULL);
+    CL_CHECK_SUCCESS( cq, err != CL_SUCCESS,
+        "Error: Failed to execute kernel!\n",
+        printf("err = %d\n",err);,
+    );
+
+}
+
 
 
 void vp8_bilinear_run_cl(
@@ -396,20 +476,6 @@ void vp8_bilinear_run_cl(
     clReleaseMemObject(src_mem);
 }
 
-void vp8_filter_block2d_bil_first_pass_cl(
-    unsigned char *src_base,
-    int src_offset,
-    cl_mem int_mem,
-    int src_pixels_per_line,
-    int height,
-    int width,
-    int xoffset
-)
-{
-    
-}
-
-
 void vp8_bilinear_predict4x4_cl
 (
     cl_command_queue cq,
@@ -425,19 +491,10 @@ void vp8_bilinear_predict4x4_cl
 
     int err;
 
-    int Height = 4, Width = 4;
-
-
-
-    //global is the max of width*height for 1st and 2nd pass filters
-    size_t global = 20; //5*4
+    const int height = 4, width = 4;
 
     //Size of output data
-    int dst_len = DST_LEN(dst_pitch,4,4);
-
-    //int output1_width=16,output1_height=21;
-    //int src_len = SRC_LEN(output1_width,output1_height,src_pixels_per_line);
-    int src_len = BIL_SRC_LEN(4,5,src_pixels_per_line);
+    int dst_len = DST_LEN(dst_pitch,height,width);
 
     cl_mem src_mem = NULL;
     cl_mem int_mem = NULL;
@@ -450,18 +507,11 @@ void vp8_bilinear_predict4x4_cl
     CL_CREATE_BUF(cq, int_mem,CL_MEM_READ_WRITE,
         sizeof(cl_int)*17*16, NULL,);
     
-#if 0
     /* First filter 1-D horizontally... */
-    vp8_filter_block2d_bil_first_pass_cl(src_base, src_offset, int_mem, src_pixels_per_line, Height + 1, Width, xoffset);
+    vp8_filter_block2d_bil_first_pass_cl(cq, src_base, src_offset, int_mem, src_pixels_per_line, height + 1, width, xoffset);
 
     /* then 1-D vertically... */
-    vp8_filter_block2d_bil_second_pass_cl(int_mem, dst_mem, dst_offset, dst_pitch, Height, Width, yoffset);
-#else
-    vp8_bilinear_run_cl(cq, src_mem, dst_mem, int_mem,
-            cl_data.vp8_bilinear_predict4x4_kernel,src_base,src_offset,src_len,
-            src_pixels_per_line,xoffset,yoffset,dst_offset,dst_pitch,global
-    );
-#endif
+    vp8_filter_block2d_bil_second_pass_cl(cq, int_mem, dst_mem, dst_offset, dst_pitch, height, width, yoffset);
 
     /* Read back the result data from the device */
     err = clEnqueueReadBuffer(cq, dst_mem, CL_FALSE, 0, sizeof (unsigned char) * dst_len + dst_offset, dst_base, 0, NULL, NULL);
@@ -487,45 +537,29 @@ void vp8_bilinear_predict8x8_cl
     int dst_pitch
 ) {
 
-    int tmp_offset = 0;
-    unsigned char *src_ptr = src_base + src_offset;
-    unsigned char *dst_ptr = dst_base + dst_offset;
-
     int err;
-    
-    //global is the max of width*height for 1st and 2nd pass filters
-    size_t global = 72; //9*8
+
+    const int height = 8, width = 8;
 
     //Size of output data
-    int dst_len = DST_LEN(dst_pitch,8,8);
-
-    //int output1_width=16,output1_height=21;
-    //int src_len = SRC_LEN(output1_width,output1_height,src_pixels_per_line);
-    int src_len = BIL_SRC_LEN(8,9,src_pixels_per_line);
+    int dst_len = DST_LEN(dst_pitch,height,width);
 
     cl_mem src_mem = NULL;
     cl_mem int_mem = NULL;
     cl_mem dst_mem = NULL;
 
-    //if (src_offset < 0){
-    //    printf("src_offset < 0\n");
-    //}
-    //if ( dst_offset < 0){
-    //    printf("dst_offset < 0\n");
-    //}
-
     CL_CREATE_BUF(cq, dst_mem, CL_MEM_WRITE_ONLY|CL_MEM_COPY_HOST_PTR,
         sizeof (unsigned char) * dst_len + dst_offset, dst_base,
     );
-    
+
     CL_CREATE_BUF(cq, int_mem,CL_MEM_READ_WRITE,
-        sizeof(cl_int)*17*16, NULL,
-    );
-    
-    vp8_bilinear_run_cl(cq, src_mem, dst_mem, int_mem,
-            cl_data.vp8_bilinear_predict8x8_kernel,src_base,src_offset,src_len,
-            src_pixels_per_line,xoffset,yoffset,dst_offset,dst_pitch,global
-    );
+        sizeof(cl_int)*17*16, NULL,);
+
+    /* First filter 1-D horizontally... */
+    vp8_filter_block2d_bil_first_pass_cl(cq, src_base, src_offset, int_mem, src_pixels_per_line, height + 1, width, xoffset);
+
+    /* then 1-D vertically... */
+    vp8_filter_block2d_bil_second_pass_cl(cq, int_mem, dst_mem, dst_offset, dst_pitch, height, width, yoffset);
 
     /* Read back the result data from the device */
     err = clEnqueueReadBuffer(cq, dst_mem, CL_FALSE, 0, sizeof (unsigned char) * dst_len + dst_offset, dst_base, 0, NULL, NULL);
@@ -551,43 +585,29 @@ void vp8_bilinear_predict8x4_cl
     int dst_pitch
 ) {
 
-    int tmp_offset = 0;
-    unsigned char *src_ptr = src_base + src_offset;
-    unsigned char *dst_ptr = dst_base + dst_offset;
-
     int err;
 
-    //global is the max of width*height for 1st and 2nd pass filters
-    size_t global = 9*4;
+    const int height = 4, width = 8;
 
     //Size of output data
-    int dst_len = DST_LEN(dst_pitch,8,4);
-
-    int src_len = BIL_SRC_LEN(4,9,src_pixels_per_line);
+    int dst_len = DST_LEN(dst_pitch,height,width);
 
     cl_mem src_mem = NULL;
     cl_mem int_mem = NULL;
     cl_mem dst_mem = NULL;
-
-    //if (src_offset < 0){
-    //    printf("src_offset < 0\n");
-    //}
-    //if ( dst_offset < 0){
-    //    printf("dst_offset < 0\n");
-    //}
 
     CL_CREATE_BUF(cq, dst_mem, CL_MEM_WRITE_ONLY|CL_MEM_COPY_HOST_PTR,
         sizeof (unsigned char) * dst_len + dst_offset, dst_base,
     );
 
     CL_CREATE_BUF(cq, int_mem,CL_MEM_READ_WRITE,
-        sizeof(cl_int)*17*16, NULL,
-    );
+        sizeof(cl_int)*17*16, NULL,);
 
-    vp8_bilinear_run_cl(cq, src_mem, dst_mem, int_mem,
-            cl_data.vp8_bilinear_predict8x4_kernel,src_base,src_offset,src_len,
-            src_pixels_per_line,xoffset,yoffset,dst_offset,dst_pitch,global
-    );
+    /* First filter 1-D horizontally... */
+    vp8_filter_block2d_bil_first_pass_cl(cq, src_base, src_offset, int_mem, src_pixels_per_line, height + 1, width, xoffset);
+
+    /* then 1-D vertically... */
+    vp8_filter_block2d_bil_second_pass_cl(cq, int_mem, dst_mem, dst_offset, dst_pitch, height, width, yoffset);
 
     /* Read back the result data from the device */
     err = clEnqueueReadBuffer(cq, dst_mem, CL_FALSE, 0, sizeof (unsigned char) * dst_len + dst_offset, dst_base, 0, NULL, NULL);
@@ -596,8 +616,8 @@ void vp8_bilinear_predict8x4_cl
         ,
     );
 
-    clReleaseMemObject(dst_mem);
     clReleaseMemObject(int_mem);
+    clReleaseMemObject(dst_mem);
 }
 
 void vp8_bilinear_predict16x16_cl
@@ -613,42 +633,29 @@ void vp8_bilinear_predict16x16_cl
     int dst_pitch
 ) {
 
-    int tmp_offset = 0;
-    unsigned char *src_ptr = src_base + src_offset;
-    unsigned char *dst_ptr = dst_base + dst_offset;
-
     int err;
 
-    //global is the max of width*height for 1st and 2nd pass filters
-    size_t global = 17*16;
+    const int height = 16, width = 16;
 
-    //Element counts of output/input data
-    int dst_len = DST_LEN(dst_pitch,16,16);
-    int src_len = BIL_SRC_LEN(16,17,src_pixels_per_line);
+    //Size of output data
+    int dst_len = DST_LEN(dst_pitch,height,width);
 
     cl_mem src_mem = NULL;
     cl_mem int_mem = NULL;
     cl_mem dst_mem = NULL;
-
-    //if (src_offset < 0){
-    //    printf("src_offset < 0\n");
-    //}
-    //if ( dst_offset < 0){
-    //    printf("dst_offset < 0\n");
-    //}
 
     CL_CREATE_BUF(cq, dst_mem, CL_MEM_WRITE_ONLY|CL_MEM_COPY_HOST_PTR,
         sizeof (unsigned char) * dst_len + dst_offset, dst_base,
     );
 
     CL_CREATE_BUF(cq, int_mem,CL_MEM_READ_WRITE,
-        sizeof(cl_int)*17*16, NULL,
-    );
+        sizeof(cl_int)*17*16, NULL,);
 
-    vp8_bilinear_run_cl(cq, src_mem, dst_mem, int_mem,
-            cl_data.vp8_bilinear_predict16x16_kernel,src_base,src_offset,src_len,
-            src_pixels_per_line,xoffset,yoffset,dst_offset,dst_pitch,global
-    );
+    /* First filter 1-D horizontally... */
+    vp8_filter_block2d_bil_first_pass_cl(cq, src_base, src_offset, int_mem, src_pixels_per_line, height + 1, width, xoffset);
+
+    /* then 1-D vertically... */
+    vp8_filter_block2d_bil_second_pass_cl(cq, int_mem, dst_mem, dst_offset, dst_pitch, height, width, yoffset);
 
     /* Read back the result data from the device */
     err = clEnqueueReadBuffer(cq, dst_mem, CL_FALSE, 0, sizeof (unsigned char) * dst_len + dst_offset, dst_base, 0, NULL, NULL);
@@ -657,6 +664,6 @@ void vp8_bilinear_predict16x16_cl
         ,
     );
 
-    clReleaseMemObject(dst_mem);
     clReleaseMemObject(int_mem);
+    clReleaseMemObject(dst_mem);
 }
