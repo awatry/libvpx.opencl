@@ -19,14 +19,17 @@ extern "C" {
 #include "vp8_opencl.h"
 #include "../blockd.h"
 
-    #define DIFF 0x0001
+#define DIFF 0x0001
 #define PREDICTOR 0x0002
 #define QCOEFF 0x0004
 #define DQCOEFF 0x0008
 #define EOBS 0x0010
 #define DEQUANT 0x0020
+#define PRE_BUF 0x0040
+#define DST_BUF 0x0080
 #define BLOCK_COPY_ALL 0xffff
 
+/*
 #define BLOCK_MEM_SIZE 6
 enum {
     DIFF_MEM = 0,
@@ -45,9 +48,13 @@ struct cl_block_mem{
 };
 
 typedef struct cl_block_mem block_mem;
-
+*/
+    
 extern int vp8_cl_block_finish(BLOCKD *b, int flags);
 extern int vp8_cl_block_prep(BLOCKD *b, int flags);
+
+extern int vp8_cl_mb_prep(MACROBLOCKD *x, int flags);
+extern int vp8_cl_mb_finish(MACROBLOCKD *x, int flags);
 
 #ifdef	__cplusplus
 }

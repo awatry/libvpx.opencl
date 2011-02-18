@@ -22,9 +22,9 @@
  */
 
 #define prototype_subpixel_predict_cl(sym) \
-    void sym(cl_command_queue cq, unsigned char *src_base, int src_offset, \
+    void sym(cl_command_queue cq, unsigned char *src_base, cl_mem src_mem, int src_offset, \
             int src_pitch, int xofst, int yofst, \
-             unsigned char *dst_base, int dst_offset, int dst_pitch)
+             unsigned char *dst_base, cl_mem dst_mem, int dst_offset, int dst_pitch)
 
 extern prototype_subpixel_predict_cl(vp8_sixtap_predict16x16_cl);
 extern prototype_subpixel_predict_cl(vp8_sixtap_predict8x8_cl);

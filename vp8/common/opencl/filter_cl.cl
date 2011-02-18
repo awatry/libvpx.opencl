@@ -44,7 +44,7 @@ kernel void vp8_filter_block2d_first_pass_kernel(
     __constant short *vp8_filter = sub_pel_filters[filter_offset];
 
     if (tid < (output_width*output_height)){
-        src_offset = tid + (tid/output_width * (src_pixels_per_line - output_width)) + 2;
+        src_offset = tid + (tid/output_width * (src_pixels_per_line - output_width));
 
         Temp = (int)(src_ptr[src_offset - 2] * vp8_filter[0]) +
            (int)(src_ptr[src_offset - 1] * vp8_filter[1]) +
@@ -203,16 +203,20 @@ kernel void vp8_filter_block2d_bil_second_pass_kernel
 
 //Called from reconinter_cl.c
 kernel void vp8_memcpy_kernel(
-    global unsigned char *src,
+    global unsigned char *src_base,
+    int src_offset,
     int src_stride,
-    global unsigned char *dst,
+    global unsigned char *dst_base,
+    int dst_offset,
     int dst_stride,
     int num_bytes,
     int num_iter
 ){
 
     int i,r;
-    int src_offset, dst_offset;
+    global unsigned char *src = &src_base[src_offset];
+    global unsigned char *dst = &dst_base[dst_offset];
+    src_offset = dst_offset = 0;
 
     r = get_global_id(1);
     if (r < get_global_size(1)){
