@@ -17,7 +17,7 @@ extern "C" {
 #endif
 
 #include "vp8_opencl.h"
-#include "vp8/common/blockd.h"
+#include "../blockd.h"
 
     #define DIFF 0x0001
 #define PREDICTOR 0x0002

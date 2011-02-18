@@ -40,6 +40,7 @@ void vp8_swap_yv12_buffer(YV12_BUFFER_CONFIG *new_frame, YV12_BUFFER_CONFIG *las
     temp_size = last_frame->buffer_size;
     last_frame->buffer_size = new_frame->buffer_size;
     new_frame->buffer_size = temp_size;
+
 #if CONFIG_OPENCL
     temp_mem = last_frame->buffer_mem;
     last_frame->buffer_mem = new_frame->buffer_mem;

@@ -18,7 +18,7 @@
 //Also, the only external functions being called here are the subpixel prediction
 //functions. Hopefully this means no worrying about when to copy data back/forth.
 
-#include "vpx_ports/config.h"
+#include "../../../vpx_ports/config.h"
 //#include "../recon.h"
 #include "../subpixel.h"
 //#include "../blockd.h"
@@ -188,7 +188,7 @@ void vp8_build_inter_predictors_mbuv_cl(MACROBLOCKD *x)
         int upre_off = x->pre.u_buffer - pre_base;
         int vpre_off = x->pre.v_buffer - pre_base;
         int pre_stride = x->block[16].pre_stride;
-        
+
         offset = (mv_row >> 3) * pre_stride + (mv_col >> 3);
 
         if ((mv_row | mv_col) & 7)
@@ -227,8 +227,10 @@ void vp8_build_inter_predictors_mbuv_cl(MACROBLOCKD *x)
     }
 }
 
+static int pass=0;
 void vp8_build_inter_predictors_mb_cl(MACROBLOCKD *x)
 {
+    //printf("mb %d start\n", pass);
 
     if (x->mode_info_context->mbmi.ref_frame != INTRA_FRAME &&
         x->mode_info_context->mbmi.mode != SPLITMV)
@@ -238,17 +240,19 @@ void vp8_build_inter_predictors_mb_cl(MACROBLOCKD *x)
         int upred_offset = 256;
         int vpred_offset = 320;
 
-        unsigned char *pre_base = x->pre.buffer_alloc;
-        int ypre_off = x->pre.y_buffer - pre_base;
-        int upre_off = x->pre.u_buffer - pre_base;
-        int vpre_off = x->pre.v_buffer - pre_base;
-
         int mv_row = x->mode_info_context->mbmi.mv.as_mv.row;
         int mv_col = x->mode_info_context->mbmi.mv.as_mv.col;
         int pre_stride = x->block[0].pre_stride;
-        ypre_off += (mv_row >> 3) * pre_stride + (mv_col >> 3);
-        //int ptr_offset = (mv_row >> 3) * pre_stride + (mv_col >> 3);
 
+        unsigned char *pre_base = x->pre.buffer_alloc;
+        int ypre_off = x->pre.y_buffer - pre_base + (mv_row >> 3) * pre_stride + (mv_col >> 3);
+        int upre_off = x->pre.u_buffer - pre_base;
+        int vpre_off = x->pre.v_buffer - pre_base;
+
+        //if (ypre_off < 0){
+        //    printf("ypre_off = %d, upre_off = %d, vpre_off = %d\n", ypre_off, upre_off, vpre_off);
+        //}
+        
         if ((mv_row | mv_col) & 7)
         {
             if (cl_initialized == CL_SUCCESS && x->sixtap_filter == CL_TRUE)
@@ -330,6 +334,9 @@ void vp8_build_inter_predictors_mb_cl(MACROBLOCKD *x)
             }
         }
     }
+
+    //printf("pass %d done\n", pass++);
+
 }
 
 
