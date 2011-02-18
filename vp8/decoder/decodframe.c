@@ -618,7 +618,7 @@ static void init_frame(VP8D_COMP *pbi)
         vpx_memset(xd->segment_feature_data, 0, sizeof(xd->segment_feature_data));
         xd->mb_segement_abs_delta = SEGMENT_DELTADATA;
 
-        /* reset the mode ref deltasa for loop filter */
+        /* reset the mode ref deltas for loop filter */
         vpx_memset(xd->ref_lf_deltas, 0, sizeof(xd->ref_lf_deltas));
         vpx_memset(xd->mode_lf_deltas, 0, sizeof(xd->mode_lf_deltas));
 
@@ -636,12 +636,6 @@ static void init_frame(VP8D_COMP *pbi)
     }
     else
     {
-        if (!pc->use_bilinear_mc_filter)
-            pc->mcomp_filter_type = SIXTAP;
-        else
-            pc->mcomp_filter_type = BILINEAR;
-
-        //xd->subpix_type = pc->mcomp_filter_type;
 
         /* To enable choice of different interpolation filters */
         if (pc->mcomp_filter_type == SIXTAP)
@@ -717,6 +711,7 @@ int vp8_decode_frame(VP8D_COMP *pbi)
         pc->vert_scale = data[6] >> 6;
         data += 7;
 
+        //Allow resolution changes on key frames.
         if (Width != pc->Width  ||  Height != pc->Height)
         {
             int prev_mb_rows = pc->mb_rows;
@@ -911,19 +906,17 @@ int vp8_decode_frame(VP8D_COMP *pbi)
 
     pc->refresh_last_frame = pc->frame_type == KEY_FRAME  ||  vp8_read_bit(bc);
 
-    if (0)
-    {
-        FILE *z = fopen("decodestats.stt", "a");
-        fprintf(z, "%6d F:%d,G:%d,A:%d,L:%d,Q:%d\n",
-                pc->current_video_frame,
-                pc->frame_type,
-                pc->refresh_golden_frame,
-                pc->refresh_alt_ref_frame,
-                pc->refresh_last_frame,
-                pc->base_qindex);
-        fclose(z);
-    }
-
+#if 0
+   FILE *z = fopen("decodestats.stt", "a");
+    fprintf(z, "%6d F:%d,G:%d,A:%d,L:%d,Q:%d\n",
+            pc->current_video_frame,
+            pc->frame_type,
+            pc->refresh_golden_frame,
+            pc->refresh_alt_ref_frame,
+            pc->refresh_last_frame,
+            pc->base_qindex);
+    fclose(z);
+#endif
 
     {
         /* read coef probability tree */
@@ -944,6 +937,7 @@ int vp8_decode_frame(VP8D_COMP *pbi)
                     }
     }
 
+    //Set up the macroblock's previous/destination buffers
     vpx_memcpy(&xd->pre, &pc->yv12_fb[pc->lst_fb_idx], sizeof(YV12_BUFFER_CONFIG));
     vpx_memcpy(&xd->dst, &pc->yv12_fb[pc->new_fb_idx], sizeof(YV12_BUFFER_CONFIG));
 
