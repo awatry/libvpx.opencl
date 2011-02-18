@@ -19,7 +19,8 @@ extern "C"
 #define VP7BORDERINPIXELS       48
 #define VP8BORDERINPIXELS       32
 
-#include "vpx_config.h"
+#include "../vpx_config.h"
+    
 #if CONFIG_OPENCL
 #include "../vp8/common/opencl/vp8_opencl.h"
 #endif
