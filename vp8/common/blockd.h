@@ -14,14 +14,14 @@
 
 void vpx_log(const char *format, ...);
 
-#include "vpx_ports/config.h"
-#include "vpx_scale/yv12config.h"
+#include "../../vpx_ports/config.h"
+#include "../../vpx_scale/yv12config.h"
 #include "mv.h"
 #include "treecoder.h"
 #include "subpixel.h"
-#include "vpx_ports/mem.h"
+#include "../../vpx_ports/mem.h"
 
-#include "vpx_config.h"
+#include "../../vpx_config.h"
 #if CONFIG_OPENCL
 #include "opencl/vp8_opencl.h"
 #endif

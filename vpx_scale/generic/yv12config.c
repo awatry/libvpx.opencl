@@ -29,8 +29,12 @@ vp8_yv12_de_alloc_frame_buffer(YV12_BUFFER_CONFIG *ybf)
             duck_free(ybf->buffer_alloc);
         }
 
-        ybf->buffer_alloc = 0;
-        ybf->buffer_size = 0;
+        ybf->buffer_alloc = NULL;
+        ybf->buffer_size = -1;
+
+        ybf->y_buffer = NULL;
+        ybf->u_buffer = NULL;
+        ybf->v_buffer = NULL;
 
 #if CONFIG_OPENCL
         if (cl_initialized == CL_SUCCESS){

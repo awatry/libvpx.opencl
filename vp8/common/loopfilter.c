@@ -330,7 +330,7 @@ void vp8_loop_filter_frame
     unsigned char *y_ptr, *u_ptr, *v_ptr;
 
 #if CONFIG_OPENCL
-    if ( 0 && cl_initialized == CL_SUCCESS){
+    if ( 0 && cl_initialized == CL_SUCCESS ){
         vp8_loop_filter_frame_cl(cm,mbd,default_filt_lvl);
         return;
     }

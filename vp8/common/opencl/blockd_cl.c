@@ -8,11 +8,98 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#include "vp8/decoder/onyxd_int.h"
-#include "vpx_ports/config.h"
+#include "../../decoder/onyxd_int.h"
+#include "../../../vpx_ports/config.h"
 #include "../../common/idct.h"
-#include "vp8/common/opencl/blockd_cl.h"
-#include "vp8/decoder/opencl/dequantize_cl.h"
+#include "blockd_cl.h"
+#include "../../decoder/opencl/dequantize_cl.h"
+
+
+int vp8_cl_mb_prep(MACROBLOCKD *x, int flags){
+        int err;
+
+    if (cl_initialized != CL_SUCCESS){
+        return cl_initialized;
+    }
+
+    //Copy all blockd.cl_*_mem objects
+    if (flags & DIFF)
+        CL_SET_BUF(x->cl_commands, x->cl_diff_mem, sizeof(cl_short)*400, x->diff,
+            return err
+        );
+
+    if (flags & PREDICTOR)
+        CL_SET_BUF(x->cl_commands, x->cl_predictor_mem, sizeof(cl_uchar)*384, x->predictor,
+            return err
+        );
+
+    if (flags & QCOEFF)
+        CL_SET_BUF(x->cl_commands, x->cl_qcoeff_mem, sizeof(cl_short)*400, x->qcoeff,
+            return err
+        );
+
+    if (flags & DQCOEFF)
+        CL_SET_BUF(x->cl_commands, x->cl_dqcoeff_mem, sizeof(cl_short)*400, x->dqcoeff,
+            return err
+        );
+
+    if (flags & EOBS)
+        CL_SET_BUF(x->cl_commands, x->cl_eobs_mem, sizeof(cl_char)*25, x->eobs,
+            return err
+        );
+
+    return CL_SUCCESS;
+}
+
+int vp8_cl_mb_finish(MACROBLOCKD *x, int flags){
+    int err;
+
+    if (cl_initialized != CL_SUCCESS){
+        return cl_initialized;
+    }
+
+    if (flags & DIFF){
+        err = clEnqueueReadBuffer(x->cl_commands, x->cl_diff_mem, CL_FALSE, 0, sizeof(cl_short)*400, x->diff, 0, NULL, NULL);
+        CL_CHECK_SUCCESS( x->cl_commands, err != CL_SUCCESS,
+        "Error: Failed to read from GPU!\n",
+            , err
+        );
+    }
+
+    if (flags & PREDICTOR){
+    err = clEnqueueReadBuffer(x->cl_commands, x->cl_predictor_mem, CL_FALSE, 0, sizeof(cl_uchar)*384, x->predictor, 0, NULL, NULL);
+    CL_CHECK_SUCCESS( x->cl_commands, err != CL_SUCCESS,
+        "Error: Failed to read from GPU!\n",
+            , err
+    );
+    }
+
+    if (flags & QCOEFF){
+    err = clEnqueueReadBuffer(x->cl_commands, x->cl_qcoeff_mem, CL_FALSE, 0, sizeof(cl_short)*400, x->qcoeff, 0, NULL, NULL);
+    CL_CHECK_SUCCESS( x->cl_commands, err != CL_SUCCESS,
+        "Error: Failed to read from GPU!\n",
+            , err
+    );
+    }
+
+    if (flags & DQCOEFF){
+    err = clEnqueueReadBuffer(x->cl_commands, x->cl_dqcoeff_mem, CL_FALSE, 0, sizeof(cl_short)*400, x->dqcoeff, 0, NULL, NULL);
+    CL_CHECK_SUCCESS( x->cl_commands, err != CL_SUCCESS,
+        "Error: Failed to read from GPU!\n",
+            , err
+    );
+    }
+
+    if (flags & EOBS){
+    err = clEnqueueReadBuffer(x->cl_commands, x->cl_eobs_mem, CL_FALSE, 0, sizeof(cl_char)*25, x->eobs, 0, NULL, NULL);
+    CL_CHECK_SUCCESS( x->cl_commands, err != CL_SUCCESS,
+        "Error: Failed to read from GPU!\n",
+            , err
+    );
+    }
+
+    return CL_SUCCESS;
+}
 
 int vp8_cl_block_prep(BLOCKD *b, int flags){
     int err;
