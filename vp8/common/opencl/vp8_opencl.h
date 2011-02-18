@@ -27,6 +27,10 @@ extern "C" {
 #include "dynamic_cl.h"
 #endif
 
+#define ENABLE_CL_IDCT_DEQUANT 0
+#define ENABLE_CL_SUBPIXEL 1
+#define ENABLE_CL_LOOPFILTER 0
+
 extern char *cl_read_file(const char* file_name);
 extern int cl_common_init();
 extern void cl_destroy(cl_command_queue cq, int new_status);

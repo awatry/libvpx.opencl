@@ -105,7 +105,7 @@ void mb_init_dequantizer(VP8D_COMP *pbi, MACROBLOCKD *xd)
 
     xd->block[24].dequant = pc->Y2dequant[QIndex];
 
-#if CONFIG_OPENCL
+#if CONFIG_OPENCL && ENABLE_CL_IDCT_DEQUANT
     //Set up per-block dequant CL memory. Eventually, might be able to set up
     //one large buffer containing the entire large dequant buffer.
     if (cl_initialized == CL_SUCCESS){
@@ -255,7 +255,7 @@ void vp8_decode_macroblock(VP8D_COMP *pbi, MACROBLOCKD *xd)
         vp8_build_inter_predictors_mb(xd);
     }
 
-#if CONFIG_OPENCL
+#if CONFIG_OPENCL && !ENABLE_CL_IDCT_DEQUANT
     //enable this if dequant/IDCT is being done on the CPU
     CL_FINISH(xd->cl_commands);
 #endif
@@ -267,7 +267,7 @@ void vp8_decode_macroblock(VP8D_COMP *pbi, MACROBLOCKD *xd)
         short *qcoeff = b->qcoeff_base + b->qcoeff_offset;
         vp8_second_order_fn_t second_order;
 
-#if CONFIG_OPENCL && 0
+#if CONFIG_OPENCL && ENABLE_CL_IDCT_DEQUANT
         if (cl_initialized == CL_SUCCESS){
             vp8_cl_block_prep(b, DEQUANT|QCOEFF);
             vp8_dequantize_b_cl(b);
@@ -297,7 +297,7 @@ void vp8_decode_macroblock(VP8D_COMP *pbi, MACROBLOCKD *xd)
             ((int *)qcoeff)[0] = 0;
         }
 
-#if CONFIG_OPENCL && 0
+#if CONFIG_OPENCL && ENABLE_CL_IDCT_DEQUANT
         if (cl_initialized == CL_SUCCESS){
             vp8_cl_block_prep(b, DQCOEFF|DIFF|BLOCK_COPY_ALL);
             if (xd->eobs[24] > 1)
@@ -328,12 +328,12 @@ void vp8_decode_macroblock(VP8D_COMP *pbi, MACROBLOCKD *xd)
         {
             BLOCKD *b = &xd->block[i];
             short *qcoeff = b->qcoeff_base + b->qcoeff_offset;
-#if CONFIG_OPENCL && 0
+#if CONFIG_OPENCL && ENABLE_CL_IDCT_DEQUANT
             CL_FINISH(b->cl_commands);
 #endif
             vp8_predict_intra4x4(b, b->bmi.mode, b->predictor_base + b->predictor_offset);
 
-#if CONFIG_OPENCL && 0
+#if CONFIG_OPENCL && ENABLE_CL_IDCT_DEQUANT
             if (cl_initialized == CL_SUCCESS){
                 size_t dst_size = (4*b->dst_stride + b->dst + 4);
                 
@@ -373,7 +373,7 @@ void vp8_decode_macroblock(VP8D_COMP *pbi, MACROBLOCKD *xd)
     }
     else
     {
-#if CONFIG_OPENCL && 0
+#if CONFIG_OPENCL && ENABLE_CL_IDCT_DEQUANT
         if (cl_initialized == CL_SUCCESS){
             vp8_dequant_idct_add_y_block_cl(pbi, xd);
         }
@@ -387,7 +387,7 @@ void vp8_decode_macroblock(VP8D_COMP *pbi, MACROBLOCKD *xd)
         }
     }
 
-#if CONFIG_OPENCL && 0
+#if CONFIG_OPENCL && ENABLE_CL_IDCT_DEQUANT
     if (cl_initialized == CL_SUCCESS){
         vp8_dequant_idct_add_uv_block_cl(pbi, xd,  DEQUANT_INVOKE (&pbi->dequant, idct_add_uv_block));
         CL_FINISH(xd->cl_commands);
@@ -1005,11 +1005,14 @@ int vp8_decode_frame(VP8D_COMP *pbi)
         //Wait for stuff to finish, just in case
         clFinish(pbi->mb.cl_commands);
 
-        //Free CL buffers
-        if (pbi->mb.cl_diff_mem != NULL)
-            clReleaseMemObject(pbi->mb.cl_diff_mem);
+        //Free Predictor CL buffer
         if (pbi->mb.cl_predictor_mem != NULL)
             clReleaseMemObject(pbi->mb.cl_predictor_mem);
+
+#if ENABLE_CL_IDCT_DEQUANT
+        //Free other CL Block/MBlock buffers
+        if (pbi->mb.cl_diff_mem != NULL)
+            clReleaseMemObject(pbi->mb.cl_diff_mem);
         if (pbi->mb.cl_qcoeff_mem != NULL)
             clReleaseMemObject(pbi->mb.cl_qcoeff_mem);
         if (pbi->mb.cl_dqcoeff_mem != NULL)
@@ -1017,15 +1020,11 @@ int vp8_decode_frame(VP8D_COMP *pbi)
         if (pbi->mb.cl_eobs_mem != NULL)
             clReleaseMemObject(pbi->mb.cl_eobs_mem);
 
-        //Release the command queue
-        //if (pbi->mb.cl_commands != NULL)
-        //    clReleaseCommandQueue(pbi->mb.cl_commands);
-        //pbi->mb.cl_commands = NULL;
-
         for (i = 0; i < 25; i++){
             clReleaseMemObject(pbi->mb.block[i].cl_dequant_mem);
             pbi->mb.block[i].cl_dequant_mem = NULL;
         }
+#endif
     }
 #endif
 

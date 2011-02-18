@@ -333,8 +333,8 @@ void vp8_build_inter_predictors_mby(MACROBLOCKD *x)
 void vp8_build_inter_predictors_mb(MACROBLOCKD *x)
 {
 
-#if CONFIG_OPENCL
-    if (cl_initialized == CL_SUCCESS){
+#if CONFIG_OPENCL && ENABLE_CL_SUBPIXEL
+    if ( cl_initialized == CL_SUCCESS){
         vp8_build_inter_predictors_mb_cl(x);
         return;
     }
@@ -561,7 +561,7 @@ void vp8_build_inter_predictors_mb_s(MACROBLOCKD *x)
     unsigned char *pred_ptr = x->predictor;
     unsigned char *dst_ptr = x->dst.y_buffer;
 
-#if CONFIG_OPENCL
+#if CONFIG_OPENCL && ENABLE_CL_SUBPIXEL
     if (cl_initialized == CL_SUCCESS){
         vp8_build_inter_predictors_mb_s_cl(x);
         return;
