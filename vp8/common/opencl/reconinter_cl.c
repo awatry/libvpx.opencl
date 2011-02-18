@@ -252,7 +252,8 @@ void vp8_build_inter_predictors_mbuv_cl(MACROBLOCKD *x)
 
 void vp8_build_inter_predictors_mb_cl(MACROBLOCKD *x)
 {
-    vp8_cl_mb_prep(x, PREDICTOR);
+    //Note that this is entirely rebuilt. No need to initialize it.
+    //vp8_cl_mb_prep(x, PREDICTOR);
 
     if (x->mode_info_context->mbmi.ref_frame != INTRA_FRAME &&
         x->mode_info_context->mbmi.mode != SPLITMV)
