@@ -193,7 +193,7 @@ void vp8_sixtap_run_cl(
      */
     if (src_mem == NULL){
         CL_CREATE_BUF( cq, src_mem,, sizeof (unsigned char) * src_len, src_base-2, );
-        src_offset += 2;
+        src_offset = 2;
         free_src = 1;
     }
 
@@ -249,16 +249,14 @@ void vp8_sixtap_predict4x4_cl
 
     int output_width=4, output_height=4, FData_height=9, FData_width=4;
     int int_offset = 8;
-    int tmp_offset = 0;
     unsigned char *src_ptr = src_base + src_offset;
-    //unsigned char *dst_ptr = dst_base + dst_offset;
 
     //Size of output to transfer
     int dst_len = DST_LEN(dst_pitch,output_height,output_width);
     int src_len = SIXTAP_SRC_LEN(FData_width,FData_height,src_pixels_per_line);
 
     vp8_sixtap_run_cl(cq, src_mem, dst_mem,
-            (src_ptr-2*src_pixels_per_line),tmp_offset, src_len,
+            (src_ptr-2*src_pixels_per_line),src_offset, src_len,
             src_pixels_per_line, xoffset,yoffset,dst_base,dst_offset,
             dst_pitch,dst_len,FData_height,FData_width,output_height,
             output_width,int_offset
@@ -283,7 +281,6 @@ void vp8_sixtap_predict8x8_cl
 ) {
     int output_width=8, output_height=8, FData_height=13, FData_width=8;
     int int_offset = 16;
-    int tmp_offset = 0;
     unsigned char *src_ptr = src_base + src_offset;
 
     //Size of output to transfer
@@ -291,7 +288,7 @@ void vp8_sixtap_predict8x8_cl
     int src_len = SIXTAP_SRC_LEN(FData_width,FData_height,src_pixels_per_line);
 
     vp8_sixtap_run_cl(cq, src_mem, dst_mem,
-            (src_ptr-2*src_pixels_per_line),tmp_offset, src_len,
+            (src_ptr-2*src_pixels_per_line),src_offset, src_len,
             src_pixels_per_line, xoffset,yoffset,dst_base,dst_offset,
             dst_pitch,dst_len,FData_height,FData_width,output_height,
             output_width,int_offset
@@ -317,7 +314,6 @@ void vp8_sixtap_predict8x4_cl
 
     int output_width=8, output_height=4, FData_height=9, FData_width=8;
     int int_offset = 16;
-    int tmp_offset = 0;
     unsigned char *src_ptr = src_base + src_offset;
 
     //Size of output to transfer
@@ -325,7 +321,7 @@ void vp8_sixtap_predict8x4_cl
     int src_len = SIXTAP_SRC_LEN(FData_width,FData_height,src_pixels_per_line);
 
     vp8_sixtap_run_cl(cq, src_mem, dst_mem,
-            (src_ptr-2*src_pixels_per_line),tmp_offset, src_len,
+            (src_ptr-2*src_pixels_per_line),src_offset, src_len,
             src_pixels_per_line, xoffset,yoffset,dst_base,dst_offset,
             dst_pitch,dst_len,FData_height,FData_width,output_height,
             output_width,int_offset
@@ -351,7 +347,6 @@ void vp8_sixtap_predict16x16_cl
 
     int output_width=16, output_height=16, FData_height=21, FData_width=16;
     int int_offset = 32;
-    int tmp_offset = 0;
     unsigned char *src_ptr = src_base + src_offset;
 
     //Size of output to transfer
@@ -359,7 +354,7 @@ void vp8_sixtap_predict16x16_cl
     int src_len = SIXTAP_SRC_LEN(FData_width,FData_height,src_pixels_per_line);
 
     vp8_sixtap_run_cl(cq, src_mem, dst_mem,
-            (src_ptr-2*src_pixels_per_line),tmp_offset, src_len,
+            (src_ptr-2*src_pixels_per_line),src_offset, src_len,
             src_pixels_per_line, xoffset,yoffset,dst_base,dst_offset,
             dst_pitch,dst_len,FData_height,FData_width,output_height,
             output_width,int_offset
