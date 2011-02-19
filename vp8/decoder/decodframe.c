@@ -1015,7 +1015,7 @@ int vp8_decode_frame(VP8D_COMP *pbi)
         int i;
 
         //Wait for stuff to finish, just in case
-        CL_FINISH(pbi->mb.cl_commands);
+        clFinish(pbi->mb.cl_commands);
 
         //Free Predictor CL buffer
         if (pbi->mb.cl_predictor_mem != NULL)
