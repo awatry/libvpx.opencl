@@ -374,6 +374,7 @@ void vp8_sixtap_predict16x16_cl
 void vp8_filter_block2d_bil_first_pass_cl(
     cl_command_queue cq,
     unsigned char *src_base,
+    cl_mem src_mem,
     int src_offset,
     cl_mem int_mem,
     int src_pixels_per_line,
@@ -384,15 +385,18 @@ void vp8_filter_block2d_bil_first_pass_cl(
 {
     int err;
     size_t global = width*height;
+    int free_src = 0;
 
-    cl_mem src_mem = NULL;
-    int src_len = BIL_SRC_LEN(width,height,src_pixels_per_line);
+    if (src_mem == NULL){
+        int src_len = BIL_SRC_LEN(width,height,src_pixels_per_line);
 
-    /*Make space for kernel input/output data. Initialize the buffer as well if needed. */
-    CL_CREATE_BUF(cq, src_mem, CL_MEM_READ_ONLY|CL_MEM_COPY_HOST_PTR,
-        sizeof (unsigned char) * src_len, src_base+src_offset,
-    );
-    src_offset = 0; //Set to zero as long as src_mem starts at base+offset
+        /*Make space for kernel input/output data. Initialize the buffer as well if needed. */
+        CL_CREATE_BUF(cq, src_mem, CL_MEM_READ_ONLY|CL_MEM_COPY_HOST_PTR,
+            sizeof (unsigned char) * src_len, src_base+src_offset,
+        );
+        src_offset = 0; //Set to zero as long as src_mem starts at base+offset
+        free_src = 1;
+    }
 
     err =  clSetKernelArg(cl_data.vp8_filter_block2d_bil_first_pass_kernel, 0, sizeof (cl_mem), &src_mem);
     err |= clSetKernelArg(cl_data.vp8_filter_block2d_bil_first_pass_kernel, 1, sizeof (int), &src_offset);
@@ -413,13 +417,15 @@ void vp8_filter_block2d_bil_first_pass_cl(
         printf("err = %d\n",err);,
     );
 
-    clReleaseMemObject(src_mem);
+    if (free_src == 1)
+        clReleaseMemObject(src_mem);
 }
 
 
 void vp8_filter_block2d_bil_second_pass_cl(
     cl_command_queue cq,
     cl_mem int_mem,
+    unsigned char *dst_base,
     cl_mem dst_mem,
     int dst_offset,
     int dst_pitch,
@@ -430,6 +436,18 @@ void vp8_filter_block2d_bil_second_pass_cl(
 {
     int err;
     size_t global = width*height;
+
+
+    //Size of output data
+    int dst_len = DST_LEN(dst_pitch,height,width);
+
+    int free_dst = 0;
+    if (dst_mem == NULL){
+        CL_CREATE_BUF(cq, dst_mem, CL_MEM_WRITE_ONLY|CL_MEM_COPY_HOST_PTR,
+            sizeof (unsigned char) * dst_len + dst_offset, dst_base,
+        );
+        free_dst = 1;
+    }
 
     err =  clSetKernelArg(cl_data.vp8_filter_block2d_bil_second_pass_kernel, 0, sizeof (cl_mem), &int_mem);
     err |= clSetKernelArg(cl_data.vp8_filter_block2d_bil_second_pass_kernel, 1, sizeof (cl_mem), &dst_mem);
@@ -449,6 +467,16 @@ void vp8_filter_block2d_bil_second_pass_cl(
         "Error: Failed to execute kernel!\n",
         printf("err = %d\n",err);,
     );
+
+    if (free_dst == 1){
+        /* Read back the result data from the device */
+        err = clEnqueueReadBuffer(cq, dst_mem, CL_FALSE, 0, sizeof (unsigned char) * dst_len + dst_offset, dst_base, 0, NULL, NULL);
+        CL_CHECK_SUCCESS( cq, err != CL_SUCCESS,
+            "Error: Failed to read output array!\n",
+            ,
+        );
+        clReleaseMemObject(dst_mem);
+    }
 
 }
 
@@ -471,20 +499,9 @@ void vp8_bilinear_predict4x4_cl
 
     const int height = 4, width = 4;
 
-    //Size of output data
-    int dst_len = DST_LEN(dst_pitch,height,width);
-
 #if !STATIC_MEM
     cl_mem int_mem = NULL;
 #endif
-    
-    int free_dst = 0;
-    if (dst_mem == NULL){
-        CL_CREATE_BUF(cq, dst_mem, CL_MEM_WRITE_ONLY|CL_MEM_COPY_HOST_PTR,
-            sizeof (unsigned char) * dst_len + dst_offset, dst_base,
-        );
-        free_dst = 1;
-    }
 
 #if !STATIC_MEM
     CL_CREATE_BUF(cq, int_mem,CL_MEM_READ_WRITE,
@@ -492,24 +509,15 @@ void vp8_bilinear_predict4x4_cl
 #endif
     
     /* First filter 1-D horizontally... */
-    vp8_filter_block2d_bil_first_pass_cl(cq, src_base, src_offset, int_mem, src_pixels_per_line, height + 1, width, xoffset);
+    vp8_filter_block2d_bil_first_pass_cl(cq, src_base, src_mem, src_offset, int_mem, src_pixels_per_line, height + 1, width, xoffset);
 
     /* then 1-D vertically... */
-    vp8_filter_block2d_bil_second_pass_cl(cq, int_mem, dst_mem, dst_offset, dst_pitch, height, width, yoffset);
+    vp8_filter_block2d_bil_second_pass_cl(cq, int_mem, dst_base, dst_mem, dst_offset, dst_pitch, height, width, yoffset);
 
 #if !STATIC_MEM
     clReleaseMemObject(int_mem);
 #endif
 
-    if (free_dst){
-        /* Read back the result data from the device */
-        err = clEnqueueReadBuffer(cq, dst_mem, CL_FALSE, 0, sizeof (unsigned char) * dst_len + dst_offset, dst_base, 0, NULL, NULL);
-        CL_CHECK_SUCCESS( cq, err != CL_SUCCESS,
-            "Error: Failed to read output array!\n",
-            ,
-        );
-        clReleaseMemObject(dst_mem);
-    }
 }
 
 void vp8_bilinear_predict8x8_cl
@@ -531,45 +539,22 @@ void vp8_bilinear_predict8x8_cl
 
     const int height = 8, width = 8;
 
-    //Size of output data
-    int dst_len = DST_LEN(dst_pitch,height,width);
-
 #if !STATIC_MEM
     cl_mem int_mem = NULL;
-#endif
-
-    int free_dst = 0;
-    if (dst_mem == NULL){
-        CL_CREATE_BUF(cq, dst_mem, CL_MEM_WRITE_ONLY|CL_MEM_COPY_HOST_PTR,
-            sizeof (unsigned char) * dst_len + dst_offset, dst_base,
-        );
-        free_dst = 1;
-    }
-
-#if !STATIC_MEM
     CL_CREATE_BUF(cq, int_mem,CL_MEM_READ_WRITE,
         sizeof(cl_int)*17*16, NULL,);
 #endif
 
     /* First filter 1-D horizontally... */
-    vp8_filter_block2d_bil_first_pass_cl(cq, src_base, src_offset, int_mem, src_pixels_per_line, height + 1, width, xoffset);
+    vp8_filter_block2d_bil_first_pass_cl(cq, src_base, src_mem, src_offset, int_mem, src_pixels_per_line, height + 1, width, xoffset);
 
     /* then 1-D vertically... */
-    vp8_filter_block2d_bil_second_pass_cl(cq, int_mem, dst_mem, dst_offset, dst_pitch, height, width, yoffset);
+    vp8_filter_block2d_bil_second_pass_cl(cq, int_mem, dst_base, dst_mem, dst_offset, dst_pitch, height, width, yoffset);
 
 #if !STATIC_MEM
     clReleaseMemObject(int_mem);
 #endif
     
-    if (free_dst){
-        /* Read back the result data from the device */
-        err = clEnqueueReadBuffer(cq, dst_mem, CL_FALSE, 0, sizeof (unsigned char) * dst_len + dst_offset, dst_base, 0, NULL, NULL);
-        CL_CHECK_SUCCESS( cq, err != CL_SUCCESS,
-            "Error: Failed to read output array!\n",
-            ,
-        );
-        clReleaseMemObject(dst_mem);
-    }
 }
 
 void vp8_bilinear_predict8x4_cl
@@ -591,45 +576,22 @@ void vp8_bilinear_predict8x4_cl
 
     const int height = 4, width = 8;
 
-    //Size of output data
-    int dst_len = DST_LEN(dst_pitch,height,width);
-
 #if !STATIC_MEM
     cl_mem int_mem = NULL;
-#endif
-
-    int free_dst = 0;
-    if (dst_mem == NULL){
-        CL_CREATE_BUF(cq, dst_mem, CL_MEM_WRITE_ONLY|CL_MEM_COPY_HOST_PTR,
-            sizeof (unsigned char) * dst_len + dst_offset, dst_base,
-        );
-        free_dst = 1;
-    }
-
-#if !STATIC_MEM
     CL_CREATE_BUF(cq, int_mem,CL_MEM_READ_WRITE,
         sizeof(cl_int)*17*16, NULL,);
 #endif
 
     /* First filter 1-D horizontally... */
-    vp8_filter_block2d_bil_first_pass_cl(cq, src_base, src_offset, int_mem, src_pixels_per_line, height + 1, width, xoffset);
+    vp8_filter_block2d_bil_first_pass_cl(cq, src_base, src_mem, src_offset, int_mem, src_pixels_per_line, height + 1, width, xoffset);
 
     /* then 1-D vertically... */
-    vp8_filter_block2d_bil_second_pass_cl(cq, int_mem, dst_mem, dst_offset, dst_pitch, height, width, yoffset);
+    vp8_filter_block2d_bil_second_pass_cl(cq, int_mem, dst_base, dst_mem, dst_offset, dst_pitch, height, width, yoffset);
 
 #if !STATIC_MEM
     clReleaseMemObject(int_mem);
 #endif
-    
-    if (free_dst){
-        /* Read back the result data from the device */
-        err = clEnqueueReadBuffer(cq, dst_mem, CL_FALSE, 0, sizeof (unsigned char) * dst_len + dst_offset, dst_base, 0, NULL, NULL);
-        CL_CHECK_SUCCESS( cq, err != CL_SUCCESS,
-            "Error: Failed to read output array!\n",
-            ,
-        );
-        clReleaseMemObject(dst_mem);
-    }
+
 }
 
 void vp8_bilinear_predict16x16_cl
@@ -651,43 +613,20 @@ void vp8_bilinear_predict16x16_cl
 
     const int height = 16, width = 16;
 
-    //Size of output data
-    int dst_len = DST_LEN(dst_pitch,height,width);
-
 #if !STATIC_MEM
     cl_mem int_mem = NULL;
-#endif
-
-    int free_dst = 0;
-    if (dst_mem == NULL){
-        CL_CREATE_BUF(cq, dst_mem, CL_MEM_WRITE_ONLY|CL_MEM_COPY_HOST_PTR,
-            sizeof (unsigned char) * dst_len + dst_offset, dst_base,
-        );
-        free_dst = 1;
-    }
-
-#if !STATIC_MEM
     CL_CREATE_BUF(cq, int_mem,CL_MEM_READ_WRITE,
         sizeof(cl_int)*17*16, NULL,);
 #endif
 
     /* First filter 1-D horizontally... */
-    vp8_filter_block2d_bil_first_pass_cl(cq, src_base, src_offset, int_mem, src_pixels_per_line, height + 1, width, xoffset);
+    vp8_filter_block2d_bil_first_pass_cl(cq, src_base, src_mem, src_offset, int_mem, src_pixels_per_line, height + 1, width, xoffset);
 
     /* then 1-D vertically... */
-    vp8_filter_block2d_bil_second_pass_cl(cq, int_mem, dst_mem, dst_offset, dst_pitch, height, width, yoffset);
+    vp8_filter_block2d_bil_second_pass_cl(cq, int_mem, dst_base, dst_mem, dst_offset, dst_pitch, height, width, yoffset);
 
 #if !STATIC_MEM
     clReleaseMemObject(int_mem);
 #endif
 
-    if (free_dst){
-        /* Read back the result data from the device */
-        err = clEnqueueReadBuffer(cq, dst_mem, CL_FALSE, 0, sizeof (unsigned char) * dst_len + dst_offset, dst_base, 0, NULL, NULL);
-        CL_CHECK_SUCCESS( cq, err != CL_SUCCESS,
-            "Error: Failed to read output array!\n",
-            ,
-        );
-        clReleaseMemObject(dst_mem);
-    }
 }
