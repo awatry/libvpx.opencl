@@ -221,7 +221,7 @@ void vp8_build_inter_predictors_mbuv(MACROBLOCKD *x)
 #if CONFIG_OPENCL
     if ( 0 && cl_initialized == CL_SUCCESS ){
         vp8_build_inter_predictors_mbuv_cl(x);
-        clFinish(x->cl_commands);
+        CL_FINISH(x->cl_commands);
         return;
     }
 #endif

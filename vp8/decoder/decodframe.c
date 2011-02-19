@@ -453,6 +453,13 @@ void vp8_decode_mb_row(VP8D_COMP *pbi,
     xd->mb_to_top_edge = -((mb_row * 16)) << 3;
     xd->mb_to_bottom_edge = ((pc->mb_rows - 1 - mb_row) * 16) << 3;
 
+
+    xd->dst.buffer_alloc = pc->yv12_fb[dst_fb_idx].buffer_alloc;
+    xd->dst.buffer_size = pc->yv12_fb[dst_fb_idx].buffer_size;
+#if CONFIG_OPENCL
+    xd->dst.buffer_mem = pc->yv12_fb[dst_fb_idx].buffer_mem;
+#endif
+
     for (mb_col = 0; mb_col < pc->mb_cols; mb_col++)
     {
 
@@ -488,6 +495,11 @@ void vp8_decode_mb_row(VP8D_COMP *pbi,
         xd->pre.y_buffer = pc->yv12_fb[ref_fb_idx].y_buffer + recon_yoffset;
         xd->pre.u_buffer = pc->yv12_fb[ref_fb_idx].u_buffer + recon_uvoffset;
         xd->pre.v_buffer = pc->yv12_fb[ref_fb_idx].v_buffer + recon_uvoffset;
+        xd->pre.buffer_alloc = pc->yv12_fb[ref_fb_idx].buffer_alloc;
+        xd->pre.buffer_size = pc->yv12_fb[ref_fb_idx].buffer_size;
+#if CONFIG_OPENCL
+        xd->pre.buffer_mem = pc->yv12_fb[ref_fb_idx].buffer_mem;
+#endif
 
         vp8_build_uvmvs(xd, pc->full_pixel);
 
@@ -980,7 +992,7 @@ int vp8_decode_frame(VP8D_COMP *pbi)
         int ibc = 0;
         int num_part = 1 << pc->multi_token_partition;
 
-        /* Decode the individual macro block */
+        /* Decode the individual macro blocks */
         for (mb_row = 0; mb_row < pc->mb_rows; mb_row++)
         {
 
@@ -1003,7 +1015,7 @@ int vp8_decode_frame(VP8D_COMP *pbi)
         int i;
 
         //Wait for stuff to finish, just in case
-        clFinish(pbi->mb.cl_commands);
+        CL_FINISH(pbi->mb.cl_commands);
 
         //Free Predictor CL buffer
         if (pbi->mb.cl_predictor_mem != NULL)
