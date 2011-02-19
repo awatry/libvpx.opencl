@@ -234,7 +234,7 @@ void vp8_memset_short(
     global short *mem,
     int offset,
     short newval,
-    size_t size
+    unsigned int size
 )
 {
     int tid = get_global_id(0);

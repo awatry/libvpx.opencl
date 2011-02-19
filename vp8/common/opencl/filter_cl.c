@@ -82,7 +82,7 @@ int cl_init_filter() {
     CL_CREATE_KERNEL(cl_data,filter_program,vp8_memcpy_kernel,"vp8_memcpy_kernel");
 
 #if STATIC_MEM
-    CL_CREATE_BUF(NULL, int_mem, NULL, sizeof(cl_int)*21*13, NULL,);
+    CL_CREATE_BUF(NULL, int_mem, NULL, sizeof(cl_int)*21*16, NULL,);
 #endif
 
     return CL_SUCCESS;
@@ -203,9 +203,9 @@ void vp8_sixtap_run_cl(
     }
 
 #if !STATIC_MEM
-    CL_CREATE_BUF( cq, int_mem,, sizeof(cl_int)*13*21, NULL, );
+    CL_CREATE_BUF( cq, int_mem,, sizeof(cl_int)*FData_height*FData_width, NULL, );
 #endif
-    
+
     vp8_filter_block2d_first_pass_cl(
         cq, src_mem, src_offset, int_mem, src_pixels_per_line,
         FData_height, FData_width, xoffset
