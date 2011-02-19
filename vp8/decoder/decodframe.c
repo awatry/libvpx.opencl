@@ -953,13 +953,6 @@ int vp8_decode_frame(VP8D_COMP *pbi)
     vpx_memcpy(&xd->pre, &pc->yv12_fb[pc->lst_fb_idx], sizeof(YV12_BUFFER_CONFIG));
     vpx_memcpy(&xd->dst, &pc->yv12_fb[pc->new_fb_idx], sizeof(YV12_BUFFER_CONFIG));
 
-#if CONFIG_OPENCL
-    //Copy buffer_alloc to buffer_mem so YV12_BUFFER_CONFIG can be used as
-    //a reference frame (e.g. YV12..buffer_mem contains same as buffer_alloc).
-    if (cl_initialized == CL_SUCCESS)
-        vp8_cl_mb_prep(xd, PRE_BUF);
-#endif
-
     /* set up frame new frame for intra coded blocks */
     if (!(pbi->b_multithreaded_rd) || pc->multi_token_partition == ONE_PARTITION || !(pc->filter_level))
         vp8_setup_intra_recon(&pc->yv12_fb[pc->new_fb_idx]);

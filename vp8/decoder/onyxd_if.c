@@ -36,6 +36,7 @@
 
 #include "vpx_config.h"
 #if CONFIG_OPENCL
+#include "vp8/common/opencl/blockd_cl.h"
 #include "vp8/common/opencl/vp8_opencl.h"
 #endif
 
@@ -504,6 +505,10 @@ BUF_DONE:
 
 #if CONFIG_OPENCL
     if (cl_initialized == CL_SUCCESS){
+        //Copy buffer_alloc to buffer_mem so YV12_BUFFER_CONFIG can be used as
+        //a reference frame (e.g. YV12..buffer_mem contains same as buffer_alloc).
+        vp8_cl_mb_prep(&pbi->mb, DST_BUF);
+
         if (pbi->mb.cl_commands != NULL)
             clReleaseCommandQueue(pbi->mb.cl_commands);
         pbi->mb.cl_commands = NULL;
