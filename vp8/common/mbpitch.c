@@ -75,6 +75,7 @@ void vp8_setup_macroblock(MACROBLOCKD *x, BLOCKSET bs)
 
         u_off = x->dst.u_buffer - x->dst.buffer_alloc;
         v_off = x->dst.v_buffer - x->dst.buffer_alloc;
+
     }
     else
     {
@@ -90,7 +91,6 @@ void vp8_setup_macroblock(MACROBLOCKD *x, BLOCKSET bs)
         //u_off = x->pre.u_buffer - x->pre.buffer_alloc;
         //v = buf_base;
         //v_off = x->pre.v_buffer - x->pre.buffer_alloc;
-
     }
 
     for (block = 0; block < 16; block++) /* y blocks */
@@ -188,4 +188,14 @@ void vp8_build_block_doffsets(MACROBLOCKD *x)
     /* handle the destination pitch features */
     vp8_setup_macroblock(x, DEST);
     vp8_setup_macroblock(x, PRED);
+
+#if CONFIG_OPENCL
+    if (cl_initialized == CL_SUCCESS){
+        int i;
+        for (i = 0; i < 25; i++){
+            x->block[i].pre_mem = x->pre.buffer_mem;
+            x->block[i].dst_mem = x->dst.buffer_mem;
+        }
+    }
+#endif
 }

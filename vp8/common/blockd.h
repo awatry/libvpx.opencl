@@ -222,6 +222,10 @@ typedef struct
     cl_mem cl_dequant_mem; //Block-specific, not shared
 
     cl_bool sixtap_filter; //Subpixel Prediction type (true=sixtap, false=bilinear)
+
+    cl_mem pre_mem;
+    cl_mem dst_mem;
+
 #endif
 
     /* 16 Y blocks, 4 U blocks, 4 V blocks each with 16 entries */
