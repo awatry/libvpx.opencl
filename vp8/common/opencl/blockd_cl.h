@@ -27,6 +27,7 @@ extern "C" {
 #define DEQUANT 0x0020
 #define PRE_BUF 0x0040
 #define DST_BUF 0x0080
+    
 #define BLOCK_COPY_ALL 0xffff
 
 /*

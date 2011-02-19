@@ -48,6 +48,19 @@ int vp8_cl_mb_prep(MACROBLOCKD *x, int flags){
             return err
         );
 
+    if (flags & PRE_BUF){
+        CL_SET_BUF(x->cl_commands, x->pre.buffer_mem, x->pre.buffer_size, x->pre.buffer_alloc,
+            return err
+        );
+    }
+
+    if (flags & DST_BUF){
+        CL_SET_BUF(x->cl_commands, x->dst.buffer_mem, x->dst.buffer_size, x->dst.buffer_alloc,
+            return err
+        );
+    }
+
+
     return CL_SUCCESS;
 }
 
@@ -91,12 +104,31 @@ int vp8_cl_mb_finish(MACROBLOCKD *x, int flags){
     }
 
     if (flags & EOBS){
-    err = clEnqueueReadBuffer(x->cl_commands, x->cl_eobs_mem, CL_FALSE, 0, sizeof(cl_char)*25, x->eobs, 0, NULL, NULL);
-    CL_CHECK_SUCCESS( x->cl_commands, err != CL_SUCCESS,
-        "Error: Failed to read from GPU!\n",
+        err = clEnqueueReadBuffer(x->cl_commands, x->cl_eobs_mem, CL_FALSE, 0, sizeof(cl_char)*25, x->eobs, 0, NULL, NULL);
+        CL_CHECK_SUCCESS( x->cl_commands, err != CL_SUCCESS,
+          "Error: Failed to read from GPU!\n",
             , err
-    );
+        );
     }
+
+    if (flags & PRE_BUF){
+        err = clEnqueueReadBuffer(x->cl_commands, x->pre.buffer_mem, CL_FALSE, 
+                0, x->pre.buffer_size, x->pre.buffer_alloc, 0, NULL, NULL);
+        CL_CHECK_SUCCESS( x->cl_commands, err != CL_SUCCESS,
+          "Error: Failed to read from GPU!\n",
+            , err
+        );
+    }
+
+    if (flags & DST_BUF){
+        err = clEnqueueReadBuffer(x->cl_commands, x->dst.buffer_mem, CL_FALSE,
+                0, x->dst.buffer_size, x->dst.buffer_alloc, 0, NULL, NULL);
+        CL_CHECK_SUCCESS( x->cl_commands, err != CL_SUCCESS,
+          "Error: Failed to read from GPU!\n",
+            , err
+        );
+    }
+
 
     return CL_SUCCESS;
 }
