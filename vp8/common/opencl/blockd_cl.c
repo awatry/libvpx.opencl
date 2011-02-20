@@ -25,38 +25,38 @@ int vp8_cl_mb_prep(MACROBLOCKD *x, int flags){
     //Copy all blockd.cl_*_mem objects
     if (flags & DIFF)
         CL_SET_BUF(x->cl_commands, x->cl_diff_mem, sizeof(cl_short)*400, x->diff,
-            return err
+            ,err
         );
 
     if (flags & PREDICTOR)
         CL_SET_BUF(x->cl_commands, x->cl_predictor_mem, sizeof(cl_uchar)*384, x->predictor,
-            return err
+            ,err
         );
 
     if (flags & QCOEFF)
         CL_SET_BUF(x->cl_commands, x->cl_qcoeff_mem, sizeof(cl_short)*400, x->qcoeff,
-            return err
+            ,err
         );
 
     if (flags & DQCOEFF)
         CL_SET_BUF(x->cl_commands, x->cl_dqcoeff_mem, sizeof(cl_short)*400, x->dqcoeff,
-            return err
+            ,err
         );
 
     if (flags & EOBS)
         CL_SET_BUF(x->cl_commands, x->cl_eobs_mem, sizeof(cl_char)*25, x->eobs,
-            return err
+            ,err
         );
 
     if (flags & PRE_BUF){
         CL_SET_BUF(x->cl_commands, x->pre.buffer_mem, x->pre.buffer_size, x->pre.buffer_alloc,
-            return err
+            ,err
         );
     }
 
     if (flags & DST_BUF){
         CL_SET_BUF(x->cl_commands, x->dst.buffer_mem, x->dst.buffer_size, x->dst.buffer_alloc,
-            return err
+            ,err
         );
     }
 
@@ -143,32 +143,32 @@ int vp8_cl_block_prep(BLOCKD *b, int flags){
     //Copy all blockd.cl_*_mem objects
     if (flags & DIFF)
         CL_SET_BUF(b->cl_commands, b->cl_diff_mem, sizeof(cl_short)*400, b->diff_base,
-            return err
+            ,err
         );
 
     if (flags & PREDICTOR)
         CL_SET_BUF(b->cl_commands, b->cl_predictor_mem, sizeof(cl_uchar)*384, b->predictor_base,
-            return err
+            ,err
         );
 
     if (flags & QCOEFF)
         CL_SET_BUF(b->cl_commands, b->cl_qcoeff_mem, sizeof(cl_short)*400, b->qcoeff_base,
-            return err
+            ,err
         );
 
     if (flags & DQCOEFF)
         CL_SET_BUF(b->cl_commands, b->cl_dqcoeff_mem, sizeof(cl_short)*400, b->dqcoeff_base,
-            return err
+            ,err
         );
 
     if (flags & EOBS)
         CL_SET_BUF(b->cl_commands, b->cl_eobs_mem, sizeof(cl_char)*25, b->eobs_base,
-            return err
+            ,err
         );
 
     if (flags & DEQUANT)
         CL_SET_BUF(b->cl_commands, b->cl_dequant_mem, sizeof(cl_short)*16 ,b->dequant,
-            return err
+            ,err
         );
 
     return CL_SUCCESS;

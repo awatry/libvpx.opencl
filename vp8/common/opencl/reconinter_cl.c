@@ -94,7 +94,7 @@ static void vp8_copy_mem_cl(
     if (src_mem == NULL){
         src_offset = 0;
         CL_CREATE_BUF( cq, src_mem, CL_MEM_WRITE_ONLY,
-            sizeof (unsigned char) * src_len, src,
+            sizeof (unsigned char) * src_len, src,,
         );
         free_src = 1;
     }
@@ -102,7 +102,7 @@ static void vp8_copy_mem_cl(
     if (dst_mem == NULL){
         dst_offset = 0;
         CL_CREATE_BUF( cq, dst_mem, CL_MEM_WRITE_ONLY,
-            sizeof (unsigned char) * dst_len, dst,
+            sizeof (unsigned char) * dst_len, dst,,
         );
         free_dst = 1;
     }

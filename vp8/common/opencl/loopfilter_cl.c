@@ -15,11 +15,19 @@
 
 #include "vpx_config.h"
 #include "vp8_opencl.h"
+#include "blockd_cl.h"
 
 const char *loopFilterCompileOptions = "-Ivp8/common/opencl";
 const char *loop_filter_cl_file_name = "vp8/common/opencl/loopfilter.cl";
 
 typedef unsigned char uc;
+
+extern void vp8_loop_filter_frame_c
+(
+    VP8_COMMON *cm,
+    MACROBLOCKD *mbd,
+    int default_filt_lvl
+);
 
 prototype_loopfilter_cl(vp8_loop_filter_horizontal_edge_cl);
 prototype_loopfilter_cl(vp8_loop_filter_vertical_edge_cl);
@@ -385,7 +393,8 @@ void vp8_loop_filter_frame_cl
     u_off = post->u_buffer - buf_base;
     v_off = post->v_buffer - buf_base;
 
-    CL_SET_BUF(mbd->cl_commands, post->buffer_mem, post->buffer_size, post->buffer_alloc,);
+    CL_SET_BUF(mbd->cl_commands, post->buffer_mem, post->buffer_size, post->buffer_alloc,
+            vp8_loop_filter_frame_c(cm,mbd,default_filt_lvl),);
 
     /* vp8_filter each macro block */
     for (mb_row = 0; mb_row < cm->mb_rows; mb_row++)

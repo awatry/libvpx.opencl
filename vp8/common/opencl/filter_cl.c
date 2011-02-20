@@ -82,7 +82,7 @@ int cl_init_filter() {
     CL_CREATE_KERNEL(cl_data,filter_program,vp8_memcpy_kernel,"vp8_memcpy_kernel");
 
 #if STATIC_MEM
-    CL_CREATE_BUF(NULL, int_mem, NULL, sizeof(cl_int)*21*16, NULL,);
+    CL_CREATE_BUF(NULL, int_mem, NULL, sizeof(cl_int)*21*16, NULL, ,err);
 #endif
 
     return CL_SUCCESS;
@@ -192,7 +192,7 @@ void vp8_sixtap_run_cl(
      * Initialize the buffer as well if needed.
      */
     if (src_mem == NULL){
-        CL_CREATE_BUF( cq, src_mem,, sizeof (unsigned char) * src_len, src_base-2, );
+        CL_CREATE_BUF( cq, src_mem,, sizeof (unsigned char) * src_len, src_base-2,,);
         src_offset = 2;
         free_src = 1;
     } else {
@@ -200,12 +200,12 @@ void vp8_sixtap_run_cl(
     }
 
     if (dst_mem == NULL){
-        CL_CREATE_BUF( cq, dst_mem,, sizeof (unsigned char) * dst_len + dst_offset, dst_base, );
+        CL_CREATE_BUF( cq, dst_mem,, sizeof (unsigned char) * dst_len + dst_offset, dst_base,, );
         free_dst = 1;
     }
 
 #if !STATIC_MEM
-    CL_CREATE_BUF( cq, int_mem,, sizeof(cl_int)*FData_height*FData_width, NULL, );
+    CL_CREATE_BUF( cq, int_mem,, sizeof(cl_int)*FData_height*FData_width, NULL,, );
 #endif
 
     vp8_filter_block2d_first_pass_cl(
@@ -389,7 +389,7 @@ void vp8_filter_block2d_bil_first_pass_cl(
 
         /*Make space for kernel input/output data. Initialize the buffer as well if needed. */
         CL_CREATE_BUF(cq, src_mem, CL_MEM_READ_ONLY|CL_MEM_COPY_HOST_PTR,
-            sizeof (unsigned char) * src_len, src_base+src_offset,
+            sizeof (unsigned char) * src_len, src_base+src_offset,,
         );
         src_offset = 0; //Set to zero as long as src_mem starts at base+offset
         free_src = 1;
@@ -441,7 +441,7 @@ void vp8_filter_block2d_bil_second_pass_cl(
     int free_dst = 0;
     if (dst_mem == NULL){
         CL_CREATE_BUF(cq, dst_mem, CL_MEM_WRITE_ONLY|CL_MEM_COPY_HOST_PTR,
-            sizeof (unsigned char) * dst_len + dst_offset, dst_base,
+            sizeof (unsigned char) * dst_len + dst_offset, dst_base,,
         );
         free_dst = 1;
     }

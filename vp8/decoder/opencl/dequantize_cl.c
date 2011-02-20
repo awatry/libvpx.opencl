@@ -97,7 +97,7 @@ void vp8_dequant_idct_add_cl(BLOCKD *b, unsigned char *dest_base, int dest_offse
 
     //Initialize destination memory
     CL_CREATE_BUF(b->cl_commands, dest_mem, CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,
-            dst_size, dest_base,
+            dst_size, dest_base,,
     );
     
     /* Set kernel arguments */
@@ -162,7 +162,7 @@ void vp8_dequant_dc_idct_add_cl(
     //Initialize dest_mem
     dest_size = sizeof(cl_uchar)*(4*stride + dest_offset + 4);
     CL_CREATE_BUF(b->cl_commands, dest_mem, CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,
-            dest_size, dest,
+            dest_size, dest,,
     );
 
     //Assuming that all input cl_mem has been initialized outside of this Fn.

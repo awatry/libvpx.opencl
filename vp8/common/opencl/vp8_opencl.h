@@ -82,25 +82,25 @@ extern const char *vpx_codec_lib_dir(void);
         "Error: Failed to read from GPU!\n",, err \
     ); \
 
-#define CL_SET_BUF(cq, bufRef, bufSize, dataPtr, altPath) \
+#define CL_SET_BUF(cq, bufRef, bufSize, dataPtr, altPath, retCode) \
     { \
         err = clEnqueueWriteBuffer(cq, bufRef, CL_FALSE, 0, \
             bufSize, dataPtr, 0, NULL, NULL); \
         \
         CL_CHECK_SUCCESS(cq, err != CL_SUCCESS, \
             "Error: Failed to write to buffer!\n", \
-            altPath, \
+            altPath, retCode\
         ); \
     } \
 
-#define CL_CREATE_BUF(cq, bufRef, bufType, bufSize, dataPtr, altPath) \
+#define CL_CREATE_BUF(cq, bufRef, bufType, bufSize, dataPtr, altPath, retCode) \
     bufRef = clCreateBuffer(cl_data.context, CL_MEM_READ_WRITE, bufSize, NULL, NULL); \
     if (dataPtr != NULL && bufRef != NULL){ \
-        CL_SET_BUF(cq, bufRef, bufSize, dataPtr, altPath)\
+        CL_SET_BUF(cq, bufRef, bufSize, dataPtr, altPath, retCode)\
     } \
     CL_CHECK_SUCCESS(cq, !bufRef, \
         "Error: Failed to allocate buffer. Using CPU path!\n", \
-        altPath, \
+        altPath, retCode\
     ); \
 
 #define CL_RELEASE_KERNEL(kernel) \

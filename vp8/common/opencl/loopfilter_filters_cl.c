@@ -40,9 +40,9 @@ static void vp8_loop_filter_cl_run(
     cl_mem limit_mem;
     cl_mem thresh_mem;
 
-    CL_CREATE_BUF(cq, flimit_mem, , sizeof(uc)*16, flimit, );
-    CL_CREATE_BUF(cq, limit_mem, , sizeof(uc)*16, limit, );
-    CL_CREATE_BUF(cq, thresh_mem, , sizeof(uc)*16, thresh, );
+    CL_CREATE_BUF(cq, flimit_mem, , sizeof(uc)*16, flimit,, );
+    CL_CREATE_BUF(cq, limit_mem, , sizeof(uc)*16, limit,, );
+    CL_CREATE_BUF(cq, thresh_mem, , sizeof(uc)*16, thresh,, );
 
     err = 0;
     err = clSetKernelArg(kernel, 0, sizeof (cl_mem), &buf_mem);

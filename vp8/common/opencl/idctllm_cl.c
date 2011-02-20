@@ -77,14 +77,14 @@ void vp8_short_idct4x4llm_cl(BLOCKD *b, int pitch)
         return;
     }
 
-    CL_CREATE_BUF(b->cl_commands, src_mem, CL_MEM_READ_ONLY|CL_MEM_COPY_HOST_PTR,
+    CL_CREATE_BUF(b->cl_commands, src_mem,,
             sizeof(short)*16, input,
-            vp8_short_idct4x4llm_c(input,output,pitch)
+            vp8_short_idct4x4llm_c(input,output,pitch),
     );
 
-    CL_CREATE_BUF(b->cl_commands, dst_mem, CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,
+    CL_CREATE_BUF(b->cl_commands, dst_mem,,
             sizeof(short)*(4+(pitch/2)*3), output,
-            vp8_short_idct4x4llm_c(input,output,pitch)
+            vp8_short_idct4x4llm_c(input,output,pitch),
     );
 
     //Set arguments and run kernel
@@ -136,14 +136,14 @@ void vp8_short_idct4x4llm_1_cl(BLOCKD *b, int pitch)
 
     printf("vp8_short_idct4x4llm_1_cl\n");
 
-    CL_CREATE_BUF(b->cl_commands, src_mem, CL_MEM_READ_ONLY|CL_MEM_COPY_HOST_PTR,
+    CL_CREATE_BUF(b->cl_commands, src_mem,,
             sizeof(short), input,
-            vp8_short_idct4x4llm_1_c(input,output,pitch)
+            vp8_short_idct4x4llm_1_c(input,output,pitch),
     );
 
-    CL_CREATE_BUF(b->cl_commands, dst_mem, CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,
+    CL_CREATE_BUF(b->cl_commands, dst_mem,,
             sizeof(short)*(4+(pitch/2)*3), output,
-            vp8_short_idct4x4llm_1_c(input,output,pitch)
+            vp8_short_idct4x4llm_1_c(input,output,pitch),
     );
 
     //Set arguments and run kernel
@@ -189,8 +189,8 @@ void vp8_dc_only_idct_add_cl(BLOCKD *b, cl_int use_diff, int diff_offset,
     size_t global = 16;
     cl_mem dest_mem = NULL;
 
-    CL_CREATE_BUF(b->cl_commands, dest_mem, CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,
-            dest_size, dst_base,
+    CL_CREATE_BUF(b->cl_commands, dest_mem,,
+            dest_size, dst_base,,
     );
 
     //Set arguments and run kernel

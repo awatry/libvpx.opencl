@@ -19,7 +19,7 @@
 extern void vp8_build_inter_predictors_mb_cl(MACROBLOCKD *x);
 extern void vp8_build_inter_predictors_mbuv_cl(MACROBLOCKD *x);
 
-//extern void vp8_build_inter_predictors_mb_s_cl(MACROBLOCKD *x);
+extern void vp8_build_inter_predictors_mb_s_cl(MACROBLOCKD *x);
 //extern void vp8_build_inter_predictors_b_cl(BLOCKD *d, int pitch);
 
 #endif
