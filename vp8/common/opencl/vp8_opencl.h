@@ -30,8 +30,6 @@ extern "C" {
 #define ENABLE_CL_IDCT_DEQUANT 0
 #define ENABLE_CL_SUBPIXEL 1
 #define ENABLE_CL_LOOPFILTER 0
-//Note that the loopfilter doesn't always produce correct output
-//on AMD Stream using CPU, fine on Apple CPU and any GPU.
 
 extern char *cl_read_file(const char* file_name);
 extern int cl_common_init();
