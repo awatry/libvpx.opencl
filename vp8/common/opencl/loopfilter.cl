@@ -87,26 +87,21 @@ kernel void vp8_loop_filter_horizontal_edge_kernel
 {
     int  hev = 0; /* high edge variance */
     signed char mask = 0;
-    int i = 0;
+    int i = get_global_id(0);
 
-    /* loop filter designed to work using chars so that we can make maximum use
-     * of 8 bit simd instructions.
-     */
-     if (get_global_id(0) < get_global_size(0)){
-        for (i = 0; i < count*8; i++){
-            mask = vp8_filter_mask(limit[i], flimit[i], s_base[s_off - 4*p],
-                    s_base[s_off - 3*p], s_base[s_off - 2*p], s_base[s_off - p],
-                    s_base[s_off], s_base[s_off + p], s_base[s_off + 2*p],
-                    s_base[s_off + 3*p]);
+     if (i < get_global_size(0)){
+        s_off += i;
 
-            hev = vp8_hevmask(thresh[i], s_base[s_off - 2*p], s_base[s_off - p],
-                    s_base[s_off], s_base[s_off+p]);
+        mask = vp8_filter_mask(limit[i], flimit[i], s_base[s_off - 4*p],
+                s_base[s_off - 3*p], s_base[s_off - 2*p], s_base[s_off - p],
+                s_base[s_off], s_base[s_off + p], s_base[s_off + 2*p],
+                s_base[s_off + 3*p]);
 
-            vp8_filter(mask, hev, s_base, s_off - 2 * p, s_off - p, s_off,
-                    s_off + p);
+        hev = vp8_hevmask(thresh[i], s_base[s_off - 2*p], s_base[s_off - p],
+                s_base[s_off], s_base[s_off+p]);
 
-            s_off++;
-        }
+        vp8_filter(mask, hev, s_base, s_off - 2 * p, s_off - p, s_off,
+                s_off + p);
     }
 }
 
@@ -125,26 +120,20 @@ kernel void vp8_loop_filter_vertical_edge_kernel
 
     int  hev = 0; /* high edge variance */
     signed char mask = 0;
-    int i = 0;
+    int i = get_global_id(0);
 
-    /* loop filter designed to work using chars so that we can make maximum use
-     * of 8 bit simd instructions.
-     */
-    if (get_global_id(0) < get_global_size(0)){
-        for (i = 0; i < count * 8; i++)
-        {
-            mask = vp8_filter_mask(limit[i], flimit[i],
-                    s_base[s_off-4], s_base[s_off-3], s_base[s_off-2],
-                    s_base[s_off-1], s_base[s_off], s_base[s_off+1],
-                    s_base[s_off+2], s_base[s_off+3]);
+    if ( i < get_global_size(0) ){
+        s_off += p * i;
+        mask = vp8_filter_mask(limit[i], flimit[i],
+                s_base[s_off-4], s_base[s_off-3], s_base[s_off-2],
+                s_base[s_off-1], s_base[s_off], s_base[s_off+1],
+                s_base[s_off+2], s_base[s_off+3]);
 
-            hev = vp8_hevmask(thresh[i], s_base[s_off-2], s_base[s_off-1],
-                    s_base[s_off], s_base[s_off+1]);
+        hev = vp8_hevmask(thresh[i], s_base[s_off-2], s_base[s_off-1],
+                s_base[s_off], s_base[s_off+1]);
 
-            vp8_filter(mask, hev, s_base, s_off - 2, s_off - 1, s_off, s_off + 1);
+        vp8_filter(mask, hev, s_base, s_off - 2, s_off - 1, s_off, s_off + 1);
 
-            s_off += p;
-        }
     }
 }
 
@@ -165,25 +154,19 @@ kernel void vp8_mbloop_filter_horizontal_edge_kernel
 
     signed char hev = 0; /* high edge variance */
     signed char mask = 0;
-    int i = 0;
+    int i = get_global_id(0);
 
-    /* loop filter designed to work using chars so that we can make maximum use
-     * of 8 bit simd instructions.
-     */
-    if (get_global_id(0) < get_global_size(0)){
-        for ( i = 0; i < count * 8; i++)
-        {
+    if (i < get_global_size(0)){
+        s += i;
 
-            mask = vp8_filter_mask(limit[i], flimit[i],
-                                   s[-4*p], s[-3*p], s[-2*p], s[-1*p],
-                                   s[0*p], s[1*p], s[2*p], s[3*p]);
+        mask = vp8_filter_mask(limit[i], flimit[i],
+                               s[-4*p], s[-3*p], s[-2*p], s[-1*p],
+                               s[0*p], s[1*p], s[2*p], s[3*p]);
 
-            hev = vp8_hevmask(thresh[i], s[-2*p], s[-1*p], s[0*p], s[1*p]);
+        hev = vp8_hevmask(thresh[i], s[-2*p], s[-1*p], s[0*p], s[1*p]);
 
-            vp8_mbfilter(mask, hev, s - 3 * p, s - 2 * p, s - 1 * p, s, s + 1 * p, s + 2 * p);
+        vp8_mbfilter(mask, hev, s - 3 * p, s - 2 * p, s - 1 * p, s, s + 1 * p, s + 2 * p);
 
-            ++s;
-        }
     }
 }
 
@@ -204,21 +187,18 @@ kernel void vp8_mbloop_filter_vertical_edge_kernel
 
     signed char hev = 0; /* high edge variance */
     signed char mask = 0;
-    int i = 0;
+    int i = get_global_id(0);
 
-    if (get_global_id(0) < get_global_size(0)){
-        for ( i = 0; i < count * 8; i++)
-        {
+    if (i < get_global_size(0)){
+        s += p * i;
 
-            mask = vp8_filter_mask(limit[i], flimit[i],
-                                   s[-4], s[-3], s[-2], s[-1], s[0], s[1], s[2], s[3]);
+        mask = vp8_filter_mask(limit[i], flimit[i],
+                               s[-4], s[-3], s[-2], s[-1], s[0], s[1], s[2], s[3]);
 
-            hev = vp8_hevmask(thresh[i], s[-2], s[-1], s[0], s[1]);
+        hev = vp8_hevmask(thresh[i], s[-2], s[-1], s[0], s[1]);
 
-            vp8_mbfilter(mask, hev, s - 3, s - 2, s - 1, s, s + 1, s + 2);
+        vp8_mbfilter(mask, hev, s - 3, s - 2, s - 1, s, s + 1, s + 2);
 
-            s += p;
-        }
     }
 }
 
@@ -236,14 +216,14 @@ kernel void vp8_loop_filter_simple_horizontal_edge_kernel
 {
 
     signed char mask = 0;
-    int i = 0;
+    int i = get_global_id(0);
     (void) thresh;
 
-    for (i = 0; i < count*8; i++)
+    if (i < get_global_size(0))
     {
+        s_off += i;
         mask = vp8_simple_filter_mask(limit[i], flimit[i], s_base[s_off-2*p], s_base[s_off-p], s_base[s_off], s_base[s_off+p]);
         vp8_simple_filter(mask, s_base, s_off - 2 * p, s_off - 1 * p, s_off, s_off + 1 * p);
-        ++s_off;
     }
 }
 
@@ -261,13 +241,13 @@ kernel void vp8_loop_filter_simple_vertical_edge_kernel
 {
 
     signed char mask = 0;
-    int i = 0;
+    int i = get_global_id(0);
     (void) thresh;
 
-    for (i = 0; i < count * 8; i++){
+    if (i < get_global_size(0)){
+        s_off += p * i;
         mask = vp8_simple_filter_mask(limit[i], flimit[i], s_base[s_off-2], s_base[s_off-1], s_base[s_off], s_base[s_off+1]);
         vp8_simple_filter(mask, s_base, s_off - 2, s_off - 1, s_off, s_off + 1);
-        s_off += p;
     }
 
 }

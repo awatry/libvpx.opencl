@@ -33,7 +33,7 @@ static void vp8_loop_filter_cl_run(
     const signed char *thresh,
     int count
 ){
-    size_t global = count * 2;
+    size_t global = count;
     int err;
 
     cl_mem flimit_mem;
@@ -84,7 +84,7 @@ void vp8_loop_filter_horizontal_edge_cl
 {
     vp8_loop_filter_cl_run(x->cl_commands,
         cl_data.vp8_loop_filter_horizontal_edge_kernel, s_base, s_off,
-        p, flimit, limit, thresh, count
+        p, flimit, limit, thresh, count*8
     );
 }
 
@@ -102,7 +102,7 @@ void vp8_loop_filter_vertical_edge_cl
 {
     vp8_loop_filter_cl_run(x->cl_commands,
         cl_data.vp8_loop_filter_vertical_edge_kernel, s_base, s_off,
-        p, flimit, limit, thresh, count
+        p, flimit, limit, thresh, count*8
     );
 }
 
@@ -120,7 +120,7 @@ void vp8_mbloop_filter_horizontal_edge_cl
 {
     vp8_loop_filter_cl_run(x->cl_commands,
         cl_data.vp8_mbloop_filter_horizontal_edge_kernel, s_base, s_off,
-        p, flimit, limit, thresh, count
+        p, flimit, limit, thresh, count*8
     );
 }
 
@@ -139,7 +139,7 @@ void vp8_mbloop_filter_vertical_edge_cl
 {
     vp8_loop_filter_cl_run(x->cl_commands,
         cl_data.vp8_mbloop_filter_vertical_edge_kernel, s_base, s_off,
-        p, flimit, limit, thresh, count
+        p, flimit, limit, thresh, count*8
     );
 }
 
@@ -157,7 +157,7 @@ void vp8_loop_filter_simple_horizontal_edge_cl
 {
     vp8_loop_filter_cl_run(x->cl_commands,
         cl_data.vp8_loop_filter_simple_horizontal_edge_kernel, s_base, s_off,
-        p, flimit, limit, thresh, count
+        p, flimit, limit, thresh, count*8
     );
 }
 
@@ -175,6 +175,6 @@ void vp8_loop_filter_simple_vertical_edge_cl
 {
     vp8_loop_filter_cl_run(x->cl_commands,
         cl_data.vp8_loop_filter_simple_vertical_edge_kernel, s_base, s_off,
-        p, flimit, limit, thresh, count
+        p, flimit, limit, thresh, count*8
     );
 }
