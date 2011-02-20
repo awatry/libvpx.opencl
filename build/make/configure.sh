@@ -946,7 +946,8 @@ process_common_toolchain() {
     fi
     
     if enabled opencl; then
-    	enable runtime_cpu_detect
+        disable multithread
+        enable runtime_cpu_detect
 	
         #Use dlopen() to load OpenCL when possible.
         case ${toolchain} in
