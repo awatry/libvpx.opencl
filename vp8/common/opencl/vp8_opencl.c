@@ -220,39 +220,38 @@ int cl_common_init() {
 
 char *cl_read_file(const char* file_name) {
     long pos;
-    char fullpath[1024];
     char *bytes;
     size_t amt_read;
-
     FILE *f;
 
     f = fopen(file_name, "rb");
-
     
     if (f == NULL) {
-        printf("Couldn't find %s\n", file_name);
+        char *fullpath;
+        //printf("Couldn't find %s\n", file_name);
 
-        //Disable until this no longer crashes on free(). Use static size for now
-        //fullpath = malloc(strlen(vpx_codec_lib_dir() + strlen(file_name) + 2));
-        //if (fullpath == NULL) {
-        //    return NULL;
-        //}
-
+        //Generate a file path for the CL sources using the library install dir
+        fullpath = malloc(strlen(vpx_codec_lib_dir()) + strlen(file_name) + 2);
+        if (fullpath == NULL) {
+           return NULL;
+        }
         strcpy(fullpath, vpx_codec_lib_dir());
-        strcat(fullpath, "/");
+        strcat(fullpath, "/"); //Will need to be changed for MSVS
         strcat(fullpath, file_name);
 
-        printf("Looking in %s\n", fullpath);
+        //printf("Looking in %s\n", fullpath);
 
         f = fopen(fullpath, "rb");
         if (f == NULL) {
-            printf("Couldn't find CL source at %s or %s\n", file_name, fullpath);
-            //free(fullpath);
+            fprintf(stderr,"Couldn't find CL source at %s or %s\n", file_name, fullpath);
+            free(fullpath);
             return NULL;
         }
 
-        printf("Found cl source at %s\n", fullpath);
-        //free(fullpath);
+        //printf("Found cl source at %s\n", fullpath);
+        free(fullpath);
+    } else {
+        //printf("Found cl source at %s\n", file_name);
     }
 
     fseek(f, 0, SEEK_END);
