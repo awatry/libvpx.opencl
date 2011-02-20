@@ -30,6 +30,8 @@ extern "C" {
 #define ENABLE_CL_IDCT_DEQUANT 0
 #define ENABLE_CL_SUBPIXEL 1
 #define ENABLE_CL_LOOPFILTER 0
+//Note that the loopfilter doesn't always produce correct output
+//on AMD Stream using CPU, fine on Apple CPU and any GPU.
 
 extern char *cl_read_file(const char* file_name);
 extern int cl_common_init();
@@ -126,6 +128,7 @@ typedef struct VP8_COMMON_CL {
     cl_kernel vp8_filter_block2d_bil_first_pass_kernel;
     cl_kernel vp8_filter_block2d_bil_second_pass_kernel;
     cl_kernel vp8_memcpy_kernel;
+    cl_kernel vp8_memset_short_kernel;
 
     cl_program idct_program;
     cl_kernel vp8_short_inv_walsh4x4_1_kernel;

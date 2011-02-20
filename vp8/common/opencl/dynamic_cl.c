@@ -28,12 +28,13 @@ int close_cl(){
 int load_cl(char *lib_name){
     int i;
 
-    printf("Loading OpenCL library\n");
+    //printf("Loading OpenCL library\n");
     dll = dlopen(lib_name, RTLD_NOW|RTLD_LOCAL);
     if (dll != NULL){
-        printf("Found CL library\n");
+        //printf("Found CL library\n");
     } else {
-        return 0;
+        //printf("Didn't find CL library\n");
+        return CL_TRIED_BUT_FAILED;
     }
 
     CL_LOAD_FN("clGetPlatformIDs", cl.getPlatformIDs);
