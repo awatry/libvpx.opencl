@@ -93,6 +93,7 @@ vp8_yv12_alloc_frame_buffer(YV12_BUFFER_CONFIG *ybf, int width, int height, int 
         ybf->buffer_size = ybf->frame_size + (ybf->y_stride * 2) + 32;
 
 #if CONFIG_OPENCL
+        ybf->buffer_mem = NULL;
         if (cl_initialized == CL_SUCCESS){
             ybf->buffer_mem = clCreateBuffer(cl_data.context, CL_MEM_READ_WRITE, ybf->buffer_size, NULL, NULL);
             if (ybf->buffer_mem == NULL){
