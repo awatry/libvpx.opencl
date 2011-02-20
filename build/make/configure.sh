@@ -947,12 +947,14 @@ process_common_toolchain() {
     
     if enabled opencl; then
         disable multithread
+        echo "  disabling multithread"
+        soft_enable opencl #Provide output to make user comfortable
         enable runtime_cpu_detect
 	
         #Use dlopen() to load OpenCL when possible.
         case ${toolchain} in
             *darwin10*)
-				check_add_cflags -D__APPLE__
+                check_add_cflags -D__APPLE__
                 add_extralibs -framework OpenCL
                 ;;
             *-win32-gcc)
