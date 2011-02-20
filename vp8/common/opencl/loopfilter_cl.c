@@ -22,7 +22,7 @@ const char *loop_filter_cl_file_name = "vp8/common/opencl/loopfilter.cl";
 
 typedef unsigned char uc;
 
-extern void vp8_loop_filter_frame_c
+extern void vp8_loop_filter_frame
 (
     VP8_COMMON *cm,
     MACROBLOCKD *mbd,
@@ -394,7 +394,7 @@ void vp8_loop_filter_frame_cl
     v_off = post->v_buffer - buf_base;
 
     CL_SET_BUF(mbd->cl_commands, post->buffer_mem, post->buffer_size, post->buffer_alloc,
-            vp8_loop_filter_frame_c(cm,mbd,default_filt_lvl),);
+            vp8_loop_filter_frame(cm,mbd,default_filt_lvl),);
 
     /* vp8_filter each macro block */
     for (mb_row = 0; mb_row < cm->mb_rows; mb_row++)
