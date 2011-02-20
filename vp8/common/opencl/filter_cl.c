@@ -195,6 +195,8 @@ void vp8_sixtap_run_cl(
         CL_CREATE_BUF( cq, src_mem,, sizeof (unsigned char) * src_len, src_base-2, );
         src_offset = 2;
         free_src = 1;
+    } else {
+        src_offset -= 2*src_pixels_per_line;
     }
 
     if (dst_mem == NULL){

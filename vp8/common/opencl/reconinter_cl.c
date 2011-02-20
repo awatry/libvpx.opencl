@@ -178,16 +178,19 @@ static void vp8_build_inter_predictors4b_cl(MACROBLOCKD *x, BLOCKD *d, int pitch
     unsigned char *ptr_base = *(d->base_pre);
     int ptr_offset = d->pre + (d->bmi.mv.as_mv.row >> 3) * d->pre_stride + (d->bmi.mv.as_mv.col >> 3);
 
+    int pre_dist = *d->base_pre - x->pre.buffer_alloc;
+    cl_mem pre_mem = x->pre.buffer_mem;
+
     if (d->bmi.mv.as_mv.row & 7 || d->bmi.mv.as_mv.col & 7)
     {
             if (d->sixtap_filter == CL_TRUE)
-                vp8_sixtap_predict8x8_cl(d->cl_commands, ptr_base, NULL, ptr_offset, d->pre_stride, d->bmi.mv.as_mv.col & 7, d->bmi.mv.as_mv.row & 7, d->predictor_base, d->cl_predictor_mem, d->predictor_offset, pitch);
+                vp8_sixtap_predict8x8_cl(d->cl_commands, ptr_base, pre_mem, pre_dist+ptr_offset, d->pre_stride, d->bmi.mv.as_mv.col & 7, d->bmi.mv.as_mv.row & 7, d->predictor_base, d->cl_predictor_mem, d->predictor_offset, pitch);
             else
-                vp8_bilinear_predict8x8_cl(d->cl_commands, ptr_base, NULL, ptr_offset, d->pre_stride, d->bmi.mv.as_mv.col & 7, d->bmi.mv.as_mv.row & 7, d->predictor_base, d->cl_predictor_mem, d->predictor_offset, pitch);
+                vp8_bilinear_predict8x8_cl(d->cl_commands, ptr_base, pre_mem, pre_dist+ptr_offset, d->pre_stride, d->bmi.mv.as_mv.col & 7, d->bmi.mv.as_mv.row & 7, d->predictor_base, d->cl_predictor_mem, d->predictor_offset, pitch);
     }
     else
     {
-        vp8_copy_mem_cl(d->cl_commands, ptr_base, NULL, ptr_offset, d->pre_stride, NULL, d->cl_predictor_mem, d->predictor_offset, pitch, 8, 8);
+        vp8_copy_mem_cl(d->cl_commands, ptr_base, pre_mem, pre_dist+ptr_offset, d->pre_stride, NULL, d->cl_predictor_mem, d->predictor_offset, pitch, 8, 8);
     }
 
 
@@ -205,7 +208,7 @@ static void vp8_build_inter_predictors2b_cl(MACROBLOCKD *x, BLOCKD *d, int pitch
     if (d->bmi.mv.as_mv.row & 7 || d->bmi.mv.as_mv.col & 7)
     {
         if (d->sixtap_filter == CL_TRUE)
-            vp8_sixtap_predict8x4_cl(d->cl_commands,ptr_base,NULL,ptr_offset, d->pre_stride, d->bmi.mv.as_mv.col & 7, d->bmi.mv.as_mv.row & 7, d->predictor_base, d->cl_predictor_mem, d->predictor_offset, pitch);
+            vp8_sixtap_predict8x4_cl(d->cl_commands,ptr_base,pre_mem,pre_dist+ptr_offset, d->pre_stride, d->bmi.mv.as_mv.col & 7, d->bmi.mv.as_mv.row & 7, d->predictor_base, d->cl_predictor_mem, d->predictor_offset, pitch);
         else
             vp8_bilinear_predict8x4_cl(d->cl_commands,ptr_base,pre_mem,pre_dist+ptr_offset, d->pre_stride, d->bmi.mv.as_mv.col & 7, d->bmi.mv.as_mv.row & 7, d->predictor_base, d->cl_predictor_mem, d->predictor_offset, pitch);
     }
@@ -245,8 +248,8 @@ void vp8_build_inter_predictors_mbuv_cl(MACROBLOCKD *x)
         if ((mv_row | mv_col) & 7)
         {
             if (cl_initialized == CL_SUCCESS && x->sixtap_filter == CL_TRUE){
-                vp8_sixtap_predict8x8_cl(x->block[16].cl_commands,pre_base, NULL, upre_off+offset, pre_stride, mv_col & 7, mv_row & 7, pred_base, x->cl_predictor_mem, upred_offset, 8);
-                vp8_sixtap_predict8x8_cl(x->block[16].cl_commands,pre_base, NULL, vpre_off+offset, pre_stride, mv_col & 7, mv_row & 7, pred_base, x->cl_predictor_mem, vpred_offset, 8);
+                vp8_sixtap_predict8x8_cl(x->block[16].cl_commands,pre_base, pre_mem, upre_off+offset, pre_stride, mv_col & 7, mv_row & 7, pred_base, x->cl_predictor_mem, upred_offset, 8);
+                vp8_sixtap_predict8x8_cl(x->block[16].cl_commands,pre_base, pre_mem, vpre_off+offset, pre_stride, mv_col & 7, mv_row & 7, pred_base, x->cl_predictor_mem, vpred_offset, 8);
             }
             else{
                 vp8_bilinear_predict8x8_cl(x->block[16].cl_commands,pre_base, pre_mem, upre_off+offset, pre_stride, mv_col & 7, mv_row & 7, pred_base, x->cl_predictor_mem, upred_offset, 8);
@@ -305,8 +308,9 @@ void vp8_build_inter_predictors_mb_cl(MACROBLOCKD *x)
 
         if ((mv_row | mv_col) & 7)
         {
-            if (cl_initialized == CL_SUCCESS && x->sixtap_filter == CL_TRUE)
-                vp8_sixtap_predict16x16_cl(x->cl_commands, pre_base, NULL, ypre_off, pre_stride, mv_col & 7, mv_row & 7, pred_base, x->cl_predictor_mem, 0, 16);
+            if (cl_initialized == CL_SUCCESS && x->sixtap_filter == CL_TRUE){
+                vp8_sixtap_predict16x16_cl(x->cl_commands, pre_base, pre_mem, ypre_off, pre_stride, mv_col & 7, mv_row & 7, pred_base, x->cl_predictor_mem, 0, 16);
+            }
             else
                 vp8_bilinear_predict16x16_cl(x->cl_commands, pre_base, pre_mem,  ypre_off, pre_stride, mv_col & 7, mv_row & 7, pred_base, x->cl_predictor_mem, 0, 16);
         }
@@ -325,8 +329,8 @@ void vp8_build_inter_predictors_mb_cl(MACROBLOCKD *x)
         if ((mv_row | mv_col) & 7)
         {
             if (x->sixtap_filter == CL_TRUE){
-                vp8_sixtap_predict8x8_cl(x->cl_commands, pre_base, NULL, upre_off+offset, pre_stride, mv_col & 7, mv_row & 7, pred_base, x->cl_predictor_mem, upred_offset, 8);
-                vp8_sixtap_predict8x8_cl(x->cl_commands, pre_base, NULL, vpre_off+offset, pre_stride, mv_col & 7, mv_row & 7, pred_base, x->cl_predictor_mem, vpred_offset, 8);
+                vp8_sixtap_predict8x8_cl(x->cl_commands, pre_base, pre_mem, upre_off+offset, pre_stride, mv_col & 7, mv_row & 7, pred_base, x->cl_predictor_mem, upred_offset, 8);
+                vp8_sixtap_predict8x8_cl(x->cl_commands, pre_base, pre_mem, vpre_off+offset, pre_stride, mv_col & 7, mv_row & 7, pred_base, x->cl_predictor_mem, vpred_offset, 8);
             }
             else {
                 vp8_bilinear_predict8x8_cl(x->cl_commands, pre_base, pre_mem, upre_off+offset, pre_stride, mv_col & 7, mv_row & 7, pred_base, x->cl_predictor_mem, upred_offset, 8);
@@ -407,7 +411,7 @@ static void vp8_build_inter_predictors_b_s_cl(BLOCKD *d, unsigned char *dst_base
         sppf = vp8_sixtap_predict4x4_cl;
     } else
         sppf = vp8_bilinear_predict4x4_cl;
-
+        
     if (d->bmi.mv.as_mv.row & 7 || d->bmi.mv.as_mv.col & 7)
     {
         sppf(d->cl_commands, ptr_base, NULL, ptr_offset, pre_stride, d->bmi.mv.as_mv.col & 7, d->bmi.mv.as_mv.row & 7, dst_base, NULL, dst_offset, dst_stride);
