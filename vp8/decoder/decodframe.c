@@ -232,6 +232,10 @@ void vp8_decode_macroblock(VP8D_COMP *pbi, MACROBLOCKD *xd)
     {
         xd->mode_info_context->mbmi.dc_diff = 0;
         skip_recon_mb(pbi, xd);
+
+#if CONFIG_OPENCL
+        CL_FINISH(xd->cl_commands);
+#endif
         return;
     }
 
