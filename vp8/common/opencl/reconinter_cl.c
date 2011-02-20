@@ -146,13 +146,16 @@ static void vp8_copy_mem_cl(
     }
 }
 
-void vp8_build_inter_predictors_b_cl(BLOCKD *d, int pitch)
+static void vp8_build_inter_predictors_b_cl(MACROBLOCKD *x, BLOCKD *d, int pitch)
 {
     int r;
     unsigned char *ptr_base = *(d->base_pre);
     int ptr_offset = d->pre + (d->bmi.mv.as_mv.row >> 3) * d->pre_stride + (d->bmi.mv.as_mv.col >> 3);
 
     vp8_subpix_cl_fn_t sppf;
+
+    int pre_dist = *d->base_pre - x->pre.buffer_alloc;
+    cl_mem pre_mem = x->pre.buffer_mem;
 
     if (d->sixtap_filter == CL_TRUE)
         sppf = vp8_sixtap_predict4x4_cl;
@@ -161,14 +164,14 @@ void vp8_build_inter_predictors_b_cl(BLOCKD *d, int pitch)
 
     //ptr_base a.k.a. d->base_pre is the start of the
     //Macroblock's y_buffer, u_buffer, or v_buffer
-    
+
     if (d->bmi.mv.as_mv.row & 7 || d->bmi.mv.as_mv.col & 7)
     {
-        sppf(d->cl_commands, ptr_base, NULL, ptr_offset, d->pre_stride, d->bmi.mv.as_mv.col & 7, d->bmi.mv.as_mv.row & 7, d->predictor_base, d->cl_predictor_mem, d->predictor_offset, pitch);
+        sppf(d->cl_commands, ptr_base, pre_mem, pre_dist+ptr_offset, d->pre_stride, d->bmi.mv.as_mv.col & 7, d->bmi.mv.as_mv.row & 7, d->predictor_base, d->cl_predictor_mem, d->predictor_offset, pitch);
     }
     else
     {
-        vp8_copy_mem_cl(d->cl_commands, ptr_base, NULL, ptr_offset,d->pre_stride,NULL,d->cl_predictor_mem, d->predictor_offset,pitch,4,4);
+        vp8_copy_mem_cl(d->cl_commands, ptr_base, pre_mem, pre_dist+ptr_offset,d->pre_stride,NULL,d->cl_predictor_mem, d->predictor_offset,pitch,4,4);
     }
 }
 
@@ -274,8 +277,8 @@ void vp8_build_inter_predictors_mbuv_cl(MACROBLOCKD *x)
                 vp8_build_inter_predictors2b_cl(x, d0, 8);
             else
             {
-                vp8_build_inter_predictors_b_cl(d0, 8);
-                vp8_build_inter_predictors_b_cl(d1, 8);
+                vp8_build_inter_predictors_b_cl(x, d0, 8);
+                vp8_build_inter_predictors_b_cl(x, d1, 8);
             }
         }
     }
@@ -368,8 +371,8 @@ void vp8_build_inter_predictors_mb_cl(MACROBLOCKD *x)
                     vp8_build_inter_predictors2b_cl(x, d0, 16);
                 else
                 {
-                    vp8_build_inter_predictors_b_cl(d0, 16);
-                    vp8_build_inter_predictors_b_cl(d1, 16);
+                    vp8_build_inter_predictors_b_cl(x, d0, 16);
+                    vp8_build_inter_predictors_b_cl(x, d1, 16);
                 }
             }
         }
@@ -384,8 +387,8 @@ void vp8_build_inter_predictors_mb_cl(MACROBLOCKD *x)
                 vp8_build_inter_predictors2b_cl(x, d0, 8);
             else
             {
-                vp8_build_inter_predictors_b_cl(d0, 8);
-                vp8_build_inter_predictors_b_cl(d1, 8);
+                vp8_build_inter_predictors_b_cl(x, d0, 8);
+                vp8_build_inter_predictors_b_cl(x, d1, 8);
             }
         }
     }
@@ -423,7 +426,7 @@ static void vp8_build_inter_predictors_b_s_cl(BLOCKD *d, unsigned char *dst_base
 }
 
 
-
+/* Never actually used... anywhere */
 void vp8_build_inter_predictors_mb_s_cl(MACROBLOCKD *x)
 {
     unsigned char *pred_ptr = x->predictor;
