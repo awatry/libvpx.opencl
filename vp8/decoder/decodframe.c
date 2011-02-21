@@ -314,7 +314,7 @@ void vp8_decode_macroblock(VP8D_COMP *pbi, MACROBLOCKD *xd)
             vp8_cl_block_finish(b, DIFF);
 
             vp8_dequant_dc_idct_add_y_block_cl(&xd->block[0], xd->qcoeff, xd->block[0].dequant,
-                             xd->predictor, xd->dst.y_buffer,
+                             xd->predictor, xd->dst.y_buffer, 0,
                              xd->dst.y_stride, xd->eobs, xd->block[24].diff_offset);
         }
         else

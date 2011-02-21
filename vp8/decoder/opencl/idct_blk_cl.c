@@ -20,7 +20,8 @@ void vp8_dequant_dc_idct_add_y_block_cl(
     short *q,           //xd->qcoeff
     short *dq,          //xd->block[0].dequant
     unsigned char *pre, //xd->predictor
-    unsigned char *dst, //xd->dst.y_buffer
+    unsigned char *dst_base, //xd->dst.y_buffer
+    int dst_off,
     int stride,         //xd->dst.y_stride
     char *eobs,         //xd->eobs
     int dc_offset       //xd->block[24].diff_offset
@@ -31,6 +32,7 @@ void vp8_dequant_dc_idct_add_y_block_cl(
     int q_offset = 0;
     int pre_offset = 0;
     int dst_offset = 0;
+    unsigned char *dst = dst_base+dst_off;
     //dc_offset = 0;
     size_t dst_size = 16*(stride+1);
 
@@ -40,7 +42,7 @@ void vp8_dequant_dc_idct_add_y_block_cl(
         for (j = 0; j < 4; j++)
         {
             if (*eobs++ > 1){
-                vp8_dequant_dc_idct_add_cl (b, q_offset, pre_offset, dst+dst_offset, 16, stride, dc_offset);
+                vp8_dequant_dc_idct_add_cl (b, q_offset, pre_offset, dst, dst_offset, 16, stride, dc_offset);
             }
             else{
                 vp8_dc_only_idct_add_cl(b, CL_TRUE, dc_offset, 0, pre_offset, dst, dst_offset, dst_size, 16, stride);
@@ -66,30 +68,30 @@ void vp8_dequant_idct_add_y_block_cl (VP8D_COMP *pbi, MACROBLOCKD *xd)
 
     short *q = xd->qcoeff;
     int q_offset = 0;
-    short *dq = xd->block[0].dequant;
-    unsigned char *pre = xd->predictor;
     int pre_offset = 0;
-    unsigned char *dsty = xd->dst.y_buffer;
-    int dst_offset = 0;
+    unsigned char *dst = xd->dst.buffer_alloc;
+    int dst_offset = xd->dst.y_buffer - dst;
     int stride = xd->dst.y_stride;
     char *eobs = xd->eobs;
     int dst_size = 16 * (stride + 1);
 
+    vp8_cl_mb_prep(xd,PREDICTOR|DIFF|QCOEFF);
     for (i = 0; i < 4; i++)
     {
         for (j = 0; j < 4; j++)
         {
             if (*eobs++ > 1){
-                vp8_cl_block_prep(&xd->block[0], QCOEFF|DEQUANT|PREDICTOR);
-                vp8_dequant_idct_add_cl(&xd->block[0], dsty, dst_offset, dst_size, q_offset, pre_offset, 16, stride, pbi->dequant.idct_add);
+                vp8_cl_block_prep(&xd->block[0], DEQUANT);
+                vp8_dequant_idct_add_cl(&xd->block[0], dst, dst_offset, dst_size+dst_offset, q_offset, pre_offset, 16, stride, pbi->dequant.idct_add);
                 vp8_cl_block_finish(&xd->block[0], QCOEFF);
             }
             else
             {
-                vp8_cl_block_prep(&xd->block[0], QCOEFF|DEQUANT|PREDICTOR|DIFF);
-                vp8_dc_only_idct_add_cl(&xd->block[0], CL_FALSE, 0, q_offset, pre_offset, dsty, dst_offset, dst_size, 16, stride);
+                vp8_cl_block_prep(&xd->block[0], DEQUANT);
+                vp8_dc_only_idct_add_cl(&xd->block[0], CL_FALSE, 0, q_offset, pre_offset, dst, dst_offset, dst_size+dst_offset, 16, stride);
                 CL_FINISH(xd->cl_commands);
                 ((int *)(q+q_offset))[0] = 0;
+                vp8_cl_mb_prep(xd,QCOEFF);
             }
 
             q_offset   += 16;
@@ -113,10 +115,13 @@ void vp8_dequant_idct_add_uv_block_cl(VP8D_COMP *pbi, MACROBLOCKD *xd,
     BLOCKD b = xd->block[block_num];
 
     short *q = xd->qcoeff;
-    short *dq = b.dequant;
-    unsigned char *pre = xd->predictor;
-    unsigned char *dstu = xd->dst.u_buffer;
-    unsigned char *dstv = xd->dst.v_buffer;
+    //unsigned char *dstu = xd->dst.u_buffer;
+    //unsigned char *dstv = xd->dst.v_buffer;
+
+    unsigned char *dst = xd->dst.buffer_alloc;
+    int u_off = xd->dst.u_buffer - dst;
+    int v_off = xd->dst.v_buffer - dst;
+
     int stride = xd->dst.uv_stride;
     size_t dst_size = 8*(stride+1);
     char *eobs = xd->eobs+16;
@@ -141,22 +146,25 @@ void vp8_dequant_idct_add_uv_block_cl(VP8D_COMP *pbi, MACROBLOCKD *xd,
         return;
     }
 
+    vp8_cl_mb_prep(xd, DIFF|QCOEFF|PREDICTOR);
     for (i = 0; i < 2; i++)
     {
         for (j = 0; j < 2; j++)
         {
             if (*eobs++ > 1){
-                //vp8_dequant_idct_add_cl (xd->block[16], q, dq, pre, dstu, 8, stride);
-                vp8_cl_block_prep(&xd->block[0], QCOEFF|DEQUANT|PREDICTOR);
-                vp8_dequant_idct_add_cl(&b, dstu, dst_offset, dst_size, q_offset, pre_offset, 8, stride, DEQUANT_INVOKE (&pbi->dequant, idct_add));
-                vp8_cl_block_finish(&xd->block[0], QCOEFF);
+                vp8_cl_block_prep(&xd->block[0], DEQUANT);
+                vp8_dequant_idct_add_cl(&b, dst, u_off+dst_offset, u_off+dst_size, q_offset, pre_offset, 8, stride, DEQUANT_INVOKE (&pbi->dequant, idct_add));
             }
             else
             {
-                vp8_cl_block_prep(&xd->block[block_num], QCOEFF|DEQUANT|PREDICTOR|DIFF);
-                vp8_dc_only_idct_add_cl (&b, CL_FALSE, 0, q_offset, pre_offset, dstu, dst_offset, dst_size, 8, stride);
-                CL_FINISH(xd->cl_commands); //Need finish until qcoeff set in CL
+                vp8_cl_block_prep(&xd->block[block_num], DEQUANT);
+                vp8_dc_only_idct_add_cl (&b, CL_FALSE, 0, q_offset, pre_offset, dst, u_off+dst_offset, u_off+dst_size, 8, stride);
+                
+                //Need round trip + finish until qcoeff set in CL
+                vp8_cl_block_finish(&xd->block[0], QCOEFF);
+                CL_FINISH(xd->cl_commands); 
                 ((int *)(q+q_offset))[0] = 0;
+                vp8_cl_mb_prep(xd,QCOEFF);
             }
 
             q_offset    += 16;
@@ -176,16 +184,21 @@ void vp8_dequant_idct_add_uv_block_cl(VP8D_COMP *pbi, MACROBLOCKD *xd,
         for (j = 0; j < 2; j++)
         {
             if (*eobs++ > 1){
-                vp8_cl_block_prep(&b, QCOEFF|DEQUANT|PREDICTOR);
-                vp8_dequant_idct_add_cl (&b, dstv,dst_offset, dst_size, q_offset, pre_offset, 8, stride, DEQUANT_INVOKE (&pbi->dequant, idct_add));
-                vp8_cl_block_finish(&b, QCOEFF);
+                vp8_cl_block_prep(&b, DEQUANT);
+                vp8_dequant_idct_add_cl (&b, dst,v_off+dst_offset, v_off+dst_size, q_offset,
+                        pre_offset, 8, stride, DEQUANT_INVOKE (&pbi->dequant, idct_add));
             }
             else
             {
-                vp8_cl_block_prep(&b, QCOEFF|DEQUANT|PREDICTOR|DIFF);
-                vp8_dc_only_idct_add_cl (&b, CL_FALSE, 0, q_offset, pre_offset, dstv, dst_offset, dst_size, 8, stride);
+                vp8_cl_block_prep(&b, DEQUANT);
+                vp8_dc_only_idct_add_cl (&b, CL_FALSE, 0, q_offset, pre_offset,
+                        dst, v_off+dst_offset, v_off+dst_size, 8, stride);
+
+                //Eventually replace with memset kernel call to prevent round trip
+                vp8_cl_mb_finish(xd,QCOEFF);
                 CL_FINISH(xd->cl_commands);
                 ((int *)(q+q_offset))[0] = 0;
+                vp8_cl_mb_prep(xd,QCOEFF);
             }
 
             q_offset    += 16;
@@ -196,6 +209,8 @@ void vp8_dequant_idct_add_uv_block_cl(VP8D_COMP *pbi, MACROBLOCKD *xd,
         pre_offset  += 32 - 8;
         dst_offset += 4*stride - 8;
     }
+    
+    vp8_cl_mb_finish(xd,QCOEFF);
 
     //clReleaseMemObject(dest_mem);
 }

@@ -146,13 +146,15 @@ void vp8_dequant_dc_idct_add_cl(
     BLOCKD *b,
     int qcoeff_offset,
     int pred_offset,
-    unsigned char *dest,
+    unsigned char *dest_base,
+    int dest_off,
     int pitch,
     int stride,
     int Dc_offset)
 {
     int err;
     int dq_offset = 0;
+    unsigned char *dest = dest_base + dest_off;
  
     cl_mem dest_mem = NULL;
     size_t dest_size;
