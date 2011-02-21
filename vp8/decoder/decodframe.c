@@ -113,15 +113,15 @@ void mb_init_dequantizer(VP8D_COMP *pbi, MACROBLOCKD *xd)
 
 #if 1 //Initialize CL memory on allocation?
             CL_CREATE_BUF(xd->cl_commands, xd->block[i].cl_dequant_mem,
-                CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,
+                ,
                 16*sizeof(cl_short),
-                xd->block[i].dequant,
+                xd->block[i].dequant,,
             );
 #else
             CL_CREATE_BUF(xd->cl_commands, xd->block[i].cl_dequant_mem,
-                CL_MEM_READ_WRITE,
+                ,
                 16*sizeof(cl_short),
-                NULL,
+                NULL,,
             );
 #endif
         }
@@ -303,14 +303,15 @@ void vp8_decode_macroblock(VP8D_COMP *pbi, MACROBLOCKD *xd)
 
 #if CONFIG_OPENCL && ENABLE_CL_IDCT_DEQUANT
         if (cl_initialized == CL_SUCCESS){
-            vp8_cl_block_prep(b, DQCOEFF|DIFF|BLOCK_COPY_ALL);
+            vp8_cl_block_prep(b, DQCOEFF|DIFF);
+
             if (xd->eobs[24] > 1)
             {
                 vp8_short_inv_walsh4x4_cl(b);
             } else {
                 vp8_short_inv_walsh4x4_1_cl(b);
             }
-            vp8_cl_block_finish(b, DIFF|BLOCK_COPY_ALL);
+            vp8_cl_block_finish(b, DIFF);
 
             vp8_dequant_dc_idct_add_y_block_cl(&xd->block[0], xd->qcoeff, xd->block[0].dequant,
                              xd->predictor, xd->dst.y_buffer,
