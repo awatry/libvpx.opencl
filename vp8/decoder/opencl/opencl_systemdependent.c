@@ -15,10 +15,6 @@
 #include "vp8/common/opencl/vp8_opencl.h"
 #include "vp8_decode_cl.h"
 
-extern void vp8_dequantize_b_cl(BLOCKD*);
-extern void vp8_dequant_dc_idct_add_cl(short*, short*, unsigned char*,
-                               unsigned char*, int, int, int Dc);
-
 void vp8_arch_opencl_decode_init(VP8D_COMP *pbi)
 {
 
