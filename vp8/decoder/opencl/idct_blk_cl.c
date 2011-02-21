@@ -17,10 +17,8 @@
 //change q/dq/pre/eobs/dc to offsets
 void vp8_dequant_dc_idct_add_y_block_cl(
     BLOCKD *b,
-    short *q,           //xd->qcoeff
-    short *dq,          //xd->block[0].dequant
-    unsigned char *pre, //xd->predictor
     unsigned char *dst_base, //xd->dst.y_buffer
+    cl_mem dst_mem,
     int dst_off,
     int stride,         //xd->dst.y_stride
     char *eobs,         //xd->eobs
@@ -28,12 +26,10 @@ void vp8_dequant_dc_idct_add_y_block_cl(
 )
 {
     int i, j;
-    short *dc = b->diff_base;
     int q_offset = 0;
     int pre_offset = 0;
     int dst_offset = 0;
     unsigned char *dst = dst_base+dst_off;
-    //dc_offset = 0;
     size_t dst_size = 16*(stride+1);
 
     vp8_cl_block_prep(b, QCOEFF|DEQUANT|DIFF|PREDICTOR);

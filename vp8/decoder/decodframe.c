@@ -303,6 +303,7 @@ void vp8_decode_macroblock(VP8D_COMP *pbi, MACROBLOCKD *xd)
 
 #if CONFIG_OPENCL && ENABLE_CL_IDCT_DEQUANT
         if (cl_initialized == CL_SUCCESS){
+            int y_off = xd->dst.y_buffer - xd->dst.buffer_alloc;
             vp8_cl_block_prep(b, DQCOEFF|DIFF);
 
             if (xd->eobs[24] > 1)
@@ -313,9 +314,11 @@ void vp8_decode_macroblock(VP8D_COMP *pbi, MACROBLOCKD *xd)
             }
             vp8_cl_block_finish(b, DIFF);
 
-            vp8_dequant_dc_idct_add_y_block_cl(&xd->block[0], xd->qcoeff, xd->block[0].dequant,
-                             xd->predictor, xd->dst.y_buffer, 0,
-                             xd->dst.y_stride, xd->eobs, xd->block[24].diff_offset);
+            //vp8_cl_mb_prep(xd,DST_BUF);
+            vp8_dequant_dc_idct_add_y_block_cl(&xd->block[0], 
+                    xd->dst.buffer_alloc, xd->dst.buffer_mem, y_off, xd->dst.y_stride, xd->eobs,
+                    xd->block[24].diff_offset);
+            //vp8_cl_mb_finish(xd,DST_BUF);
         }
         else
 #endif

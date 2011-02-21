@@ -35,8 +35,8 @@ extern "C" {
              int dc)
 
 #define prototype_dequant_dc_idct_add_y_block_cl(sym) \
-    void sym(BLOCKD *b, short *q, short *dq, \
-             unsigned char *pre, unsigned char *dst_base, int dst_off,\
+    void sym(BLOCKD *b, \
+             unsigned char *dst_base, cl_mem dst_mem, int dst_off,\
              int stride, char *eobs, int dc_offset)
 
 #define prototype_dequant_idct_add_y_block_cl(sym) \
