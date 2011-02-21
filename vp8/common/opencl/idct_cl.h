@@ -27,7 +27,7 @@ extern "C" {
 
 #define prototype_idct_scalar_add_cl(sym) \
     void sym(BLOCKD *b, cl_int use_diff, int diff_offset, int qcoeff_offset, \
-             int pred_offset, unsigned char *output, int out_offset, size_t out_size, \
+             int pred_offset, unsigned char *output, cl_mem out_mem, int out_offset, size_t out_size, \
              int pitch, int stride)\
 
 

@@ -180,23 +180,28 @@ void vp8_short_idct4x4llm_1_cl(BLOCKD *b, int pitch)
 
 void vp8_dc_only_idct_add_cl(BLOCKD *b, cl_int use_diff, int diff_offset, 
         int qcoeff_offset, int pred_offset,
-        unsigned char *dst_base, int dst_offset, size_t dest_size,
+        unsigned char *dst_base, cl_mem dst_mem, int dst_offset, size_t dest_size,
         int pitch, int stride
 )
 {
     
     int err;
     size_t global = 16;
-    cl_mem dest_mem = NULL;
 
-    CL_CREATE_BUF(b->cl_commands, dest_mem,,
-            dest_size, dst_base,,
-    );
+    int free_mem = 0;
+    //cl_mem dest_mem = NULL;
+
+    if (dst_mem == NULL){
+        CL_CREATE_BUF(b->cl_commands, dst_mem,,
+                dest_size, dst_base,,
+        );
+        free_mem = 1;
+    }
 
     //Set arguments and run kernel
     err =  clSetKernelArg(cl_data.vp8_dc_only_idct_add_kernel, 0, sizeof (cl_mem), &b->cl_predictor_mem);
     err |= clSetKernelArg(cl_data.vp8_dc_only_idct_add_kernel, 1, sizeof (int), &pred_offset);
-    err |= clSetKernelArg(cl_data.vp8_dc_only_idct_add_kernel, 2, sizeof (cl_mem), &dest_mem);
+    err |= clSetKernelArg(cl_data.vp8_dc_only_idct_add_kernel, 2, sizeof (cl_mem), &dst_mem);
     err |= clSetKernelArg(cl_data.vp8_dc_only_idct_add_kernel, 3, sizeof (int), &dst_offset);
     err |= clSetKernelArg(cl_data.vp8_dc_only_idct_add_kernel, 4, sizeof (int), &pitch);
     err |= clSetKernelArg(cl_data.vp8_dc_only_idct_add_kernel, 5, sizeof (int), &stride);
@@ -217,15 +222,18 @@ void vp8_dc_only_idct_add_cl(BLOCKD *b, cl_int use_diff, int diff_offset,
         printf("err = %d\n",err);,
     );
 
+
+    if (free_mem == 1){
     /* Read back the result data from the device */
-    err = clEnqueueReadBuffer(b->cl_commands, dest_mem, CL_FALSE, 0,
-            dest_size, dst_base, 0, NULL, NULL);
+        err = clEnqueueReadBuffer(b->cl_commands, dst_mem, CL_FALSE, 0,
+                dest_size, dst_base, 0, NULL, NULL);
 
-    CL_CHECK_SUCCESS(b->cl_commands, err != CL_SUCCESS,
-        "Error: Failed to read output array!\n",,
-    );
+        CL_CHECK_SUCCESS(b->cl_commands, err != CL_SUCCESS,
+            "Error: Failed to read output array!\n",,
+        );
 
-    clReleaseMemObject(dest_mem);
+        clReleaseMemObject(dst_mem);
+    }
 
     return;
 }

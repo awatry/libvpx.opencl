@@ -89,16 +89,20 @@ void vp8_dequantize_b_cl(BLOCKD *d)
 
 }
 
-void vp8_dequant_idct_add_cl(BLOCKD *b, unsigned char *dest_base, int dest_offset, size_t dst_size, int q_offset, int pred_offset, int pitch, int stride, vp8_dequant_idct_add_fn_t idct_add)
+void vp8_dequant_idct_add_cl(BLOCKD *b, unsigned char *dest_base, cl_mem dest_mem, int dest_offset, size_t dst_size, int q_offset, int pred_offset, int pitch, int stride, vp8_dequant_idct_add_fn_t idct_add)
 {
     int err;
     size_t global = 1;
-    cl_mem dest_mem = NULL;
+    //cl_mem dest_mem = NULL;
+    int free_mem = 0;
 
-    //Initialize destination memory
-    CL_CREATE_BUF(b->cl_commands, dest_mem, CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,
-            dst_size, dest_base,,
-    );
+    if (dest_mem == NULL){
+        //Initialize destination memory
+        CL_CREATE_BUF(b->cl_commands, dest_mem, CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,
+                dst_size, dest_base,,
+        );
+        free_mem = 1;
+    }
     
     /* Set kernel arguments */
     err = 0;
@@ -126,17 +130,18 @@ void vp8_dequant_idct_add_cl(BLOCKD *b, unsigned char *dest_base, int dest_offse
             dest_base + dest_offset, pitch, stride),
     );
 
-    /* Read back the result data from the device */
-    err = clEnqueueReadBuffer(b->cl_commands, dest_mem, CL_FALSE, 0, dst_size, dest_base, 0, NULL, NULL);
-    CL_CHECK_SUCCESS( b->cl_commands, err != CL_SUCCESS,
-        "Error: Failed to read output array!\n",
-        idct_add(b->qcoeff_base+q_offset, b->dequant,  b->predictor_base + pred_offset,
-            dest_base + dest_offset, pitch, stride),
-    );
+    if (free_mem == 1){
+        /* Read back the result data from the device */
+        err = clEnqueueReadBuffer(b->cl_commands, dest_mem, CL_FALSE, 0, dst_size, dest_base, 0, NULL, NULL);
+        CL_CHECK_SUCCESS( b->cl_commands, err != CL_SUCCESS,
+            "Error: Failed to read output array!\n",
+            idct_add(b->qcoeff_base+q_offset, b->dequant,  b->predictor_base + pred_offset,
+                dest_base + dest_offset, pitch, stride),
+        );
 
-    //CL Spec says this can be freed without clFinish first
-    clReleaseMemObject(dest_mem); 
-    dest_mem = NULL;
+        //CL Spec says this can be freed without clFinish first
+        clReleaseMemObject(dest_mem);
+    }
 
     return;
 }
