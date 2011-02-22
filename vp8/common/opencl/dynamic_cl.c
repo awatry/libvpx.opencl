@@ -82,7 +82,7 @@ int load_cl(char *lib_name){
 //    CL_LOAD_FN("clRetainEvent", cl.retainEvent);
 //    CL_LOAD_FN("clReleaseEvent", cl.releaseEvent);
 //    CL_LOAD_FN("clGetEventProfilingInfo", cl.getEventProfilingInfo);
-//    CL_LOAD_FN("clFlush", cl.flush);
+    CL_LOAD_FN("clFlush", cl.flush);
     CL_LOAD_FN("clFinish", cl.finish);
     CL_LOAD_FN("clEnqueueReadBuffer", cl.enqueueReadBuffer);
     CL_LOAD_FN("clEnqueueWriteBuffer", cl.enqueueWriteBuffer);

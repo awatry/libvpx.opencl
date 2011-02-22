@@ -48,7 +48,6 @@ extern const char *vpx_codec_lib_dir(void);
 #define CL_FINISH(cq) \
     if (cl_initialized == CL_SUCCESS){ \
         /* Wait for kernels to finish. */ \
-        /* clFinish(cl_data.commands); */ \
         clFinish(cq); \
     }
 
