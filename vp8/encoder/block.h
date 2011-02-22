@@ -12,10 +12,10 @@
 #ifndef __INC_BLOCK_H
 #define __INC_BLOCK_H
 
-#include "onyx.h"
-#include "blockd.h"
-#include "entropymv.h"
-#include "entropy.h"
+#include "vp8/common/onyx.h"
+#include "vp8/common/blockd.h"
+#include "vp8/common/entropymv.h"
+#include "vp8/common/entropy.h"
 #include "vpx_ports/mem.h"
 
 // motion search site
@@ -33,6 +33,7 @@ typedef struct
 
     // 16 Y blocks, 4 U blocks, 4 V blocks each with 16 entries
     short *quant;
+    short *quant_fast;
     short *quant_shift;
     short *zbin;
     short *zrun_zbin_boost;
@@ -81,6 +82,7 @@ typedef struct
     int errthresh;
     int rddiv;
     int rdmult;
+    INT64 activity_sum;
 
     int mvcosts[2][MVvals+1];
     int *mvcost[2];
@@ -110,6 +112,7 @@ typedef struct
 
     unsigned int token_costs[BLOCK_TYPES] [COEF_BANDS] [PREV_COEF_CONTEXTS] [vp8_coef_tokens];
     int optimize;
+    int q_index;
 
     void (*vp8_short_fdct4x4)(short *input, short *output, int pitch);
     void (*vp8_short_fdct8x4)(short *input, short *output, int pitch);

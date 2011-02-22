@@ -15,8 +15,8 @@
 #include "vpx/vp8dx.h"
 #include "vpx/internal/vpx_codec_internal.h"
 #include "vpx_version.h"
-#include "onyxd.h"
-#include "onyxd_int.h"
+#include "common/onyxd.h"
+#include "decoder/onyxd_int.h"
 
 #if CONFIG_OPENCL
 #include "common/opencl/vp8_opencl.h"
@@ -24,19 +24,6 @@
 
 #define VP8_CAP_POSTPROC (CONFIG_POSTPROC ? VPX_CODEC_CAP_POSTPROC : 0)
 
-#if CONFIG_BIG_ENDIAN
-# define swap4(d)\
-    ((d&0x000000ff)<<24) |  \
-    ((d&0x0000ff00)<<8)  |  \
-    ((d&0x00ff0000)>>8)  |  \
-    ((d&0xff000000)>>24)
-# define swap2(d)\
-    ((d&0x000000ff)<<8) |  \
-    ((d&0x0000ff00)>>8)
-#else
-# define swap4(d) d
-# define swap2(d) d
-#endif
 typedef vpx_codec_stream_info_t  vp8_stream_info_t;
 
 /* Structures for handling memory allocations */
@@ -69,12 +56,19 @@ struct vpx_codec_alg_priv
     vpx_codec_priv_t        base;
     vpx_codec_mmap_t        mmaps[NELEMENTS(vp8_mem_req_segs)-1];
     vpx_codec_dec_cfg_t     cfg;
-    vp8_stream_info_t   si;
+    vp8_stream_info_t       si;
     int                     defer_alloc;
     int                     decoder_init;
     VP8D_PTR                pbi;
     int                     postproc_cfg_set;
     vp8_postproc_cfg_t      postproc_cfg;
+#if CONFIG_POSTPROC_VISUALIZER
+    unsigned int            dbg_postproc_flag;
+    int                     dbg_color_ref_frame_flag;
+    int                     dbg_color_mb_modes_flag;
+    int                     dbg_color_b_modes_flag;
+    int                     dbg_display_mv_flag;
+#endif
     vpx_image_t             img;
     int                     img_setup;
     int                     img_avail;
@@ -266,8 +260,11 @@ static vpx_codec_err_t vp8_peek_si(const uint8_t         *data,
                                    unsigned int           data_sz,
                                    vpx_codec_stream_info_t *si)
 {
-
     vpx_codec_err_t res = VPX_CODEC_OK;
+
+    if(data + data_sz <= data)
+        res = VPX_CODEC_INVALID_PARAM;
+    else
     {
         /* Parse uncompresssed part of key frame header.
          * 3 bytes:- including version, frame type and an offset
@@ -286,8 +283,8 @@ static vpx_codec_err_t vp8_peek_si(const uint8_t         *data,
             if (c[0] != 0x9d || c[1] != 0x01 || c[2] != 0x2a)
                 res = VPX_CODEC_UNSUP_BITSTREAM;
 
-            si->w = swap2(*(const unsigned short *)(c + 3)) & 0x3fff;
-            si->h = swap2(*(const unsigned short *)(c + 5)) & 0x3fff;
+            si->w = (c[3] | (c[4] << 8)) & 0x3fff;
+            si->h = (c[5] | (c[6] << 8)) & 0x3fff;
 
             /*printf("w=%d, h=%d\n", si->w, si->h);*/
             if (!(si->h | si->w))
@@ -344,7 +341,10 @@ static vpx_codec_err_t vp8_decode(vpx_codec_alg_priv_t  *ctx,
 
     ctx->img_avail = 0;
 
-    /* Determine the stream parameters */
+    /* Determine the stream parameters. Note that we rely on peek_si to
+     * validate that we have a buffer that does not wrap around the top
+     * of the heap.
+     */
     if (!ctx->si.h)
         res = ctx->base.iface->dec.peek_si(data, data_sz, &ctx->si);
 
@@ -423,15 +423,27 @@ static vpx_codec_err_t vp8_decode(vpx_codec_alg_priv_t  *ctx,
     {
         YV12_BUFFER_CONFIG sd;
         INT64 time_stamp = 0, time_end_stamp = 0;
-        int ppflag       = 0;
-        int ppdeblocking = 0;
-        int ppnoise      = 0;
+        vp8_ppflags_t flags = {0};
 
         if (ctx->base.init_flags & VPX_CODEC_USE_POSTPROC)
         {
-            ppflag      = ctx->postproc_cfg.post_proc_flag;
-            ppdeblocking = ctx->postproc_cfg.deblocking_level;
-            ppnoise     = ctx->postproc_cfg.noise_level;
+            flags.post_proc_flag= ctx->postproc_cfg.post_proc_flag
+#if CONFIG_POSTPROC_VISUALIZER
+
+                                | ((ctx->dbg_color_ref_frame_flag != 0) ? VP8D_DEBUG_CLR_FRM_REF_BLKS : 0)
+                                | ((ctx->dbg_color_mb_modes_flag != 0) ? VP8D_DEBUG_CLR_BLK_MODES : 0)
+                                | ((ctx->dbg_color_b_modes_flag != 0) ? VP8D_DEBUG_CLR_BLK_MODES : 0)
+                                | ((ctx->dbg_display_mv_flag != 0) ? VP8D_DEBUG_DRAW_MV : 0)
+#endif
+                                ;
+            flags.deblocking_level      = ctx->postproc_cfg.deblocking_level;
+            flags.noise_level           = ctx->postproc_cfg.noise_level;
+#if CONFIG_POSTPROC_VISUALIZER
+            flags.display_ref_frame_flag= ctx->dbg_color_ref_frame_flag;
+            flags.display_mb_modes_flag = ctx->dbg_color_mb_modes_flag;
+            flags.display_b_modes_flag  = ctx->dbg_color_b_modes_flag;
+            flags.display_mv_flag       = ctx->dbg_display_mv_flag;
+#endif
         }
 
         if (vp8dx_receive_compressed_data(ctx->pbi, data_sz, data, deadline))
@@ -440,7 +452,7 @@ static vpx_codec_err_t vp8_decode(vpx_codec_alg_priv_t  *ctx,
             res = update_error_state(ctx, &pbi->common.error);
         }
 
-        if (!res && 0 == vp8dx_get_raw_frame(ctx->pbi, &sd, &time_stamp, &time_end_stamp, ppdeblocking, ppnoise, ppflag))
+        if (!res && 0 == vp8dx_get_raw_frame(ctx->pbi, &sd, &time_stamp, &time_end_stamp, &flags))
         {
             /* Align width/height */
             unsigned int a_w = (sd.y_width + 15) & ~15;
@@ -454,6 +466,7 @@ static vpx_codec_err_t vp8_decode(vpx_codec_alg_priv_t  *ctx,
             vpx_img_set_rect(&ctx->img,
                              VP8BORDERINPIXELS, VP8BORDERINPIXELS,
                              sd.y_width, sd.y_height);
+            ctx->img.user_priv = user_priv;
             ctx->img_avail = 1;
 
         }
@@ -653,12 +666,79 @@ static vpx_codec_err_t vp8_set_postproc(vpx_codec_alg_priv_t *ctx,
 #endif
 }
 
+static vpx_codec_err_t vp8_set_dbg_options(vpx_codec_alg_priv_t *ctx,
+                                        int ctrl_id,
+                                        va_list args)
+{
+#if CONFIG_POSTPROC_VISUALIZER && CONFIG_POSTPROC
+    int data = va_arg(args, int);
+
+#define MAP(id, var) case id: var = data; break;
+
+    switch (ctrl_id)
+    {
+        MAP (VP8_SET_DBG_COLOR_REF_FRAME,   ctx->dbg_color_ref_frame_flag);
+        MAP (VP8_SET_DBG_COLOR_MB_MODES,    ctx->dbg_color_mb_modes_flag);
+        MAP (VP8_SET_DBG_COLOR_B_MODES,     ctx->dbg_color_b_modes_flag);
+        MAP (VP8_SET_DBG_DISPLAY_MV,        ctx->dbg_display_mv_flag);
+    }
+
+    return VPX_CODEC_OK;
+#else
+    return VPX_CODEC_INCAPABLE;
+#endif
+}
+
+static vpx_codec_err_t vp8_get_last_ref_updates(vpx_codec_alg_priv_t *ctx,
+                                                int ctrl_id,
+                                                va_list args)
+{
+    int *update_info = va_arg(args, int *);
+    VP8D_COMP *pbi = (VP8D_COMP *)ctx->pbi;
+
+    if (update_info)
+    {
+        *update_info = pbi->common.refresh_alt_ref_frame * (int) VP8_ALTR_FRAME
+            + pbi->common.refresh_golden_frame * (int) VP8_GOLD_FRAME
+            + pbi->common.refresh_last_frame * (int) VP8_LAST_FRAME;
+
+        return VPX_CODEC_OK;
+    }
+    else
+        return VPX_CODEC_INVALID_PARAM;
+}
+
+
+static vpx_codec_err_t vp8_get_frame_corrupted(vpx_codec_alg_priv_t *ctx,
+                                               int ctrl_id,
+                                               va_list args)
+{
+
+    int *corrupted = va_arg(args, int *);
+
+    if (corrupted)
+    {
+        VP8D_COMP *pbi = (VP8D_COMP *)ctx->pbi;
+        *corrupted = pbi->common.frame_to_show->corrupted;
+
+        return VPX_CODEC_OK;
+    }
+    else
+        return VPX_CODEC_INVALID_PARAM;
+
+}
 
 vpx_codec_ctrl_fn_map_t vp8_ctf_maps[] =
 {
-    {VP8_SET_REFERENCE,  vp8_set_reference},
-    {VP8_COPY_REFERENCE, vp8_get_reference},
-    {VP8_SET_POSTPROC,   vp8_set_postproc},
+    {VP8_SET_REFERENCE,             vp8_set_reference},
+    {VP8_COPY_REFERENCE,            vp8_get_reference},
+    {VP8_SET_POSTPROC,              vp8_set_postproc},
+    {VP8_SET_DBG_COLOR_REF_FRAME,   vp8_set_dbg_options},
+    {VP8_SET_DBG_COLOR_MB_MODES,    vp8_set_dbg_options},
+    {VP8_SET_DBG_COLOR_B_MODES,     vp8_set_dbg_options},
+    {VP8_SET_DBG_DISPLAY_MV,        vp8_set_dbg_options},
+    {VP8D_GET_LAST_REF_UPDATES,     vp8_get_last_ref_updates},
+    {VP8D_GET_FRAME_CORRUPTED,      vp8_get_frame_corrupted},
     { -1, NULL},
 };
 

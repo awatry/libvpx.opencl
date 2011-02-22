@@ -78,6 +78,7 @@ Build options:
   --log=yes|no|FILE           file configure log is written to [config.err]
   --target=TARGET             target platform tuple [generic-gnu]
   --cpu=CPU                   optimize for a specific cpu rather than a family
+  --extra-cflags=ECFLAGS      add ECFLAGS to CFLAGS [$CFLAGS]
   ${toggle_extra_warnings}    emit harmless warnings (always non-fatal)
   ${toggle_werror}            treat warnings as errors, if possible
                               (not available with all compilers)
@@ -442,6 +443,9 @@ process_common_cmdline() {
         ;;
         --cpu=*) tune_cpu="$optval"
         ;;
+        --extra-cflags=*)
+        extra_cflags="${optval}"
+        ;;
         --enable-?*|--disable-?*)
         eval `echo "$opt" | sed 's/--/action=/;s/-/ option=/;s/-/_/g'`
         echo "${CMDLINE_SELECT} ${ARCH_EXT_LIST}" | grep "^ *$option\$" >/dev/null || die_unknown $opt
@@ -548,7 +552,7 @@ process_common_toolchain() {
                 tgt_os=darwin9
                 ;;
             *darwin10*)
-                #tgt_isa=universal
+                tgt_isa=x86_64
                 tgt_os=darwin10
                 ;;
             *mingw32*|*cygwin*)
@@ -660,12 +664,12 @@ process_common_toolchain() {
             elif enabled armv7
             then
                 check_add_cflags -march=armv7-a -mcpu=cortex-a8 -mfpu=neon -mfloat-abi=softfp  #-ftree-vectorize
-        check_add_asflags -mcpu=cortex-a8 -mfpu=neon -mfloat-abi=softfp  #-march=armv7-a
+                check_add_asflags -mcpu=cortex-a8 -mfpu=neon -mfloat-abi=softfp  #-march=armv7-a
             else
                 check_add_cflags -march=${tgt_isa}
                 check_add_asflags -march=${tgt_isa}
             fi
-
+            enabled debug && add_asflags -g
             asm_conversion_cmd="${source_path}/build/make/ads2gas.pl"
             ;;
         rvct)
@@ -690,16 +694,24 @@ process_common_toolchain() {
             arch_int=${tgt_isa##armv}
             arch_int=${arch_int%%te}
             check_add_asflags --pd "\"ARCHITECTURE SETA ${arch_int}\""
+            enabled debug && add_asflags -g
+            add_cflags --gnu
+            add_cflags --enum_is_int
+            add_cflags --wchar32
         ;;
         esac
 
         case ${tgt_os} in
+        none*)
+            disable multithread
+            disable os_support
+            ;;
         darwin*)
             SDK_PATH=/Developer/Platforms/iPhoneOS.platform/Developer
             TOOLCHAIN_PATH=${SDK_PATH}/usr/bin
             CC=${TOOLCHAIN_PATH}/gcc
             AR=${TOOLCHAIN_PATH}/ar
-            LD=${TOOLCHAIN_PATH}/arm-apple-darwin9-gcc-4.2.1
+            LD=${TOOLCHAIN_PATH}/arm-apple-darwin10-gcc-4.2.1
             AS=${TOOLCHAIN_PATH}/as
             STRIP=${TOOLCHAIN_PATH}/strip
             NM=${TOOLCHAIN_PATH}/nm
@@ -713,14 +725,14 @@ process_common_toolchain() {
             add_cflags -arch ${tgt_isa}
             add_ldflags -arch_only ${tgt_isa}
 
-            add_cflags  "-isysroot /Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS3.1.sdk"
+            add_cflags  "-isysroot /Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS4.2.sdk"
 
             # This should be overridable
-            alt_libc=${SDK_PATH}/SDKs/iPhoneOS3.1.sdk
+            alt_libc=${SDK_PATH}/SDKs/iPhoneOS4.2.sdk
 
             # Add the paths for the alternate libc
 #            for d in usr/include usr/include/gcc/darwin/4.0/; do
-            for d in usr/include usr/include/gcc/darwin/4.0/ usr/lib/gcc/arm-apple-darwin9/4.0.1/include/; do
+            for d in usr/include usr/include/gcc/darwin/4.0/ usr/lib/gcc/arm-apple-darwin10/4.2.1/include/; do
                 try_dir="${alt_libc}/${d}"
                 [ -d "${try_dir}" ] && add_cflags -I"${try_dir}"
             done
@@ -742,13 +754,9 @@ process_common_toolchain() {
                     || die "Must supply --libc when targetting *-linux-rvct"
 
                 # Set up compiler
-                add_cflags --gnu
-                add_cflags --enum_is_int
                 add_cflags --library_interface=aeabi_glibc
                 add_cflags --no_hide_all
-                add_cflags --wchar32
                 add_cflags --dwarf2
-                add_cflags --gnu
 
                 # Set up linker
                 add_ldflags --sysv --no_startup --no_ref_cpp_init
@@ -890,7 +898,7 @@ process_common_toolchain() {
         case  ${tgt_os} in
             win*)
                 add_asflags -f win${bits}
-                enabled debug && add_asflags -g dwarf2
+                enabled debug && add_asflags -g cv8
             ;;
             linux*|solaris*)
                 add_asflags -f elf${bits}
@@ -1002,6 +1010,12 @@ EOF
     if enabled linux; then
         add_cflags -D_LARGEFILE_SOURCE
         add_cflags -D_FILE_OFFSET_BITS=64
+    fi
+
+    # append any user defined extra cflags
+    if [ -n "${extra_cflags}" ] ; then
+        check_add_cflags ${extra_cflags} || \
+        die "Requested extra CFLAGS '${extra_cflags}' not supported by compiler"
     fi
 }
 

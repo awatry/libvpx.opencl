@@ -9,13 +9,13 @@
  */
 
 
-#include "onyxc_int.h"
+#include "vp8/common/onyxc_int.h"
 #include "onyx_int.h"
 #include "quantize.h"
 #include "vpx_mem/vpx_mem.h"
 #include "vpx_scale/yv12extend.h"
 #include "vpx_scale/vpxscale.h"
-#include "alloccommon.h"
+#include "vp8/common/alloccommon.h"
 #if ARCH_ARM
 #include "vpx_ports/arm.h"
 #endif
@@ -296,7 +296,6 @@ void vp8cx_pick_filter_level(YV12_BUFFER_CONFIG *sd, VP8_COMP *cpi)
     int filt_err = 0;
     int min_filter_level;
     int max_filter_level;
-    int prediction_difference = (int)(100 * abs((int)(cpi->last_auto_filter_prediction_error - cpi->prediction_error)) / (1 + cpi->prediction_error));
 
     int filter_step;
     int filt_high = 0;
@@ -478,6 +477,5 @@ void vp8cx_pick_filter_level(YV12_BUFFER_CONFIG *sd, VP8_COMP *cpi)
     cpi->last_auto_filt_val = filt_best;
     cpi->last_auto_filt_q  = cm->base_qindex;
 
-    cpi->last_auto_filter_prediction_error = cpi->prediction_error;
     cpi->frames_since_auto_filter = 0;
 }

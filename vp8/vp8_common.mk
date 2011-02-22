@@ -8,25 +8,12 @@
 ##  be found in the AUTHORS file in the root of the source tree.
 ##
 
-
-#add this file to the installed sources list
 VP8_COMMON_SRCS-yes += vp8_common.mk
-
-CFLAGS+=-I$(SRC_PATH_BARE)/$(VP8_PREFIX)common
 VP8_COMMON_SRCS-yes += common/type_aliases.h
 VP8_COMMON_SRCS-yes += common/pragmas.h
-
-CFLAGS+=-I$(SRC_PATH_BARE)/$(VP8_PREFIX)common
-VP8_COMMON_SRCS-yes += common/preproc.h
-VP8_COMMON_SRCS-yes += common/vpxerrors.h
-
-CFLAGS+=-I$(SRC_PATH_BARE)/$(VP8_PREFIX)common
 VP8_COMMON_SRCS-yes += common/ppflags.h
 VP8_COMMON_SRCS-yes += common/onyx.h
 VP8_COMMON_SRCS-yes += common/onyxd.h
-
-CFLAGS+=-I$(SRC_PATH_BARE)/$(VP8_PREFIX)common
-
 VP8_COMMON_SRCS-yes += common/alloccommon.c
 VP8_COMMON_SRCS-yes += common/blockd.c
 VP8_COMMON_SRCS-yes += common/coefupdateprobs.h
@@ -36,7 +23,7 @@ VP8_COMMON_SRCS-yes += common/entropy.c
 VP8_COMMON_SRCS-yes += common/entropymode.c
 VP8_COMMON_SRCS-yes += common/entropymv.c
 VP8_COMMON_SRCS-yes += common/extend.c
-VP8_COMMON_SRCS-yes += common/filter_c.c
+VP8_COMMON_SRCS-yes += common/filter.c
 VP8_COMMON_SRCS-yes += common/findnearmv.c
 VP8_COMMON_SRCS-yes += common/generic/systemdependent.c
 VP8_COMMON_SRCS-yes += common/idctllm.c
@@ -56,7 +43,6 @@ VP8_COMMON_SRCS-yes += common/loopfilter.h
 VP8_COMMON_SRCS-yes += common/modecont.h
 VP8_COMMON_SRCS-yes += common/mv.h
 VP8_COMMON_SRCS-yes += common/onyxc_int.h
-VP8_COMMON_SRCS-yes += common/predictdc.h
 VP8_COMMON_SRCS-yes += common/quant_common.h
 VP8_COMMON_SRCS-yes += common/recon.h
 VP8_COMMON_SRCS-yes += common/reconinter.h
@@ -73,7 +59,6 @@ VP8_COMMON_SRCS-yes += common/loopfilter_filters.c
 VP8_COMMON_SRCS-yes += common/mbpitch.c
 VP8_COMMON_SRCS-yes += common/modecont.c
 VP8_COMMON_SRCS-yes += common/modecontext.c
-VP8_COMMON_SRCS-yes += common/predictdc.c
 VP8_COMMON_SRCS-yes += common/quant_common.c
 VP8_COMMON_SRCS-yes += common/recon.c
 VP8_COMMON_SRCS-yes += common/reconinter.c
@@ -110,14 +95,15 @@ VP8_COMMON_SRCS-$(HAVE_MMX) += common/x86/postproc_mmx.asm
 VP8_COMMON_SRCS-$(HAVE_SSE2) += common/x86/postproc_sse2.asm
 endif
 
+VP8_COMMON_SRCS-$(ARCH_ARM)  += common/asm_com_offsets.c
 VP8_COMMON_SRCS-$(ARCH_ARM)  += common/arm/arm_systemdependent.c
 
 # common (c)
 VP8_COMMON_SRCS-$(HAVE_ARMV6)  += common/arm/bilinearfilter_arm.c
+VP8_COMMON_SRCS-$(HAVE_ARMV6)  += common/arm/bilinearfilter_arm.h
 VP8_COMMON_SRCS-$(HAVE_ARMV6)  += common/arm/filter_arm.c
 VP8_COMMON_SRCS-$(HAVE_ARMV6)  += common/arm/loopfilter_arm.c
 VP8_COMMON_SRCS-$(HAVE_ARMV6)  += common/arm/reconintra_arm.c
-VP8_COMMON_SRCS-$(HAVE_ARMV6)  += common/arm/vpx_asm_offsets.c
 
 # common (armv6)
 VP8_COMMON_SRCS-$(HAVE_ARMV6)  += common/arm/armv6/bilinearfilter_v6$(ASM)
@@ -161,19 +147,6 @@ VP8_COMMON_SRCS-$(HAVE_ARMV7)  += common/arm/neon/buildintrapredictorsmby_neon$(
 VP8_COMMON_SRCS-$(HAVE_ARMV7)  += common/arm/neon/save_neon_reg$(ASM)
 VP8_COMMON_SRCS-$(HAVE_ARMV7)  += common/arm/neon/recon_neon.c
 
-
-#
-# Rule to extract assembly constants from C sources
-#
-ifeq ($(ARCH_ARM),yes)
-vpx_asm_offsets.asm: obj_int_extract
-vpx_asm_offsets.asm: $(VP8_PREFIX)common/arm/vpx_asm_offsets.c.o
-	./obj_int_extract rvds $< $(ADS2GAS) > $@
-OBJS-yes += $(VP8_PREFIX)common/arm/vpx_asm_offsets.c.o
-CLEAN-OBJS += vpx_asm_offsets.asm
-$(filter %$(ASM).o,$(OBJS-yes)): vpx_asm_offsets.asm
-endif
-
 #Append OpenCL source files to source listing if needed
 VP8_COMMON_SRCS-$(CONFIG_OPENCL) += common/opencl/vp8_opencl.c
 VP8_COMMON_SRCS-$(CONFIG_OPENCL) += common/opencl/vp8_opencl.h
@@ -198,7 +171,6 @@ VP8_COMMON_SRCS-$(CONFIG_OPENCL) += common/opencl/loopfilter_cl.h
 VP8_COMMON_SRCS-$(CONFIG_OPENCL) += common/opencl/loopfilter_cl.c
 VP8_COMMON_SRCS-$(CONFIG_OPENCL) += common/opencl/loopfilter_cl.cl
 VP8_COMMON_SRCS-$(CONFIG_OPENCL) += common/opencl/loopfilter_filters_cl.c
-
 
 VP8_COMMON_SRCS-$(CONFIG_OPENCL) += common/opencl/opencl_systemdependent.c
 VP8_COMMON_SRCS-$(HAVE_DLOPEN) += common/opencl/dynamic_cl.c

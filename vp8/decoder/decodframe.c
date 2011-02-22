@@ -10,30 +10,29 @@
 
 
 #include "onyxd_int.h"
-#include "header.h"
-#include "reconintra.h"
-#include "reconintra4x4.h"
-#include "recon.h"
-#include "reconinter.h"
+#include "vp8/common/header.h"
+#include "vp8/common/reconintra.h"
+#include "vp8/common/reconintra4x4.h"
+#include "vp8/common/recon.h"
+#include "vp8/common/reconinter.h"
 #include "dequantize.h"
 #include "detokenize.h"
-#include "alloccommon.h"
-#include "entropymode.h"
-#include "quant_common.h"
+#include "vp8/common/alloccommon.h"
+#include "vp8/common/entropymode.h"
+#include "vp8/common/quant_common.h"
 #include "vpx_scale/vpxscale.h"
 #include "vpx_scale/yv12extend.h"
-#include "setupintrarecon.h"
+#include "vp8/common/setupintrarecon.h"
 
 #include "decodemv.h"
-#include "extend.h"
+#include "vp8/common/extend.h"
 #include "vpx_mem/vpx_mem.h"
-#include "idct.h"
+#include "vp8/common/idct.h"
 #include "dequantize.h"
-#include "predictdc.h"
-#include "threading.h"
+#include "vp8/common/threading.h"
 #include "decoderthreading.h"
 #include "dboolhuff.h"
-#include "blockd.h"
+#include "vp8/common/blockd.h"
 
 #include <assert.h>
 #include <stdio.h>
@@ -524,6 +523,12 @@ void vp8_decode_mb_row(VP8D_COMP *pbi,
         xd->pre.buffer_mem = pc->yv12_fb[ref_fb_idx].buffer_mem;
 #endif
 
+        if (xd->mode_info_context->mbmi.ref_frame != INTRA_FRAME)
+        {
+            /* propagate errors from reference frames */
+            xd->corrupted |= pc->yv12_fb[ref_fb_idx].corrupted;
+        }
+
         vp8_build_uvmvs(xd, pc->full_pixel);
 
         /*
@@ -534,6 +539,8 @@ void vp8_decode_mb_row(VP8D_COMP *pbi,
         */
         vp8_decode_macroblock(pbi, xd);
 
+        /* check if the boolean decoder has suffered an error */
+        xd->corrupted |= vp8dx_bool_error(xd->current_bc);
 
         recon_yoffset += 16;
         recon_uvoffset += 8;
@@ -604,13 +611,13 @@ static void setup_token_decoder(VP8D_COMP *pbi,
             partition_size = user_data_end - partition;
         }
 
-        if (user_data_end - partition < partition_size)
+        if (partition + partition_size > user_data_end
+            || partition + partition_size < partition)
             vpx_internal_error(&pc->error, VPX_CODEC_CORRUPT_FRAME,
                                "Truncated packet or corrupt partition "
                                "%d length", i + 1);
 
-        if (vp8dx_start_decode(bool_decoder, IF_RTCD(&pbi->dboolhuff),
-                               partition, partition_size))
+        if (vp8dx_start_decode(bool_decoder, partition, partition_size))
             vpx_internal_error(&pc->error, VPX_CODEC_MEM_ERROR,
                                "Failed to allocate bool decoder %d", i + 1);
 
@@ -619,15 +626,16 @@ static void setup_token_decoder(VP8D_COMP *pbi,
         bool_decoder++;
     }
 
+#if CONFIG_MULTITHREAD
     /* Clamp number of decoder threads */
     if (pbi->decoding_thread_count > num_part - 1)
         pbi->decoding_thread_count = num_part - 1;
+#endif
 }
 
 
 static void stop_token_decoder(VP8D_COMP *pbi)
 {
-    int i;
     VP8_COMMON *pc = &pbi->common;
 
     if (pc->multi_token_partition != ONE_PARTITION)
@@ -700,6 +708,7 @@ static void init_frame(VP8D_COMP *pbi)
     xd->frame_type = pc->frame_type;
     xd->mode_info_context->mbmi.mode = DC_PRED;
     xd->mode_info_stride = pc->mode_info_stride;
+    xd->corrupted = 0; /* init without corruption */
 }
 
 int vp8_decode_frame(VP8D_COMP *pbi)
@@ -715,6 +724,10 @@ int vp8_decode_frame(VP8D_COMP *pbi)
     int i, j, k, l;
     const int *const mb_feature_data_bits = vp8_mb_feature_data_bits;
 
+    /* start with no corruption of current frame */
+    xd->corrupted = 0;
+    pc->yv12_fb[pc->new_fb_idx].corrupted = 0;
+
     if (data_end - data < 3)
         vpx_internal_error(&pc->error, VPX_CODEC_CORRUPT_FRAME,
                            "Truncated packet");
@@ -725,7 +738,8 @@ int vp8_decode_frame(VP8D_COMP *pbi)
         (data[0] | (data[1] << 8) | (data[2] << 16)) >> 5;
     data += 3;
 
-    if (data_end - data < first_partition_length_in_bytes)
+    if (data + first_partition_length_in_bytes > data_end
+        || data + first_partition_length_in_bytes < data)
         vpx_internal_error(&pc->error, VPX_CODEC_CORRUPT_FRAME,
                            "Truncated packet or corrupt partition 0 length");
     vp8_setup_version(pc);
@@ -783,8 +797,7 @@ int vp8_decode_frame(VP8D_COMP *pbi)
 
     init_frame(pbi);
 
-    if (vp8dx_start_decode(bc, IF_RTCD(&pbi->dboolhuff),
-                           data, data_end - data))
+    if (vp8dx_start_decode(bc, data, data_end - data))
         vpx_internal_error(&pc->error, VPX_CODEC_MEM_ERROR,
                            "Failed to allocate bool decoder 0");
     if (pc->frame_type == KEY_FRAME) {
@@ -977,7 +990,9 @@ int vp8_decode_frame(VP8D_COMP *pbi)
     vpx_memcpy(&xd->dst, &pc->yv12_fb[pc->new_fb_idx], sizeof(YV12_BUFFER_CONFIG));
 
     /* set up frame new frame for intra coded blocks */
+#if CONFIG_MULTITHREAD
     if (!(pbi->b_multithreaded_rd) || pc->multi_token_partition == ONE_PARTITION || !(pc->filter_level))
+#endif
         vp8_setup_intra_recon(&pc->yv12_fb[pc->new_fb_idx]);
 
     /* clear out the coeff buffer */
@@ -997,6 +1012,7 @@ int vp8_decode_frame(VP8D_COMP *pbi)
 
     vpx_memcpy(&xd->block[0].bmi, &xd->mode_info_context->bmi[0], sizeof(B_MODE_INFO));
 
+#if CONFIG_MULTITHREAD
     if (pbi->b_multithreaded_rd && pc->multi_token_partition != ONE_PARTITION)
     {
         vp8mt_decode_mb_rows(pbi, xd);
@@ -1011,6 +1027,7 @@ int vp8_decode_frame(VP8D_COMP *pbi)
         vp8_yv12_extend_frame_borders_ptr(&pc->yv12_fb[pc->new_fb_idx]);    /*cm->frame_to_show);*/
     }
     else
+#endif
     {
         int ibc = 0;
         int num_part = 1 << pc->multi_token_partition;
@@ -1064,6 +1081,14 @@ int vp8_decode_frame(VP8D_COMP *pbi)
 #endif
 
     stop_token_decoder(pbi);
+
+    /* Collect information about decoder corruption. */
+    /* 1. Check first boolean decoder for errors. */
+    pc->yv12_fb[pc->new_fb_idx].corrupted =
+        vp8dx_bool_error(bc);
+    /* 2. Check the macroblock information */
+    pc->yv12_fb[pc->new_fb_idx].corrupted |=
+        xd->corrupted;
 
     /* vpx_log("Decoder: Frame Decoded, Size Roughly:%d bytes  \n",bc->pos+pbi->bc2.pos); */
 

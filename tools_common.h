@@ -7,16 +7,10 @@
  *  in the file PATENTS.  All contributing project authors may
  *  be found in the AUTHORS file in the root of the source tree.
  */
+#ifndef TOOLS_COMMON_H
+#define TOOLS_COMMON_H
 
-
-#ifndef DETOKENIZE_ARM_H
-#define DETOKENIZE_ARM_H
-
-#if HAVE_ARMV6
-#if CONFIG_ARM_ASM_DETOK
-void vp8_init_detokenizer(VP8D_COMP *dx);
-void vp8_decode_mb_tokens_v6(DETOK *detoken, int type);
-#endif
-#endif
+/* Sets a stdio stream into binary mode */
+FILE* set_binary_mode(FILE *stream);
 
 #endif

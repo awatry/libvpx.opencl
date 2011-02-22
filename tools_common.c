@@ -7,18 +7,18 @@
  *  in the file PATENTS.  All contributing project authors may
  *  be found in the AUTHORS file in the root of the source tree.
  */
-
-
-#ifndef _VPX_REF_BUILD_PREFIX_h
-#define _VPX_REF_BUILD_PREFIX_h
-
-#if defined(__cplusplus)
-extern "C" {
+#include <stdio.h>
+#include "tools_common.h"
+#ifdef _WIN32
+#include <io.h>
+#include <fcntl.h>
 #endif
 
-
-#if defined(__cplusplus)
+FILE* set_binary_mode(FILE *stream)
+{
+    (void)stream;
+#ifdef _WIN32
+    _setmode(_fileno(stream), _O_BINARY);
+#endif
+    return stream;
 }
-#endif
-
-#endif /* include guards */

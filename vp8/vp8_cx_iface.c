@@ -12,10 +12,10 @@
 #include "vpx/vpx_codec.h"
 #include "vpx/internal/vpx_codec_internal.h"
 #include "vpx_version.h"
-#include "onyx_int.h"
+#include "vp8/encoder/onyx_int.h"
 #include "vpx/vp8e.h"
 #include "vp8/encoder/firstpass.h"
-#include "onyx.h"
+#include "vp8/common/onyx.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -37,6 +37,8 @@ struct vp8_extracfg
     unsigned int                arnr_max_frames;    /* alt_ref Noise Reduction Max Frame Count */
     unsigned int                arnr_strength;    /* alt_ref Noise Reduction Strength */
     unsigned int                arnr_type;        /* alt_ref filter type */
+    vp8e_tuning                 tuning;
+    unsigned int                cq_level;         /* constrained quality level */
 
 };
 
@@ -67,6 +69,8 @@ static const struct extraconfig_map extracfg_map[] =
             0,                          /* arnr_max_frames */
             3,                          /* arnr_strength */
             3,                          /* arnr_type*/
+            0,                          /* tuning*/
+            10,                         /* cq_level */
         }
     }
 };
@@ -104,6 +108,7 @@ update_error_state(vpx_codec_alg_priv_t                 *ctx,
 }
 
 
+#undef ERROR
 #define ERROR(str) do {\
         ctx->base.err_detail = str;\
         return VPX_CODEC_INVALID_PARAM;\
@@ -132,20 +137,20 @@ static vpx_codec_err_t validate_config(vpx_codec_alg_priv_t      *ctx,
                                        const vpx_codec_enc_cfg_t *cfg,
                                        const struct vp8_extracfg *vp8_cfg)
 {
-    RANGE_CHECK(cfg, g_w,                   2, 16384);
-    RANGE_CHECK(cfg, g_h,                   2, 16384);
+    RANGE_CHECK(cfg, g_w,                   1, 16384);
+    RANGE_CHECK(cfg, g_h,                   1, 16384);
     RANGE_CHECK(cfg, g_timebase.den,        1, 1000000000);
     RANGE_CHECK(cfg, g_timebase.num,        1, cfg->g_timebase.den);
     RANGE_CHECK_HI(cfg, g_profile,          3);
-    RANGE_CHECK_HI(cfg, rc_min_quantizer,   63);
     RANGE_CHECK_HI(cfg, rc_max_quantizer,   63);
+    RANGE_CHECK_HI(cfg, rc_min_quantizer,   cfg->rc_max_quantizer);
     RANGE_CHECK_HI(cfg, g_threads,          64);
 #if !(CONFIG_REALTIME_ONLY)
     RANGE_CHECK_HI(cfg, g_lag_in_frames,    25);
 #else
     RANGE_CHECK_HI(cfg, g_lag_in_frames,    0);
 #endif
-    RANGE_CHECK(cfg, rc_end_usage,          VPX_VBR, VPX_CBR);
+    RANGE_CHECK(cfg, rc_end_usage,          VPX_VBR, VPX_CQ);
     RANGE_CHECK_HI(cfg, rc_undershoot_pct,  100);
     RANGE_CHECK_HI(cfg, rc_2pass_vbr_bias_pct, 100);
     RANGE_CHECK(cfg, kf_mode,               VPX_KF_DISABLED, VPX_KF_AUTO);
@@ -187,7 +192,9 @@ static vpx_codec_err_t validate_config(vpx_codec_alg_priv_t      *ctx,
     RANGE_CHECK(vp8_cfg, arnr_max_frames, 0, 15);
     RANGE_CHECK_HI(vp8_cfg, arnr_strength,   6);
     RANGE_CHECK(vp8_cfg, arnr_type,       1, 3);
+    RANGE_CHECK(vp8_cfg, cq_level, 0, 63);
 
+#if !(CONFIG_REALTIME_ONLY)
     if (cfg->g_pass == VPX_RC_LAST_PASS)
     {
         int              mb_r = (cfg->g_h + 15) / 16;
@@ -211,6 +218,7 @@ static vpx_codec_err_t validate_config(vpx_codec_alg_priv_t      *ctx,
         if ((int)(stats->count + 0.5) != n_packets - 1)
             ERROR("rc_twopass_stats_in missing EOS stats packet");
     }
+#endif
 
     return VPX_CODEC_OK;
 }
@@ -295,11 +303,16 @@ static vpx_codec_err_t set_vp8e_config(VP8_CONFIG *oxcf,
     {
         oxcf->end_usage          = USAGE_STREAM_FROM_SERVER;
     }
+    else if (cfg.rc_end_usage == VPX_CQ)
+    {
+        oxcf->end_usage          = USAGE_CONSTRAINED_QUALITY;
+    }
 
     oxcf->target_bandwidth       = cfg.rc_target_bitrate;
 
     oxcf->best_allowed_q          = cfg.rc_min_quantizer;
     oxcf->worst_allowed_q         = cfg.rc_max_quantizer;
+    oxcf->cq_level                = vp8_cfg.cq_level;
     oxcf->fixed_q = -1;
 
     oxcf->under_shoot_pct         = cfg.rc_undershoot_pct;
@@ -335,6 +348,7 @@ static vpx_codec_err_t set_vp8e_config(VP8_CONFIG *oxcf,
     oxcf->arnr_strength =  vp8_cfg.arnr_strength;
     oxcf->arnr_type =      vp8_cfg.arnr_type;
 
+    oxcf->tuning = vp8_cfg.tuning;
 
     /*
         printf("Current VP8 Settings: \n");
@@ -448,6 +462,8 @@ static vpx_codec_err_t set_param(vpx_codec_alg_priv_t *ctx,
         MAP(VP8E_SET_ARNR_MAXFRAMES,        xcfg.arnr_max_frames);
         MAP(VP8E_SET_ARNR_STRENGTH ,        xcfg.arnr_strength);
         MAP(VP8E_SET_ARNR_TYPE     ,        xcfg.arnr_type);
+        MAP(VP8E_SET_TUNING,                xcfg.tuning);
+        MAP(VP8E_SET_CQ_LEVEL,              xcfg.cq_level);
 
     }
 
@@ -860,8 +876,16 @@ static vpx_image_t *vp8e_get_preview(vpx_codec_alg_priv_t *ctx)
 {
 
     YV12_BUFFER_CONFIG sd;
+    vp8_ppflags_t flags = {0};
 
-    if (0 == vp8_get_preview_raw_frame(ctx->cpi, &sd, ctx->preview_ppcfg.deblocking_level, ctx->preview_ppcfg.noise_level, ctx->preview_ppcfg.post_proc_flag))
+    if (ctx->preview_ppcfg.post_proc_flag)
+    {
+        flags.post_proc_flag        = ctx->preview_ppcfg.post_proc_flag;
+        flags.deblocking_level      = ctx->preview_ppcfg.deblocking_level;
+        flags.noise_level           = ctx->preview_ppcfg.noise_level;
+    }
+
+    if (0 == vp8_get_preview_raw_frame(ctx->cpi, &sd, &flags))
     {
 
         /*
@@ -888,8 +912,8 @@ static vpx_image_t *vp8e_get_preview(vpx_codec_alg_priv_t *ctx)
         ctx->preview_img.x_chroma_shift = 1;
         ctx->preview_img.y_chroma_shift = 1;
 
-        ctx->preview_img.d_w = ctx->cfg.g_w;
-        ctx->preview_img.d_h = ctx->cfg.g_h;
+        ctx->preview_img.d_w = sd.y_width;
+        ctx->preview_img.d_h = sd.y_height;
         ctx->preview_img.stride[VPX_PLANE_Y] = sd.y_stride;
         ctx->preview_img.stride[VPX_PLANE_U] = sd.uv_stride;
         ctx->preview_img.stride[VPX_PLANE_V] = sd.uv_stride;
@@ -1020,6 +1044,8 @@ static vpx_codec_ctrl_fn_map_t vp8e_ctf_maps[] =
     {VP8E_SET_ARNR_MAXFRAMES,           set_param},
     {VP8E_SET_ARNR_STRENGTH ,           set_param},
     {VP8E_SET_ARNR_TYPE     ,           set_param},
+    {VP8E_SET_TUNING,                   set_param},
+    {VP8E_SET_CQ_LEVEL,                 set_param},
     { -1, NULL},
 };
 
@@ -1055,7 +1081,6 @@ static vpx_codec_enc_cfg_map_t vp8e_usage_cfg_map[] =
 
         4,                  /* rc_min_quantizer */
         63,                 /* rc_max_quantizer */
-
         95,                 /* rc_undershoot_pct */
         200,                /* rc_overshoot_pct */
 

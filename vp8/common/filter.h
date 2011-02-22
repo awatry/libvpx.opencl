@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2010 The WebM project authors. All Rights Reserved.
+ *  Copyright (c) 2011 The WebM project authors. All Rights Reserved.
  *
  *  Use of this source code is governed by a BSD-style license
  *  that can be found in the LICENSE file in the root of the source
@@ -9,11 +9,14 @@
  */
 
 
-#ifndef __INC_PARTIALGFUPDATE_H
-#define __INC_PARTIALGFUPDATE_H
+#ifndef FILTER_H
+#define FILTER_H
 
-#include "onyxc_int.h"
+#define BLOCK_HEIGHT_WIDTH 4
+#define VP8_FILTER_WEIGHT 128
+#define VP8_FILTER_SHIFT  7
 
-extern void update_gf_selective(ONYX_COMMON *cm, MACROBLOCKD *x);
+extern const short vp8_bilinear_filters[8][2];
+extern const short vp8_sub_pel_filters[8][6];
 
-#endif
+#endif //FILTER_H

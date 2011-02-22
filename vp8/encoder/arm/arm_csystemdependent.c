@@ -11,8 +11,8 @@
 
 #include "vpx_ports/config.h"
 #include "vpx_ports/arm.h"
-#include "variance.h"
-#include "onyx_int.h"
+#include "vp8/encoder/variance.h"
+#include "vp8/encoder/onyx_int.h"
 
 extern void (*vp8_yv12_copy_partial_frame_ptr)(YV12_BUFFER_CONFIG *src_ybc, YV12_BUFFER_CONFIG *dst_ybc, int Fraction);
 extern void vp8_yv12_copy_partial_frame(YV12_BUFFER_CONFIG *src_ybc, YV12_BUFFER_CONFIG *dst_ybc, int Fraction);
@@ -29,8 +29,8 @@ void vp8_arch_arm_encoder_init(VP8_COMP *cpi)
 #if HAVE_ARMV6
     if (has_media)
     {
-        /*cpi->rtcd.variance.sad16x16              = vp8_sad16x16_c;
-        cpi->rtcd.variance.sad16x8               = vp8_sad16x8_c;
+        cpi->rtcd.variance.sad16x16              = vp8_sad16x16_armv6;
+        /*cpi->rtcd.variance.sad16x8               = vp8_sad16x8_c;
         cpi->rtcd.variance.sad8x16               = vp8_sad8x16_c;
         cpi->rtcd.variance.sad8x8                = vp8_sad8x8_c;
         cpi->rtcd.variance.sad4x4                = vp8_sad4x4_c;*/
@@ -38,14 +38,14 @@ void vp8_arch_arm_encoder_init(VP8_COMP *cpi)
         /*cpi->rtcd.variance.var4x4                = vp8_variance4x4_c;
         cpi->rtcd.variance.var8x8                = vp8_variance8x8_c;
         cpi->rtcd.variance.var8x16               = vp8_variance8x16_c;
-        cpi->rtcd.variance.var16x8               = vp8_variance16x8_c;
-        cpi->rtcd.variance.var16x16              = vp8_variance16x16_c;*/
+        cpi->rtcd.variance.var16x8               = vp8_variance16x8_c;*/
+        cpi->rtcd.variance.var16x16              = vp8_variance16x16_armv6;
 
         /*cpi->rtcd.variance.subpixvar4x4          = vp8_sub_pixel_variance4x4_c;
         cpi->rtcd.variance.subpixvar8x8          = vp8_sub_pixel_variance8x8_c;
         cpi->rtcd.variance.subpixvar8x16         = vp8_sub_pixel_variance8x16_c;
-        cpi->rtcd.variance.subpixvar16x8         = vp8_sub_pixel_variance16x8_c;
-        cpi->rtcd.variance.subpixvar16x16        = vp8_sub_pixel_variance16x16_c;*/
+        cpi->rtcd.variance.subpixvar16x8         = vp8_sub_pixel_variance16x8_c;*/
+        cpi->rtcd.variance.subpixvar16x16        = vp8_sub_pixel_variance16x16_armv6;
 
         /*cpi->rtcd.variance.mse16x16              = vp8_mse16x16_c;
         cpi->rtcd.variance.getmbss               = vp8_get_mb_ss_c;*/

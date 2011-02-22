@@ -14,17 +14,17 @@
 #include "onyx_int.h"
 #include "modecosts.h"
 #include "encodeintra.h"
-#include "entropymode.h"
+#include "vp8/common/entropymode.h"
 #include "pickinter.h"
-#include "findnearmv.h"
+#include "vp8/common/findnearmv.h"
 #include "encodemb.h"
-#include "reconinter.h"
-#include "reconintra.h"
-#include "reconintra4x4.h"
-#include "g_common.h"
+#include "vp8/common/reconinter.h"
+#include "vp8/common/reconintra.h"
+#include "vp8/common/reconintra4x4.h"
+#include "vp8/common/g_common.h"
 #include "variance.h"
 #include "mcomp.h"
-
+#include "rdopt.h"
 #include "vpx_mem/vpx_mem.h"
 
 #if CONFIG_RUNTIME_CPU_DETECT
@@ -168,8 +168,6 @@ static int pick_intra4x4block(
     B_PREDICTION_MODE *best_mode,
     B_PREDICTION_MODE above,
     B_PREDICTION_MODE left,
-    ENTROPY_CONTEXT *a,
-    ENTROPY_CONTEXT *l,
 
     int *bestrate,
     int *bestdistortion)
@@ -179,8 +177,6 @@ static int pick_intra4x4block(
     int rate;
     int distortion;
     unsigned int *mode_costs;
-    (void) l;
-    (void) a;
 
     if (x->e_mbd.frame_type == KEY_FRAME)
     {
@@ -211,6 +207,7 @@ static int pick_intra4x4block(
 
     b->bmi.mode = (B_PREDICTION_MODE)(*best_mode);
     vp8_encode_intra4x4block(rtcd, x, be, b, b->bmi.mode);
+
     return best_rd;
 }
 
@@ -220,17 +217,8 @@ int vp8_pick_intra4x4mby_modes(const VP8_ENCODER_RTCD *rtcd, MACROBLOCK *mb, int
     MACROBLOCKD *const xd = &mb->e_mbd;
     int i;
     int cost = mb->mbmode_cost [xd->frame_type] [B_PRED];
-    int error = RD_ESTIMATE(mb->rdmult, mb->rddiv, cost, 0); // Rd estimate for the cost of the block prediction mode
+    int error;
     int distortion = 0;
-    ENTROPY_CONTEXT_PLANES t_above, t_left;
-    ENTROPY_CONTEXT *ta;
-    ENTROPY_CONTEXT *tl;
-
-    vpx_memcpy(&t_above, mb->e_mbd.above_context, sizeof(ENTROPY_CONTEXT_PLANES));
-    vpx_memcpy(&t_left, mb->e_mbd.left_context, sizeof(ENTROPY_CONTEXT_PLANES));
-
-    ta = (ENTROPY_CONTEXT *)&t_above;
-    tl = (ENTROPY_CONTEXT *)&t_left;
 
     vp8_intra_prediction_down_copy(xd);
 
@@ -243,10 +231,8 @@ int vp8_pick_intra4x4mby_modes(const VP8_ENCODER_RTCD *rtcd, MACROBLOCK *mb, int
         B_PREDICTION_MODE UNINITIALIZED_IS_SAFE(best_mode);
         int UNINITIALIZED_IS_SAFE(r), UNINITIALIZED_IS_SAFE(d);
 
-        error += pick_intra4x4block(rtcd,
-                                    mb, mb->block + i, xd->block + i, &best_mode, A, L,
-                                    ta + vp8_block2above[i],
-                                    tl + vp8_block2left[i], &r, &d);
+        pick_intra4x4block(rtcd, mb, mb->block + i, xd->block + i,
+                               &best_mode, A, L, &r, &d);
 
         cost += r;
         distortion += d;
@@ -264,10 +250,15 @@ int vp8_pick_intra4x4mby_modes(const VP8_ENCODER_RTCD *rtcd, MACROBLOCK *mb, int
     *Rate = cost;
 
     if (i == 16)
+    {
         *best_dist = distortion;
+        error = RD_ESTIMATE(mb->rdmult, mb->rddiv, cost, distortion);
+    }
     else
+    {
         *best_dist = INT_MAX;
-
+        error = INT_MAX;
+    }
 
     return error;
 }
@@ -421,7 +412,6 @@ int vp8_pick_intra_mbuv_mode(MACROBLOCK *mb)
 
 }
 
-
 int vp8_pick_inter_mode(VP8_COMP *cpi, MACROBLOCK *x, int recon_yoffset, int recon_uvoffset, int *returnrate, int *returndistortion, int *returnintra)
 {
     BLOCK *b = &x->block[0];
@@ -430,7 +420,7 @@ int vp8_pick_inter_mode(VP8_COMP *cpi, MACROBLOCK *x, int recon_yoffset, int rec
     B_MODE_INFO best_bmodes[16];
     MB_MODE_INFO best_mbmode;
     PARTITION_INFO best_partition;
-    MV best_ref_mv1;
+    MV best_ref_mv;
     MV mode_mv[MB_MODE_COUNT];
     MB_PREDICTION_MODE this_mode;
     int num00;
@@ -448,9 +438,14 @@ int vp8_pick_inter_mode(VP8_COMP *cpi, MACROBLOCK *x, int recon_yoffset, int rec
     int best_mode_index = 0;
     int sse = INT_MAX;
 
+    MV mvp;
+    int near_sadidx[8] = {0, 1, 2, 3, 4, 5, 6, 7};
+    int saddone=0;
+    int sr=0;    //search range got from mv_pred(). It uses step_param levels. (0-7)
+
     MV nearest_mv[4];
     MV near_mv[4];
-    MV best_ref_mv[4];
+    MV frame_best_ref_mv[4];
     int MDCounts[4][4];
     unsigned char *y_buffer[4];
     unsigned char *u_buffer[4];
@@ -470,7 +465,7 @@ int vp8_pick_inter_mode(VP8_COMP *cpi, MACROBLOCK *x, int recon_yoffset, int rec
         YV12_BUFFER_CONFIG *lst_yv12 = &cpi->common.yv12_fb[cpi->common.lst_fb_idx];
 
         vp8_find_near_mvs(&x->e_mbd, x->e_mbd.mode_info_context, &nearest_mv[LAST_FRAME], &near_mv[LAST_FRAME],
-                          &best_ref_mv[LAST_FRAME], MDCounts[LAST_FRAME], LAST_FRAME, cpi->common.ref_frame_sign_bias);
+                          &frame_best_ref_mv[LAST_FRAME], MDCounts[LAST_FRAME], LAST_FRAME, cpi->common.ref_frame_sign_bias);
 
         y_buffer[LAST_FRAME] = lst_yv12->y_buffer + recon_yoffset;
         u_buffer[LAST_FRAME] = lst_yv12->u_buffer + recon_uvoffset;
@@ -484,7 +479,7 @@ int vp8_pick_inter_mode(VP8_COMP *cpi, MACROBLOCK *x, int recon_yoffset, int rec
         YV12_BUFFER_CONFIG *gld_yv12 = &cpi->common.yv12_fb[cpi->common.gld_fb_idx];
 
         vp8_find_near_mvs(&x->e_mbd, x->e_mbd.mode_info_context, &nearest_mv[GOLDEN_FRAME], &near_mv[GOLDEN_FRAME],
-                          &best_ref_mv[GOLDEN_FRAME], MDCounts[GOLDEN_FRAME], GOLDEN_FRAME, cpi->common.ref_frame_sign_bias);
+                          &frame_best_ref_mv[GOLDEN_FRAME], MDCounts[GOLDEN_FRAME], GOLDEN_FRAME, cpi->common.ref_frame_sign_bias);
 
         y_buffer[GOLDEN_FRAME] = gld_yv12->y_buffer + recon_yoffset;
         u_buffer[GOLDEN_FRAME] = gld_yv12->u_buffer + recon_uvoffset;
@@ -498,7 +493,7 @@ int vp8_pick_inter_mode(VP8_COMP *cpi, MACROBLOCK *x, int recon_yoffset, int rec
         YV12_BUFFER_CONFIG *alt_yv12 = &cpi->common.yv12_fb[cpi->common.alt_fb_idx];
 
         vp8_find_near_mvs(&x->e_mbd, x->e_mbd.mode_info_context, &nearest_mv[ALTREF_FRAME], &near_mv[ALTREF_FRAME],
-                          &best_ref_mv[ALTREF_FRAME], MDCounts[ALTREF_FRAME], ALTREF_FRAME, cpi->common.ref_frame_sign_bias);
+                          &frame_best_ref_mv[ALTREF_FRAME], MDCounts[ALTREF_FRAME], ALTREF_FRAME, cpi->common.ref_frame_sign_bias);
 
         y_buffer[ALTREF_FRAME] = alt_yv12->y_buffer + recon_yoffset;
         u_buffer[ALTREF_FRAME] = alt_yv12->u_buffer + recon_uvoffset;
@@ -537,10 +532,6 @@ int vp8_pick_inter_mode(VP8_COMP *cpi, MACROBLOCK *x, int recon_yoffset, int rec
                                         + vp8_cost_one(cpi->prob_last_coded)
                                         + vp8_cost_one(cpi->prob_gf_coded);
     }
-
-
-
-    best_rd = INT_MAX;
 
     x->e_mbd.mode_info_context->mbmi.ref_frame = INTRA_FRAME;
 
@@ -604,15 +595,39 @@ int vp8_pick_inter_mode(VP8_COMP *cpi, MACROBLOCK *x, int recon_yoffset, int rec
             x->e_mbd.pre.v_buffer = v_buffer[x->e_mbd.mode_info_context->mbmi.ref_frame];
             mode_mv[NEARESTMV] = nearest_mv[x->e_mbd.mode_info_context->mbmi.ref_frame];
             mode_mv[NEARMV] = near_mv[x->e_mbd.mode_info_context->mbmi.ref_frame];
-            best_ref_mv1 = best_ref_mv[x->e_mbd.mode_info_context->mbmi.ref_frame];
+            best_ref_mv = frame_best_ref_mv[x->e_mbd.mode_info_context->mbmi.ref_frame];
             memcpy(mdcounts, MDCounts[x->e_mbd.mode_info_context->mbmi.ref_frame], sizeof(mdcounts));
         }
 
-        //Only consider ZEROMV/ALTREF_FRAME for alt ref frame.
-        if (cpi->is_src_frame_alt_ref)
+        // Only consider ZEROMV/ALTREF_FRAME for alt ref frame,
+        // unless ARNR filtering is enabled in which case we want
+        // an unfiltered alternative
+        if (cpi->is_src_frame_alt_ref && (cpi->oxcf.arnr_max_frames == 0))
         {
             if (this_mode != ZEROMV || x->e_mbd.mode_info_context->mbmi.ref_frame != ALTREF_FRAME)
                 continue;
+        }
+
+        if(cpi->sf.improved_mv_pred && x->e_mbd.mode_info_context->mbmi.mode == NEWMV)
+        {
+            if(!saddone)
+            {
+                vp8_cal_sad(cpi,xd,x, recon_yoffset ,&near_sadidx[0] );
+                saddone = 1;
+            }
+
+            vp8_mv_pred(cpi, &x->e_mbd, x->e_mbd.mode_info_context, &mvp,
+                        x->e_mbd.mode_info_context->mbmi.ref_frame, cpi->common.ref_frame_sign_bias, &sr, &near_sadidx[0]);
+
+            /* adjust mvp to make sure it is within MV range */
+            if(mvp.row > best_ref_mv.row + MAX_FULL_PEL_VAL)
+                mvp.row = best_ref_mv.row + MAX_FULL_PEL_VAL;
+            else if(mvp.row < best_ref_mv.row - MAX_FULL_PEL_VAL)
+                mvp.row = best_ref_mv.row - MAX_FULL_PEL_VAL;
+            if(mvp.col > best_ref_mv.col + MAX_FULL_PEL_VAL)
+                mvp.col = best_ref_mv.col + MAX_FULL_PEL_VAL;
+            else if(mvp.col < best_ref_mv.col - MAX_FULL_PEL_VAL)
+                mvp.col = best_ref_mv.col - MAX_FULL_PEL_VAL;
         }
 
         switch (this_mode)
@@ -670,61 +685,59 @@ int vp8_pick_inter_mode(VP8_COMP *cpi, MACROBLOCK *x, int recon_yoffset, int rec
             int n = 0;
             int sadpb = x->sadperbit16;
 
+            int col_min;
+            int col_max;
+            int row_min;
+            int row_max;
+
+            int tmp_col_min = x->mv_col_min;
+            int tmp_col_max = x->mv_col_max;
+            int tmp_row_min = x->mv_row_min;
+            int tmp_row_max = x->mv_row_max;
+
+            int speed_adjust = (cpi->Speed > 5) ? ((cpi->Speed >= 8)? 3 : 2) : 1;
+
             // Further step/diamond searches as necessary
-            if (cpi->Speed < 8)
+            step_param = cpi->sf.first_step + speed_adjust;
+
+            if(cpi->sf.improved_mv_pred)
             {
-                step_param = cpi->sf.first_step + ((cpi->Speed > 5) ? 1 : 0);
-                further_steps = (cpi->sf.max_step_search_steps - 1) - step_param;
-            }
-            else
+                sr += speed_adjust;
+                //adjust search range according to sr from mv prediction
+                if(sr > step_param)
+                    step_param = sr;
+
+                col_min = (best_ref_mv.col - MAX_FULL_PEL_VAL) >>3;
+                col_max = (best_ref_mv.col + MAX_FULL_PEL_VAL) >>3;
+                row_min = (best_ref_mv.row - MAX_FULL_PEL_VAL) >>3;
+                row_max = (best_ref_mv.row + MAX_FULL_PEL_VAL) >>3;
+
+                // Get intersection of UMV window and valid MV window to reduce # of checks in diamond search.
+                if (x->mv_col_min < col_min )
+                    x->mv_col_min = col_min;
+                if (x->mv_col_max > col_max )
+                    x->mv_col_max = col_max;
+                if (x->mv_row_min < row_min )
+                    x->mv_row_min = row_min;
+                if (x->mv_row_max > row_max )
+                    x->mv_row_max = row_max;
+            }else
             {
-                step_param = cpi->sf.first_step + 2;
-                further_steps = 0;
-            }
-
-#if 0
-
-            // Initial step Search
-            bestsme = vp8_diamond_search_sad(x, b, d, &best_ref_mv1, &d->bmi.mv.as_mv, step_param, x->errorperbit, &num00, &cpi->fn_ptr, cpi->mb.mvsadcost, cpi->mb.mvcost);
-            mode_mv[NEWMV].row = d->bmi.mv.as_mv.row;
-            mode_mv[NEWMV].col = d->bmi.mv.as_mv.col;
-
-            // Further step searches
-            while (n < further_steps)
-            {
-                n++;
-
-                if (num00)
-                    num00--;
-                else
-                {
-                    thissme = vp8_diamond_search_sad(x, b, d, &best_ref_mv1, &d->bmi.mv.as_mv, step_param + n, x->errorperbit, &num00, &cpi->fn_ptr, cpi->mb.mvsadcost, x->mvcost);
-
-                    if (thissme < bestsme)
-                    {
-                        bestsme = thissme;
-                        mode_mv[NEWMV].row = d->bmi.mv.as_mv.row;
-                        mode_mv[NEWMV].col = d->bmi.mv.as_mv.col;
-                    }
-                    else
-                    {
-                        d->bmi.mv.as_mv.row = mode_mv[NEWMV].row;
-                        d->bmi.mv.as_mv.col = mode_mv[NEWMV].col;
-                    }
-                }
+                mvp.row = best_ref_mv.row;
+                mvp.col = best_ref_mv.col;
             }
 
-#else
+            further_steps = (cpi->Speed >= 8)? 0: (cpi->sf.max_step_search_steps - 1 - step_param);
 
             if (cpi->sf.search_method == HEX)
             {
-                bestsme = vp8_hex_search(x, b, d, &best_ref_mv1, &d->bmi.mv.as_mv, step_param, sadpb/*x->errorperbit*/, &num00, &cpi->fn_ptr[BLOCK_16X16], x->mvsadcost, x->mvcost);
+                bestsme = vp8_hex_search(x, b, d, &mvp, &d->bmi.mv.as_mv, step_param, sadpb/*x->errorperbit*/, &num00, &cpi->fn_ptr[BLOCK_16X16], x->mvsadcost, x->mvcost, &best_ref_mv);
                 mode_mv[NEWMV].row = d->bmi.mv.as_mv.row;
                 mode_mv[NEWMV].col = d->bmi.mv.as_mv.col;
             }
             else
             {
-                bestsme = cpi->diamond_search_sad(x, b, d, &best_ref_mv1, &d->bmi.mv.as_mv, step_param, sadpb / 2/*x->errorperbit*/, &num00, &cpi->fn_ptr[BLOCK_16X16], x->mvsadcost, x->mvcost); //sadpb < 9
+                bestsme = cpi->diamond_search_sad(x, b, d, &mvp, &d->bmi.mv.as_mv, step_param, sadpb / 2/*x->errorperbit*/, &num00, &cpi->fn_ptr[BLOCK_16X16], x->mvsadcost, x->mvcost, &best_ref_mv); //sadpb < 9
                 mode_mv[NEWMV].row = d->bmi.mv.as_mv.row;
                 mode_mv[NEWMV].col = d->bmi.mv.as_mv.col;
 
@@ -743,7 +756,7 @@ int vp8_pick_inter_mode(VP8_COMP *cpi, MACROBLOCK *x, int recon_yoffset, int rec
                         num00--;
                     else
                     {
-                        thissme = cpi->diamond_search_sad(x, b, d, &best_ref_mv1, &d->bmi.mv.as_mv, step_param + n, sadpb / 4/*x->errorperbit*/, &num00, &cpi->fn_ptr[BLOCK_16X16], x->mvsadcost, x->mvcost); //sadpb = 9
+                        thissme = cpi->diamond_search_sad(x, b, d, &mvp, &d->bmi.mv.as_mv, step_param + n, sadpb / 4/*x->errorperbit*/, &num00, &cpi->fn_ptr[BLOCK_16X16], x->mvsadcost, x->mvcost, &best_ref_mv); //sadpb = 9
 
                         if (thissme < bestsme)
                         {
@@ -760,18 +773,23 @@ int vp8_pick_inter_mode(VP8_COMP *cpi, MACROBLOCK *x, int recon_yoffset, int rec
                 }
             }
 
-#endif
+            if(cpi->sf.improved_mv_pred)
+            {
+                x->mv_col_min = tmp_col_min;
+                x->mv_col_max = tmp_col_max;
+                x->mv_row_min = tmp_row_min;
+                x->mv_row_max = tmp_row_max;
+            }
+
+            if (bestsme < INT_MAX)
+                cpi->find_fractional_mv_step(x, b, d, &d->bmi.mv.as_mv, &best_ref_mv, x->errorperbit, &cpi->fn_ptr[BLOCK_16X16], cpi->mb.mvcost);
+
+            mode_mv[NEWMV].row = d->bmi.mv.as_mv.row;
+            mode_mv[NEWMV].col = d->bmi.mv.as_mv.col;
+
+            // mv cost;
+            rate2 += vp8_mv_bit_cost(&mode_mv[NEWMV], &best_ref_mv, cpi->mb.mvcost, 128);
         }
-
-        if (bestsme < INT_MAX)
-            cpi->find_fractional_mv_step(x, b, d, &d->bmi.mv.as_mv, &best_ref_mv1, x->errorperbit, &cpi->fn_ptr[BLOCK_16X16], cpi->mb.mvcost);
-
-        mode_mv[NEWMV].row = d->bmi.mv.as_mv.row;
-        mode_mv[NEWMV].col = d->bmi.mv.as_mv.col;
-
-        // mv cost;
-        rate2 += vp8_mv_bit_cost(&mode_mv[NEWMV], &best_ref_mv1, cpi->mb.mvcost, 128);
-
 
         case NEARESTMV:
         case NEARMV:

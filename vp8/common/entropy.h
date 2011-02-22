@@ -24,10 +24,10 @@
 #define FOUR_TOKEN              4       /* 4         Extra Bits 0+1 */
 #define DCT_VAL_CATEGORY1       5       /* 5-6       Extra Bits 1+1 */
 #define DCT_VAL_CATEGORY2       6       /* 7-10      Extra Bits 2+1 */
-#define DCT_VAL_CATEGORY3       7       /* 11-26     Extra Bits 4+1 */
-#define DCT_VAL_CATEGORY4       8       /* 11-26     Extra Bits 5+1 */
-#define DCT_VAL_CATEGORY5       9       /* 27-58     Extra Bits 5+1 */
-#define DCT_VAL_CATEGORY6       10      /* 59+       Extra Bits 11+1 */
+#define DCT_VAL_CATEGORY3       7       /* 11-18     Extra Bits 3+1 */
+#define DCT_VAL_CATEGORY4       8       /* 19-34     Extra Bits 4+1 */
+#define DCT_VAL_CATEGORY5       9       /* 35-66     Extra Bits 5+1 */
+#define DCT_VAL_CATEGORY6       10      /* 67+       Extra Bits 11+1 */
 #define DCT_EOB_TOKEN           11      /* EOB       Extra Bits 0+0 */
 
 #define vp8_coef_tokens 12
@@ -42,7 +42,6 @@ typedef struct
 {
     vp8_tree_p tree;
     const vp8_prob *prob;
-    vp8bc_index_t *prob_bc;
     int Len;
     int base_val;
 } vp8_extra_bit_struct;
@@ -95,6 +94,7 @@ struct VP8Common;
 void vp8_default_coef_probs(struct VP8Common *);
 
 extern DECLARE_ALIGNED(16, const int, vp8_default_zig_zag1d[16]);
+extern DECLARE_ALIGNED(16, const short, vp8_default_inv_zig_zag[16]);
 extern short vp8_default_zig_zag_mask[16];
 extern const int vp8_mb_feature_data_bits[MB_LVL_MAX];
 

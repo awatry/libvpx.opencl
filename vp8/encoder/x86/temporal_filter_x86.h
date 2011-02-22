@@ -9,23 +9,19 @@
  */
 
 
-#if !defined(_mac_specs_h)
-#define _mac_specs_h
+#ifndef __INC_VP8_TEMPORAL_FILTER_X86_H
+#define __INC_VP8_TEMPORAL_FILTER_X86_H
 
+#if HAVE_SSE2
+extern prototype_apply(vp8_temporal_filter_apply_sse2);
 
-#if defined(__cplusplus)
-extern "C" {
-#endif
+#if !CONFIG_RUNTIME_CPU_DETECT
 
-    extern unsigned int vp8_read_tsc();
-
-    extern unsigned int vp8_get_processor_freq();
-
-    extern unsigned int vpx_has_altivec();
-
-#if defined(__cplusplus)
-}
-#endif
-
+#undef  vp8_temporal_filter_apply
+#define vp8_temporal_filter_apply vp8_temporal_filter_apply_sse2
 
 #endif
+
+#endif
+
+#endif // __INC_VP8_TEMPORAL_FILTER_X86_H

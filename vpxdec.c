@@ -17,14 +17,7 @@
 #include <stdarg.h>
 #include <string.h>
 #include <limits.h>
-#if defined(_WIN32)
-#include <io.h>
-#define snprintf _snprintf
-#define isatty   _isatty
-#define fileno   _fileno
-#else
-#include <unistd.h>
-#endif
+
 #define VPX_CODEC_DISABLE_COMPAT 1
 #include "vpx_config.h"
 #include "vpx/vpx_decoder.h"
@@ -35,7 +28,19 @@
 #if CONFIG_MD5
 #include "md5_utils.h"
 #endif
+#include "tools_common.h"
 #include "nestegg/include/nestegg/nestegg.h"
+
+#if CONFIG_OS_SUPPORT
+#if defined(_WIN32)
+#include <io.h>
+#define snprintf _snprintf
+#define isatty   _isatty
+#define fileno   _fileno
+#else
+#include <unistd.h>
+#endif
+#endif
 
 #ifndef PATH_MAX
 #define PATH_MAX 256
@@ -107,11 +112,19 @@ static const arg_def_t demacroblock_level = ARG_DEF(NULL, "demacroblock-level", 
         "Enable VP8 demacroblocking, w/ level");
 static const arg_def_t pp_debug_info = ARG_DEF(NULL, "pp-debug-info", 1,
                                        "Enable VP8 visible debug info");
-
+static const arg_def_t pp_disp_ref_frame = ARG_DEF(NULL, "pp-dbg-ref-frame", 1,
+                                       "Display only selected reference frame per macro block");
+static const arg_def_t pp_disp_mb_modes = ARG_DEF(NULL, "pp-dbg-mb-modes", 1,
+                                       "Display only selected macro block modes");
+static const arg_def_t pp_disp_b_modes = ARG_DEF(NULL, "pp-dbg-b-modes", 1,
+                                       "Display only selected block modes");
+static const arg_def_t pp_disp_mvs = ARG_DEF(NULL, "pp-dbg-mvs", 1,
+                                       "Draw only selected motion vectors");
 
 static const arg_def_t *vp8_pp_args[] =
 {
     &addnoise_level, &deblock, &demacroblock_level, &pp_debug_info,
+    &pp_disp_ref_frame, &pp_disp_mb_modes, &pp_disp_b_modes, &pp_disp_mvs,
     NULL
 };
 #endif
@@ -314,7 +327,8 @@ void *out_open(const char *out_fn, int do_md5)
     }
     else
     {
-        FILE *outfile = out = strcmp("-", out_fn) ? fopen(out_fn, "wb") : stdout;
+        FILE *outfile = out = strcmp("-", out_fn) ? fopen(out_fn, "wb")
+                                                  : set_binary_mode(stdout);
 
         if (!outfile)
         {
@@ -432,6 +446,8 @@ unsigned int file_is_raw(FILE *infile,
     int is_raw = 0;
     vpx_codec_stream_info_t si;
 
+    si.sz = sizeof(si);
+
     if (fread(buf, 1, 32, infile) == 32)
     {
         int i;
@@ -540,6 +556,7 @@ webm_guess_framerate(struct input_ctx *input,
     *fps_den = tstamp / 1000;
     return 0;
 fail:
+    nestegg_destroy(input->nestegg_ctx);
     input->nestegg_ctx = NULL;
     rewind(input->infile);
     return 1;
@@ -702,6 +719,10 @@ int main(int argc, const char **argv_)
     vpx_codec_dec_cfg_t     cfg = {0};
 #if CONFIG_VP8_DECODER
     vp8_postproc_cfg_t      vp8_pp_cfg = {0};
+    int                     vp8_dbg_color_ref_frame = 0;
+    int                     vp8_dbg_color_mb_modes = 0;
+    int                     vp8_dbg_color_b_modes = 0;
+    int                     vp8_dbg_display_mv = 0;
 #endif
     struct input_ctx        input = {0};
 
@@ -787,6 +808,42 @@ int main(int argc, const char **argv_)
             if (level)
                 vp8_pp_cfg.post_proc_flag |= level;
         }
+        else if (arg_match(&arg, &pp_disp_ref_frame, argi))
+        {
+            unsigned int flags = arg_parse_int(&arg);
+            if (flags)
+            {
+                postproc = 1;
+                vp8_dbg_color_ref_frame = flags;
+            }
+        }
+        else if (arg_match(&arg, &pp_disp_mb_modes, argi))
+        {
+            unsigned int flags = arg_parse_int(&arg);
+            if (flags)
+            {
+                postproc = 1;
+                vp8_dbg_color_mb_modes = flags;
+            }
+        }
+        else if (arg_match(&arg, &pp_disp_b_modes, argi))
+        {
+            unsigned int flags = arg_parse_int(&arg);
+            if (flags)
+            {
+                postproc = 1;
+                vp8_dbg_color_b_modes = flags;
+            }
+        }
+        else if (arg_match(&arg, &pp_disp_mvs, argi))
+        {
+            unsigned int flags = arg_parse_int(&arg);
+            if (flags)
+            {
+                postproc = 1;
+                vp8_dbg_display_mv = flags;
+            }
+        }
 
 #endif
         else
@@ -805,7 +862,7 @@ int main(int argc, const char **argv_)
         usage_exit();
 
     /* Open file */
-    infile = strcmp(fn, "-") ? fopen(fn, "rb") : stdin;
+    infile = strcmp(fn, "-") ? fopen(fn, "rb") : set_binary_mode(stdin);
 
     if (!infile)
     {
@@ -813,7 +870,7 @@ int main(int argc, const char **argv_)
                 strcmp(fn, "-") ? fn : "stdin");
         return EXIT_FAILURE;
     }
-
+#if CONFIG_OS_SUPPORT
     /* Make sure we don't dump to the terminal, unless forced to with -o - */
     if(!outfile_pattern && isatty(fileno(stdout)) && !do_md5 && !noblit)
     {
@@ -822,7 +879,7 @@ int main(int argc, const char **argv_)
                 "override.\n");
         return EXIT_FAILURE;
     }
-
+#endif
     input.infile = infile;
     if(file_is_ivf(infile, &fourcc, &width, &height, &fps_den,
                    &fps_num))
@@ -876,7 +933,13 @@ int main(int argc, const char **argv_)
         }
 
         if(input.kind == WEBM_FILE)
-            webm_guess_framerate(&input, &fps_den, &fps_num);
+            if(webm_guess_framerate(&input, &fps_den, &fps_num))
+            {
+                fprintf(stderr, "Failed to guess framerate -- error parsing "
+                                "webm file?\n");
+                return EXIT_FAILURE;
+            }
+
 
         /*Note: We can't output an aspect ratio here because IVF doesn't
            store one, and neither does VP8.
@@ -920,6 +983,33 @@ int main(int argc, const char **argv_)
         return EXIT_FAILURE;
     }
 
+    if (vp8_dbg_color_ref_frame
+        && vpx_codec_control(&decoder, VP8_SET_DBG_COLOR_REF_FRAME, vp8_dbg_color_ref_frame))
+    {
+        fprintf(stderr, "Failed to configure reference block visualizer: %s\n", vpx_codec_error(&decoder));
+        return EXIT_FAILURE;
+    }
+
+    if (vp8_dbg_color_mb_modes
+        && vpx_codec_control(&decoder, VP8_SET_DBG_COLOR_MB_MODES, vp8_dbg_color_mb_modes))
+    {
+        fprintf(stderr, "Failed to configure macro block visualizer: %s\n", vpx_codec_error(&decoder));
+        return EXIT_FAILURE;
+    }
+
+    if (vp8_dbg_color_b_modes
+        && vpx_codec_control(&decoder, VP8_SET_DBG_COLOR_B_MODES, vp8_dbg_color_b_modes))
+    {
+        fprintf(stderr, "Failed to configure block visualizer: %s\n", vpx_codec_error(&decoder));
+        return EXIT_FAILURE;
+    }
+
+    if (vp8_dbg_display_mv
+        && vpx_codec_control(&decoder, VP8_SET_DBG_DISPLAY_MV, vp8_dbg_display_mv))
+    {
+        fprintf(stderr, "Failed to configure motion vector visualizer: %s\n", vpx_codec_error(&decoder));
+        return EXIT_FAILURE;
+    }
 #endif
 
     /* Decode file */

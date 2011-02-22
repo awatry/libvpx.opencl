@@ -11,12 +11,12 @@
 
 #include "vpx_ports/config.h"
 #include "encodemb.h"
-#include "reconinter.h"
+#include "vp8/common/reconinter.h"
 #include "quantize.h"
 #include "tokenize.h"
 #include "invtrans.h"
-#include "recon.h"
-#include "reconintra.h"
+#include "vp8/common/recon.h"
+#include "vp8/common/reconintra.h"
 #include "dct.h"
 #include "vpx_mem/vpx_mem.h"
 
@@ -243,9 +243,9 @@ struct vp8_token_state{
 };
 
 // TODO: experiments to find optimal multiple numbers
-#define Y1_RD_MULT 1
-#define UV_RD_MULT 1
-#define Y2_RD_MULT 4
+#define Y1_RD_MULT 4
+#define UV_RD_MULT 2
+#define Y2_RD_MULT 16
 
 static const int plane_rd_mult[4]=
 {
@@ -273,7 +273,6 @@ void vp8_optimize_b(MACROBLOCK *mb, int ib, int type,
     int x;
     int sz;
     int next;
-    int path;
     int rdmult;
     int rddiv;
     int final_eob;
@@ -309,8 +308,10 @@ void vp8_optimize_b(MACROBLOCK *mb, int ib, int type,
     eob = d->eob;
 
     /* Now set up a Viterbi trellis to evaluate alternative roundings. */
-    /* TODO: These should vary with the block type, since the quantizer does. */
-    rdmult = (mb->rdmult << 2)*err_mult;
+    rdmult = mb->rdmult * err_mult;
+    if(mb->e_mbd.mode_info_context->mbmi.ref_frame==INTRA_FRAME)
+        rdmult = (rdmult * 9)>>4;
+
     rddiv = mb->rddiv;
     best_mask[0] = best_mask[1] = 0;
     /* Initialize the sentinel node of the trellis. */
@@ -633,7 +634,7 @@ void vp8_encode_inter16x16(const VP8_ENCODER_RTCD *rtcd, MACROBLOCK *x)
     vp8_quantize_mb(x);
 
 #if !(CONFIG_REALTIME_ONLY)
-    if (x->optimize==2 ||(x->optimize && x->rddiv > 1))
+    if (x->optimize)
         vp8_optimize_mb(x, rtcd);
 #endif
 

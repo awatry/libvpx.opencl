@@ -10,8 +10,8 @@
 
 
 #include "vpx_ports/config.h"
-#include "variance.h"
-#include "onyx_int.h"
+#include "vp8/encoder/variance.h"
+#include "vp8/encoder/onyx_int.h"
 
 
 void vp8_arch_x86_encoder_init(VP8_COMP *cpi);
@@ -91,9 +91,12 @@ void vp8_cmachine_specific_config(VP8_COMP *cpi)
 
     cpi->rtcd.quantize.quantb                = vp8_regular_quantize_b;
     cpi->rtcd.quantize.fastquantb            = vp8_fast_quantize_b_c;
-
+#if !(CONFIG_REALTIME_ONLY)
     cpi->rtcd.search.full_search             = vp8_full_search_sad;
+#endif
     cpi->rtcd.search.diamond_search          = vp8_diamond_search_sad;
+
+    cpi->rtcd.temporal.apply                 = vp8_temporal_filter_apply_c;
 #endif
 
     // Pure C:

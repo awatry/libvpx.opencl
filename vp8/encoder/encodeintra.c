@@ -10,15 +10,15 @@
 
 
 #include "vpx_ports/config.h"
-#include "idct.h"
+#include "vp8/common/idct.h"
 #include "quantize.h"
-#include "reconintra.h"
-#include "reconintra4x4.h"
+#include "vp8/common/reconintra.h"
+#include "vp8/common/reconintra4x4.h"
 #include "encodemb.h"
 #include "invtrans.h"
-#include "recon.h"
+#include "vp8/common/recon.h"
 #include "dct.h"
-#include "g_common.h"
+#include "vp8/common/g_common.h"
 #include "encodeintra.h"
 
 #define intra4x4ibias_rate    128
@@ -58,21 +58,6 @@ void vp8_encode_intra4x4block(const VP8_ENCODER_RTCD *rtcd, MACROBLOCK *x, BLOCK
     RECON_INVOKE(&rtcd->common->recon, recon)(b->predictor_base + b->predictor_offset, &b->diff_base[b->diff_offset], *(b->base_dst) + b->dst, b->dst_stride);
 }
 
-void vp8_encode_intra4x4block_rd(const VP8_ENCODER_RTCD *rtcd, MACROBLOCK *x, BLOCK *be, BLOCKD *b, int best_mode)
-{
-    vp8_predict_intra4x4(b, best_mode, b->predictor_base + b->predictor_offset);
-
-    ENCODEMB_INVOKE(&rtcd->encodemb, subb)(be, b, 16);
-
-    x->vp8_short_fdct4x4(be->src_diff, be->coeff, 32);
-
-    x->quantize_b(be, b);
-
-    IDCT_INVOKE(&rtcd->common->idct, idct16)(b->dqcoeff_base+b->dqcoeff_offset, &b->diff_base[b->diff_offset], 32);
-
-    RECON_INVOKE(&rtcd->common->recon, recon)(b->predictor_base + b->predictor_offset, &b->diff_base[b->diff_offset], *(b->base_dst) + b->dst, b->dst_stride);
-}
-
 void vp8_encode_intra4x4mby(const VP8_ENCODER_RTCD *rtcd, MACROBLOCK *mb)
 {
     int i;
@@ -105,56 +90,11 @@ void vp8_encode_intra16x16mby(const VP8_ENCODER_RTCD *rtcd, MACROBLOCK *x)
 
 #if !(CONFIG_REALTIME_ONLY)
 #if 1
-    if (x->optimize==2 ||(x->optimize && x->rddiv > 1))
+    if (x->optimize)
         vp8_optimize_mby(x, rtcd);
 
 #endif
 #endif
-
-    vp8_inverse_transform_mby(IF_RTCD(&rtcd->common->idct), &x->e_mbd);
-
-    RECON_INVOKE(&rtcd->common->recon, recon_mby)
-        (IF_RTCD(&rtcd->common->recon), &x->e_mbd);
-
-    // make sure block modes are set the way we want them for context updates
-    for (b = 0; b < 16; b++)
-    {
-        BLOCKD *d = &x->e_mbd.block[b];
-
-        switch (x->e_mbd.mode_info_context->mbmi.mode)
-        {
-
-        case DC_PRED:
-            d->bmi.mode = B_DC_PRED;
-            break;
-        case V_PRED:
-            d->bmi.mode = B_VE_PRED;
-            break;
-        case H_PRED:
-            d->bmi.mode = B_HE_PRED;
-            break;
-        case TM_PRED:
-            d->bmi.mode = B_TM_PRED;
-            break;
-        default:
-            d->bmi.mode = B_DC_PRED;
-            break;
-
-        }
-    }
-}
-
-void vp8_encode_intra16x16mbyrd(const VP8_ENCODER_RTCD *rtcd, MACROBLOCK *x)
-{
-    int b;
-
-    vp8_build_intra_predictors_mby_ptr(&x->e_mbd);
-
-    ENCODEMB_INVOKE(&rtcd->encodemb, submby)(x->src_diff, x->src.y_buffer, x->e_mbd.predictor, x->src.y_stride);
-
-    vp8_transform_intra_mby(x);
-
-    vp8_quantize_mby(x);
 
     vp8_inverse_transform_mby(IF_RTCD(&rtcd->common->idct), &x->e_mbd);
 
@@ -213,17 +153,3 @@ void vp8_encode_intra16x16mbuv(const VP8_ENCODER_RTCD *rtcd, MACROBLOCK *x)
     vp8_recon_intra_mbuv(IF_RTCD(&rtcd->common->recon), &x->e_mbd);
 }
 
-void vp8_encode_intra16x16mbuvrd(const VP8_ENCODER_RTCD *rtcd, MACROBLOCK *x)
-{
-    vp8_build_intra_predictors_mbuv(&x->e_mbd);
-
-    ENCODEMB_INVOKE(&rtcd->encodemb, submbuv)(x->src_diff, x->src.u_buffer, x->src.v_buffer, x->e_mbd.predictor, x->src.uv_stride);
-
-    vp8_transform_mbuv(x);
-
-    vp8_quantize_mbuv(x);
-
-    vp8_inverse_transform_mbuv(IF_RTCD(&rtcd->common->idct), &x->e_mbd);
-
-    vp8_recon_intra_mbuv(IF_RTCD(&rtcd->common->recon), &x->e_mbd);
-}

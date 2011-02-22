@@ -13,30 +13,29 @@
 #include <math.h>
 #include <limits.h>
 #include <assert.h>
-#include "pragmas.h"
+#include "vp8/common/pragmas.h"
 
 #include "tokenize.h"
 #include "treewriter.h"
 #include "onyx_int.h"
 #include "modecosts.h"
 #include "encodeintra.h"
-#include "entropymode.h"
-#include "reconinter.h"
-#include "reconintra.h"
-#include "reconintra4x4.h"
-#include "findnearmv.h"
+#include "vp8/common/entropymode.h"
+#include "vp8/common/reconinter.h"
+#include "vp8/common/reconintra.h"
+#include "vp8/common/reconintra4x4.h"
+#include "vp8/common/findnearmv.h"
 #include "encodemb.h"
 #include "quantize.h"
-#include "idct.h"
-#include "g_common.h"
+#include "vp8/common/idct.h"
+#include "vp8/common/g_common.h"
 #include "variance.h"
 #include "mcomp.h"
 
 #include "vpx_mem/vpx_mem.h"
 #include "dct.h"
-#include "systemdependent.h"
+#include "vp8/common/systemdependent.h"
 
-#define DIAMONDSEARCH 1
 #if CONFIG_RUNTIME_CPU_DETECT
 #define IF_RTCD(x)  (x)
 #else
@@ -44,20 +43,9 @@
 #endif
 
 
-void vp8cx_mb_init_quantizer(VP8_COMP *cpi, MACROBLOCK *x);
+extern void vp8cx_mb_init_quantizer(VP8_COMP *cpi, MACROBLOCK *x);
+extern void vp8_update_zbin_extra(VP8_COMP *cpi, MACROBLOCK *x);
 
-
-#define RDFUNC(RM,DM,R,D,target_rd) ( ((128+(R)*(RM)) >> 8) + (DM)*(D) )
-/*int  RDFUNC( int RM,int DM, int R, int D, int target_r )
-{
-    int rd_value;
-
-    rd_value =  ( ((128+(R)*(RM)) >> 8) + (DM)*(D) );
-
-    return rd_value;
-}*/
-
-#define UVRDFUNC(RM,DM,R,D,target_r)  RDFUNC(RM,DM,R,D,target_r)
 
 #define RDCOST(RM,DM,R,D) ( ((128+(R)*(RM)) >> 8) + (DM)*(D) )
 
@@ -173,45 +161,44 @@ static int rd_iifactor [ 32 ] =  {    4,   4,   3,   2,   1,   0,   0,   0,
                                  };
 
 
-// The values in this table should be reviewed
-static int sad_per_bit16lut[128] =
+/* values are now correlated to quantizer */
+static int sad_per_bit16lut[QINDEX_RANGE] =
 {
-    4,  4, 4, 4,  4, 4, 4, 4,   // 4
-    4,  4, 4, 4,  4, 4, 4, 4,   // 1
-    4,  4, 4, 4,  4, 4, 4, 4,   // 2
-    4,  4, 4, 4,  4, 4, 4, 4,   // 3
-    4,  4, 4, 4,  4, 4, 4, 4,   // 4
-    4,  4, 12, 12, 13, 13, 14, 14, // 5
-    14, 14, 14, 15, 15, 15, 15, 15, // 6
-    15, 15, 15, 15, 15, 15, 15, 15, // 7
-    15, 15, 15, 15, 15, 16, 16, 16, // 8
-    16, 16, 18, 18, 18, 18, 19, 19, // 9
-    19, 19, 19, 19, 19, 19, 19, 19, // 10
-    20, 20, 22, 22, 22, 22, 21, 21, // 11
-    22, 22, 22, 22, 22, 22, 22, 22, // 12
-    22, 22, 22, 22, 22, 22, 22, 22, // 13
-    22, 22, 22, 22, 22, 22, 22, 22, // 14
-    22, 22, 22, 22, 22, 22, 22, 22, // 15
+    5,  5,  5,  5,  5,  5,  6,  6,
+    6,  6,  6,  6,  6,  7,  7,  7,
+    7,  7,  7,  7,  8,  8,  8,  8,
+    8,  8,  8,  8,  8,  8,  9,  9,
+    9,  9,  9,  9, 10, 10, 10, 10,
+    10, 10, 11, 11, 11, 11, 11, 11,
+    12, 12, 12, 12, 12, 12, 12, 13,
+    13, 13, 13, 13, 13, 14, 14, 14,
+    14, 14, 15, 15, 15, 15, 15, 15,
+    16, 16, 16, 16, 16, 16, 17, 17,
+    17, 17, 17, 17, 17, 18, 18, 18,
+    18, 18, 19, 19, 19, 19, 19, 19,
+    20, 20, 20, 21, 21, 21, 21, 22,
+    22, 22, 23, 23, 23, 24, 24, 24,
+    25, 25, 26, 26, 27, 27, 27, 28,
+    28, 28, 29, 29, 30, 30, 31, 31
 };
-
-static int sad_per_bit4lut[128] =
+static int sad_per_bit4lut[QINDEX_RANGE] =
 {
-    4,  4, 4, 4,  4, 4, 4, 4,   // 4
-    4,  4, 4, 4,  4, 4, 4, 4,   // 1
-    4,  4, 4, 4,  4, 4, 4, 4,   // 2
-    4,  4, 4, 4,  4, 4, 4, 4,   // 3
-    4,  4, 4, 4,  4, 4, 4, 4,   // 4
-    4,  4, 15, 15, 15, 15, 16, 16, // 5
-    16, 17, 17, 17, 17, 17, 17, 17, // 6
-    17, 17, 19, 19, 22, 22, 21, 21, // 7
-    23, 23, 23, 23, 23, 24, 24, 24, // 8
-    25, 25, 27, 27, 27, 27, 28, 28, // 9
-    28, 28, 29, 29, 29, 29, 29, 29, // 10
-    30, 30, 31, 31, 31, 31, 32, 32, // 11
-    34, 34, 34, 34, 34, 34, 34, 34, // 12
-    34, 34, 34, 34, 34, 34, 34, 34, // 13
-    34, 34, 34, 34, 34, 34, 34, 34, // 14
-    34, 34, 34, 34, 34, 34, 34, 34, // 15
+    5,  5,  5,  5,  5,  5,  7,  7,
+    7,  7,  7,  7,  7,  8,  8,  8,
+    8,  8,  8,  8,  10, 10, 10, 10,
+    10, 10, 10, 10, 10, 10, 11, 11,
+    11, 11, 11, 11, 13, 13, 13, 13,
+    13, 13, 14, 14, 14, 14, 14, 14,
+    16, 16, 16, 16, 16, 16, 16, 17,
+    17, 17, 17, 17, 17, 19, 19, 19,
+    19, 19, 20, 20, 20, 20, 20, 20,
+    22, 22, 22, 22, 22, 22, 23, 23,
+    23, 23, 23, 23, 23, 25, 25, 25,
+    25, 25, 26, 26, 26, 26, 26, 26,
+    28, 28, 28, 29, 29, 29, 29, 31,
+    31, 31, 32, 32, 32, 34, 34, 34,
+    35, 35, 37, 37, 38, 38, 38, 40,
+    40, 40, 41, 41, 43, 43, 44, 44,
 };
 
 void vp8cx_initialize_me_consts(VP8_COMP *cpi, int QIndex)
@@ -224,8 +211,6 @@ void vp8_initialize_rd_consts(VP8_COMP *cpi, int Qvalue)
 {
     int q;
     int i;
-    int *thresh;
-    int threshmult;
     double capped_q = (Qvalue < 160) ? (double)Qvalue : 160.0;
     double rdconst = 3.00;
 
@@ -258,13 +243,8 @@ void vp8_initialize_rd_consts(VP8_COMP *cpi, int Qvalue)
             cpi->RDMULT += (cpi->RDMULT * rd_iifactor[cpi->next_iiratio]) >> 4;
     }
 
-    if (cpi->RDMULT < 125)
-        cpi->RDMULT = 125;
-
     cpi->mb.errorperbit = (cpi->RDMULT / 100);
-
-    if (cpi->mb.errorperbit < 1)
-        cpi->mb.errorperbit = 1;
+    cpi->mb.errorperbit += (cpi->mb.errorperbit==0);
 
     vp8_set_speed_features(cpi);
 
@@ -275,22 +255,6 @@ void vp8_initialize_rd_consts(VP8_COMP *cpi, int Qvalue)
 
     if (q < 8)
         q = 8;
-
-    if (cpi->ref_frame_flags == VP8_ALT_FLAG)
-    {
-        thresh      = &cpi->rd_threshes[THR_NEWA];
-        threshmult  = cpi->sf.thresh_mult[THR_NEWA];
-    }
-    else if (cpi->ref_frame_flags == VP8_GOLD_FLAG)
-    {
-        thresh      = &cpi->rd_threshes[THR_NEWG];
-        threshmult  = cpi->sf.thresh_mult[THR_NEWG];
-    }
-    else
-    {
-        thresh      = &cpi->rd_threshes[THR_NEWMV];
-        threshmult  = cpi->sf.thresh_mult[THR_NEWMV];
-    }
 
     if (cpi->RDMULT > 1000)
     {
@@ -481,67 +445,6 @@ int vp8_mbuverror_c(MACROBLOCK *mb)
     return error;
 }
 
-#if !(CONFIG_REALTIME_ONLY)
-static int macro_block_max_error(MACROBLOCK *mb)
-{
-    int error = 0;
-    int dc = 0;
-    BLOCK  *be;
-    int i, j;
-    int berror;
-
-    dc = !(mb->e_mbd.mode_info_context->mbmi.mode == B_PRED || mb->e_mbd.mode_info_context->mbmi.mode == SPLITMV);
-
-    for (i = 0; i < 16; i++)
-    {
-        be = &mb->block[i];
-
-        berror = 0;
-
-        for (j = dc; j < 16; j++)
-        {
-            int this_diff = be->coeff[j];
-            berror += this_diff * this_diff;
-        }
-
-        error += berror;
-    }
-
-    for (i = 16; i < 24; i++)
-    {
-        be = &mb->block[i];
-        berror = 0;
-
-        for (j = 0; j < 16; j++)
-        {
-            int this_diff = be->coeff[j];
-            berror += this_diff * this_diff;
-        }
-
-        error += berror;
-    }
-
-    error <<= 2;
-
-    if (dc)
-    {
-        be = &mb->block[24];
-        berror = 0;
-
-        for (j = 0; j < 16; j++)
-        {
-            int this_diff = be->coeff[j];
-            berror += this_diff * this_diff;
-        }
-
-        error += berror;
-    }
-
-    error >>= 4;
-    return error;
-}
-#endif
-
 int VP8_UVSSE(MACROBLOCK *x, const vp8_variance_rtcd_vtable_t *rtcd)
 {
     unsigned char *uptr, *vptr;
@@ -614,11 +517,10 @@ static int cost_coeffs(MACROBLOCK *mb, BLOCKD *b, int type, ENTROPY_CONTEXT *a, 
     return cost;
 }
 
-int vp8_rdcost_mby(MACROBLOCK *mb)
+static int vp8_rdcost_mby(MACROBLOCK *mb)
 {
     int cost = 0;
     int b;
-    int type = 0;
     MACROBLOCKD *x = &mb->e_mbd;
     ENTROPY_CONTEXT_PLANES t_above, t_left;
     ENTROPY_CONTEXT *ta;
@@ -630,29 +532,97 @@ int vp8_rdcost_mby(MACROBLOCK *mb)
     ta = (ENTROPY_CONTEXT *)&t_above;
     tl = (ENTROPY_CONTEXT *)&t_left;
 
-    if (x->mode_info_context->mbmi.mode == SPLITMV)
-        type = 3;
-
     for (b = 0; b < 16; b++)
-        cost += cost_coeffs(mb, x->block + b, type,
+        cost += cost_coeffs(mb, x->block + b, 0,
                     ta + vp8_block2above[b], tl + vp8_block2left[b]);
 
-    if (x->mode_info_context->mbmi.mode != SPLITMV)
-        cost += cost_coeffs(mb, x->block + 24, 1,
-                    ta + vp8_block2above[24], tl + vp8_block2left[24]);
+    cost += cost_coeffs(mb, x->block + 24, 1,
+                ta + vp8_block2above[24], tl + vp8_block2left[24]);
 
     return cost;
 }
 
+static void macro_block_yrd( MACROBLOCK *mb,
+                             int *Rate,
+                             int *Distortion,
+                             const vp8_encodemb_rtcd_vtable_t *rtcd)
+{
+    int b;
+    MACROBLOCKD *const x = &mb->e_mbd;
+    BLOCK   *const mb_y2 = mb->block + 24;
+    BLOCKD *const x_y2  = x->block + 24;
+    short *Y2DCPtr = mb_y2->src_diff;
+    BLOCK *beptr;
+    int d;
 
-static void rd_pick_intra4x4block(
+    ENCODEMB_INVOKE(rtcd, submby)( mb->src_diff, mb->src.y_buffer,
+                                   mb->e_mbd.predictor, mb->src.y_stride );
+
+    // Fdct and building the 2nd order block
+    for (beptr = mb->block; beptr < mb->block + 16; beptr += 2)
+    {
+        mb->vp8_short_fdct8x4(beptr->src_diff, beptr->coeff, 32);
+        *Y2DCPtr++ = beptr->coeff[0];
+        *Y2DCPtr++ = beptr->coeff[16];
+    }
+
+    // 2nd order fdct
+    mb->short_walsh4x4(mb_y2->src_diff, mb_y2->coeff, 8);
+
+    // Quantization
+    for (b = 0; b < 16; b++)
+    {
+        mb->quantize_b(&mb->block[b], &mb->e_mbd.block[b]);
+    }
+
+    // DC predication and Quantization of 2nd Order block
+    mb->quantize_b(mb_y2, x_y2);
+
+    // Distortion
+    d = ENCODEMB_INVOKE(rtcd, mberr)(mb, 1) << 2;
+    d += ENCODEMB_INVOKE(rtcd, berr)(mb_y2->coeff, x_y2->dqcoeff_base+x_y2->dqcoeff_offset);
+
+    *Distortion = (d >> 4);
+
+    // rate
+    *Rate = vp8_rdcost_mby(mb);
+}
+
+static void save_predictor(unsigned char *predictor, unsigned char *dst)
+{
+    int r, c;
+    for (r = 0; r < 4; r++)
+    {
+        for (c = 0; c < 4; c++)
+        {
+            *dst = predictor[c];
+            dst++;
+        }
+
+        predictor += 16;
+    }
+}
+static void restore_predictor(unsigned char *predictor, unsigned char *dst)
+{
+    int r, c;
+    for (r = 0; r < 4; r++)
+    {
+        for (c = 0; c < 4; c++)
+        {
+            predictor[c] = *dst;
+            dst++;
+        }
+
+        predictor += 16;
+    }
+}
+static int rd_pick_intra4x4block(
     VP8_COMP *cpi,
     MACROBLOCK *x,
     BLOCK *be,
     BLOCKD *b,
     B_PREDICTION_MODE *best_mode,
-    B_PREDICTION_MODE above,
-    B_PREDICTION_MODE left,
+    unsigned int *bmode_costs,
     ENTROPY_CONTEXT *a,
     ENTROPY_CONTEXT *l,
 
@@ -661,31 +631,27 @@ static void rd_pick_intra4x4block(
     int *bestdistortion)
 {
     B_PREDICTION_MODE mode;
-    int best_rd = INT_MAX;       // 1<<30
+    int best_rd = INT_MAX;
     int rate = 0;
     int distortion;
-    unsigned int *mode_costs;
 
     ENTROPY_CONTEXT ta = *a, tempa = *a;
     ENTROPY_CONTEXT tl = *l, templ = *l;
 
-
-    if (x->e_mbd.frame_type == KEY_FRAME)
-    {
-        mode_costs  = x->bmode_costs[above][left];
-    }
-    else
-    {
-        mode_costs = x->inter_bmode_costs;
-    }
+    DECLARE_ALIGNED_ARRAY(16, unsigned char,  predictor, 16);
+    DECLARE_ALIGNED_ARRAY(16, short, dqcoeff, 16);
 
     for (mode = B_DC_PRED; mode <= B_HU_PRED; mode++)
     {
         int this_rd;
         int ratey;
 
-        rate = mode_costs[mode];
-        vp8_encode_intra4x4block_rd(IF_RTCD(&cpi->rtcd), x, be, b, mode);
+        rate = bmode_costs[mode];
+
+        vp8_predict_intra4x4(b, mode, b->predictor_base+b->predictor_offset);
+        ENCODEMB_INVOKE(IF_RTCD(&cpi->rtcd.encodemb), subb)(be, b, 16);
+        x->vp8_short_fdct4x4(be->src_diff, be->coeff, 32);
+        x->quantize_b(be, b);
 
         tempa = ta;
         templ = tl;
@@ -705,25 +671,36 @@ static void rd_pick_intra4x4block(
             *best_mode = mode;
             *a = tempa;
             *l = templ;
+            save_predictor(b->predictor_base+b->predictor_offset, predictor);
+            vpx_memcpy(dqcoeff, b->dqcoeff_base+b->dqcoeff_offset, 32);
         }
     }
 
     b->bmi.mode = (B_PREDICTION_MODE)(*best_mode);
-    vp8_encode_intra4x4block_rd(IF_RTCD(&cpi->rtcd), x, be, b, b->bmi.mode);
+
+    restore_predictor(b->predictor_base+b->predictor_offset, predictor);
+    vpx_memcpy(b->dqcoeff_base+b->dqcoeff_offset, dqcoeff, 32);
+
+    IDCT_INVOKE(IF_RTCD(&cpi->rtcd.common->idct), idct16)(b->dqcoeff_base+b->dqcoeff_offset, b->diff_base+b->diff_offset, 32);
+    RECON_INVOKE(IF_RTCD(&cpi->rtcd.common->recon), recon)(b->predictor_base+b->predictor_offset, b->diff_base+b->diff_offset, *(b->base_dst) + b->dst, b->dst_stride);
+
+    return best_rd;
 
 }
 
-
-int vp8_rd_pick_intra4x4mby_modes(VP8_COMP *cpi, MACROBLOCK *mb, int *Rate, int *rate_y, int *Distortion)
+int vp8_rd_pick_intra4x4mby_modes(VP8_COMP *cpi, MACROBLOCK *mb, int *Rate,
+                                  int *rate_y, int *Distortion, int best_rd)
 {
     MACROBLOCKD *const xd = &mb->e_mbd;
     int i;
     int cost = mb->mbmode_cost [xd->frame_type] [B_PRED];
     int distortion = 0;
     int tot_rate_y = 0;
+    int total_rd = 0;
     ENTROPY_CONTEXT_PLANES t_above, t_left;
     ENTROPY_CONTEXT *ta;
     ENTROPY_CONTEXT *tl;
+    unsigned int *bmode_costs;
 
     vpx_memcpy(&t_above, mb->e_mbd.above_context, sizeof(ENTROPY_CONTEXT_PLANES));
     vpx_memcpy(&t_left, mb->e_mbd.left_context, sizeof(ENTROPY_CONTEXT_PLANES));
@@ -733,17 +710,25 @@ int vp8_rd_pick_intra4x4mby_modes(VP8_COMP *cpi, MACROBLOCK *mb, int *Rate, int 
 
     vp8_intra_prediction_down_copy(xd);
 
+    bmode_costs = mb->inter_bmode_costs;
+
     for (i = 0; i < 16; i++)
     {
         MODE_INFO *const mic = xd->mode_info_context;
         const int mis = xd->mode_info_stride;
-        const B_PREDICTION_MODE A = vp8_above_bmi(mic, i, mis)->mode;
-        const B_PREDICTION_MODE L = vp8_left_bmi(mic, i)->mode;
         B_PREDICTION_MODE UNINITIALIZED_IS_SAFE(best_mode);
         int UNINITIALIZED_IS_SAFE(r), UNINITIALIZED_IS_SAFE(ry), UNINITIALIZED_IS_SAFE(d);
 
-        rd_pick_intra4x4block(
-            cpi, mb, mb->block + i, xd->block + i, &best_mode, A, L,
+        if (mb->e_mbd.frame_type == KEY_FRAME)
+        {
+            const B_PREDICTION_MODE A = vp8_above_bmi(mic, i, mis)->mode;
+            const B_PREDICTION_MODE L = vp8_left_bmi(mic, i)->mode;
+
+            bmode_costs  = mb->bmode_costs[A][L];
+        }
+
+        total_rd += rd_pick_intra4x4block(
+            cpi, mb, mb->block + i, xd->block + i, &best_mode, bmode_costs,
             ta + vp8_block2above[i],
             tl + vp8_block2left[i], &r, &ry, &d);
 
@@ -751,7 +736,13 @@ int vp8_rd_pick_intra4x4mby_modes(VP8_COMP *cpi, MACROBLOCK *mb, int *Rate, int 
         distortion += d;
         tot_rate_y += ry;
         mic->bmi[i].mode = xd->block[i].bmi.mode = best_mode;
+
+        if(total_rd >= best_rd)
+          break;
     }
+
+    if(total_rd >= best_rd)
+      return INT_MAX;
 
     *Rate = cost;
     *rate_y += tot_rate_y;
@@ -759,34 +750,29 @@ int vp8_rd_pick_intra4x4mby_modes(VP8_COMP *cpi, MACROBLOCK *mb, int *Rate, int 
 
     return RDCOST(mb->rdmult, mb->rddiv, cost, distortion);
 }
-
-int vp8_rd_pick_intra16x16mby_mode(VP8_COMP *cpi, MACROBLOCK *x, int *Rate, int *rate_y, int *Distortion)
+int vp8_rd_pick_intra16x16mby_mode(VP8_COMP *cpi,
+                                   MACROBLOCK *x,
+                                   int *Rate,
+                                   int *rate_y,
+                                   int *Distortion)
 {
-
     MB_PREDICTION_MODE mode;
     MB_PREDICTION_MODE UNINITIALIZED_IS_SAFE(mode_selected);
     int rate, ratey;
-    unsigned int distortion;
+    int distortion;
     int best_rd = INT_MAX;
+    int this_rd;
 
     //Y Search for 16x16 intra prediction mode
     for (mode = DC_PRED; mode <= TM_PRED; mode++)
     {
-        int this_rd;
-        int dummy;
-        rate = 0;
-
         x->e_mbd.mode_info_context->mbmi.mode = mode;
 
-        rate += x->mbmode_cost[x->e_mbd.frame_type][x->e_mbd.mode_info_context->mbmi.mode];
+        vp8_build_intra_predictors_mby_ptr(&x->e_mbd);
 
-        vp8_encode_intra16x16mbyrd(IF_RTCD(&cpi->rtcd), x);
-
-        ratey = vp8_rdcost_mby(x);
-
-        rate += ratey;
-
-        VARIANCE_INVOKE(&cpi->rtcd.variance, get16x16var)(x->src.y_buffer, x->src.y_stride, x->e_mbd.dst.y_buffer, x->e_mbd.dst.y_stride, &distortion, &dummy);
+        macro_block_yrd(x, &ratey, &distortion, IF_RTCD(&cpi->rtcd.encodemb));
+        rate = ratey + x->mbmode_cost[x->e_mbd.frame_type]
+                                     [x->e_mbd.mode_info_context->mbmi.mode];
 
         this_rd = RDCOST(x->rdmult, x->rddiv, rate, distortion);
 
@@ -796,14 +782,13 @@ int vp8_rd_pick_intra16x16mby_mode(VP8_COMP *cpi, MACROBLOCK *x, int *Rate, int 
             best_rd = this_rd;
             *Rate = rate;
             *rate_y = ratey;
-            *Distortion = (int)distortion;
+            *Distortion = distortion;
         }
     }
 
     x->e_mbd.mode_info_context->mbmi.mode = mode_selected;
     return best_rd;
 }
-
 
 static int rd_cost_mbuv(MACROBLOCK *mb)
 {
@@ -832,15 +817,6 @@ static int rd_cost_mbuv(MACROBLOCK *mb)
 }
 
 
-unsigned int vp8_get_mbuvrecon_error(const vp8_variance_rtcd_vtable_t *rtcd, const MACROBLOCK *x) // sum of squares
-{
-    unsigned int sse0, sse1;
-    int sum0, sum1;
-    VARIANCE_INVOKE(rtcd, get8x8var)(x->src.u_buffer, x->src.uv_stride, x->e_mbd.dst.u_buffer, x->e_mbd.dst.uv_stride, &sse0, &sum0);
-    VARIANCE_INVOKE(rtcd, get8x8var)(x->src.v_buffer, x->src.uv_stride, x->e_mbd.dst.v_buffer, x->e_mbd.dst.uv_stride, &sse1, &sum1);
-    return (sse0 + sse1);
-}
-
 static int vp8_rd_inter_uv(VP8_COMP *cpi, MACROBLOCK *x, int *rate, int *distortion, int fullpixel)
 {
     vp8_build_uvmvs(&x->e_mbd, fullpixel);
@@ -850,7 +826,7 @@ static int vp8_rd_inter_uv(VP8_COMP *cpi, MACROBLOCK *x, int *rate, int *distort
     *rate       = rd_cost_mbuv(x);
     *distortion = ENCODEMB_INVOKE(&cpi->rtcd.encodemb, mbuverr)(x) / 4;
 
-    return UVRDFUNC(x->rdmult, x->rddiv, *rate, *distortion, cpi->target_bits_per_mb);
+    return RDCOST(x->rdmult, x->rddiv, *rate, *distortion);
 }
 
 int vp8_rd_pick_intra_mbuv_mode(VP8_COMP *cpi, MACROBLOCK *x, int *rate, int *rate_tokenonly, int *distortion)
@@ -868,14 +844,19 @@ int vp8_rd_pick_intra_mbuv_mode(VP8_COMP *cpi, MACROBLOCK *x, int *rate, int *ra
         int this_rd;
 
         x->e_mbd.mode_info_context->mbmi.uv_mode = mode;
-        vp8_encode_intra16x16mbuvrd(IF_RTCD(&cpi->rtcd), x);
+        vp8_build_intra_predictors_mbuv(&x->e_mbd);
+        ENCODEMB_INVOKE(IF_RTCD(&cpi->rtcd.encodemb), submbuv)(x->src_diff,
+                      x->src.u_buffer, x->src.v_buffer, x->e_mbd.predictor,
+                      x->src.uv_stride);
+        vp8_transform_mbuv(x);
+        vp8_quantize_mbuv(x);
 
         rate_to = rd_cost_mbuv(x);
         rate = rate_to + x->intra_uv_mode_cost[x->e_mbd.frame_type][x->e_mbd.mode_info_context->mbmi.uv_mode];
 
-        distortion = vp8_get_mbuvrecon_error(IF_RTCD(&cpi->rtcd.variance), x);
+        distortion = ENCODEMB_INVOKE(&cpi->rtcd.encodemb, mbuverr)(x) / 4;
 
-        this_rd = UVRDFUNC(x->rdmult, x->rddiv, rate, distortion, cpi->target_bits_per_mb);
+        this_rd = RDCOST(x->rdmult, x->rddiv, rate, distortion);
 
         if (this_rd < best_rd)
         {
@@ -922,21 +903,6 @@ void vp8_set_mbmode_and_mvs(MACROBLOCK *x, MB_PREDICTION_MODE mb, MV *mv)
 }
 
 #if !(CONFIG_REALTIME_ONLY)
-int vp8_count_labels(int const *labelings)
-{
-    int i;
-    int count = 0;
-
-    for (i = 0; i < 16; i++)
-    {
-        if (labelings[i] > count)
-            count = labelings[i];
-    }
-
-    return count + 1;
-}
-
-
 static int labels2mode(
     MACROBLOCK *x,
     int const *labelings, int which_label,
@@ -1060,377 +1026,735 @@ static unsigned int vp8_encode_inter_mb_segment(MACROBLOCK *x, int const *labels
     return distortion;
 }
 
-static void macro_block_yrd(MACROBLOCK *mb, int *Rate, int *Distortion, const vp8_encodemb_rtcd_vtable_t *rtcd)
+unsigned char vp8_mbsplit_offset2[4][16] = {
+    { 0,  8,  0,  0,  0,  0,  0,  0,  0,  0,   0,  0,  0,  0,  0,  0},
+    { 0,  2,  0,  0,  0,  0,  0,  0,  0,  0,   0,  0,  0,  0,  0,  0},
+    { 0,  2,  8, 10,  0,  0,  0,  0,  0,  0,   0,  0,  0,  0,  0,  0},
+    { 0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14, 15}
+};
+
+
+static const unsigned int segmentation_to_sseshift[4] = {3, 3, 2, 0};
+
+
+typedef struct
 {
-    int b;
-    MACROBLOCKD *const x = &mb->e_mbd;
-    BLOCK   *const mb_y2 = mb->block + 24;
-    BLOCKD *const x_y2  = x->block + 24;
-    short *Y2DCPtr = mb_y2->src_diff;
-    BLOCK *beptr;
-    int d;
+  MV *ref_mv;
+  MV *mvp;
 
-    ENCODEMB_INVOKE(rtcd, submby)(mb->src_diff, mb->src.y_buffer, mb->e_mbd.predictor, mb->src.y_stride);
+  int segment_rd;
+  int segment_num;
+  int r;
+  int d;
+  int segment_yrate;
+  B_PREDICTION_MODE modes[16];
+  int_mv mvs[16];
+  unsigned char eobs[16];
 
-    // Fdct and building the 2nd order block
-    for (beptr = mb->block; beptr < mb->block + 16; beptr += 2)
-    {
-        mb->vp8_short_fdct8x4(beptr->src_diff, beptr->coeff, 32);
-        *Y2DCPtr++ = beptr->coeff[0];
-        *Y2DCPtr++ = beptr->coeff[16];
-    }
+  int mvthresh;
+  int *mdcounts;
 
-    // 2nd order fdct
-    if (x->mode_info_context->mbmi.mode != SPLITMV)
-    {
-        mb->short_walsh4x4(mb_y2->src_diff, mb_y2->coeff, 8);
-    }
+  MV sv_mvp[4];     // save 4 mvp from 8x8
+  int sv_istep[2];  // save 2 initial step_param for 16x8/8x16
 
-    // Quantization
-    for (b = 0; b < 16; b++)
-    {
-        mb->quantize_b(&mb->block[b], &mb->e_mbd.block[b]);
-    }
+} BEST_SEG_INFO;
 
-    // DC predication and Quantization of 2nd Order block
-    if (x->mode_info_context->mbmi.mode != SPLITMV)
-    {
 
-        {
-            mb->quantize_b(mb_y2, x_y2);
-        }
-    }
-
-    // Distortion
-    if (x->mode_info_context->mbmi.mode == SPLITMV)
-        d = ENCODEMB_INVOKE(rtcd, mberr)(mb, 0) << 2;
-    else
-    {
-        d = ENCODEMB_INVOKE(rtcd, mberr)(mb, 1) << 2;
-        d += ENCODEMB_INVOKE(rtcd, berr)(mb_y2->coeff, x_y2->dqcoeff_base + x_y2->dqcoeff_offset);
-    }
-
-    *Distortion = (d >> 4);
-
-    // rate
-    *Rate = vp8_rdcost_mby(mb);
-}
-
-static int vp8_rd_pick_best_mbsegmentation(VP8_COMP *cpi, MACROBLOCK *x, MV *best_ref_mv, int best_rd, int *mdcounts, int *returntotrate, int *returnyrate, int *returndistortion, int compressor_speed, int *mvcost[2], int mvthresh, int fullpixel)
+void vp8_rd_check_segment(VP8_COMP *cpi, MACROBLOCK *x, BEST_SEG_INFO *bsi,
+                         unsigned int segmentation)
 {
-    int i, segmentation;
-    B_PREDICTION_MODE this_mode;
-    MACROBLOCKD *xc = &x->e_mbd;
-    BLOCK *b = &x->block[0];
-    BLOCKD *d = &x->e_mbd.block[0];
-    BLOCK *c = &x->block[0];
-    BLOCKD *e = &x->e_mbd.block[0];
+    int i;
     int const *labels;
-    int best_segment_rd = INT_MAX;
-    int best_seg = 0;
     int br = 0;
     int bd = 0;
-    int bsr = 0;
-    int bsd = 0;
-    int bestsegmentyrate = 0;
-
-    static const int segmentation_to_sseshift[4] = {3, 3, 2, 0};
-
-    // FIX TO Rd error outrange bug PGW 9 june 2004
-    B_PREDICTION_MODE bmodes[16] = {ZERO4X4, ZERO4X4, ZERO4X4, ZERO4X4,
-                                    ZERO4X4, ZERO4X4, ZERO4X4, ZERO4X4,
-                                    ZERO4X4, ZERO4X4, ZERO4X4, ZERO4X4,
-                                    ZERO4X4, ZERO4X4, ZERO4X4, ZERO4X4
-                                   };
-
-    MV bmvs[16];
-    int beobs[16];
-
-    vpx_memset(beobs, 0, sizeof(beobs));
+    B_PREDICTION_MODE this_mode;
 
 
-    for (segmentation = 0; segmentation < VP8_NUMMBSPLITS; segmentation++)
+    int label_count;
+    int this_segment_rd = 0;
+    int label_mv_thresh;
+    int rate = 0;
+    int sbr = 0;
+    int sbd = 0;
+    int segmentyrate = 0;
+
+    vp8_variance_fn_ptr_t *v_fn_ptr;
+
+    ENTROPY_CONTEXT_PLANES t_above, t_left;
+    ENTROPY_CONTEXT *ta;
+    ENTROPY_CONTEXT *tl;
+    ENTROPY_CONTEXT_PLANES t_above_b, t_left_b;
+    ENTROPY_CONTEXT *ta_b;
+    ENTROPY_CONTEXT *tl_b;
+
+    vpx_memcpy(&t_above, x->e_mbd.above_context, sizeof(ENTROPY_CONTEXT_PLANES));
+    vpx_memcpy(&t_left, x->e_mbd.left_context, sizeof(ENTROPY_CONTEXT_PLANES));
+
+    ta = (ENTROPY_CONTEXT *)&t_above;
+    tl = (ENTROPY_CONTEXT *)&t_left;
+    ta_b = (ENTROPY_CONTEXT *)&t_above_b;
+    tl_b = (ENTROPY_CONTEXT *)&t_left_b;
+
+    br = 0;
+    bd = 0;
+
+    v_fn_ptr = &cpi->fn_ptr[segmentation];
+    labels = vp8_mbsplits[segmentation];
+    label_count = vp8_mbsplit_count[segmentation];
+
+    // 64 makes this threshold really big effectively
+    // making it so that we very rarely check mvs on
+    // segments.   setting this to 1 would make mv thresh
+    // roughly equal to what it is for macroblocks
+    label_mv_thresh = 1 * bsi->mvthresh / label_count ;
+
+    // Segmentation method overheads
+    rate = vp8_cost_token(vp8_mbsplit_tree, vp8_mbsplit_probs, vp8_mbsplit_encodings + segmentation);
+    rate += vp8_cost_mv_ref(SPLITMV, bsi->mdcounts);
+    this_segment_rd += RDCOST(x->rdmult, x->rddiv, rate, 0);
+    br += rate;
+
+    for (i = 0; i < label_count; i++)
     {
-        int label_count;
-        int this_segment_rd = 0;
-        int label_mv_thresh;
-        int rate = 0;
-        int sbr = 0;
-        int sbd = 0;
-        int sseshift;
-        int segmentyrate = 0;
+        MV mode_mv[B_MODE_COUNT];
+        int best_label_rd = INT_MAX;
+        B_PREDICTION_MODE mode_selected = ZERO4X4;
+        int bestlabelyrate = 0;
 
-        vp8_variance_fn_ptr_t *v_fn_ptr;
-
-        ENTROPY_CONTEXT_PLANES t_above, t_left;
-        ENTROPY_CONTEXT *ta;
-        ENTROPY_CONTEXT *tl;
-        ENTROPY_CONTEXT_PLANES t_above_b, t_left_b;
-        ENTROPY_CONTEXT *ta_b;
-        ENTROPY_CONTEXT *tl_b;
-
-        vpx_memcpy(&t_above, x->e_mbd.above_context, sizeof(ENTROPY_CONTEXT_PLANES));
-        vpx_memcpy(&t_left, x->e_mbd.left_context, sizeof(ENTROPY_CONTEXT_PLANES));
-
-        ta = (ENTROPY_CONTEXT *)&t_above;
-        tl = (ENTROPY_CONTEXT *)&t_left;
-        ta_b = (ENTROPY_CONTEXT *)&t_above_b;
-        tl_b = (ENTROPY_CONTEXT *)&t_left_b;
-
-        br = 0;
-        bd = 0;
-
-        v_fn_ptr = &cpi->fn_ptr[segmentation];
-        sseshift = segmentation_to_sseshift[segmentation];
-        labels = vp8_mbsplits[segmentation];
-        label_count = vp8_count_labels(labels);
-
-        // 64 makes this threshold really big effectively
-        // making it so that we very rarely check mvs on
-        // segments.   setting this to 1 would make mv thresh
-        // roughly equal to what it is for macroblocks
-        label_mv_thresh = 1 * mvthresh / label_count ;
-
-        // Segmentation method overheads
-        rate = vp8_cost_token(vp8_mbsplit_tree, vp8_mbsplit_probs, vp8_mbsplit_encodings + segmentation);
-
-        rate += vp8_cost_mv_ref(SPLITMV, mdcounts);
-
-        this_segment_rd += RDFUNC(x->rdmult, x->rddiv, rate, 0, cpi->target_bits_per_mb);
-        br += rate;
-
-        for (i = 0; i < label_count; i++)
+        // search for the best motion vector on this segment
+        for (this_mode = LEFT4X4; this_mode <= NEW4X4 ; this_mode ++)
         {
-            MV mode_mv[B_MODE_COUNT];
-            int best_label_rd = INT_MAX;
-            B_PREDICTION_MODE mode_selected = ZERO4X4;
-            int j;
-            int bestlabelyrate = 0;
+            int this_rd;
+            int distortion;
+            int labelyrate;
+            ENTROPY_CONTEXT_PLANES t_above_s, t_left_s;
+            ENTROPY_CONTEXT *ta_s;
+            ENTROPY_CONTEXT *tl_s;
 
-            b = &x->block[0];
-            d = &x->e_mbd.block[0];
+            vpx_memcpy(&t_above_s, &t_above, sizeof(ENTROPY_CONTEXT_PLANES));
+            vpx_memcpy(&t_left_s, &t_left, sizeof(ENTROPY_CONTEXT_PLANES));
 
+            ta_s = (ENTROPY_CONTEXT *)&t_above_s;
+            tl_s = (ENTROPY_CONTEXT *)&t_left_s;
 
-            // find first label
-            for (j = 0; j < 16; j++)
-                if (labels[j] == i)
+            if (this_mode == NEW4X4)
+            {
+                int sseshift;
+                int num00;
+                int step_param = 0;
+                int further_steps;
+                int n;
+                int thissme;
+                int bestsme = INT_MAX;
+                MV  temp_mv;
+                BLOCK *c;
+                BLOCKD *e;
+
+                // Is the best so far sufficiently good that we cant justify doing and new motion search.
+                if (best_label_rd < label_mv_thresh)
                     break;
 
-            c = &x->block[j];
-            e = &x->e_mbd.block[j];
-
-            // search for the best motion vector on this segment
-            for (this_mode = LEFT4X4; this_mode <= NEW4X4 ; this_mode ++)
-            {
-                int distortion;
-                int this_rd;
-                int num00;
-                int labelyrate;
-                ENTROPY_CONTEXT_PLANES t_above_s, t_left_s;
-                ENTROPY_CONTEXT *ta_s;
-                ENTROPY_CONTEXT *tl_s;
-
-                vpx_memcpy(&t_above_s, &t_above, sizeof(ENTROPY_CONTEXT_PLANES));
-                vpx_memcpy(&t_left_s, &t_left, sizeof(ENTROPY_CONTEXT_PLANES));
-
-                ta_s = (ENTROPY_CONTEXT *)&t_above_s;
-                tl_s = (ENTROPY_CONTEXT *)&t_left_s;
-
-                if (this_mode == NEW4X4)
+                if(cpi->compressor_speed)
                 {
-                    int step_param = 0;
-                    int further_steps = (MAX_MVSEARCH_STEPS - 1) - step_param;
-                    int n;
-                    int thissme;
-                    int bestsme = INT_MAX;
-                    MV  temp_mv;
-
-                    // Is the best so far sufficiently good that we cant justify doing and new motion search.
-                    if (best_label_rd < label_mv_thresh)
-                        break;
-
+                    if (segmentation == BLOCK_8X16 || segmentation == BLOCK_16X8)
                     {
-                        int sadpb = x->sadperbit4;
+                        bsi->mvp = &bsi->sv_mvp[i];
+                        if (i==1 && segmentation == BLOCK_16X8) bsi->mvp = &bsi->sv_mvp[2];
 
-                        if (cpi->sf.search_method == HEX)
-                            bestsme = vp8_hex_search(x, c, e, best_ref_mv, &mode_mv[NEW4X4], step_param, sadpb/*x->errorperbit*/, &num00, v_fn_ptr, x->mvsadcost, mvcost);
-                        else
+                        step_param = bsi->sv_istep[i];
+                    }
+
+                    // use previous block's result as next block's MV predictor.
+                    if (segmentation == BLOCK_4X4 && i>0)
+                    {
+                        bsi->mvp = &(x->e_mbd.block[i-1].bmi.mv.as_mv);
+                        if (i==4 || i==8 || i==12) bsi->mvp = &(x->e_mbd.block[i-4].bmi.mv.as_mv);
+                        step_param = 2;
+                    }
+                }
+
+                further_steps = (MAX_MVSEARCH_STEPS - 1) - step_param;
+
+                {
+                    int sadpb = x->sadperbit4;
+
+                    // find first label
+                    n = vp8_mbsplit_offset2[segmentation][i];
+
+                    c = &x->block[n];
+                    e = &x->e_mbd.block[n];
+
+                    if (cpi->sf.search_method == HEX)
+                        bestsme = vp8_hex_search(x, c, e, bsi->ref_mv,
+                                                 &mode_mv[NEW4X4], step_param, sadpb, &num00, v_fn_ptr, x->mvsadcost, x->mvcost, bsi->ref_mv);
+
+                    else
+                    {
+                        bestsme = cpi->diamond_search_sad(x, c, e, bsi->mvp,
+                                                          &mode_mv[NEW4X4], step_param,
+                                                          sadpb / 2, &num00, v_fn_ptr, x->mvsadcost, x->mvcost, bsi->ref_mv);
+
+                        n = num00;
+                        num00 = 0;
+
+                        while (n < further_steps)
                         {
-                            bestsme = cpi->diamond_search_sad(x, c, e, best_ref_mv, &mode_mv[NEW4X4], step_param, sadpb / 2/*x->errorperbit*/, &num00, v_fn_ptr, x->mvsadcost, mvcost);
+                            n++;
 
-                            n = num00;
-                            num00 = 0;
-
-                            while (n < further_steps)
+                            if (num00)
+                                num00--;
+                            else
                             {
-                                n++;
+                                thissme = cpi->diamond_search_sad(x, c, e, bsi->mvp,
+                                                                  &temp_mv, step_param + n,
+                                                                  sadpb / 2, &num00, v_fn_ptr, x->mvsadcost, x->mvcost, bsi->ref_mv);
 
-                                if (num00)
-                                    num00--;
-                                else
+                                if (thissme < bestsme)
                                 {
-                                    thissme = cpi->diamond_search_sad(x, c, e, best_ref_mv, &temp_mv, step_param + n, sadpb / 2/*x->errorperbit*/, &num00, v_fn_ptr, x->mvsadcost, mvcost);
-
-                                    if (thissme < bestsme)
-                                    {
-                                        bestsme = thissme;
-                                        mode_mv[NEW4X4].row = temp_mv.row;
-                                        mode_mv[NEW4X4].col = temp_mv.col;
-                                    }
+                                    bestsme = thissme;
+                                    mode_mv[NEW4X4].row = temp_mv.row;
+                                    mode_mv[NEW4X4].col = temp_mv.col;
                                 }
                             }
                         }
+                    }
 
-                        // Should we do a full search (best quality only)
-                        if ((compressor_speed == 0) && (bestsme >> sseshift) > 4000)
+                    sseshift = segmentation_to_sseshift[segmentation];
+
+                    // Should we do a full search (best quality only)
+                    if ((cpi->compressor_speed == 0) && (bestsme >> sseshift) > 4000)
+                    {
+                        thissme = cpi->full_search_sad(x, c, e, bsi->mvp,
+                                                       sadpb / 4, 16, v_fn_ptr, x->mvcost, x->mvsadcost,bsi->ref_mv);
+
+                        if (thissme < bestsme)
                         {
-                            thissme = cpi->full_search_sad(x, c, e, best_ref_mv, sadpb / 4, 16, v_fn_ptr, x->mvcost, x->mvsadcost);
-
-                            if (thissme < bestsme)
-                            {
-                                bestsme = thissme;
-                                mode_mv[NEW4X4] = e->bmi.mv.as_mv;
-                            }
-                            else
-                            {
-                                // The full search result is actually worse so re-instate the previous best vector
-                                e->bmi.mv.as_mv = mode_mv[NEW4X4];
-                            }
+                            bestsme = thissme;
+                            mode_mv[NEW4X4] = e->bmi.mv.as_mv;
+                        }
+                        else
+                        {
+                            // The full search result is actually worse so re-instate the previous best vector
+                            e->bmi.mv.as_mv = mode_mv[NEW4X4];
                         }
                     }
-
-                    if (bestsme < INT_MAX)
-                    {
-                        if (!fullpixel)
-                            cpi->find_fractional_mv_step(x, c, e, &mode_mv[NEW4X4], best_ref_mv, x->errorperbit / 2, v_fn_ptr, mvcost);
-                        else
-                            vp8_skip_fractional_mv_step(x, c, e, &mode_mv[NEW4X4], best_ref_mv, x->errorperbit, v_fn_ptr, mvcost);
-                    }
                 }
 
-                rate = labels2mode(x, labels, i, this_mode, &mode_mv[this_mode], best_ref_mv, mvcost);
-
-                // Trap vectors that reach beyond the UMV borders
-                if (((mode_mv[this_mode].row >> 3) < x->mv_row_min) || ((mode_mv[this_mode].row >> 3) > x->mv_row_max) ||
-                    ((mode_mv[this_mode].col >> 3) < x->mv_col_min) || ((mode_mv[this_mode].col >> 3) > x->mv_col_max))
+                if (bestsme < INT_MAX)
                 {
-                    continue;
+                    if (!cpi->common.full_pixel)
+                        cpi->find_fractional_mv_step(x, c, e, &mode_mv[NEW4X4],
+                                                     bsi->ref_mv, x->errorperbit / 2, v_fn_ptr, x->mvcost);
+                    else
+                        vp8_skip_fractional_mv_step(x, c, e, &mode_mv[NEW4X4],
+                                                    bsi->ref_mv, x->errorperbit, v_fn_ptr, x->mvcost);
                 }
+            } /* NEW4X4 */
 
-                distortion = vp8_encode_inter_mb_segment(x, labels, i, IF_RTCD(&cpi->rtcd.encodemb)) / 4;
+            rate = labels2mode(x, labels, i, this_mode, &mode_mv[this_mode],
+                               bsi->ref_mv, x->mvcost);
 
-                labelyrate = rdcost_mbsegment_y(x, labels, i, ta_s, tl_s);
-                rate += labelyrate;
-
-                this_rd = RDFUNC(x->rdmult, x->rddiv, rate, distortion, cpi->target_bits_per_mb);
-
-                if (this_rd < best_label_rd)
-                {
-                    sbr = rate;
-                    sbd = distortion;
-                    bestlabelyrate = labelyrate;
-                    mode_selected = this_mode;
-                    best_label_rd = this_rd;
-
-                    vpx_memcpy(ta_b, ta_s, sizeof(ENTROPY_CONTEXT_PLANES));
-                    vpx_memcpy(tl_b, tl_s, sizeof(ENTROPY_CONTEXT_PLANES));
-
-                }
-            }
-
-            vpx_memcpy(ta, ta_b, sizeof(ENTROPY_CONTEXT_PLANES));
-            vpx_memcpy(tl, tl_b, sizeof(ENTROPY_CONTEXT_PLANES));
-
-            labels2mode(x, labels, i, mode_selected, &mode_mv[mode_selected], best_ref_mv, mvcost);
-
-            br += sbr;
-            bd += sbd;
-            segmentyrate += bestlabelyrate;
-            this_segment_rd += best_label_rd;
-
-            if ((this_segment_rd > best_rd) || (this_segment_rd > best_segment_rd))
-                break;
-        }
-
-        if ((this_segment_rd <= best_rd) && (this_segment_rd < best_segment_rd))
-        {
-            bsr = br;
-            bsd = bd;
-            bestsegmentyrate = segmentyrate;
-            best_segment_rd = this_segment_rd;
-            best_seg = segmentation;
-
-            // store everything needed to come back to this!!
-            for (i = 0; i < 16; i++)
+            // Trap vectors that reach beyond the UMV borders
+            if (((mode_mv[this_mode].row >> 3) < x->mv_row_min) || ((mode_mv[this_mode].row >> 3) > x->mv_row_max) ||
+                ((mode_mv[this_mode].col >> 3) < x->mv_col_min) || ((mode_mv[this_mode].col >> 3) > x->mv_col_max))
             {
-                BLOCKD *bd = &x->e_mbd.block[i];
-
-                bmvs[i] = bd->bmi.mv.as_mv;
-                bmodes[i] = bd->bmi.mode;
-                beobs[i] = bd->eob;
+                continue;
             }
+
+            distortion = vp8_encode_inter_mb_segment(x, labels, i, IF_RTCD(&cpi->rtcd.encodemb)) / 4;
+
+            labelyrate = rdcost_mbsegment_y(x, labels, i, ta_s, tl_s);
+            rate += labelyrate;
+
+            this_rd = RDCOST(x->rdmult, x->rddiv, rate, distortion);
+
+            if (this_rd < best_label_rd)
+            {
+                sbr = rate;
+                sbd = distortion;
+                bestlabelyrate = labelyrate;
+                mode_selected = this_mode;
+                best_label_rd = this_rd;
+
+                vpx_memcpy(ta_b, ta_s, sizeof(ENTROPY_CONTEXT_PLANES));
+                vpx_memcpy(tl_b, tl_s, sizeof(ENTROPY_CONTEXT_PLANES));
+
+            }
+        } /*for each 4x4 mode*/
+
+        vpx_memcpy(ta, ta_b, sizeof(ENTROPY_CONTEXT_PLANES));
+        vpx_memcpy(tl, tl_b, sizeof(ENTROPY_CONTEXT_PLANES));
+
+        labels2mode(x, labels, i, mode_selected, &mode_mv[mode_selected],
+                    bsi->ref_mv, x->mvcost);
+
+        br += sbr;
+        bd += sbd;
+        segmentyrate += bestlabelyrate;
+        this_segment_rd += best_label_rd;
+
+        if (this_segment_rd >= bsi->segment_rd)
+            break;
+
+    } /* for each label */
+
+    if (this_segment_rd < bsi->segment_rd)
+    {
+        bsi->r = br;
+        bsi->d = bd;
+        bsi->segment_yrate = segmentyrate;
+        bsi->segment_rd = this_segment_rd;
+        bsi->segment_num = segmentation;
+
+        // store everything needed to come back to this!!
+        for (i = 0; i < 16; i++)
+        {
+            BLOCKD *bd = &x->e_mbd.block[i];
+
+            bsi->mvs[i].as_mv = bd->bmi.mv.as_mv;
+            bsi->modes[i] = bd->bmi.mode;
+            bsi->eobs[i] = bd->eob;
+        }
+    }
+}
+
+static __inline
+void vp8_cal_step_param(int sr, int *sp)
+{
+    int step = 0;
+
+    if (sr > MAX_FIRST_STEP) sr = MAX_FIRST_STEP;
+    else if (sr < 1) sr = 1;
+
+    while (sr>>=1)
+        step++;
+
+    *sp = MAX_MVSEARCH_STEPS - 1 - step;
+}
+
+static int vp8_rd_pick_best_mbsegmentation(VP8_COMP *cpi, MACROBLOCK *x,
+                                           MV *best_ref_mv, int best_rd,
+                                           int *mdcounts, int *returntotrate,
+                                           int *returnyrate, int *returndistortion,
+                                           int mvthresh)
+{
+    int i;
+    BEST_SEG_INFO bsi;
+
+    vpx_memset(&bsi, 0, sizeof(bsi));
+
+    bsi.segment_rd = best_rd;
+    bsi.ref_mv = best_ref_mv;
+    bsi.mvp = best_ref_mv;
+    bsi.mvthresh = mvthresh;
+    bsi.mdcounts = mdcounts;
+
+    for(i = 0; i < 16; i++)
+    {
+        bsi.modes[i] = ZERO4X4;
+    }
+
+    if(cpi->compressor_speed == 0)
+    {
+        /* for now, we will keep the original segmentation order
+           when in best quality mode */
+        vp8_rd_check_segment(cpi, x, &bsi, BLOCK_16X8);
+        vp8_rd_check_segment(cpi, x, &bsi, BLOCK_8X16);
+        vp8_rd_check_segment(cpi, x, &bsi, BLOCK_8X8);
+        vp8_rd_check_segment(cpi, x, &bsi, BLOCK_4X4);
+    }
+    else
+    {
+        int sr;
+
+        vp8_rd_check_segment(cpi, x, &bsi, BLOCK_8X8);
+
+        if (bsi.segment_rd < best_rd)
+        {
+            int col_min = (best_ref_mv->col - MAX_FULL_PEL_VAL) >>3;
+            int col_max = (best_ref_mv->col + MAX_FULL_PEL_VAL) >>3;
+            int row_min = (best_ref_mv->row - MAX_FULL_PEL_VAL) >>3;
+            int row_max = (best_ref_mv->row + MAX_FULL_PEL_VAL) >>3;
+
+            int tmp_col_min = x->mv_col_min;
+            int tmp_col_max = x->mv_col_max;
+            int tmp_row_min = x->mv_row_min;
+            int tmp_row_max = x->mv_row_max;
+
+            /* Get intersection of UMV window and valid MV window to reduce # of checks in diamond search. */
+            if (x->mv_col_min < col_min )
+                x->mv_col_min = col_min;
+            if (x->mv_col_max > col_max )
+                x->mv_col_max = col_max;
+            if (x->mv_row_min < row_min )
+                x->mv_row_min = row_min;
+            if (x->mv_row_max > row_max )
+                x->mv_row_max = row_max;
+
+            /* Get 8x8 result */
+            bsi.sv_mvp[0] = bsi.mvs[0].as_mv;
+            bsi.sv_mvp[1] = bsi.mvs[2].as_mv;
+            bsi.sv_mvp[2] = bsi.mvs[8].as_mv;
+            bsi.sv_mvp[3] = bsi.mvs[10].as_mv;
+
+            /* Use 8x8 result as 16x8/8x16's predictor MV. Adjust search range according to the closeness of 2 MV. */
+            /* block 8X16 */
+            {
+                sr = MAXF((abs(bsi.sv_mvp[0].row - bsi.sv_mvp[2].row))>>3, (abs(bsi.sv_mvp[0].col - bsi.sv_mvp[2].col))>>3);
+                vp8_cal_step_param(sr, &bsi.sv_istep[0]);
+
+                sr = MAXF((abs(bsi.sv_mvp[1].row - bsi.sv_mvp[3].row))>>3, (abs(bsi.sv_mvp[1].col - bsi.sv_mvp[3].col))>>3);
+                vp8_cal_step_param(sr, &bsi.sv_istep[1]);
+
+                vp8_rd_check_segment(cpi, x, &bsi, BLOCK_8X16);
+            }
+
+            /* block 16X8 */
+            {
+                sr = MAXF((abs(bsi.sv_mvp[0].row - bsi.sv_mvp[1].row))>>3, (abs(bsi.sv_mvp[0].col - bsi.sv_mvp[1].col))>>3);
+                vp8_cal_step_param(sr, &bsi.sv_istep[0]);
+
+                sr = MAXF((abs(bsi.sv_mvp[2].row - bsi.sv_mvp[3].row))>>3, (abs(bsi.sv_mvp[2].col - bsi.sv_mvp[3].col))>>3);
+                vp8_cal_step_param(sr, &bsi.sv_istep[1]);
+
+                vp8_rd_check_segment(cpi, x, &bsi, BLOCK_16X8);
+            }
+
+            /* If 8x8 is better than 16x8/8x16, then do 4x4 search */
+            /* Not skip 4x4 if speed=0 (good quality) */
+            if (cpi->sf.no_skip_block4x4_search || bsi.segment_num == BLOCK_8X8)  /* || (sv_segment_rd8x8-bsi.segment_rd) < sv_segment_rd8x8>>5) */
+            {
+                bsi.mvp = &bsi.sv_mvp[0];
+                vp8_rd_check_segment(cpi, x, &bsi, BLOCK_4X4);
+            }
+
+            /* restore UMV window */
+            x->mv_col_min = tmp_col_min;
+            x->mv_col_max = tmp_col_max;
+            x->mv_row_min = tmp_row_min;
+            x->mv_row_max = tmp_row_max;
         }
     }
 
-    // set it to the best
+    /* set it to the best */
     for (i = 0; i < 16; i++)
     {
         BLOCKD *bd = &x->e_mbd.block[i];
 
-        bd->bmi.mv.as_mv = bmvs[i];
-        bd->bmi.mode = bmodes[i];
-        bd->eob = beobs[i];
+        bd->bmi.mv.as_mv = bsi.mvs[i].as_mv;
+        bd->bmi.mode = bsi.modes[i];
+        bd->eob = bsi.eobs[i];
     }
 
-    // Trap cases where the best split mode has all vectors coded 0,0 (or all the same)
-    if (FALSE)
-    {
-        int allsame = 1;
+    *returntotrate = bsi.r;
+    *returndistortion = bsi.d;
+    *returnyrate = bsi.segment_yrate;
 
-        for (i = 1; i < 16; i++)
-        {
-            if ((bmvs[i].col != bmvs[i-1].col) || (bmvs[i].row != bmvs[i-1].row))
-            {
-                allsame = 0;
-                break;
-            }
-        }
-
-        if (allsame)
-        {
-            best_segment_rd = INT_MAX;
-        }
-    }
-
-    *returntotrate = bsr;
-    *returndistortion = bsd;
-    *returnyrate = bestsegmentyrate;
-
-
-
-    // save partitions
-    labels = vp8_mbsplits[best_seg];
-    x->e_mbd.mode_info_context->mbmi.partitioning = best_seg;
-    x->partition_info->count = vp8_count_labels(labels);
+    /* save partitions */
+    x->e_mbd.mode_info_context->mbmi.partitioning = bsi.segment_num;
+    x->partition_info->count = vp8_mbsplit_count[bsi.segment_num];
 
     for (i = 0; i < x->partition_info->count; i++)
     {
         int j;
 
-        for (j = 0; j < 16; j++)
-        {
-            if (labels[j] == i)
-                break;
-        }
+        j = vp8_mbsplit_offset2[bsi.segment_num][i];
 
         x->partition_info->bmi[i].mode = x->e_mbd.block[j].bmi.mode;
         x->partition_info->bmi[i].mv.as_mv = x->e_mbd.block[j].bmi.mv.as_mv;
     }
 
-    return best_segment_rd;
+    return bsi.segment_rd;
+}
+#endif
+
+static void swap(int *x,int *y)
+{
+   int tmp;
+
+   tmp = *x;
+   *x = *y;
+   *y = tmp;
 }
 
+static void quicksortmv(int arr[],int left, int right)
+{
+   int lidx,ridx,pivot;
 
+   lidx = left;
+   ridx = right;
+
+   if( left < right)
+   {
+      pivot = (left + right)/2;
+
+      while(lidx <=pivot && ridx >=pivot)
+      {
+          while(arr[lidx] < arr[pivot] && lidx <= pivot)
+              lidx++;
+          while(arr[ridx] > arr[pivot] && ridx >= pivot)
+              ridx--;
+          swap(&arr[lidx], &arr[ridx]);
+          lidx++;
+          ridx--;
+          if(lidx-1 == pivot)
+          {
+              ridx++;
+              pivot = ridx;
+          }
+          else if(ridx+1 == pivot)
+          {
+              lidx--;
+              pivot = lidx;
+          }
+      }
+      quicksortmv(arr, left, pivot - 1);
+      quicksortmv(arr, pivot + 1, right);
+   }
+}
+
+static void quicksortsad(int arr[],int idx[], int left, int right)
+{
+   int lidx,ridx,pivot;
+
+   lidx = left;
+   ridx = right;
+
+   if( left < right)
+   {
+      pivot = (left + right)/2;
+
+      while(lidx <=pivot && ridx >=pivot)
+      {
+          while(arr[lidx] < arr[pivot] && lidx <= pivot)
+              lidx++;
+          while(arr[ridx] > arr[pivot] && ridx >= pivot)
+              ridx--;
+          swap(&arr[lidx], &arr[ridx]);
+          swap(&idx[lidx], &idx[ridx]);
+          lidx++;
+          ridx--;
+          if(lidx-1 == pivot)
+          {
+              ridx++;
+              pivot = ridx;
+          }
+          else if(ridx+1 == pivot)
+          {
+              lidx--;
+              pivot = lidx;
+          }
+      }
+      quicksortsad(arr, idx, left, pivot - 1);
+      quicksortsad(arr, idx, pivot + 1, right);
+   }
+}
+
+//The improved MV prediction
+void vp8_mv_pred
+(
+    VP8_COMP *cpi,
+    MACROBLOCKD *xd,
+    const MODE_INFO *here,
+    MV *mvp,
+    int refframe,
+    int *ref_frame_sign_bias,
+    int *sr,
+    int near_sadidx[]
+)
+{
+    const MODE_INFO *above = here - xd->mode_info_stride;
+    const MODE_INFO *left = here - 1;
+    const MODE_INFO *aboveleft = above - 1;
+    int_mv           near_mvs[8];
+    int              near_ref[8];
+    int_mv           mv;
+    int              vcnt=0;
+    int              find=0;
+    int              mb_offset;
+
+    int              mvx[8];
+    int              mvy[8];
+    int              i;
+
+    mv.as_int = 0;
+
+    if(here->mbmi.ref_frame != INTRA_FRAME)
+    {
+        near_mvs[0].as_int = near_mvs[1].as_int = near_mvs[2].as_int = near_mvs[3].as_int = near_mvs[4].as_int = near_mvs[5].as_int = near_mvs[6].as_int = near_mvs[7].as_int = 0;
+        near_ref[0] = near_ref[1] = near_ref[2] = near_ref[3] = near_ref[4] = near_ref[5] = near_ref[6] = near_ref[7] = 0;
+
+        // read in 3 nearby block's MVs from current frame as prediction candidates.
+        if (above->mbmi.ref_frame != INTRA_FRAME)
+        {
+            near_mvs[vcnt].as_int = above->mbmi.mv.as_int;
+            mv_bias(ref_frame_sign_bias[above->mbmi.ref_frame], refframe, &near_mvs[vcnt], ref_frame_sign_bias);
+            near_ref[vcnt] =  above->mbmi.ref_frame;
+        }
+        vcnt++;
+        if (left->mbmi.ref_frame != INTRA_FRAME)
+        {
+            near_mvs[vcnt].as_int = left->mbmi.mv.as_int;
+            mv_bias(ref_frame_sign_bias[left->mbmi.ref_frame], refframe, &near_mvs[vcnt], ref_frame_sign_bias);
+            near_ref[vcnt] =  left->mbmi.ref_frame;
+        }
+        vcnt++;
+        if (aboveleft->mbmi.ref_frame != INTRA_FRAME)
+        {
+            near_mvs[vcnt].as_int = aboveleft->mbmi.mv.as_int;
+            mv_bias(ref_frame_sign_bias[aboveleft->mbmi.ref_frame], refframe, &near_mvs[vcnt], ref_frame_sign_bias);
+            near_ref[vcnt] =  aboveleft->mbmi.ref_frame;
+        }
+        vcnt++;
+
+        // read in 5 nearby block's MVs from last frame.
+        if(cpi->common.last_frame_type != KEY_FRAME)
+        {
+            mb_offset = (-xd->mb_to_top_edge/128 + 1) * (xd->mode_info_stride +1) + (-xd->mb_to_left_edge/128 +1) ;
+
+            // current in last frame
+            if (cpi->lf_ref_frame[mb_offset] != INTRA_FRAME)
+            {
+                near_mvs[vcnt].as_int = cpi->lfmv[mb_offset].as_int;
+                mv_bias(cpi->lf_ref_frame_sign_bias[mb_offset], refframe, &near_mvs[vcnt], ref_frame_sign_bias);
+                near_ref[vcnt] =  cpi->lf_ref_frame[mb_offset];
+            }
+            vcnt++;
+
+            // above in last frame
+            if (cpi->lf_ref_frame[mb_offset - xd->mode_info_stride-1] != INTRA_FRAME)
+            {
+                near_mvs[vcnt].as_int = cpi->lfmv[mb_offset - xd->mode_info_stride-1].as_int;
+                mv_bias(cpi->lf_ref_frame_sign_bias[mb_offset - xd->mode_info_stride-1], refframe, &near_mvs[vcnt], ref_frame_sign_bias);
+                near_ref[vcnt] =  cpi->lf_ref_frame[mb_offset - xd->mode_info_stride-1];
+            }
+            vcnt++;
+
+            // left in last frame
+            if (cpi->lf_ref_frame[mb_offset-1] != INTRA_FRAME)
+            {
+                near_mvs[vcnt].as_int = cpi->lfmv[mb_offset -1].as_int;
+                mv_bias(cpi->lf_ref_frame_sign_bias[mb_offset -1], refframe, &near_mvs[vcnt], ref_frame_sign_bias);
+                near_ref[vcnt] =  cpi->lf_ref_frame[mb_offset - 1];
+            }
+            vcnt++;
+
+            // right in last frame
+            if (cpi->lf_ref_frame[mb_offset +1] != INTRA_FRAME)
+            {
+                near_mvs[vcnt].as_int = cpi->lfmv[mb_offset +1].as_int;
+                mv_bias(cpi->lf_ref_frame_sign_bias[mb_offset +1], refframe, &near_mvs[vcnt], ref_frame_sign_bias);
+                near_ref[vcnt] =  cpi->lf_ref_frame[mb_offset +1];
+            }
+            vcnt++;
+
+            // below in last frame
+            if (cpi->lf_ref_frame[mb_offset + xd->mode_info_stride +1] != INTRA_FRAME)
+            {
+                near_mvs[vcnt].as_int = cpi->lfmv[mb_offset + xd->mode_info_stride +1].as_int;
+                mv_bias(cpi->lf_ref_frame_sign_bias[mb_offset + xd->mode_info_stride +1], refframe, &near_mvs[vcnt], ref_frame_sign_bias);
+                near_ref[vcnt] =  cpi->lf_ref_frame[mb_offset + xd->mode_info_stride +1];
+            }
+            vcnt++;
+        }
+
+        for(i=0; i< vcnt; i++)
+        {
+            if(near_ref[near_sadidx[i]] != INTRA_FRAME)
+            {
+                if(here->mbmi.ref_frame == near_ref[near_sadidx[i]])
+                {
+                    mv.as_int = near_mvs[near_sadidx[i]].as_int;
+                    find = 1;
+                    if (i < 3)
+                        *sr = 3;
+                    else
+                        *sr = 2;
+                    break;
+                }
+            }
+        }
+
+        if(!find)
+        {
+            for(i=0; i<vcnt; i++)
+            {
+                mvx[i] = near_mvs[i].as_mv.row;
+                mvy[i] = near_mvs[i].as_mv.col;
+            }
+
+            quicksortmv (mvx, 0, vcnt-1);
+            quicksortmv (mvy, 0, vcnt-1);
+            mv.as_mv.row = mvx[vcnt/2];
+            mv.as_mv.col = mvy[vcnt/2];
+
+            find = 1;
+            //sr is set to 0 to allow calling function to decide the search range.
+            *sr = 0;
+        }
+    }
+
+    /* Set up return values */
+    *mvp = mv.as_mv;
+    vp8_clamp_mv(mvp, xd);
+}
+
+void vp8_cal_sad(VP8_COMP *cpi, MACROBLOCKD *xd, MACROBLOCK *x, int recon_yoffset, int near_sadidx[])
+{
+
+    int near_sad[8] = {0}; // 0-cf above, 1-cf left, 2-cf aboveleft, 3-lf current, 4-lf above, 5-lf left, 6-lf right, 7-lf below
+
+    //calculate sad for current frame 3 nearby MBs.
+    if( xd->mb_to_top_edge==0 && xd->mb_to_left_edge ==0)
+    {
+        near_sad[0] = near_sad[1] = near_sad[2] = INT_MAX;
+    }else if(xd->mb_to_top_edge==0)
+    {   //only has left MB for sad calculation.
+        near_sad[0] = near_sad[2] = INT_MAX;
+        near_sad[1] = cpi->fn_ptr[BLOCK_16X16].sdf(x->src.y_buffer, x->src.y_stride, xd->dst.y_buffer - 16,xd->dst.y_stride, 0x7fffffff);
+    }else if(xd->mb_to_left_edge ==0)
+    {   //only has left MB for sad calculation.
+        near_sad[1] = near_sad[2] = INT_MAX;
+        near_sad[0] = cpi->fn_ptr[BLOCK_16X16].sdf(x->src.y_buffer, x->src.y_stride, xd->dst.y_buffer - xd->dst.y_stride *16,xd->dst.y_stride, 0x7fffffff);
+    }else
+    {
+        near_sad[0] = cpi->fn_ptr[BLOCK_16X16].sdf(x->src.y_buffer, x->src.y_stride, xd->dst.y_buffer - xd->dst.y_stride *16,xd->dst.y_stride, 0x7fffffff);
+        near_sad[1] = cpi->fn_ptr[BLOCK_16X16].sdf(x->src.y_buffer, x->src.y_stride, xd->dst.y_buffer - 16,xd->dst.y_stride, 0x7fffffff);
+        near_sad[2] = cpi->fn_ptr[BLOCK_16X16].sdf(x->src.y_buffer, x->src.y_stride, xd->dst.y_buffer - xd->dst.y_stride *16 -16,xd->dst.y_stride, 0x7fffffff);
+    }
+
+    if(cpi->common.last_frame_type != KEY_FRAME)
+    {
+        //calculate sad for last frame 5 nearby MBs.
+        unsigned char *pre_y_buffer = cpi->common.yv12_fb[cpi->common.lst_fb_idx].y_buffer + recon_yoffset;
+        int pre_y_stride = cpi->common.yv12_fb[cpi->common.lst_fb_idx].y_stride;
+
+        if(xd->mb_to_top_edge==0) near_sad[4] = INT_MAX;
+        if(xd->mb_to_left_edge ==0) near_sad[5] = INT_MAX;
+        if(xd->mb_to_right_edge ==0) near_sad[6] = INT_MAX;
+        if(xd->mb_to_bottom_edge==0) near_sad[7] = INT_MAX;
+
+        if(near_sad[4] != INT_MAX)
+            near_sad[4] = cpi->fn_ptr[BLOCK_16X16].sdf(x->src.y_buffer, x->src.y_stride, pre_y_buffer - pre_y_stride *16, pre_y_stride, 0x7fffffff);
+        if(near_sad[5] != INT_MAX)
+            near_sad[5] = cpi->fn_ptr[BLOCK_16X16].sdf(x->src.y_buffer, x->src.y_stride, pre_y_buffer - 16, pre_y_stride, 0x7fffffff);
+        near_sad[3] = cpi->fn_ptr[BLOCK_16X16].sdf(x->src.y_buffer, x->src.y_stride, pre_y_buffer, pre_y_stride, 0x7fffffff);
+        if(near_sad[6] != INT_MAX)
+            near_sad[6] = cpi->fn_ptr[BLOCK_16X16].sdf(x->src.y_buffer, x->src.y_stride, pre_y_buffer + 16, pre_y_stride, 0x7fffffff);
+        if(near_sad[7] != INT_MAX)
+            near_sad[7] = cpi->fn_ptr[BLOCK_16X16].sdf(x->src.y_buffer, x->src.y_stride, pre_y_buffer + pre_y_stride *16, pre_y_stride, 0x7fffffff);
+    }
+
+    if(cpi->common.last_frame_type != KEY_FRAME)
+    {
+        quicksortsad(near_sad, near_sadidx, 0, 7);
+    }else
+    {
+        quicksortsad(near_sad, near_sadidx, 0, 2);
+    }
+}
+
+#if !(CONFIG_REALTIME_ONLY)
 int vp8_rd_pick_inter_mode(VP8_COMP *cpi, MACROBLOCK *x, int recon_yoffset, int recon_uvoffset, int *returnrate, int *returndistortion, int *returnintra)
 {
     BLOCK *b = &x->block[0];
@@ -1455,6 +1779,8 @@ int vp8_rd_pick_inter_mode(VP8_COMP *cpi, MACROBLOCK *x, int recon_yoffset, int 
     int rate2, distortion2;
     int uv_intra_rate, uv_intra_distortion, uv_intra_rate_tokenonly;
     int rate_y, UNINITIALIZED_IS_SAFE(rate_uv);
+    int distortion_uv;
+    int best_yrd = INT_MAX;
 
     //int all_rds[MAX_MODES];        // Experimental debug code.
     //int all_rates[MAX_MODES];
@@ -1462,42 +1788,73 @@ int vp8_rd_pick_inter_mode(VP8_COMP *cpi, MACROBLOCK *x, int recon_yoffset, int 
     //int intermodecost[MAX_MODES];
 
     MB_PREDICTION_MODE uv_intra_mode;
-    int sse;
-    int sum;
-    int uvintra_eob = 0;
-    int tteob = 0;
+
     int force_no_skip = 0;
 
+    MV mvp;
+    int near_sadidx[8] = {0, 1, 2, 3, 4, 5, 6, 7};
+    int saddone=0;
+    int sr=0;    //search range got from mv_pred(). It uses step_param levels. (0-7)
+
+    MV frame_nearest_mv[4];
+    MV frame_near_mv[4];
+    MV frame_best_ref_mv[4];
+    int frame_mdcounts[4][4];
+    int frame_lf_or_gf[4];
+    unsigned char *y_buffer[4];
+    unsigned char *u_buffer[4];
+    unsigned char *v_buffer[4];
+
+    vpx_memset(&best_mbmode, 0, sizeof(best_mbmode));
+
+    if (cpi->ref_frame_flags & VP8_LAST_FLAG)
+    {
+        YV12_BUFFER_CONFIG *lst_yv12 = &cpi->common.yv12_fb[cpi->common.lst_fb_idx];
+
+        vp8_find_near_mvs(&x->e_mbd, x->e_mbd.mode_info_context, &frame_nearest_mv[LAST_FRAME], &frame_near_mv[LAST_FRAME],
+                          &frame_best_ref_mv[LAST_FRAME], frame_mdcounts[LAST_FRAME], LAST_FRAME, cpi->common.ref_frame_sign_bias);
+
+        y_buffer[LAST_FRAME] = lst_yv12->y_buffer + recon_yoffset;
+        u_buffer[LAST_FRAME] = lst_yv12->u_buffer + recon_uvoffset;
+        v_buffer[LAST_FRAME] = lst_yv12->v_buffer + recon_uvoffset;
+
+        frame_lf_or_gf[LAST_FRAME] = 0;
+    }
+
+    if (cpi->ref_frame_flags & VP8_GOLD_FLAG)
+    {
+        YV12_BUFFER_CONFIG *gld_yv12 = &cpi->common.yv12_fb[cpi->common.gld_fb_idx];
+
+        vp8_find_near_mvs(&x->e_mbd, x->e_mbd.mode_info_context, &frame_nearest_mv[GOLDEN_FRAME], &frame_near_mv[GOLDEN_FRAME],
+                          &frame_best_ref_mv[GOLDEN_FRAME], frame_mdcounts[GOLDEN_FRAME], GOLDEN_FRAME, cpi->common.ref_frame_sign_bias);
+
+        y_buffer[GOLDEN_FRAME] = gld_yv12->y_buffer + recon_yoffset;
+        u_buffer[GOLDEN_FRAME] = gld_yv12->u_buffer + recon_uvoffset;
+        v_buffer[GOLDEN_FRAME] = gld_yv12->v_buffer + recon_uvoffset;
+
+        frame_lf_or_gf[GOLDEN_FRAME] = 1;
+    }
+
+    if (cpi->ref_frame_flags & VP8_ALT_FLAG)
+    {
+        YV12_BUFFER_CONFIG *alt_yv12 = &cpi->common.yv12_fb[cpi->common.alt_fb_idx];
+
+        vp8_find_near_mvs(&x->e_mbd, x->e_mbd.mode_info_context, &frame_nearest_mv[ALTREF_FRAME], &frame_near_mv[ALTREF_FRAME],
+                          &frame_best_ref_mv[ALTREF_FRAME], frame_mdcounts[ALTREF_FRAME], ALTREF_FRAME, cpi->common.ref_frame_sign_bias);
+
+        y_buffer[ALTREF_FRAME] = alt_yv12->y_buffer + recon_yoffset;
+        u_buffer[ALTREF_FRAME] = alt_yv12->u_buffer + recon_uvoffset;
+        v_buffer[ALTREF_FRAME] = alt_yv12->v_buffer + recon_uvoffset;
+
+        frame_lf_or_gf[ALTREF_FRAME] = 1;
+    }
+
     *returnintra = INT_MAX;
-
-    vpx_memset(&best_mbmode, 0, sizeof(best_mbmode)); // clean
-
     cpi->mbs_tested_so_far++;          // Count of the number of MBs tested so far this frame
 
     x->skip = 0;
 
     ref_frame_cost[INTRA_FRAME]   = vp8_cost_zero(cpi->prob_intra_coded);
-
-    // Experimental code
-    // Adjust the RD multiplier based on the best case distortion we saw in the most recently coded mb
-    //if ( (cpi->last_mb_distortion) > 0 && (cpi->target_bits_per_mb > 0) )
-    /*{
-        int tmprdmult;
-
-        //tmprdmult = (cpi->last_mb_distortion * 256) / ((cpi->av_per_frame_bandwidth*256)/cpi->common.MBs);
-        tmprdmult = (cpi->last_mb_distortion * 256) / cpi->target_bits_per_mb;
-        //tmprdmult = tmprdmult;
-
-        //if ( tmprdmult > cpi->RDMULT * 2 )
-        //  tmprdmult = cpi->RDMULT * 2;
-        //else if ( tmprdmult < cpi->RDMULT / 2 )
-        //  tmprdmult = cpi->RDMULT / 2;
-
-        //tmprdmult = (tmprdmult < 25) ? 25 : tmprdmult;
-
-        //x->rdmult = tmprdmult;
-
-    }*/
 
     // Special case treatment when GF and ARF are not sensible options for reference
     if (cpi->ref_frame_flags == VP8_LAST_FLAG)
@@ -1528,19 +1885,13 @@ int vp8_rd_pick_inter_mode(VP8_COMP *cpi, MACROBLOCK *x, int recon_yoffset, int 
     x->e_mbd.mode_info_context->mbmi.ref_frame = INTRA_FRAME;
     vp8_rd_pick_intra_mbuv_mode(cpi, x, &uv_intra_rate, &uv_intra_rate_tokenonly, &uv_intra_distortion);
     uv_intra_mode = x->e_mbd.mode_info_context->mbmi.uv_mode;
-    {
-        uvintra_eob = 0;
-
-        for (i = 16; i < 24; i++)
-            uvintra_eob += x->e_mbd.block[i].eob;
-    }
 
     for (mode_index = 0; mode_index < MAX_MODES; mode_index++)
     {
-        int frame_cost;
         int this_rd = INT_MAX;
         int lf_or_gf = 0;           // Lat Frame (01) or gf/arf (1)
         int disable_skip = 0;
+        int other_cost = 0;
 
         force_no_skip = 0;
 
@@ -1555,19 +1906,9 @@ int vp8_rd_pick_inter_mode(VP8_COMP *cpi, MACROBLOCK *x, int recon_yoffset, int 
         if (best_rd <= cpi->rd_threshes[mode_index])
             continue;
 
-
-
         // These variables hold are rolling total cost and distortion for this mode
         rate2 = 0;
         distortion2 = 0;
-
-        // Where skip is allowable add in the default per mb cost for the no skip case.
-        // where we then decide to skip we have to delete this and replace it with the
-        // cost of signallying a skip
-        if (cpi->common.mb_no_coeff_skip)
-        {
-            rate2 += vp8_cost_bit(cpi->prob_skip_false, 0);
-        }
 
         this_mode = vp8_mode_order[mode_index];
 
@@ -1575,77 +1916,48 @@ int vp8_rd_pick_inter_mode(VP8_COMP *cpi, MACROBLOCK *x, int recon_yoffset, int 
         x->e_mbd.mode_info_context->mbmi.uv_mode = DC_PRED;
         x->e_mbd.mode_info_context->mbmi.ref_frame = vp8_ref_frame_order[mode_index];
 
-        //Only consider ZEROMV/ALTREF_FRAME for alt ref frame.
-        if (cpi->is_src_frame_alt_ref)
+        // Only consider ZEROMV/ALTREF_FRAME for alt ref frame,
+        // unless ARNR filtering is enabled in which case we want
+        // an unfiltered alternative
+        if (cpi->is_src_frame_alt_ref && (cpi->oxcf.arnr_max_frames == 0))
         {
             if (this_mode != ZEROMV || x->e_mbd.mode_info_context->mbmi.ref_frame != ALTREF_FRAME)
                 continue;
         }
 
-        if (x->e_mbd.mode_info_context->mbmi.ref_frame == LAST_FRAME)
+        /* everything but intra */
+        if (x->e_mbd.mode_info_context->mbmi.ref_frame)
         {
-            YV12_BUFFER_CONFIG *lst_yv12 = &cpi->common.yv12_fb[cpi->common.lst_fb_idx];
-
-            if (!(cpi->ref_frame_flags & VP8_LAST_FLAG))
-                continue;
-
-            lf_or_gf = 0;  // Local last frame vs Golden frame flag
-
-            // Set up pointers for this macro block into the previous frame recon buffer
-            x->e_mbd.pre.y_buffer = lst_yv12->y_buffer + recon_yoffset;
-            x->e_mbd.pre.u_buffer = lst_yv12->u_buffer + recon_uvoffset;
-            x->e_mbd.pre.v_buffer = lst_yv12->v_buffer + recon_uvoffset;
-        }
-        else if (x->e_mbd.mode_info_context->mbmi.ref_frame == GOLDEN_FRAME)
-        {
-            YV12_BUFFER_CONFIG *gld_yv12 = &cpi->common.yv12_fb[cpi->common.gld_fb_idx];
-
-            // not supposed to reference gold frame
-            if (!(cpi->ref_frame_flags & VP8_GOLD_FLAG))
-                continue;
-
-            lf_or_gf = 1;  // Local last frame vs Golden frame flag
-
-            // Set up pointers for this macro block into the previous frame recon buffer
-            x->e_mbd.pre.y_buffer = gld_yv12->y_buffer + recon_yoffset;
-            x->e_mbd.pre.u_buffer = gld_yv12->u_buffer + recon_uvoffset;
-            x->e_mbd.pre.v_buffer = gld_yv12->v_buffer + recon_uvoffset;
-        }
-        else if (x->e_mbd.mode_info_context->mbmi.ref_frame == ALTREF_FRAME)
-        {
-            YV12_BUFFER_CONFIG *alt_yv12 = &cpi->common.yv12_fb[cpi->common.alt_fb_idx];
-
-            // not supposed to reference alt ref frame
-            if (!(cpi->ref_frame_flags & VP8_ALT_FLAG))
-                continue;
-
-            //if ( !cpi->source_alt_ref_active )
-            //  continue;
-
-            lf_or_gf = 1;  // Local last frame vs Golden frame flag
-
-            // Set up pointers for this macro block into the previous frame recon buffer
-            x->e_mbd.pre.y_buffer = alt_yv12->y_buffer + recon_yoffset;
-            x->e_mbd.pre.u_buffer = alt_yv12->u_buffer + recon_uvoffset;
-            x->e_mbd.pre.v_buffer = alt_yv12->v_buffer + recon_uvoffset;
+            x->e_mbd.pre.y_buffer = y_buffer[x->e_mbd.mode_info_context->mbmi.ref_frame];
+            x->e_mbd.pre.u_buffer = u_buffer[x->e_mbd.mode_info_context->mbmi.ref_frame];
+            x->e_mbd.pre.v_buffer = v_buffer[x->e_mbd.mode_info_context->mbmi.ref_frame];
+            mode_mv[NEARESTMV] = frame_nearest_mv[x->e_mbd.mode_info_context->mbmi.ref_frame];
+            mode_mv[NEARMV] = frame_near_mv[x->e_mbd.mode_info_context->mbmi.ref_frame];
+            best_ref_mv = frame_best_ref_mv[x->e_mbd.mode_info_context->mbmi.ref_frame];
+            vpx_memcpy(mdcounts, frame_mdcounts[x->e_mbd.mode_info_context->mbmi.ref_frame], sizeof(mdcounts));
+            lf_or_gf = frame_lf_or_gf[x->e_mbd.mode_info_context->mbmi.ref_frame];
         }
 
-        vp8_find_near_mvs(&x->e_mbd,
-                          x->e_mbd.mode_info_context,
-                          &mode_mv[NEARESTMV], &mode_mv[NEARMV], &best_ref_mv,
-                          mdcounts, x->e_mbd.mode_info_context->mbmi.ref_frame, cpi->common.ref_frame_sign_bias);
-
-
-        // Estimate the reference frame signaling cost and add it to the rolling cost variable.
-        frame_cost = ref_frame_cost[x->e_mbd.mode_info_context->mbmi.ref_frame];
-        rate2 += frame_cost;
-
-        if (this_mode <= B_PRED)
+        if(x->e_mbd.mode_info_context->mbmi.mode == NEWMV)
         {
-            for (i = 0; i < 16; i++)
+            if(!saddone)
             {
-                vpx_memset(&x->e_mbd.block[i].bmi, 0, sizeof(B_MODE_INFO));
+                vp8_cal_sad(cpi,xd,x, recon_yoffset ,&near_sadidx[0] );
+                saddone = 1;
             }
+
+            vp8_mv_pred(cpi, &x->e_mbd, x->e_mbd.mode_info_context, &mvp,
+                        x->e_mbd.mode_info_context->mbmi.ref_frame, cpi->common.ref_frame_sign_bias, &sr, &near_sadidx[0]);
+
+            /* adjust mvp to make sure it is within MV range */
+            if(mvp.row > best_ref_mv.row + MAX_FULL_PEL_VAL)
+                mvp.row = best_ref_mv.row + MAX_FULL_PEL_VAL;
+            else if(mvp.row < best_ref_mv.row - MAX_FULL_PEL_VAL)
+                mvp.row = best_ref_mv.row - MAX_FULL_PEL_VAL;
+            if(mvp.col > best_ref_mv.col + MAX_FULL_PEL_VAL)
+                mvp.col = best_ref_mv.col + MAX_FULL_PEL_VAL;
+            else if(mvp.col < best_ref_mv.col - MAX_FULL_PEL_VAL)
+                mvp.col = best_ref_mv.col - MAX_FULL_PEL_VAL;
         }
 
         // Check to see if the testing frequency for this mode is at its max
@@ -1672,110 +1984,80 @@ int vp8_rd_pick_inter_mode(VP8_COMP *cpi, MACROBLOCK *x, int recon_yoffset, int 
         // Experimental code. Special case for gf and arf zeromv modes. Increase zbin size to supress noise
         if (cpi->zbin_mode_boost_enabled)
         {
-            if ((vp8_mode_order[mode_index] == ZEROMV) && (vp8_ref_frame_order[mode_index] != LAST_FRAME))
-                cpi->zbin_mode_boost = GF_ZEROMV_ZBIN_BOOST;
-            else
+            if ( vp8_ref_frame_order[mode_index] == INTRA_FRAME )
                 cpi->zbin_mode_boost = 0;
+            else
+            {
+                if (vp8_mode_order[mode_index] == ZEROMV)
+                {
+                    if (vp8_ref_frame_order[mode_index] != LAST_FRAME)
+                        cpi->zbin_mode_boost = GF_ZEROMV_ZBIN_BOOST;
+                    else
+                        cpi->zbin_mode_boost = LF_ZEROMV_ZBIN_BOOST;
+                }
+                else if (vp8_ref_frame_order[mode_index] == SPLITMV)
+                    cpi->zbin_mode_boost = 0;
+                else
+                    cpi->zbin_mode_boost = MV_ZBIN_BOOST;
+            }
 
-            vp8cx_mb_init_quantizer(cpi, x);
+            vp8_update_zbin_extra(cpi, x);
         }
 
         switch (this_mode)
         {
         case B_PRED:
-
-            // Note the rate value returned here includes the cost of coding the BPRED mode : x->mbmode_cost[x->e_mbd.frame_type][BPRED];
-            vp8_rd_pick_intra4x4mby_modes(cpi, x, &rate, &rate_y, &distortion);
-            rate2 += rate;
-            //rate_y = rate;
-            distortion2 += distortion;
-            rate2 += uv_intra_rate;
-            rate_uv = uv_intra_rate_tokenonly;
-            distortion2 += uv_intra_distortion;
-            break;
-
-        case SPLITMV:
         {
-            int frame_cost_rd = RDFUNC(x->rdmult, x->rddiv, frame_cost, 0, cpi->target_bits_per_mb);
-            int saved_rate = rate2;
-
-            // vp8_rd_pick_best_mbsegmentation looks only at Y and does not account for frame_cost.
-            // (best_rd - frame_cost_rd) is thus a conservative breakout number.
-            int breakout_rd = best_rd - frame_cost_rd;
             int tmp_rd;
 
-            if (x->e_mbd.mode_info_context->mbmi.ref_frame == LAST_FRAME)
-                tmp_rd = vp8_rd_pick_best_mbsegmentation(cpi, x, &best_ref_mv, breakout_rd, mdcounts, &rate, &rate_y, &distortion, cpi->compressor_speed, x->mvcost, cpi->rd_threshes[THR_NEWMV], cpi->common.full_pixel) ;
-            else if (x->e_mbd.mode_info_context->mbmi.ref_frame == GOLDEN_FRAME)
-                tmp_rd = vp8_rd_pick_best_mbsegmentation(cpi, x, &best_ref_mv, breakout_rd, mdcounts, &rate, &rate_y, &distortion, cpi->compressor_speed, x->mvcost, cpi->rd_threshes[THR_NEWG], cpi->common.full_pixel) ;
-            else
-                tmp_rd = vp8_rd_pick_best_mbsegmentation(cpi, x, &best_ref_mv, breakout_rd, mdcounts, &rate, &rate_y, &distortion, cpi->compressor_speed, x->mvcost, cpi->rd_threshes[THR_NEWA], cpi->common.full_pixel) ;
-
+            // Note the rate value returned here includes the cost of coding the BPRED mode : x->mbmode_cost[x->e_mbd.frame_type][BPRED];
+            tmp_rd = vp8_rd_pick_intra4x4mby_modes(cpi, x, &rate, &rate_y, &distortion, best_yrd);
             rate2 += rate;
             distortion2 += distortion;
 
-            // If even the 'Y' rd value of split is higher than best so far then dont bother looking at UV
-            if (tmp_rd < breakout_rd)
+            if(tmp_rd < best_yrd)
             {
-                // Now work out UV cost and add it in
-                vp8_rd_inter_uv(cpi, x, &rate, &distortion, cpi->common.full_pixel);
-                rate2 += rate;
-                rate_uv = rate;
-                distortion2 += distortion;
-
+                rate2 += uv_intra_rate;
+                rate_uv = uv_intra_rate_tokenonly;
+                distortion2 += uv_intra_distortion;
+                distortion_uv = uv_intra_distortion;
             }
             else
             {
                 this_rd = INT_MAX;
                 disable_skip = 1;
             }
+        }
+        break;
 
-            // Trap cases where the best split mode has all vectors coded 0,0 (or all the same)
-            if (0)
+        case SPLITMV:
+        {
+            int tmp_rd;
+            int this_rd_thresh;
+
+            this_rd_thresh = (x->e_mbd.mode_info_context->mbmi.ref_frame == LAST_FRAME) ? cpi->rd_threshes[THR_NEWMV] : cpi->rd_threshes[THR_NEWA];
+            this_rd_thresh = (x->e_mbd.mode_info_context->mbmi.ref_frame == GOLDEN_FRAME) ? cpi->rd_threshes[THR_NEWG]: this_rd_thresh;
+
+            tmp_rd = vp8_rd_pick_best_mbsegmentation(cpi, x, &best_ref_mv,
+                                                     best_yrd, mdcounts,
+                                                     &rate, &rate_y, &distortion, this_rd_thresh) ;
+
+            rate2 += rate;
+            distortion2 += distortion;
+
+            // If even the 'Y' rd value of split is higher than best so far then dont bother looking at UV
+            if (tmp_rd < best_yrd)
             {
-                int allsame = 1;
-
-                for (i = 1; i < 16; i++)
-                {
-                    BLOCKD *bd = &x->e_mbd.block[i];
-
-                    if (bd->bmi.mv.as_int != x->e_mbd.block[0].bmi.mv.as_int)   //(bmvs[i].col != bmvs[i-1].col) || (bmvs[i].row != bmvs[i-1].row ) )
-                    {
-                        allsame = 0;
-                        break;
-                    }
-                }
-
-                if (allsame)
-                {
-                    // reset mode and mv and jump to newmv
-                    this_mode = NEWMV;
-                    distortion2 = 0;
-                    rate2 = saved_rate;
-                    mode_mv[NEWMV].row = x->e_mbd.block[0].bmi.mv.as_mv.row;
-                    mode_mv[NEWMV].col = x->e_mbd.block[0].bmi.mv.as_mv.col;
-                    rate2 += vp8_mv_bit_cost(&mode_mv[NEWMV], &best_ref_mv, x->mvcost, 96);
-                    goto mv_selected;
-                }
+                // Now work out UV cost and add it in
+                vp8_rd_inter_uv(cpi, x, &rate_uv, &distortion_uv, cpi->common.full_pixel);
+                rate2 += rate_uv;
+                distortion2 += distortion_uv;
             }
-
-            // trap cases where the 8x8s can be promoted to 8x16s or 16x8s
-            if (0)//x->partition_info->count == 4)
+            else
             {
-
-                if (x->partition_info->bmi[0].mv.as_int == x->partition_info->bmi[1].mv.as_int
-                    && x->partition_info->bmi[2].mv.as_int == x->partition_info->bmi[3].mv.as_int)
-                {
-                    const int *labels = vp8_mbsplits[2];
-                    x->e_mbd.mode_info_context->mbmi.partitioning = 0;
-                    rate -= vp8_cost_token(vp8_mbsplit_tree, vp8_mbsplit_probs, vp8_mbsplit_encodings + 2);
-                    rate += vp8_cost_token(vp8_mbsplit_tree, vp8_mbsplit_probs, vp8_mbsplit_encodings);
-                    //rate -=  x->inter_bmode_costs[  x->partition_info->bmi[1]];
-                    //rate -=  x->inter_bmode_costs[  x->partition_info->bmi[3]];
-                    x->partition_info->bmi[1] = x->partition_info->bmi[2];
-                }
+                this_rd = INT_MAX;
+                disable_skip = 1;
             }
-
         }
         break;
         case DC_PRED:
@@ -1784,16 +2066,14 @@ int vp8_rd_pick_inter_mode(VP8_COMP *cpi, MACROBLOCK *x, int recon_yoffset, int 
         case TM_PRED:
             x->e_mbd.mode_info_context->mbmi.ref_frame = INTRA_FRAME;
             vp8_build_intra_predictors_mby_ptr(&x->e_mbd);
-            {
-                macro_block_yrd(x, &rate, &distortion, IF_RTCD(&cpi->rtcd.encodemb)) ;
-                rate2 += rate;
-                rate_y = rate;
-                distortion2 += distortion;
-                rate2 += x->mbmode_cost[x->e_mbd.frame_type][x->e_mbd.mode_info_context->mbmi.mode];
-                rate2 += uv_intra_rate;
-                rate_uv = uv_intra_rate_tokenonly;
-                distortion2 += uv_intra_distortion;
-            }
+            macro_block_yrd(x, &rate_y, &distortion, IF_RTCD(&cpi->rtcd.encodemb)) ;
+            rate2 += rate_y;
+            distortion2 += distortion;
+            rate2 += x->mbmode_cost[x->e_mbd.frame_type][x->e_mbd.mode_info_context->mbmi.mode];
+            rate2 += uv_intra_rate;
+            rate_uv = uv_intra_rate_tokenonly;
+            distortion2 += uv_intra_distortion;
+            distortion_uv = uv_intra_distortion;
             break;
 
         case NEWMV:
@@ -1810,6 +2090,30 @@ int vp8_rd_pick_inter_mode(VP8_COMP *cpi, MACROBLOCK *x, int recon_yoffset, int 
                 int further_steps;
                 int n;
 
+                int col_min = (best_ref_mv.col - MAX_FULL_PEL_VAL) >>3;
+                int col_max = (best_ref_mv.col + MAX_FULL_PEL_VAL) >>3;
+                int row_min = (best_ref_mv.row - MAX_FULL_PEL_VAL) >>3;
+                int row_max = (best_ref_mv.row + MAX_FULL_PEL_VAL) >>3;
+
+                int tmp_col_min = x->mv_col_min;
+                int tmp_col_max = x->mv_col_max;
+                int tmp_row_min = x->mv_row_min;
+                int tmp_row_max = x->mv_row_max;
+
+                // Get intersection of UMV window and valid MV window to reduce # of checks in diamond search.
+                if (x->mv_col_min < col_min )
+                    x->mv_col_min = col_min;
+                if (x->mv_col_max > col_max )
+                    x->mv_col_max = col_max;
+                if (x->mv_row_min < row_min )
+                    x->mv_row_min = row_min;
+                if (x->mv_row_max > row_max )
+                    x->mv_row_max = row_max;
+
+                //adjust search range according to sr from mv prediction
+                if(sr > step_param)
+                    step_param = sr;
+
                 // Work out how long a search we should do
                 search_range = MAXF(abs(best_ref_mv.col), abs(best_ref_mv.row)) >> 3;
 
@@ -1824,13 +2128,13 @@ int vp8_rd_pick_inter_mode(VP8_COMP *cpi, MACROBLOCK *x, int recon_yoffset, int 
 
                     if (cpi->sf.search_method == HEX)
                     {
-                        bestsme = vp8_hex_search(x, b, d, &best_ref_mv, &d->bmi.mv.as_mv, step_param, sadpb/*x->errorperbit*/, &num00, &cpi->fn_ptr[BLOCK_16X16], x->mvsadcost, x->mvcost);
+                        bestsme = vp8_hex_search(x, b, d, &best_ref_mv, &d->bmi.mv.as_mv, step_param, sadpb/*x->errorperbit*/, &num00, &cpi->fn_ptr[BLOCK_16X16], x->mvsadcost, x->mvcost, &best_ref_mv);
                         mode_mv[NEWMV].row = d->bmi.mv.as_mv.row;
                         mode_mv[NEWMV].col = d->bmi.mv.as_mv.col;
                     }
                     else
                     {
-                        bestsme = cpi->diamond_search_sad(x, b, d, &best_ref_mv, &d->bmi.mv.as_mv, step_param, sadpb / 2/*x->errorperbit*/, &num00, &cpi->fn_ptr[BLOCK_16X16], x->mvsadcost, x->mvcost); //sadpb < 9
+                        bestsme = cpi->diamond_search_sad(x, b, d, &mvp, &d->bmi.mv.as_mv, step_param, sadpb / 2/*x->errorperbit*/, &num00, &cpi->fn_ptr[BLOCK_16X16], x->mvsadcost, x->mvcost, &best_ref_mv); //sadpb < 9
                         mode_mv[NEWMV].row = d->bmi.mv.as_mv.row;
                         mode_mv[NEWMV].col = d->bmi.mv.as_mv.col;
 
@@ -1849,7 +2153,7 @@ int vp8_rd_pick_inter_mode(VP8_COMP *cpi, MACROBLOCK *x, int recon_yoffset, int 
                                 num00--;
                             else
                             {
-                                thissme = cpi->diamond_search_sad(x, b, d, &best_ref_mv, &d->bmi.mv.as_mv, step_param + n, sadpb / 4/*x->errorperbit*/, &num00, &cpi->fn_ptr[BLOCK_16X16], x->mvsadcost, x->mvcost); //sadpb = 9
+                                thissme = cpi->diamond_search_sad(x, b, d, &mvp, &d->bmi.mv.as_mv, step_param + n, sadpb / 4/*x->errorperbit*/, &num00, &cpi->fn_ptr[BLOCK_16X16], x->mvsadcost, x->mvcost, &best_ref_mv); //sadpb = 9
 
                                 if (thissme < bestsme)
                                 {
@@ -1873,9 +2177,14 @@ int vp8_rd_pick_inter_mode(VP8_COMP *cpi, MACROBLOCK *x, int recon_yoffset, int 
                 {
                     int thissme;
                     int full_flag_thresh = 0;
+                    MV full_mvp;
+
+                    full_mvp.row = d->bmi.mv.as_mv.row <<3;    // use diamond search result as full search staring point
+                    full_mvp.col = d->bmi.mv.as_mv.col <<3;
 
                     // Update x->vector_range based on best vector found in step search
-                    search_range = MAXF(abs(d->bmi.mv.as_mv.row), abs(d->bmi.mv.as_mv.col));
+                    search_range = MAXF(abs((mvp.row>>3) - d->bmi.mv.as_mv.row), abs((mvp.col>>3) - d->bmi.mv.as_mv.col));
+                    //search_range *= 1.4;  //didn't improve PSNR
 
                     if (search_range > x->vector_range)
                         x->vector_range = search_range;
@@ -1884,9 +2193,13 @@ int vp8_rd_pick_inter_mode(VP8_COMP *cpi, MACROBLOCK *x, int recon_yoffset, int 
 
                     // Apply limits
                     search_range = (search_range > cpi->sf.max_fs_radius) ? cpi->sf.max_fs_radius : search_range;
+
+                    //add this to reduce full search range.
+                    if(sr<=3 && search_range > 8) search_range = 8;
+
                     {
                         int sadpb = x->sadperbit16 >> 2;
-                        thissme = cpi->full_search_sad(x, b, d, &best_ref_mv, sadpb, search_range, &cpi->fn_ptr[BLOCK_16X16], x->mvcost, x->mvsadcost);
+                        thissme = cpi->full_search_sad(x, b, d, &full_mvp, sadpb, search_range, &cpi->fn_ptr[BLOCK_16X16], x->mvcost, x->mvsadcost,&best_ref_mv);
                     }
 
                     // Barrier threshold to initiating full search
@@ -1908,6 +2221,11 @@ int vp8_rd_pick_inter_mode(VP8_COMP *cpi, MACROBLOCK *x, int recon_yoffset, int 
                         d->bmi.mv.as_mv.col = mode_mv[NEWMV].col;
                     }
                 }
+
+                x->mv_col_min = tmp_col_min;
+                x->mv_col_max = tmp_col_max;
+                x->mv_row_min = tmp_row_min;
+                x->mv_row_max = tmp_row_max;
 
                 if (bestsme < INT_MAX)
                     // cpi->find_fractional_mv_step(x,b,d,&d->bmi.mv.as_mv,&best_ref_mv,x->errorperbit/2,cpi->fn_ptr.svf,cpi->fn_ptr.vf,x->mvcost);  // normal mvc=11
@@ -1953,33 +2271,54 @@ int vp8_rd_pick_inter_mode(VP8_COMP *cpi, MACROBLOCK *x, int recon_yoffset, int 
 
             vp8_set_mbmode_and_mvs(x, this_mode, &mode_mv[this_mode]);
             vp8_build_inter_predictors_mby(&x->e_mbd);
-            VARIANCE_INVOKE(&cpi->rtcd.variance, get16x16var)(x->src.y_buffer, x->src.y_stride, x->e_mbd.predictor, 16, (unsigned int *)(&sse), &sum);
 
-            if (cpi->active_map_enabled && x->active_ptr[0] == 0)
-            {
+            if (cpi->active_map_enabled && x->active_ptr[0] == 0) {
                 x->skip = 1;
             }
-            else if (sse < x->encode_breakout)
+            else if (x->encode_breakout)
             {
-                // Check u and v to make sure skip is ok
-                int sse2 = 0;
+                int sum, sse;
+                int threshold = (xd->block[0].dequant[1]
+                            * xd->block[0].dequant[1] >>4);
 
-                sse2 = VP8_UVSSE(x, IF_RTCD(&cpi->rtcd.variance));
+                if(threshold < x->encode_breakout)
+                    threshold = x->encode_breakout;
 
-                if (sse2 * 2 < x->encode_breakout)
+                VARIANCE_INVOKE(&cpi->rtcd.variance, get16x16var)
+                    (x->src.y_buffer, x->src.y_stride,
+                     x->e_mbd.predictor, 16, (unsigned int *)(&sse), &sum);
+
+                if (sse < threshold)
                 {
-                    x->skip = 1;
-                    distortion2 = sse;
-                    rate2 = 500;
+                    // Check u and v to make sure skip is ok
+                    int sse2 = 0;
+                    /* If theres is no codeable 2nd order dc
+                       or a very small uniform pixel change change */
+                    if (abs(sum) < (xd->block[24].dequant[0]<<2)||
+                        ((sum * sum>>8) > sse && abs(sum) <128))
+                    {
+                        sse2 = VP8_UVSSE(x, IF_RTCD(&cpi->rtcd.variance));
 
-                    disable_skip = 1;    // We have no real rate data so trying to adjust for rate_y and rate_uv below will cause problems.
-                    this_rd = RDFUNC(x->rdmult, x->rddiv, rate2, distortion2, cpi->target_bits_per_mb);
+                        if (sse2 * 2 < threshold)
+                        {
+                            x->skip = 1;
+                            distortion2 = sse + sse2;
+                            rate2 = 500;
 
-                    break;              // (PGW) Move break here from below - for now at least
+                            /* for best_yrd calculation */
+                            rate_uv = 0;
+                            distortion_uv = sse2;
+
+                            disable_skip = 1;
+                            this_rd = RDCOST(x->rdmult, x->rddiv, rate2,
+                                             distortion2);
+
+                            break;
+                        }
+                    }
                 }
-                else
-                    x->skip = 0;
             }
+
 
             //intermodecost[mode_index] = vp8_cost_mv_ref(this_mode, mdcounts);   // Experimental debug code
 
@@ -1987,27 +2326,39 @@ int vp8_rd_pick_inter_mode(VP8_COMP *cpi, MACROBLOCK *x, int recon_yoffset, int 
             rate2 += vp8_cost_mv_ref(this_mode, mdcounts);
 
             // Y cost and distortion
-            macro_block_yrd(x, &rate, &distortion, IF_RTCD(&cpi->rtcd.encodemb));
-            rate2 += rate;
-            rate_y = rate;
+            macro_block_yrd(x, &rate_y, &distortion, IF_RTCD(&cpi->rtcd.encodemb));
+            rate2 += rate_y;
             distortion2 += distortion;
 
             // UV cost and distortion
-            vp8_rd_inter_uv(cpi, x, &rate, &distortion, cpi->common.full_pixel);
-            rate2 += rate;
-            rate_uv = rate;
-            distortion2 += distortion;
+            vp8_rd_inter_uv(cpi, x, &rate_uv, &distortion_uv, cpi->common.full_pixel);
+            rate2 += rate_uv;
+            distortion2 += distortion_uv;
             break;
 
         default:
             break;
         }
 
+        // Where skip is allowable add in the default per mb cost for the no skip case.
+        // where we then decide to skip we have to delete this and replace it with the
+        // cost of signallying a skip
+        if (cpi->common.mb_no_coeff_skip)
+        {
+            other_cost += vp8_cost_bit(cpi->prob_skip_false, 0);
+            rate2 += other_cost;
+        }
+
+        // Estimate the reference frame signaling cost and add it to the rolling cost variable.
+        rate2 += ref_frame_cost[x->e_mbd.mode_info_context->mbmi.ref_frame];
+
         if (!disable_skip)
         {
             // Test for the condition where skip block will be activated because there are no non zero coefficients and make any necessary adjustment for rate
             if (cpi->common.mb_no_coeff_skip)
             {
+                int tteob;
+
                 tteob = 0;
 
                 for (i = 0; i <= 24; i++)
@@ -2017,77 +2368,24 @@ int vp8_rd_pick_inter_mode(VP8_COMP *cpi, MACROBLOCK *x, int recon_yoffset, int 
 
                 if (tteob == 0)
                 {
-#if 1
                     rate2 -= (rate_y + rate_uv);
+                    //for best_yrd calculation
+                    rate_uv = 0;
 
                     // Back out no skip flag costing and add in skip flag costing
                     if (cpi->prob_skip_false)
                     {
-                        rate2 += vp8_cost_bit(cpi->prob_skip_false, 1);
-                        rate2 -= vp8_cost_bit(cpi->prob_skip_false, 0);
+                        int prob_skip_cost;
+
+                        prob_skip_cost = vp8_cost_bit(cpi->prob_skip_false, 1);
+                        prob_skip_cost -= vp8_cost_bit(cpi->prob_skip_false, 0);
+                        rate2 += prob_skip_cost;
+                        other_cost += prob_skip_cost;
                     }
-
-#else
-                    int rateuseskip;
-                    int ratenotuseskip;
-
-
-
-                    ratenotuseskip = rate_y + rate_uv + vp8_cost_bit(cpi->prob_skip_false, 0);
-                    rateuseskip    = vp8_cost_bit(cpi->prob_skip_false, 1);
-
-                    if (1) // rateuseskip<ratenotuseskip)
-                    {
-                        rate2 -= ratenotuseskip;
-                        rate2 += rateuseskip;
-                        force_no_skip = 0;
-                    }
-                    else
-                    {
-                        force_no_skip = 1;
-                    }
-
-#endif
                 }
-
-#if             0
-                else
-                {
-                    int rateuseskip;
-                    int ratenotuseskip;
-                    int maxdistortion;
-                    int minrate;
-                    int skip_rd;
-
-                    // distortion when no coeff is encoded
-                    maxdistortion = macro_block_max_error(x);
-
-                    ratenotuseskip = rate_y + rate_uv + vp8_cost_bit(cpi->prob_skip_false, 0);
-                    rateuseskip    = vp8_cost_bit(cpi->prob_skip_false, 1);
-
-                    minrate         = rateuseskip - ratenotuseskip;
-
-                    skip_rd = RDFUNC(x->rdmult, x->rddiv, minrate, maxdistortion - distortion2, cpi->target_bits_per_mb);
-
-                    if (skip_rd + 50 < 0 && x->e_mbd.mbmi.ref_frame != INTRA_FRAME && rate_y + rate_uv < 4000)
-                    {
-                        force_no_skip = 1;
-                        rate2       = rate2 + rateuseskip - ratenotuseskip;
-                        distortion2 =  maxdistortion;
-                    }
-                    else
-                    {
-                        force_no_skip = 0;
-                    }
-
-                }
-
-#endif
-
             }
-
             // Calculate the final RD estimate for this mode
-            this_rd = RDFUNC(x->rdmult, x->rddiv, rate2, distortion2, cpi->target_bits_per_mb);
+            this_rd = RDCOST(x->rdmult, x->rddiv, rate2, distortion2);
         }
 
         // Experimental debug code.
@@ -2111,6 +2409,12 @@ int vp8_rd_pick_inter_mode(VP8_COMP *cpi, MACROBLOCK *x, int recon_yoffset, int 
             {
                 x->e_mbd.mode_info_context->mbmi.uv_mode = uv_intra_mode;
             }
+
+            other_cost += ref_frame_cost[x->e_mbd.mode_info_context->mbmi.ref_frame];
+
+            /* Calculate the final y RD estimate for this mode */
+            best_yrd = RDCOST(x->rdmult, x->rddiv, (rate2-rate_uv-other_cost),
+                              (distortion2-distortion_uv));
 
             *returnrate = rate2;
             *returndistortion = distortion2;
@@ -2141,6 +2445,7 @@ int vp8_rd_pick_inter_mode(VP8_COMP *cpi, MACROBLOCK *x, int recon_yoffset, int 
 
         if (x->skip)
             break;
+
     }
 
     // Reduce the activation RD thresholds for the best choice mode
@@ -2211,6 +2516,15 @@ int vp8_rd_pick_inter_mode(VP8_COMP *cpi, MACROBLOCK *x, int recon_yoffset, int 
     }
 
 
+    if(best_mbmode.mode <= B_PRED)
+    {
+        int i;
+        for (i = 0; i < 16; i++)
+        {
+            best_bmodes[i].mv.as_int = 0;
+        }
+    }
+
     // macroblock modes
     vpx_memcpy(&x->e_mbd.mode_info_context->mbmi, &best_mbmode, sizeof(MB_MODE_INFO));
     vpx_memcpy(x->partition_info, &best_partition, sizeof(PARTITION_INFO));
@@ -2225,4 +2539,3 @@ int vp8_rd_pick_inter_mode(VP8_COMP *cpi, MACROBLOCK *x, int recon_yoffset, int 
     return best_rd;
 }
 #endif
-
