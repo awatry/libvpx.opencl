@@ -498,11 +498,7 @@ void vp8_bilinear_predict4x4_cl
 
 #if !STATIC_MEM
     cl_mem int_mem = NULL;
-#endif
-
-#if !STATIC_MEM
-    CL_CREATE_BUF(cq, int_mem,CL_MEM_READ_WRITE,
-        sizeof(cl_int)*17*16, NULL,);
+    CL_CREATE_BUF(NULL, int_mem, NULL, sizeof(cl_int)*21*16, NULL, ,);
 #endif
     
     /* First filter 1-D horizontally... */
@@ -538,8 +534,7 @@ void vp8_bilinear_predict8x8_cl
 
 #if !STATIC_MEM
     cl_mem int_mem = NULL;
-    CL_CREATE_BUF(cq, int_mem,CL_MEM_READ_WRITE,
-        sizeof(cl_int)*17*16, NULL,);
+    CL_CREATE_BUF(NULL, int_mem, NULL, sizeof(cl_int)*21*16, NULL, ,);
 #endif
 
     /* First filter 1-D horizontally... */
@@ -575,8 +570,7 @@ void vp8_bilinear_predict8x4_cl
 
 #if !STATIC_MEM
     cl_mem int_mem = NULL;
-    CL_CREATE_BUF(cq, int_mem,CL_MEM_READ_WRITE,
-        sizeof(cl_int)*17*16, NULL,);
+    CL_CREATE_BUF(NULL, int_mem, NULL, sizeof(cl_int)*21*16, NULL, ,);
 #endif
 
     /* First filter 1-D horizontally... */
@@ -612,8 +606,7 @@ void vp8_bilinear_predict16x16_cl
 
 #if !STATIC_MEM
     cl_mem int_mem = NULL;
-    CL_CREATE_BUF(cq, int_mem,CL_MEM_READ_WRITE,
-        sizeof(cl_int)*17*16, NULL,);
+    CL_CREATE_BUF(NULL, int_mem, NULL, sizeof(cl_int)*21*16, NULL, ,);
 #endif
 
     /* First filter 1-D horizontally... */
