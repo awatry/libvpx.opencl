@@ -65,6 +65,19 @@ extern const char *vpx_codec_lib_dir(void);
         return retCode; \
     }
 
+#define CL_CALC_LOCAL_SIZE(kernel, kernel_size) \
+    err = clGetKernelWorkGroupInfo( cl_data.kernel, \
+  	cl_data.device_id, \
+  	CL_KERNEL_WORK_GROUP_SIZE, \
+  	sizeof(size_t), \
+  	&cl_data.kernel_size, \
+  	NULL);\
+    CL_CHECK_SUCCESS(NULL, err != CL_SUCCESS, \
+        "Error: Failed to calculate local size of kernel!\n", \
+        ,\
+        CL_TRIED_BUT_FAILED \
+    ); \
+
 #define CL_CREATE_KERNEL(data,program,name,str_name) \
     data.name = clCreateKernel(data.program, str_name , &err); \
     CL_CHECK_SUCCESS(NULL, err != CL_SUCCESS || !data.name, \
@@ -111,7 +124,6 @@ typedef struct VP8_COMMON_CL {
     //cl_command_queue commands; // compute command queue
 
     cl_program filter_program; // compute program for subpixel/bilinear filters
-    cl_kernel vp8_block_variation_kernel;
     cl_kernel vp8_sixtap_predict_kernel;
     cl_kernel vp8_sixtap_predict8x4_kernel;
     cl_kernel vp8_sixtap_predict8x8_kernel;
@@ -120,10 +132,17 @@ typedef struct VP8_COMMON_CL {
     cl_kernel vp8_bilinear_predict8x4_kernel;
     cl_kernel vp8_bilinear_predict8x8_kernel;
     cl_kernel vp8_bilinear_predict16x16_kernel;
+
     cl_kernel vp8_filter_block2d_first_pass_kernel;
+    size_t    vp8_filter_block2d_first_pass_kernel_size;
     cl_kernel vp8_filter_block2d_second_pass_kernel;
+    size_t    vp8_filter_block2d_second_pass_kernel_size;
+
     cl_kernel vp8_filter_block2d_bil_first_pass_kernel;
+    size_t    vp8_filter_block2d_bil_first_pass_kernel_size;
     cl_kernel vp8_filter_block2d_bil_second_pass_kernel;
+    size_t    vp8_filter_block2d_bil_second_pass_kernel_size;
+
     cl_kernel vp8_memcpy_kernel;
     cl_kernel vp8_memset_short_kernel;
 

@@ -63,6 +63,8 @@ void cl_destroy_filter(){
 int cl_init_filter() {
     int err;
 
+    size_t local_size;
+
     // Create the filter compute program from the file-defined source code
     if ( cl_load_program(&cl_data.filter_program, filter_cl_file_name,
             filterCompileOptions) != CL_SUCCESS )
@@ -73,6 +75,12 @@ int cl_init_filter() {
     CL_CREATE_KERNEL(cl_data,filter_program,vp8_filter_block2d_second_pass_kernel,"vp8_filter_block2d_second_pass_kernel");
     CL_CREATE_KERNEL(cl_data,filter_program,vp8_filter_block2d_bil_first_pass_kernel,"vp8_filter_block2d_bil_first_pass_kernel");
     CL_CREATE_KERNEL(cl_data,filter_program,vp8_filter_block2d_bil_second_pass_kernel,"vp8_filter_block2d_bil_second_pass_kernel");
+
+    CL_CALC_LOCAL_SIZE(vp8_filter_block2d_first_pass_kernel,vp8_filter_block2d_first_pass_kernel_size);
+    CL_CALC_LOCAL_SIZE(vp8_filter_block2d_second_pass_kernel,vp8_filter_block2d_second_pass_kernel_size);
+    CL_CALC_LOCAL_SIZE(vp8_filter_block2d_bil_first_pass_kernel,vp8_filter_block2d_bil_first_pass_kernel_size);
+    CL_CALC_LOCAL_SIZE(vp8_filter_block2d_bil_second_pass_kernel,vp8_filter_block2d_bil_second_pass_kernel_size);
+
 
     //CL_CREATE_KERNEL(cl_data,filter_program,vp8_bilinear_predict4x4_kernel,"vp8_bilinear_predict4x4_kernel");
     //CL_CREATE_KERNEL(cl_data,filter_program,vp8_bilinear_predict8x4_kernel,"vp8_bilinear_predict8x4_kernel");
@@ -100,6 +108,9 @@ void vp8_filter_block2d_first_pass_cl(
 ){
     int err;
     size_t global = int_width*int_height;
+    size_t local = cl_data.vp8_filter_block2d_first_pass_kernel_size;
+    if (local > global)
+        local = global;
 
     err =  clSetKernelArg(cl_data.vp8_filter_block2d_first_pass_kernel, 0, sizeof (cl_mem), &src_mem);
     err |= clSetKernelArg(cl_data.vp8_filter_block2d_first_pass_kernel, 1, sizeof (int), &src_offset);
@@ -114,7 +125,7 @@ void vp8_filter_block2d_first_pass_cl(
     );
 
     /* Execute the kernel */
-    err = clEnqueueNDRangeKernel( cq, cl_data.vp8_filter_block2d_first_pass_kernel, 1, NULL, &global, NULL , 0, NULL, NULL);
+    err = clEnqueueNDRangeKernel( cq, cl_data.vp8_filter_block2d_first_pass_kernel, 1, NULL, &global, &local , 0, NULL, NULL);
     CL_CHECK_SUCCESS( cq, err != CL_SUCCESS,
         "Error: Failed to execute kernel!\n",
         printf("err = %d\n",err);,
@@ -134,6 +145,11 @@ void vp8_filter_block2d_second_pass_cl(
 ){
     int err;
     size_t global = output_width*output_height;
+    size_t local = cl_data.vp8_filter_block2d_second_pass_kernel_size;
+    if (local > global){
+        //printf("Local is now %ld\n",global);
+        local = global;
+    }
 
     /* Set kernel arguments */
     err =  clSetKernelArg(cl_data.vp8_filter_block2d_second_pass_kernel, 0, sizeof (cl_mem), &int_mem);
@@ -152,7 +168,7 @@ void vp8_filter_block2d_second_pass_cl(
     );
 
     /* Execute the kernel */
-    err = clEnqueueNDRangeKernel( cq, cl_data.vp8_filter_block2d_second_pass_kernel, 1, NULL, &global, NULL , 0, NULL, NULL);
+    err = clEnqueueNDRangeKernel( cq, cl_data.vp8_filter_block2d_second_pass_kernel, 1, NULL, &global, &local , 0, NULL, NULL);
     CL_CHECK_SUCCESS( cq, err != CL_SUCCESS,
         "Error: Failed to execute kernel!\n",
         printf("err = %d\n",err);,

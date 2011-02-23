@@ -76,7 +76,7 @@ int load_cl(char *lib_name){
     CL_LOAD_FN("clReleaseKernel", cl.releaseKernel);
     CL_LOAD_FN("clSetKernelArg", cl.setKernelArg);
 //    CL_LOAD_FN("clGetKernelInfo", cl.getKernelInfo);
-//    CL_LOAD_FN("clGetKernelWorkGroupInfo", cl.getKernelWorkGroupInfo);
+    CL_LOAD_FN("clGetKernelWorkGroupInfo", cl.getKernelWorkGroupInfo);
 //    CL_LOAD_FN("clWaitForEvents", cl.waitForEvents);
 //    CL_LOAD_FN("clGetEventInfo", cl.getEventInfo);
 //    CL_LOAD_FN("clRetainEvent", cl.retainEvent);
