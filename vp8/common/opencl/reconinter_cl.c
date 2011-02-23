@@ -184,13 +184,15 @@ static void vp8_build_inter_predictors4b_cl(MACROBLOCKD *x, BLOCKD *d, int pitch
     int pre_dist = *d->base_pre - x->pre.buffer_alloc;
     cl_mem pre_mem = x->pre.buffer_mem;
 
-    if (d->bmi.mv.as_mv.row & 7 || d->bmi.mv.as_mv.col & 7)
+    //If there's motion in the bottom 8 subpixels, need to do subpixel prediction
+    if (d->bmi.mv.as_mv.row  | d->bmi.mv.as_mv.col & 7)
     {
             if (d->sixtap_filter == CL_TRUE)
                 vp8_sixtap_predict8x8_cl(d->cl_commands, ptr_base, pre_mem, pre_dist+ptr_offset, d->pre_stride, d->bmi.mv.as_mv.col & 7, d->bmi.mv.as_mv.row & 7, d->predictor_base, d->cl_predictor_mem, d->predictor_offset, pitch);
             else
                 vp8_bilinear_predict8x8_cl(d->cl_commands, ptr_base, pre_mem, pre_dist+ptr_offset, d->pre_stride, d->bmi.mv.as_mv.col & 7, d->bmi.mv.as_mv.row & 7, d->predictor_base, d->cl_predictor_mem, d->predictor_offset, pitch);
     }
+    //Otherwise copy memory directly from src to dest
     else
     {
         vp8_copy_mem_cl(d->cl_commands, ptr_base, pre_mem, pre_dist+ptr_offset, d->pre_stride, NULL, d->cl_predictor_mem, d->predictor_offset, pitch, 8, 8);
@@ -208,7 +210,7 @@ static void vp8_build_inter_predictors2b_cl(MACROBLOCKD *x, BLOCKD *d, int pitch
     int pre_dist = *d->base_pre - x->pre.buffer_alloc;
     cl_mem pre_mem = x->pre.buffer_mem;
 
-    if (d->bmi.mv.as_mv.row & 7 || d->bmi.mv.as_mv.col & 7)
+    if (d->bmi.mv.as_mv.row | d->bmi.mv.as_mv.col & 7)
     {
         if (d->sixtap_filter == CL_TRUE)
             vp8_sixtap_predict8x4_cl(d->cl_commands,ptr_base,pre_mem,pre_dist+ptr_offset, d->pre_stride, d->bmi.mv.as_mv.col & 7, d->bmi.mv.as_mv.row & 7, d->predictor_base, d->cl_predictor_mem, d->predictor_offset, pitch);
