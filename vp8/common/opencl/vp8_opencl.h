@@ -125,9 +125,14 @@ typedef struct VP8_COMMON_CL {
 
     cl_program filter_program; // compute program for subpixel/bilinear filters
     cl_kernel vp8_sixtap_predict_kernel;
+    size_t    vp8_sixtap_predict_kernel_size;
     cl_kernel vp8_sixtap_predict8x4_kernel;
+    size_t    vp8_sixtap_predict8x4_kernel_size;
     cl_kernel vp8_sixtap_predict8x8_kernel;
+    size_t    vp8_sixtap_predict8x8_kernel_size;
     cl_kernel vp8_sixtap_predict16x16_kernel;
+    size_t    vp8_sixtap_predict16x16_kernel_size;
+
     cl_kernel vp8_bilinear_predict4x4_kernel;
     cl_kernel vp8_bilinear_predict8x4_kernel;
     cl_kernel vp8_bilinear_predict8x8_kernel;

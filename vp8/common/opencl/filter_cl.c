@@ -28,6 +28,8 @@ const char *filter_cl_file_name = "vp8/common/opencl/filter_cl.cl";
 static cl_mem int_mem = NULL;
 #endif
 
+#define TWO_PASS_SIXTAP 1
+
 int pass=0;
 
 void cl_destroy_filter(){
@@ -36,18 +38,21 @@ void cl_destroy_filter(){
         clReleaseProgram(cl_data.filter_program);
 
     //CL_RELEASE_KERNEL(cl_data.vp8_block_variation_kernel);
-    //CL_RELEASE_KERNEL(cl_data.vp8_sixtap_predict_kernel);
-    //CL_RELEASE_KERNEL(cl_data.vp8_sixtap_predict8x8_kernel);
-    //CL_RELEASE_KERNEL(cl_data.vp8_sixtap_predict8x4_kernel);
-    //CL_RELEASE_KERNEL(cl_data.vp8_sixtap_predict16x16_kernel);
+#if !TWO_PASS_SIXTAP
+    CL_RELEASE_KERNEL(cl_data.vp8_sixtap_predict_kernel);
+    CL_RELEASE_KERNEL(cl_data.vp8_sixtap_predict8x8_kernel);
+    CL_RELEASE_KERNEL(cl_data.vp8_sixtap_predict8x4_kernel);
+    CL_RELEASE_KERNEL(cl_data.vp8_sixtap_predict16x16_kernel);
+#else
+    CL_RELEASE_KERNEL(cl_data.vp8_filter_block2d_first_pass_kernel);
+    CL_RELEASE_KERNEL(cl_data.vp8_filter_block2d_second_pass_kernel);
+#endif
     //CL_RELEASE_KERNEL(cl_data.vp8_bilinear_predict4x4_kernel);
     //CL_RELEASE_KERNEL(cl_data.vp8_bilinear_predict8x4_kernel);
     //CL_RELEASE_KERNEL(cl_data.vp8_bilinear_predict8x8_kernel);
     //CL_RELEASE_KERNEL(cl_data.vp8_bilinear_predict16x16_kernel);
     CL_RELEASE_KERNEL(cl_data.vp8_memcpy_kernel);
 
-    CL_RELEASE_KERNEL(cl_data.vp8_filter_block2d_first_pass_kernel);
-    CL_RELEASE_KERNEL(cl_data.vp8_filter_block2d_second_pass_kernel);
     CL_RELEASE_KERNEL(cl_data.vp8_filter_block2d_bil_first_pass_kernel);
     CL_RELEASE_KERNEL(cl_data.vp8_filter_block2d_bil_second_pass_kernel);
 
@@ -63,7 +68,6 @@ void cl_destroy_filter(){
 int cl_init_filter() {
     int err;
 
-    size_t local_size;
 
     // Create the filter compute program from the file-defined source code
     if ( cl_load_program(&cl_data.filter_program, filter_cl_file_name,
@@ -71,15 +75,26 @@ int cl_init_filter() {
         return CL_TRIED_BUT_FAILED;
 
     // Create the compute kernel in the program we wish to run
+#if TWO_PASS_SIXTAP
     CL_CREATE_KERNEL(cl_data,filter_program,vp8_filter_block2d_first_pass_kernel,"vp8_filter_block2d_first_pass_kernel");
     CL_CREATE_KERNEL(cl_data,filter_program,vp8_filter_block2d_second_pass_kernel,"vp8_filter_block2d_second_pass_kernel");
-    CL_CREATE_KERNEL(cl_data,filter_program,vp8_filter_block2d_bil_first_pass_kernel,"vp8_filter_block2d_bil_first_pass_kernel");
-    CL_CREATE_KERNEL(cl_data,filter_program,vp8_filter_block2d_bil_second_pass_kernel,"vp8_filter_block2d_bil_second_pass_kernel");
-
     CL_CALC_LOCAL_SIZE(vp8_filter_block2d_first_pass_kernel,vp8_filter_block2d_first_pass_kernel_size);
     CL_CALC_LOCAL_SIZE(vp8_filter_block2d_second_pass_kernel,vp8_filter_block2d_second_pass_kernel_size);
-    CL_CALC_LOCAL_SIZE(vp8_filter_block2d_bil_first_pass_kernel,vp8_filter_block2d_bil_first_pass_kernel_size);
-    CL_CALC_LOCAL_SIZE(vp8_filter_block2d_bil_second_pass_kernel,vp8_filter_block2d_bil_second_pass_kernel_size);
+#else
+    CL_CREATE_KERNEL(cl_data,filter_program,vp8_sixtap_predict_kernel,"vp8_sixtap_predict_kernel");
+    CL_CALC_LOCAL_SIZE(vp8_sixtap_predict_kernel,vp8_sixtap_predict_kernel_size);
+    CL_CREATE_KERNEL(cl_data,filter_program,vp8_sixtap_predict8x8_kernel,"vp8_sixtap_predict8x8_kernel");
+    CL_CALC_LOCAL_SIZE(vp8_sixtap_predict8x8_kernel,vp8_sixtap_predict8x8_kernel_size);
+    CL_CREATE_KERNEL(cl_data,filter_program,vp8_sixtap_predict8x4_kernel,"vp8_sixtap_predict8x4_kernel");
+    CL_CALC_LOCAL_SIZE(vp8_sixtap_predict8x4_kernel,vp8_sixtap_predict8x4_kernel_size);
+    CL_CREATE_KERNEL(cl_data,filter_program,vp8_sixtap_predict16x16_kernel,"vp8_sixtap_predict16x16_kernel");
+    CL_CALC_LOCAL_SIZE(vp8_sixtap_predict16x16_kernel,vp8_sixtap_predict16x16_kernel_size);
+#endif
+    
+    //CL_CALC_LOCAL_SIZE(vp8_filter_block2d_bil_first_pass_kernel,vp8_filter_block2d_bil_first_pass_kernel_size);
+    //CL_CALC_LOCAL_SIZE(vp8_filter_block2d_bil_second_pass_kernel,vp8_filter_block2d_bil_second_pass_kernel_size);
+    CL_CREATE_KERNEL(cl_data,filter_program,vp8_filter_block2d_bil_first_pass_kernel,"vp8_filter_block2d_bil_first_pass_kernel");
+    CL_CREATE_KERNEL(cl_data,filter_program,vp8_filter_block2d_bil_second_pass_kernel,"vp8_filter_block2d_bil_second_pass_kernel");
 
 
     //CL_CREATE_KERNEL(cl_data,filter_program,vp8_bilinear_predict4x4_kernel,"vp8_bilinear_predict4x4_kernel");
@@ -173,6 +188,92 @@ void vp8_filter_block2d_second_pass_cl(
         "Error: Failed to execute kernel!\n",
         printf("err = %d\n",err);,
     );
+}
+
+void vp8_sixtap_single_pass(
+    cl_command_queue cq,
+    cl_kernel kernel,
+    size_t local,
+    size_t global,
+    cl_mem src_mem,
+    cl_mem dst_mem,
+    unsigned char *src_base,
+    int src_offset,
+    size_t src_len,
+    int src_pixels_per_line,
+    int xoffset,
+    int yoffset,
+    unsigned char *dst_base,
+    int dst_offset,
+    int dst_pitch,
+    size_t dst_len
+){
+    int err;
+
+#if !STATIC_MEM
+    cl_mem int_mem;
+#endif
+
+    int free_src = 0, free_dst = 0;
+
+    if (local > global){
+        local = global;
+    }
+
+    /* Make space for kernel input/output data.
+     * Initialize the buffer as well if needed.
+     */
+    if (src_mem == NULL){
+        CL_CREATE_BUF( cq, src_mem,, sizeof (unsigned char) * src_len, src_base-2,,);
+        src_offset = 2;
+        free_src = 1;
+        printf("Created src\n");
+    } else {
+        src_offset -= 2*src_pixels_per_line;
+    }
+
+    if (dst_mem == NULL){
+        printf("Created dst_mem\n");
+        CL_CREATE_BUF( cq, dst_mem,, sizeof (unsigned char) * dst_len + dst_offset, dst_base,, );
+        free_dst = 1;
+    }
+
+#if !STATIC_MEM
+    CL_CREATE_BUF( cq, int_mem,, sizeof(cl_int)*FData_height*FData_width, NULL,, );
+#endif
+
+    err =  clSetKernelArg(kernel, 0, sizeof (cl_mem), &src_mem);
+    err |= clSetKernelArg(kernel, 1, sizeof (int), &src_offset);
+    err |= clSetKernelArg(kernel, 2, sizeof (cl_int), &src_pixels_per_line);
+    err |= clSetKernelArg(kernel, 3, sizeof (cl_int), &xoffset);
+    err |= clSetKernelArg(kernel, 4, sizeof (cl_int), &yoffset);
+    err |= clSetKernelArg(kernel, 5, sizeof (cl_mem), &dst_mem);
+    err |= clSetKernelArg(kernel, 6, sizeof (cl_int), &dst_offset);
+    err |= clSetKernelArg(kernel, 7, sizeof (int), &dst_pitch);
+    CL_CHECK_SUCCESS( cq, err != CL_SUCCESS,
+        "Error: Failed to set kernel arguments!\n",
+        ,
+    );
+
+    /* Execute the kernel */
+    err = clEnqueueNDRangeKernel( cq, kernel, 1, NULL, &global, &local , 0, NULL, NULL);
+    CL_CHECK_SUCCESS( cq, err != CL_SUCCESS,
+        "Error: Failed to execute kernel!\n",
+        printf("err = %d\n",err);,
+    );
+
+    if (free_src == 1)
+        clReleaseMemObject(src_mem);
+
+    if (free_dst == 1){
+        /* Read back the result data from the device */
+        err = clEnqueueReadBuffer(cq, dst_mem, CL_FALSE, 0, sizeof (unsigned char) * dst_len + dst_offset, dst_base, 0, NULL, NULL);
+        CL_CHECK_SUCCESS( cq, err != CL_SUCCESS,
+            "Error: Failed to read output array!\n",
+            ,
+        );
+        clReleaseMemObject(dst_mem);
+    }
 }
 
 void vp8_sixtap_run_cl(
@@ -273,12 +374,34 @@ void vp8_sixtap_predict4x4_cl
     int dst_len = DST_LEN(dst_pitch,output_height,output_width);
     int src_len = SIXTAP_SRC_LEN(FData_width,FData_height,src_pixels_per_line);
 
+#if TWO_PASS_SIXTAP
     vp8_sixtap_run_cl(cq, src_mem, dst_mem,
             (src_ptr-2*src_pixels_per_line),src_offset, src_len,
             src_pixels_per_line, xoffset,yoffset,dst_base,dst_offset,
             dst_pitch,dst_len,FData_height,FData_width,output_height,
             output_width,int_offset
     );
+#else
+    vp8_sixtap_single_pass(
+            cq,
+            cl_data.vp8_sixtap_predict_kernel,
+            cl_data.vp8_sixtap_predict_kernel_size,
+            FData_height*FData_width,
+            src_mem,
+            dst_mem,
+            src_base,
+            src_offset,
+            src_len,
+            src_pixels_per_line,
+            xoffset,
+            yoffset,
+            dst_base,
+            dst_offset,
+            dst_pitch,
+            dst_len
+    );
+#endif
+
 
     return;
 }
@@ -305,12 +428,33 @@ void vp8_sixtap_predict8x8_cl
     int dst_len = DST_LEN(dst_pitch,output_height,output_width);
     int src_len = SIXTAP_SRC_LEN(FData_width,FData_height,src_pixels_per_line);
 
+#if TWO_PASS_SIXTAP
     vp8_sixtap_run_cl(cq, src_mem, dst_mem,
             (src_ptr-2*src_pixels_per_line),src_offset, src_len,
             src_pixels_per_line, xoffset,yoffset,dst_base,dst_offset,
             dst_pitch,dst_len,FData_height,FData_width,output_height,
             output_width,int_offset
     );
+#else
+    vp8_sixtap_single_pass(
+            cq,
+            cl_data.vp8_sixtap_predict8x8_kernel,
+            cl_data.vp8_sixtap_predict8x8_kernel_size,
+            FData_height*FData_width,
+            src_mem,
+            dst_mem,
+            src_base,
+            src_offset,
+            src_len,
+            src_pixels_per_line,
+            xoffset,
+            yoffset,
+            dst_base,
+            dst_offset,
+            dst_pitch,
+            dst_len
+    );
+#endif
 
     return;
 }
@@ -338,12 +482,33 @@ void vp8_sixtap_predict8x4_cl
     int dst_len = DST_LEN(dst_pitch,output_height,output_width);
     int src_len = SIXTAP_SRC_LEN(FData_width,FData_height,src_pixels_per_line);
 
+#if TWO_PASS_SIXTAP
     vp8_sixtap_run_cl(cq, src_mem, dst_mem,
             (src_ptr-2*src_pixels_per_line),src_offset, src_len,
             src_pixels_per_line, xoffset,yoffset,dst_base,dst_offset,
             dst_pitch,dst_len,FData_height,FData_width,output_height,
             output_width,int_offset
     );
+#else
+    vp8_sixtap_single_pass(
+            cq,
+            cl_data.vp8_sixtap_predict8x4_kernel,
+            cl_data.vp8_sixtap_predict8x4_kernel_size,
+            FData_height*FData_width,
+            src_mem,
+            dst_mem,
+            src_base,
+            src_offset,
+            src_len,
+            src_pixels_per_line,
+            xoffset,
+            yoffset,
+            dst_base,
+            dst_offset,
+            dst_pitch,
+            dst_len
+    );
+#endif
 
     return;
 }
@@ -371,12 +536,33 @@ void vp8_sixtap_predict16x16_cl
     int dst_len = DST_LEN(dst_pitch,output_height,output_width);
     int src_len = SIXTAP_SRC_LEN(FData_width,FData_height,src_pixels_per_line);
 
+#if TWO_PASS_SIXTAP
     vp8_sixtap_run_cl(cq, src_mem, dst_mem,
             (src_ptr-2*src_pixels_per_line),src_offset, src_len,
             src_pixels_per_line, xoffset,yoffset,dst_base,dst_offset,
             dst_pitch,dst_len,FData_height,FData_width,output_height,
             output_width,int_offset
     );
+#else
+    vp8_sixtap_single_pass(
+            cq,
+            cl_data.vp8_sixtap_predict16x16_kernel,
+            cl_data.vp8_sixtap_predict16x16_kernel_size,
+            FData_height*FData_width,
+            src_mem,
+            dst_mem,
+            src_base,
+            src_offset,
+            src_len,
+            src_pixels_per_line,
+            xoffset,
+            yoffset,
+            dst_base,
+            dst_offset,
+            dst_pitch,
+            dst_len
+    );
+#endif
 
     return;
 
