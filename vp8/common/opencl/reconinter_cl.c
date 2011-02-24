@@ -244,10 +244,9 @@ void vp8_build_inter_predictors_mbuv_cl(MACROBLOCKD *x)
         }
         else
         {
-            int pre_off = upre_off + offset;
-            vp8_copy_mem_cl(x->block[16].cl_commands, pre_mem, &pre_off, pre_stride, x->cl_predictor_mem, &upred_offset, 8, 8, 8, 1);
-            pre_off = vpre_off + offset;
-            vp8_copy_mem_cl(x->block[16].cl_commands, pre_mem, &pre_off, pre_stride, x->cl_predictor_mem, &vpred_offset, 8, 8, 8, 1);
+            int pre_offsets[2] = {upre_off+offset, vpre_off+offset};
+            int pred_offsets[2] = {upred_offset,vpred_offset};
+            vp8_copy_mem_cl(x->block[16].cl_commands, pre_mem, pre_offsets, pre_stride, x->cl_predictor_mem, pred_offsets, 8, 8, 8, 2);
         }
     }
     else
@@ -476,10 +475,9 @@ void vp8_build_inter_predictors_mb_s_cl(MACROBLOCKD *x)
         }
         else
         {
-            int pre_off = upre_off+offset;
-            vp8_copy_mem_cl(x->block[16].cl_commands, pre_mem, &pre_off, pre_stride, dst_mem, &udst_off, x->dst.uv_stride, 8, 8, 1);
-            pre_off = vpre_off+offset;
-            vp8_copy_mem_cl(x->block[16].cl_commands, pre_mem, &pre_off, pre_stride, dst_mem, &vdst_off, x->dst.uv_stride, 8, 8, 1);
+            int pre_offsets[2] = {upre_off+offset, vpre_off+offset};
+            int dst_offsets[2] = {udst_off,vdst_off};
+            vp8_copy_mem_cl(x->block[16].cl_commands, pre_mem, pre_offsets, pre_stride, dst_mem, dst_offsets, x->dst.uv_stride, 8, 8, 2);
         }
 
     }
