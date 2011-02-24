@@ -76,22 +76,21 @@ static void vp8_copy_mem_cl(
     int dst_offset,
     int dst_stride,
     int num_bytes,
-    int num_iter
+    int num_iter,
+    int num_blocks
 ){
 
-    int err;
-    size_t global[2] = {num_bytes, num_iter};
+    int err,block;
+    size_t global[3] = {num_bytes, num_iter, num_blocks};
 
-    size_t local[2] = {cl_data.vp8_memcpy_kernel_size,cl_data.vp8_memcpy_kernel_size};
+    size_t local[3];
     local[0] = global[0];
     local[1] = global[1];
+    local[2] = global[2];
 
-    /* Set kernel arguments */
     err  = clSetKernelArg(cl_data.vp8_memcpy_kernel, 0, sizeof (cl_mem), &src_mem);
-    err |= clSetKernelArg(cl_data.vp8_memcpy_kernel, 1, sizeof (int), &src_offset);
     err |= clSetKernelArg(cl_data.vp8_memcpy_kernel, 2, sizeof (int), &src_stride);
     err |= clSetKernelArg(cl_data.vp8_memcpy_kernel, 3, sizeof (cl_mem), &dst_mem);
-    err |= clSetKernelArg(cl_data.vp8_memcpy_kernel, 4, sizeof (int), &dst_offset);
     err |= clSetKernelArg(cl_data.vp8_memcpy_kernel, 5, sizeof (int), &dst_stride);
     err |= clSetKernelArg(cl_data.vp8_memcpy_kernel, 6, sizeof (int), &num_bytes);
     err |= clSetKernelArg(cl_data.vp8_memcpy_kernel, 7, sizeof (int), &num_iter);
@@ -100,17 +99,28 @@ static void vp8_copy_mem_cl(
         return,
     );
 
-    /* Execute the kernel */
-    if (num_bytes * num_iter > cl_data.vp8_memcpy_kernel_size){
-        err = clEnqueueNDRangeKernel( cq, cl_data.vp8_memcpy_kernel, 2, NULL, global, NULL , 0, NULL, NULL);
-    } else {
-        err = clEnqueueNDRangeKernel( cq, cl_data.vp8_memcpy_kernel, 2, NULL, global, local , 0, NULL, NULL);
-    }
+    for (block = 0; block < num_blocks; block++){
 
-    CL_CHECK_SUCCESS( cq, err != CL_SUCCESS,
-        "Error: Failed to execute kernel!\n",
-        return,
-    );
+        /* Set kernel arguments */
+        err = clSetKernelArg(cl_data.vp8_memcpy_kernel, 1, sizeof (int), &src_offset);
+        err |= clSetKernelArg(cl_data.vp8_memcpy_kernel, 4, sizeof (int), &dst_offset);
+        CL_CHECK_SUCCESS( cq, err != CL_SUCCESS,
+            "Error: Failed to set kernel arguments!\n",
+            return,
+        );
+
+        /* Execute the kernel */
+        if (num_bytes * num_iter > cl_data.vp8_memcpy_kernel_size){
+            err = clEnqueueNDRangeKernel( cq, cl_data.vp8_memcpy_kernel, 2, NULL, global, NULL , 0, NULL, NULL);
+        } else {
+            err = clEnqueueNDRangeKernel( cq, cl_data.vp8_memcpy_kernel, 2, NULL, global, local , 0, NULL, NULL);
+        }
+
+        CL_CHECK_SUCCESS( cq, err != CL_SUCCESS,
+            "Error: Failed to execute kernel!\n",
+            return,
+        );
+    }
 
 }
 
@@ -124,6 +134,7 @@ static void vp8_build_inter_predictors_b_cl(MACROBLOCKD *x, BLOCKD *d, int pitch
 
     int pre_dist = *d->base_pre - x->pre.buffer_alloc;
     cl_mem pre_mem = x->pre.buffer_mem;
+    int pre_off = pre_dist+ptr_offset;
 
     if (d->sixtap_filter == CL_TRUE)
         sppf = vp8_sixtap_predict4x4_cl;
@@ -135,11 +146,11 @@ static void vp8_build_inter_predictors_b_cl(MACROBLOCKD *x, BLOCKD *d, int pitch
 
     if ( (d->bmi.mv.as_mv.row | d->bmi.mv.as_mv.col) & 7)
     {
-        sppf(d->cl_commands, ptr_base, pre_mem, pre_dist+ptr_offset, d->pre_stride, d->bmi.mv.as_mv.col & 7, d->bmi.mv.as_mv.row & 7, d->predictor_base, d->cl_predictor_mem, d->predictor_offset, pitch);
+        sppf(d->cl_commands, ptr_base, pre_mem, pre_off, d->pre_stride, d->bmi.mv.as_mv.col & 7, d->bmi.mv.as_mv.row & 7, d->predictor_base, d->cl_predictor_mem, d->predictor_offset, pitch);
     }
     else
     {
-        vp8_copy_mem_cl(d->cl_commands, pre_mem, pre_dist+ptr_offset,d->pre_stride,d->cl_predictor_mem, d->predictor_offset,pitch,4,4);
+        vp8_copy_mem_cl(d->cl_commands, pre_mem, pre_off, d->pre_stride,d->cl_predictor_mem, d->predictor_offset,pitch,4,4,1);
     }
 }
 
@@ -151,19 +162,20 @@ static void vp8_build_inter_predictors4b_cl(MACROBLOCKD *x, BLOCKD *d, int pitch
 
     int pre_dist = *d->base_pre - x->pre.buffer_alloc;
     cl_mem pre_mem = x->pre.buffer_mem;
+    int pre_off = pre_dist + ptr_offset;
 
     //If there's motion in the bottom 8 subpixels, need to do subpixel prediction
     if ( (d->bmi.mv.as_mv.row | d->bmi.mv.as_mv.col) & 7)
     {
             if (d->sixtap_filter == CL_TRUE)
-                vp8_sixtap_predict8x8_cl(d->cl_commands, ptr_base, pre_mem, pre_dist+ptr_offset, d->pre_stride, d->bmi.mv.as_mv.col & 7, d->bmi.mv.as_mv.row & 7, d->predictor_base, d->cl_predictor_mem, d->predictor_offset, pitch);
+                vp8_sixtap_predict8x8_cl(d->cl_commands, ptr_base, pre_mem, pre_off, d->pre_stride, d->bmi.mv.as_mv.col & 7, d->bmi.mv.as_mv.row & 7, d->predictor_base, d->cl_predictor_mem, d->predictor_offset, pitch);
             else
-                vp8_bilinear_predict8x8_cl(d->cl_commands, ptr_base, pre_mem, pre_dist+ptr_offset, d->pre_stride, d->bmi.mv.as_mv.col & 7, d->bmi.mv.as_mv.row & 7, d->predictor_base, d->cl_predictor_mem, d->predictor_offset, pitch);
+                vp8_bilinear_predict8x8_cl(d->cl_commands, ptr_base, pre_mem, pre_off, d->pre_stride, d->bmi.mv.as_mv.col & 7, d->bmi.mv.as_mv.row & 7, d->predictor_base, d->cl_predictor_mem, d->predictor_offset, pitch);
     }
     //Otherwise copy memory directly from src to dest
     else
     {
-        vp8_copy_mem_cl(d->cl_commands, pre_mem, pre_dist+ptr_offset, d->pre_stride, d->cl_predictor_mem, d->predictor_offset, pitch, 8, 8);
+        vp8_copy_mem_cl(d->cl_commands, pre_mem, pre_off, d->pre_stride, d->cl_predictor_mem, d->predictor_offset, pitch, 8, 8, 1);
     }
 
 
@@ -177,17 +189,18 @@ static void vp8_build_inter_predictors2b_cl(MACROBLOCKD *x, BLOCKD *d, int pitch
 
     int pre_dist = *d->base_pre - x->pre.buffer_alloc;
     cl_mem pre_mem = x->pre.buffer_mem;
+    int pre_off = pre_dist+ptr_offset;
 
     if ( (d->bmi.mv.as_mv.row | d->bmi.mv.as_mv.col) & 7)
     {
         if (d->sixtap_filter == CL_TRUE)
-            vp8_sixtap_predict8x4_cl(d->cl_commands,ptr_base,pre_mem,pre_dist+ptr_offset, d->pre_stride, d->bmi.mv.as_mv.col & 7, d->bmi.mv.as_mv.row & 7, d->predictor_base, d->cl_predictor_mem, d->predictor_offset, pitch);
+            vp8_sixtap_predict8x4_cl(d->cl_commands,ptr_base,pre_mem,pre_off, d->pre_stride, d->bmi.mv.as_mv.col & 7, d->bmi.mv.as_mv.row & 7, d->predictor_base, d->cl_predictor_mem, d->predictor_offset, pitch);
         else
-            vp8_bilinear_predict8x4_cl(d->cl_commands,ptr_base,pre_mem,pre_dist+ptr_offset, d->pre_stride, d->bmi.mv.as_mv.col & 7, d->bmi.mv.as_mv.row & 7, d->predictor_base, d->cl_predictor_mem, d->predictor_offset, pitch);
+            vp8_bilinear_predict8x4_cl(d->cl_commands,ptr_base,pre_mem,pre_off, d->pre_stride, d->bmi.mv.as_mv.col & 7, d->bmi.mv.as_mv.row & 7, d->predictor_base, d->cl_predictor_mem, d->predictor_offset, pitch);
     }
     else
     {
-        vp8_copy_mem_cl(d->cl_commands, pre_mem, pre_dist+ptr_offset, d->pre_stride, d->cl_predictor_mem, d->predictor_offset, pitch, 8, 4);
+        vp8_copy_mem_cl(d->cl_commands, pre_mem, pre_off, d->pre_stride, d->cl_predictor_mem, d->predictor_offset, pitch, 8, 4, 1);
     }
 }
 
@@ -231,8 +244,8 @@ void vp8_build_inter_predictors_mbuv_cl(MACROBLOCKD *x)
         }
         else
         {
-            vp8_copy_mem_cl(x->block[16].cl_commands, pre_mem, upre_off+offset, pre_stride, x->cl_predictor_mem, upred_offset, 8, 8, 8);
-            vp8_copy_mem_cl(x->block[16].cl_commands, pre_mem, vpre_off+offset, pre_stride, x->cl_predictor_mem, vpred_offset, 8, 8, 8);
+            vp8_copy_mem_cl(x->block[16].cl_commands, pre_mem, upre_off+offset, pre_stride, x->cl_predictor_mem, upred_offset, 8, 8, 8, 1);
+            vp8_copy_mem_cl(x->block[16].cl_commands, pre_mem, vpre_off+offset, pre_stride, x->cl_predictor_mem, vpred_offset, 8, 8, 8, 1);
         }
     }
     else
@@ -290,7 +303,7 @@ void vp8_build_inter_predictors_mb_cl(MACROBLOCKD *x)
         else
         {
             //16x16 copy
-            vp8_copy_mem_cl(x->cl_commands, pre_mem, ypre_off, pre_stride, x->cl_predictor_mem, 0, 16, 16, 16);
+            vp8_copy_mem_cl(x->cl_commands, pre_mem, ypre_off, pre_stride, x->cl_predictor_mem, 0, 16, 16, 16, 1);
         }
 
 
@@ -312,8 +325,8 @@ void vp8_build_inter_predictors_mb_cl(MACROBLOCKD *x)
         }
         else
         {
-            vp8_copy_mem_cl(x->cl_commands, pre_mem, upre_off+offset, pre_stride, x->cl_predictor_mem, upred_offset, 8, 8, 8);
-            vp8_copy_mem_cl(x->cl_commands, pre_mem, vpre_off+offset, pre_stride, x->cl_predictor_mem, vpred_offset, 8, 8, 8);
+            vp8_copy_mem_cl(x->cl_commands, pre_mem, upre_off+offset, pre_stride, x->cl_predictor_mem, upred_offset, 8, 8, 8, 1);
+            vp8_copy_mem_cl(x->cl_commands, pre_mem, vpre_off+offset, pre_stride, x->cl_predictor_mem, vpred_offset, 8, 8, 8, 1);
         }
     }
     else
@@ -394,7 +407,7 @@ static void vp8_build_inter_predictors_b_s_cl(MACROBLOCKD *x, BLOCKD *d, int dst
     }
     else
     {
-        vp8_copy_mem_cl(d->cl_commands, pre_mem,pre_dist+ptr_offset,pre_stride, dst_mem, dst_offset,dst_stride,4,4);
+        vp8_copy_mem_cl(d->cl_commands, pre_mem,pre_dist+ptr_offset,pre_stride, dst_mem, dst_offset,dst_stride,4,4,1);
     }
 }
 
@@ -436,9 +449,7 @@ void vp8_build_inter_predictors_mb_s_cl(MACROBLOCKD *x)
         }
         else
         {
-            //CL_FINISH(x->cl_commands);
-            //vp8_memcpy(pre_base, ypre_off+ptr_offset, pre_stride, dst_base, ydst_off, x->dst.y_stride, 16, 16);
-            vp8_copy_mem_cl(x->cl_commands, pre_mem, ypre_off+ptr_offset, pre_stride, dst_mem, ydst_off, x->dst.y_stride, 16, 16);
+            vp8_copy_mem_cl(x->cl_commands, pre_mem, ypre_off+ptr_offset, pre_stride, dst_mem, ydst_off, x->dst.y_stride, 16, 16, 1);
         }
 
         mv_row = x->block[16].bmi.mv.as_mv.row;
@@ -458,11 +469,8 @@ void vp8_build_inter_predictors_mb_s_cl(MACROBLOCKD *x)
         }
         else
         {
-            //CL_FINISH(x->block[16].cl_commands);
-            //vp8_memcpy(pre_base, upre_off+offset, pre_stride, dst_base, udst_off, x->dst.uv_stride, 8, 8);
-            //vp8_memcpy(pre_base, vpre_off+offset, pre_stride, dst_base, vdst_off, x->dst.uv_stride, 8, 8);
-            vp8_copy_mem_cl(x->block[16].cl_commands, pre_mem, upre_off+offset, pre_stride, dst_mem, udst_off, x->dst.uv_stride, 8, 8);
-            vp8_copy_mem_cl(x->block[16].cl_commands, pre_mem, vpre_off+offset, pre_stride, dst_mem, vdst_off, x->dst.uv_stride, 8, 8);
+            vp8_copy_mem_cl(x->block[16].cl_commands, pre_mem, upre_off+offset, pre_stride, dst_mem, udst_off, x->dst.uv_stride, 8, 8, 1);
+            vp8_copy_mem_cl(x->block[16].cl_commands, pre_mem, vpre_off+offset, pre_stride, dst_mem, vdst_off, x->dst.uv_stride, 8, 8, 1);
         }
 
     }
@@ -481,7 +489,6 @@ void vp8_build_inter_predictors_mb_s_cl(MACROBLOCKD *x)
             for (i = 0; i < 4; i++)
             {
                 BLOCKD *d = &x->block[bbb[i]];
-                /*vp8_build_inter_predictors4b(x, d, 16);*/
 
                 {
                     unsigned char *ptr_base = *(d->base_pre);
@@ -489,16 +496,18 @@ void vp8_build_inter_predictors_mb_s_cl(MACROBLOCKD *x)
                     
                     int ptr_offset = d->pre + (d->bmi.mv.as_mv.row >> 3) * d->pre_stride + (d->bmi.mv.as_mv.col >> 3);
 
+                    pre_off += ptr_offset;
+
                     if ( (d->bmi.mv.as_mv.row | d->bmi.mv.as_mv.col) & 7)
                     {
                         if (x->sixtap_filter == CL_TRUE)
-                            vp8_sixtap_predict8x8_cl(d->cl_commands, ptr_base, pre_mem, pre_off+ptr_offset, d->pre_stride, d->bmi.mv.as_mv.col & 7, d->bmi.mv.as_mv.row & 7, dst_base, dst_mem, ydst_off, x->dst.y_stride);
+                            vp8_sixtap_predict8x8_cl(d->cl_commands, ptr_base, pre_mem, pre_off, d->pre_stride, d->bmi.mv.as_mv.col & 7, d->bmi.mv.as_mv.row & 7, dst_base, dst_mem, ydst_off, x->dst.y_stride);
                         else
-                            vp8_bilinear_predict8x8_cl(d->cl_commands, ptr_base, pre_mem, pre_off+ptr_offset, d->pre_stride, d->bmi.mv.as_mv.col & 7, d->bmi.mv.as_mv.row & 7, dst_base, dst_mem, ydst_off, x->dst.y_stride);
+                            vp8_bilinear_predict8x8_cl(d->cl_commands, ptr_base, pre_mem, pre_off, d->pre_stride, d->bmi.mv.as_mv.col & 7, d->bmi.mv.as_mv.row & 7, dst_base, dst_mem, ydst_off, x->dst.y_stride);
                     }
                     else
                     {
-                        vp8_copy_mem_cl(x->cl_commands, pre_mem, pre_off+ptr_offset, d->pre_stride, dst_mem, ydst_off, x->dst.y_stride, 8, 8);
+                        vp8_copy_mem_cl(x->cl_commands, pre_mem, pre_off, d->pre_stride, dst_mem, ydst_off, x->dst.y_stride, 8, 8, 1);
                     }
                 }
             }
@@ -518,17 +527,18 @@ void vp8_build_inter_predictors_mb_s_cl(MACROBLOCKD *x)
                     int pre_off = ptr_base - x->pre.buffer_alloc;
 
                     int ptr_offset = d0->pre + (d0->bmi.mv.as_mv.row >> 3) * d0->pre_stride + (d0->bmi.mv.as_mv.col >> 3);
+                    pre_off += ptr_offset;
 
                     if ( (d0->bmi.mv.as_mv.row | d0->bmi.mv.as_mv.col) & 7)
                     {
                         if (d0->sixtap_filter == CL_TRUE)
-                            vp8_sixtap_predict8x4_cl(d0->cl_commands, ptr_base, pre_mem, pre_off+ptr_offset, d0->pre_stride, d0->bmi.mv.as_mv.col & 7, d0->bmi.mv.as_mv.row & 7, dst_base, dst_mem, ydst_off, x->dst.y_stride);
+                            vp8_sixtap_predict8x4_cl(d0->cl_commands, ptr_base, pre_mem, pre_off, d0->pre_stride, d0->bmi.mv.as_mv.col & 7, d0->bmi.mv.as_mv.row & 7, dst_base, dst_mem, ydst_off, x->dst.y_stride);
                         else
-                            vp8_bilinear_predict8x4_cl(d0->cl_commands, ptr_base, pre_mem,pre_off+ptr_offset, d0->pre_stride, d0->bmi.mv.as_mv.col & 7, d0->bmi.mv.as_mv.row & 7, dst_base, dst_mem, ydst_off, x->dst.y_stride);
+                            vp8_bilinear_predict8x4_cl(d0->cl_commands, ptr_base, pre_mem,pre_off, d0->pre_stride, d0->bmi.mv.as_mv.col & 7, d0->bmi.mv.as_mv.row & 7, dst_base, dst_mem, ydst_off, x->dst.y_stride);
                     }
                     else
                     {
-                        vp8_copy_mem_cl(x->cl_commands, pre_mem, pre_off+ptr_offset, d0->pre_stride, dst_mem, ydst_off, x->dst.y_stride, 8, 4);
+                        vp8_copy_mem_cl(x->cl_commands, pre_mem, pre_off, d0->pre_stride, dst_mem, ydst_off, x->dst.y_stride, 8, 4, 1);
                     }
                 }
                 else
@@ -549,23 +559,23 @@ void vp8_build_inter_predictors_mb_s_cl(MACROBLOCKD *x)
                 /*vp8_build_inter_predictors2b(x, d0, 8);*/
                 unsigned char *ptr_base = *(d0->base_pre);
                 int ptr_offset = d0->pre + (d0->bmi.mv.as_mv.row >> 3) * d0->pre_stride + (d0->bmi.mv.as_mv.col >> 3);
-                int pre_off = ptr_base - x->pre.buffer_alloc;
+                int pre_off = ptr_base - x->pre.buffer_alloc + ptr_offset;
 
                 if ( (d0->bmi.mv.as_mv.row | d0->bmi.mv.as_mv.col) & 7)
                 {
                     if (d0->sixtap_filter || CL_TRUE)
-                        vp8_sixtap_predict8x4_cl(d0->cl_commands, ptr_base, pre_mem, pre_off+ptr_offset, d0->pre_stride,
+                        vp8_sixtap_predict8x4_cl(d0->cl_commands, ptr_base, pre_mem, pre_off, d0->pre_stride,
                             d0->bmi.mv.as_mv.col & 7, d0->bmi.mv.as_mv.row & 7,
                             dst_base, dst_mem, ydst_off, x->dst.uv_stride);
                     else
-                        vp8_bilinear_predict8x4_cl(d0->cl_commands, ptr_base, pre_mem, pre_off+ptr_offset, d0->pre_stride,
+                        vp8_bilinear_predict8x4_cl(d0->cl_commands, ptr_base, pre_mem, pre_off, d0->pre_stride,
                             d0->bmi.mv.as_mv.col & 7, d0->bmi.mv.as_mv.row & 7,
                             dst_base, dst_mem, ydst_off, x->dst.uv_stride);
                 }
                 else
                 {
-                    vp8_copy_mem_cl(x->cl_commands, pre_mem, pre_off+ptr_offset,
-                        d0->pre_stride, dst_mem, ydst_off, x->dst.uv_stride, 8, 4);
+                    vp8_copy_mem_cl(x->cl_commands, pre_mem, pre_off,
+                        d0->pre_stride, dst_mem, ydst_off, x->dst.uv_stride, 8, 4, 1);
                 }
             }
             else
@@ -575,5 +585,6 @@ void vp8_build_inter_predictors_mb_s_cl(MACROBLOCKD *x)
             }
         } //end for
     }
+    
     vp8_cl_mb_finish(x, DST_BUF);
 }

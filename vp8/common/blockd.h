@@ -195,18 +195,18 @@ typedef struct
 typedef struct
 {
     short *qcoeff_base;
-    unsigned int qcoeff_offset;
+    int qcoeff_offset;
 
     short *dqcoeff_base;
-    unsigned int dqcoeff_offset;
+    int dqcoeff_offset;
 
     //unsigned char  *predictor;
     unsigned char *predictor_base;
-    unsigned int predictor_offset;
+    int predictor_offset;
 
     //short *diff;
     short *diff_base;
-    unsigned int diff_offset;
+    int diff_offset;
 
     short *dequant;
 
