@@ -390,7 +390,7 @@ void vp8_filter_block2d_first_pass(
 
     //Add a fence so that no 2nd pass stuff starts before 1st pass writes are done.
     //write_mem_fence(CLK_GLOBAL_MEM_FENCE);
-    barrier(CLK_GLOBAL_MEM_FENCE);
+    //barrier(CLK_GLOBAL_MEM_FENCE);
 }
 
 void vp8_filter_block2d_second_pass
