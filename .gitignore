@@ -64,3 +64,5 @@ vpxdec
 vpxenc
 .project
 .cproject
+*.csv
+*.oclpj

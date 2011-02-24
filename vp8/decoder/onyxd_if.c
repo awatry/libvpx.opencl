@@ -395,8 +395,10 @@ int vp8dx_receive_compressed_data(VP8D_PTR ptr, unsigned long size, const unsign
 
 #define SET_ON_ALLOC 1
 #if SET_ON_ALLOC
+#if ENABLE_CL_SUBPIXEL || ENABLE_CL_IDCT_DEQUANT
             CL_CREATE_BUF(pbi->mb.cl_commands, pbi->mb.cl_predictor_mem, CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,
                     sizeof(cl_uchar)*384, pbi->mb.predictor, goto BUF_DONE, -1);
+#endif
 
 #if ENABLE_CL_IDCT_DEQUANT
             CL_CREATE_BUF(pbi->mb.cl_commands, pbi->mb.cl_diff_mem, CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,
@@ -412,8 +414,10 @@ int vp8dx_receive_compressed_data(VP8D_PTR ptr, unsigned long size, const unsign
                     sizeof(cl_char)*25, pbi->mb.eobs, goto BUF_DONE,-1);
 #endif
 #else
+#if ENABLE_CL_IDCT_DEQUANT || ENABLE_CL_SUBPIXEL
             CL_CREATE_BUF(pbi->mb.cl_commands, pbi->mb.cl_predictor_mem, CL_MEM_READ_WRITE,
                     sizeof(cl_uchar)*384, NULL, goto BUF_DONE,-1);
+#endif
 
 #if ENABLE_CL_IDCT_DEQUANT
             CL_CREATE_BUF(pbi->mb.cl_commands, pbi->mb.cl_diff_mem, CL_MEM_READ_WRITE,

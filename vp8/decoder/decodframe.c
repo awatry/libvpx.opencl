@@ -263,7 +263,7 @@ void vp8_decode_macroblock(VP8D_COMP *pbi, MACROBLOCKD *xd)
 #if !ENABLE_CL_IDCT_DEQUANT
     //enable this if dequant/IDCT is being done on the CPU
     CL_FINISH(xd->cl_commands);
-#else
+#elif ENABLE_CL_SUBPIXEL
     vp8_cl_mb_prep(xd,DST_BUF);
 #endif
 #endif
@@ -335,7 +335,7 @@ void vp8_decode_macroblock(VP8D_COMP *pbi, MACROBLOCKD *xd)
     else if ((xd->frame_type == KEY_FRAME  ||  xd->mode_info_context->mbmi.ref_frame == INTRA_FRAME) && xd->mode_info_context->mbmi.mode == B_PRED)
     {
 #if CONFIG_OPENCL && ENABLE_CL_IDCT_DEQUANT
-        if (cl_initialized == CL_SUCCESS && )
+        if (cl_initialized == CL_SUCCESS)
             vp8_cl_mb_prep(xd, DST_BUF);
 #endif
         for (i = 0; i < 16; i++)
@@ -1040,10 +1040,12 @@ int vp8_decode_frame(VP8D_COMP *pbi)
         //Wait for stuff to finish, just in case
         clFinish(pbi->mb.cl_commands);
 
+#if ENABLE_CL_IDCT_DEQUANT || ENABLE_CL_SUBPIXEL
         //Free Predictor CL buffer
         if (pbi->mb.cl_predictor_mem != NULL)
             clReleaseMemObject(pbi->mb.cl_predictor_mem);
-
+#endif
+        
 #if ENABLE_CL_IDCT_DEQUANT
         //Free other CL Block/MBlock buffers
         if (pbi->mb.cl_diff_mem != NULL)
