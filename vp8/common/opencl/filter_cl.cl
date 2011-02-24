@@ -356,29 +356,33 @@ void vp8_filter_block2d_first_pass(
 
     global unsigned char *src_ptr = &src_base[src_offset];
     //Note that src_offset will be reset later, which is why we capture it now
-    //src_offset = 0;
 
     int Temp;
 
     __constant short *vp8_filter = sub_pel_filters[filter_offset];
 
     if (tid < (output_width*output_height)){
+        short filter0 = vp8_filter[0];
+        short filter1 = vp8_filter[1];
+        short filter2 = vp8_filter[2];
+        short filter3 = vp8_filter[3];
+        short filter4 = vp8_filter[4];
+        short filter5 = vp8_filter[5];
+
         for (i=0; i < output_width*output_height; i++){
             src_offset = i + (i/output_width * (src_pixels_per_line - output_width));
 
-
-                Temp = (int)(src_ptr[src_offset - 2]      * vp8_filter[0]) +
-                   (int)(src_ptr[src_offset - 1] * vp8_filter[1]) +
-                   (int)(src_ptr[src_offset]                * vp8_filter[2]) +
-                   (int)(src_ptr[src_offset + 1]   * vp8_filter[3]) +
-                   (int)(src_ptr[src_offset + 2]          * vp8_filter[4]) +
-                   (int)(src_ptr[src_offset + 3]          * vp8_filter[5]) +
+            Temp = (int)(src_ptr[src_offset - 2]      * filter0) +
+                   (int)(src_ptr[src_offset - 1] * filter1) +
+                   (int)(src_ptr[src_offset]                * filter2) +
+                   (int)(src_ptr[src_offset + 1]   * filter3) +
+                   (int)(src_ptr[src_offset + 2]          * filter4) +
+                   (int)(src_ptr[src_offset + 3]          * filter5) +
                    (VP8_FILTER_WEIGHT >> 1);      /* Rounding */
 
             /* Normalize back to 0-255 */
             Temp = Temp >> VP8_FILTER_SHIFT;
 
-            //Temp = (int)src_ptr[2];
             if (Temp < 0)
                 Temp = 0;
             else if ( Temp > 255 )
