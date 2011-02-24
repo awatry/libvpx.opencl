@@ -334,8 +334,8 @@ void vp8_decode_macroblock(VP8D_COMP *pbi, MACROBLOCKD *xd)
     }
     else if ((xd->frame_type == KEY_FRAME  ||  xd->mode_info_context->mbmi.ref_frame == INTRA_FRAME) && xd->mode_info_context->mbmi.mode == B_PRED)
     {
-#if CONFIG_OPENCL
-        if (cl_initialized == CL_SUCCESS)
+#if CONFIG_OPENCL && ENABLE_CL_IDCT_DEQUANT
+        if (cl_initialized == CL_SUCCESS && )
             vp8_cl_mb_prep(xd, DST_BUF);
 #endif
         for (i = 0; i < 16; i++)
