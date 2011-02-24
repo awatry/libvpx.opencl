@@ -103,6 +103,7 @@ int cl_init_filter() {
     //CL_CREATE_KERNEL(cl_data,filter_program,vp8_bilinear_predict16x16_kernel,"vp8_bilinear_predict16x16_kernel");
 
     CL_CREATE_KERNEL(cl_data,filter_program,vp8_memcpy_kernel,"vp8_memcpy_kernel");
+    CL_CALC_LOCAL_SIZE(vp8_memcpy_kernel,vp8_memcpy_kernel_size);
 
 #if STATIC_MEM
     CL_CREATE_BUF(NULL, int_mem, NULL, sizeof(cl_int)*21*16, NULL, ,err);

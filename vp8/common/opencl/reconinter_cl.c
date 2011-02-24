@@ -91,6 +91,10 @@ static void vp8_copy_mem_cl(
     size_t dst_len = (num_iter - 1)*dst_stride + num_bytes;
     size_t global[2] = {num_bytes, num_iter};
 
+    size_t local[2] = {cl_data.vp8_memcpy_kernel_size,cl_data.vp8_memcpy_kernel_size};
+    local[0] = global[0];
+    local[1] = global[1];
+
     if (src_mem == NULL){
         src_offset = 0;
         CL_CREATE_BUF( cq, src_mem, CL_MEM_WRITE_ONLY,
@@ -123,7 +127,12 @@ static void vp8_copy_mem_cl(
     );
 
     /* Execute the kernel */
-    err = clEnqueueNDRangeKernel( cq, cl_data.vp8_memcpy_kernel, 2, NULL, global, NULL , 0, NULL, NULL);
+    if (num_bytes * num_iter > cl_data.vp8_memcpy_kernel_size){
+        err = clEnqueueNDRangeKernel( cq, cl_data.vp8_memcpy_kernel, 2, NULL, global, NULL , 0, NULL, NULL);
+    } else {
+        err = clEnqueueNDRangeKernel( cq, cl_data.vp8_memcpy_kernel, 2, NULL, global, local , 0, NULL, NULL);
+    }
+
     CL_CHECK_SUCCESS( cq, err != CL_SUCCESS,
         "Error: Failed to execute kernel!\n",
         return,

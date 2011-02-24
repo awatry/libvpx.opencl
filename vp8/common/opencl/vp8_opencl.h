@@ -149,6 +149,7 @@ typedef struct VP8_COMMON_CL {
     size_t    vp8_filter_block2d_bil_second_pass_kernel_size;
 
     cl_kernel vp8_memcpy_kernel;
+    size_t    vp8_memcpy_kernel_size;
     cl_kernel vp8_memset_short_kernel;
 
     cl_program idct_program;
