@@ -30,8 +30,6 @@ static cl_mem int_mem = NULL;
 
 #define TWO_PASS_SIXTAP 1
 
-int pass=0;
-
 void cl_destroy_filter(){
 
     if (cl_data.filter_program)
