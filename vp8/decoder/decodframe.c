@@ -997,6 +997,13 @@ int vp8_decode_frame(VP8D_COMP *pbi)
 
     vpx_memcpy(&xd->block[0].bmi, &xd->mode_info_context->bmi[0], sizeof(B_MODE_INFO));
 
+#if 0
+    if (pc->frame_type == KEY_FRAME)
+        printf("Key Frame\n");
+    else
+        printf("Inter-Frame\n");
+#endif
+
     if (pbi->b_multithreaded_rd && pc->multi_token_partition != ONE_PARTITION)
     {
         vp8mt_decode_mb_rows(pbi, xd);
