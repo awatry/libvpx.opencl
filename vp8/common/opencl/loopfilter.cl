@@ -14,6 +14,24 @@ __inline void vp8_mbfilter(signed char mask,signed char hev,global uc *op2,
 
 void vp8_simple_filter(signed char mask,global uc *base, int op1_off,int op0_off,int oq0_off,int oq1_off);
 
+
+typedef struct
+{
+    signed char lim[16];
+    signed char flim[16];
+    signed char thr[16];
+    signed char mbflim[16];
+    signed char mbthr[16];
+    signed char uvlim[16];
+    signed char uvflim[16];
+    signed char uvthr[16];
+    signed char uvmbflim[16];
+    signed char uvmbthr[16];
+} loop_filter_info;
+
+
+
+
 void vp8_filter(
     signed char mask,
     signed char hev,
@@ -82,14 +100,14 @@ kernel void vp8_loop_filter_horizontal_edge_kernel
     global signed char *flimit,
     global signed char *limit,
     global signed char *thresh,
-    int count
+    int off_stride
 )
 {
     int  hev = 0; /* high edge variance */
     signed char mask = 0;
     int i = get_global_id(0);
 
-     if (i < get_global_size(0)){
+    if (i < get_global_size(0)){
         s_off += i;
 
         mask = vp8_filter_mask(limit[i], flimit[i], s_base[s_off - 4*p],
@@ -114,7 +132,7 @@ kernel void vp8_loop_filter_vertical_edge_kernel
     global signed char *flimit,
     global signed char *limit,
     global signed char *thresh,
-    int count
+    int off_stride
 )
 {
 
@@ -146,7 +164,7 @@ kernel void vp8_mbloop_filter_horizontal_edge_kernel
     global signed char *flimit,
     global signed char *limit,
     global signed char *thresh,
-    int count
+    int off_stride
 )
 {
 
@@ -179,7 +197,7 @@ kernel void vp8_mbloop_filter_vertical_edge_kernel
     global signed char *flimit,
     global signed char *limit,
     global signed char *thresh,
-    int count
+    int off_stride
 )
 {
 
@@ -211,7 +229,7 @@ kernel void vp8_loop_filter_simple_horizontal_edge_kernel
     global const signed char *flimit,
     global const signed char *limit,
     global const signed char *thresh,
-    int count
+    int off_stride
 )
 {
 
@@ -236,7 +254,7 @@ kernel void vp8_loop_filter_simple_vertical_edge_kernel
     global signed char *flimit,
     global signed char *limit,
     global signed char *thresh,
-    int count
+    int off_stride
 )
 {
 

@@ -31,9 +31,10 @@ static void vp8_loop_filter_cl_run(
     const signed char *flimit,
     const signed char *limit,
     const signed char *thresh,
-    int count
+    int count,
+    int block_cnt
 ){
-    size_t global = count;
+    size_t global[] = {count,block_cnt};
     int err;
 
     cl_mem flimit_mem;
@@ -51,13 +52,13 @@ static void vp8_loop_filter_cl_run(
     err |= clSetKernelArg(kernel, 3, sizeof (cl_mem), &flimit_mem);
     err |= clSetKernelArg(kernel, 4, sizeof (cl_mem), &limit_mem);
     err |= clSetKernelArg(kernel, 5, sizeof (cl_mem), &thresh_mem);
-    err |= clSetKernelArg(kernel, 6, sizeof (cl_int), &count);
+    err |= clSetKernelArg(kernel, 6, sizeof (cl_int), &block_cnt);
     CL_CHECK_SUCCESS( cq, err != CL_SUCCESS,
         "Error: Failed to set kernel arguments!\n",,
     );
 
     /* Execute the kernel */
-    err = clEnqueueNDRangeKernel(cq, kernel, 1, NULL, &global, NULL , 0, NULL, NULL);
+    err = clEnqueueNDRangeKernel(cq, kernel, 2, NULL, global, NULL , 0, NULL, NULL);
     CL_CHECK_SUCCESS( cq, err != CL_SUCCESS,
         "Error: Failed to execute kernel!\n",
         printf("err = %d\n",err);,
@@ -79,12 +80,13 @@ void vp8_loop_filter_horizontal_edge_cl
     const signed char *flimit,
     const signed char *limit,
     const signed char *thresh,
-    int count
+    int count,
+    int block_cnt
 )
 {
     vp8_loop_filter_cl_run(x->cl_commands,
         cl_data.vp8_loop_filter_horizontal_edge_kernel, s_base, s_off,
-        p, flimit, limit, thresh, count*8
+        p, flimit, limit, thresh, count*8, block_cnt
     );
 }
 
@@ -97,12 +99,13 @@ void vp8_loop_filter_vertical_edge_cl
     const signed char *flimit,
     const signed char *limit,
     const signed char *thresh,
-    int count
+    int count,
+    int block_cnt
 )
 {
     vp8_loop_filter_cl_run(x->cl_commands,
         cl_data.vp8_loop_filter_vertical_edge_kernel, s_base, s_off,
-        p, flimit, limit, thresh, count*8
+        p, flimit, limit, thresh, count*8, block_cnt
     );
 }
 
@@ -115,12 +118,13 @@ void vp8_mbloop_filter_horizontal_edge_cl
     const signed char *flimit,
     const signed char *limit,
     const signed char *thresh,
-    int count
+    int count,
+    int block_cnt
 )
 {
     vp8_loop_filter_cl_run(x->cl_commands,
         cl_data.vp8_mbloop_filter_horizontal_edge_kernel, s_base, s_off,
-        p, flimit, limit, thresh, count*8
+        p, flimit, limit, thresh, count*8, block_cnt
     );
 }
 
@@ -134,12 +138,13 @@ void vp8_mbloop_filter_vertical_edge_cl
     const signed char *flimit,
     const signed char *limit,
     const signed char *thresh,
-    int count
+    int count,
+    int block_cnt
 )
 {
     vp8_loop_filter_cl_run(x->cl_commands,
         cl_data.vp8_mbloop_filter_vertical_edge_kernel, s_base, s_off,
-        p, flimit, limit, thresh, count*8
+        p, flimit, limit, thresh, count*8, block_cnt
     );
 }
 
@@ -152,12 +157,13 @@ void vp8_loop_filter_simple_horizontal_edge_cl
     const signed char *flimit,
     const signed char *limit,
     const signed char *thresh,
-    int count
+    int count,
+    int block_cnt
 )
 {
     vp8_loop_filter_cl_run(x->cl_commands,
         cl_data.vp8_loop_filter_simple_horizontal_edge_kernel, s_base, s_off,
-        p, flimit, limit, thresh, count*8
+        p, flimit, limit, thresh, count*8, block_cnt
     );
 }
 
@@ -170,11 +176,12 @@ void vp8_loop_filter_simple_vertical_edge_cl
     const signed char *flimit,
     const signed char *limit,
     const signed char *thresh,
-    int count
+    int count,
+    int block_cnt
 )
 {
     vp8_loop_filter_cl_run(x->cl_commands,
         cl_data.vp8_loop_filter_simple_vertical_edge_kernel, s_base, s_off,
-        p, flimit, limit, thresh, count*8
+        p, flimit, limit, thresh, count*8, block_cnt
     );
 }
