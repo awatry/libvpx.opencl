@@ -383,7 +383,7 @@ int vp8dx_receive_compressed_data(VP8D_PTR ptr, unsigned long size, const unsign
     if (cl_initialized == CL_SUCCESS){
         int err;
         //Create command queue for macroblock.
-        pbi->mb.cl_commands = clCreateCommandQueue(cl_data.context, cl_data.device_id, CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE, &err);
+        pbi->mb.cl_commands = clCreateCommandQueue(cl_data.context, cl_data.device_id, 0, &err);
         if (!pbi->mb.cl_commands || err != CL_SUCCESS) {
             printf("Error: Failed to create a command queue!\n");
             cl_destroy(NULL, CL_TRIED_BUT_FAILED);
