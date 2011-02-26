@@ -38,6 +38,7 @@
 #include <assert.h>
 #include <stdio.h>
 
+#include "vpx_config.h"
 #if CONFIG_OPENCL
 #include "opencl/vp8_opencl.h"
 #include "opencl/blockd_cl.h"
@@ -153,6 +154,14 @@ static void skip_recon_mb(VP8D_COMP *pbi, MACROBLOCKD *xd)
     else
     {
         vp8_build_inter_predictors_mb_s(xd);
+#if CONFIG_OPENCL
+        CL_FINISH(xd->cl_commands);
+#if !ONE_CQ_PER_MB
+        CL_FINISH(xd->block[0].cl_commands);
+        CL_FINISH(xd->block[16].cl_commands);
+        CL_FINISH(xd->block[20].cl_commands);
+#endif
+#endif
     }
 }
 
@@ -241,15 +250,6 @@ void vp8_decode_macroblock(VP8D_COMP *pbi, MACROBLOCKD *xd)
     {
         xd->mode_info_context->mbmi.dc_diff = 0;
         skip_recon_mb(pbi, xd);
-
-#if CONFIG_OPENCL
-        CL_FINISH(xd->cl_commands);
-#if !ONE_CQ_PER_MB
-        CL_FINISH(xd->block[0].cl_commands);
-        CL_FINISH(xd->block[16].cl_commands);
-        CL_FINISH(xd->block[20].cl_commands);
-#endif
-#endif
         return;
     }
 

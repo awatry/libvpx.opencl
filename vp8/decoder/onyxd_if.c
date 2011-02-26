@@ -383,7 +383,7 @@ int vp8dx_receive_compressed_data(VP8D_PTR ptr, unsigned long size, const unsign
     if (cl_initialized == CL_SUCCESS){
         int err;
         //Create command queue for macroblock.
-        pbi->mb.cl_commands = clCreateCommandQueue(cl_data.context, cl_data.device_id, 0, &err);
+        pbi->mb.cl_commands = clCreateCommandQueue(cl_data.context, cl_data.device_id, CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE, &err);
         if (!pbi->mb.cl_commands || err != CL_SUCCESS) {
             printf("Error: Failed to create a command queue!\n");
             cl_destroy(NULL, CL_TRIED_BUT_FAILED);
@@ -438,6 +438,7 @@ int vp8dx_receive_compressed_data(VP8D_PTR ptr, unsigned long size, const unsign
     }
 BUF_DONE:
 #endif
+
 
     retcode = vp8_decode_frame(pbi);
 
@@ -495,15 +496,16 @@ BUF_DONE:
         {
             struct vpx_usec_timer lpftimer;
             vpx_usec_timer_start(&lpftimer);
-#if PROFILE_OUTPUT
-            printf("Loop Filter\n");
-#endif
-            
+           
             /* Apply the loop filter if appropriate. */
             vp8_loop_filter_frame(cm, &pbi->mb, cm->filter_level);
 
             vpx_usec_timer_mark(&lpftimer);
             pbi->time_loop_filtering += vpx_usec_timer_elapsed(&lpftimer);
+
+#if PROFILE_OUTPUT
+            printf("Loop Filter, Time (us): %d\n", vpx_usec_timer_elapsed(&lpftimer));
+#endif
 
             cm->last_frame_type = cm->frame_type;
             cm->last_filter_type = cm->filter_type;
@@ -540,6 +542,10 @@ BUF_DONE:
 
     vpx_usec_timer_mark(&timer);
     pbi->decode_microseconds = vpx_usec_timer_elapsed(&timer);
+
+#if PROFILE_OUTPUT
+    printf("Frame decode time (us): %d\n", vpx_usec_timer_elapsed(&timer));
+#endif
 
     pbi->time_decoding += pbi->decode_microseconds;
 
