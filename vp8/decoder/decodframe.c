@@ -244,6 +244,11 @@ void vp8_decode_macroblock(VP8D_COMP *pbi, MACROBLOCKD *xd)
 
 #if CONFIG_OPENCL
         CL_FINISH(xd->cl_commands);
+#if !ONE_CQ_PER_MB
+        CL_FINISH(xd->block[0].cl_commands);
+        CL_FINISH(xd->block[16].cl_commands);
+        CL_FINISH(xd->block[20].cl_commands);
+#endif
 #endif
         return;
     }
@@ -1055,6 +1060,15 @@ int vp8_decode_frame(VP8D_COMP *pbi)
 
         //Wait for stuff to finish, just in case
         clFinish(pbi->mb.cl_commands);
+
+#if !ONE_CQ_PER_MB
+    clFinish(pbi->mb.block[0].cl_commands);
+    clFinish(pbi->mb.block[16].cl_commands);
+    clFinish(pbi->mb.block[20].cl_commands);
+    clReleaseCommandQueue(pbi->mb.block[0].cl_commands);
+    clReleaseCommandQueue(pbi->mb.block[16].cl_commands);
+    clReleaseCommandQueue(pbi->mb.block[20].cl_commands);
+#endif
 
 #if ENABLE_CL_IDCT_DEQUANT || ENABLE_CL_SUBPIXEL
         //Free Predictor CL buffer
