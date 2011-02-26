@@ -271,13 +271,19 @@ void vp8_decode_macroblock(VP8D_COMP *pbi, MACROBLOCKD *xd)
     else
     {
         vp8_build_inter_predictors_mb(xd);
-    }
 
 #if CONFIG_OPENCL
 #if !ENABLE_CL_IDCT_DEQUANT
-    //enable this if dequant/IDCT is being done on the CPU
-    CL_FINISH(xd->cl_commands);
-#elif ENABLE_CL_SUBPIXEL
+        //Wait for inter-predict if dequant/IDCT is being done on the CPU
+        CL_FINISH(xd->cl_commands);
+#endif
+#endif
+
+    }
+
+#if CONFIG_OPENCL
+#if ENABLE_CL_IDCT_DEQUANT
+    //Initialize the destination buffer if doing CL IDCT/Dequant
     vp8_cl_mb_prep(xd,DST_BUF);
 #endif
 #endif
