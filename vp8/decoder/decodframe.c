@@ -44,6 +44,8 @@
 #include "opencl/dequantize_cl.h"
 #endif
 
+#define PROFILE_OUTPUT 0
+
 void vp8cx_init_de_quantizer(VP8D_COMP *pbi)
 {
     int i;
@@ -227,6 +229,13 @@ void vp8_decode_macroblock(VP8D_COMP *pbi, MACROBLOCKD *xd)
     }
 
     xd->mode_info_context->mbmi.dc_diff = 1;
+
+#if PROFILE_OUTPUT
+     if (xd->frame_type == KEY_FRAME || xd->mode_info_context->mbmi.ref_frame == INTRA_FRAME)
+         printf("Intra-Coded MB\n");
+     else
+         printf("Inter-Coded MB\n");
+#endif
 
     if (xd->mode_info_context->mbmi.mode != B_PRED && xd->mode_info_context->mbmi.mode != SPLITMV && eobtotal == 0)
     {
@@ -997,7 +1006,7 @@ int vp8_decode_frame(VP8D_COMP *pbi)
 
     vpx_memcpy(&xd->block[0].bmi, &xd->mode_info_context->bmi[0], sizeof(B_MODE_INFO));
 
-#if 0
+#if PROFILE_OUTPUT
     if (pc->frame_type == KEY_FRAME)
         printf("Key Frame\n");
     else

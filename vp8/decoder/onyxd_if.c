@@ -43,6 +43,8 @@
 extern void vp8_init_loop_filter(VP8_COMMON *cm);
 extern void vp8cx_init_de_quantizer(VP8D_COMP *pbi);
 
+#define PROFILE_OUTPUT 0
+
 #if CONFIG_DEBUG
 void vp8_recon_write_yuv_frame(unsigned char *name, YV12_BUFFER_CONFIG *s)
 {
@@ -493,7 +495,10 @@ BUF_DONE:
         {
             struct vpx_usec_timer lpftimer;
             vpx_usec_timer_start(&lpftimer);
-
+#if PROFILE_OUTPUT
+            printf("Loop Filter\n");
+#endif
+            
             /* Apply the loop filter if appropriate. */
             vp8_loop_filter_frame(cm, &pbi->mb, cm->filter_level);
 
@@ -504,6 +509,11 @@ BUF_DONE:
             cm->last_filter_type = cm->filter_type;
             cm->last_sharpness_level = cm->sharpness_level;
         }
+#if PROFILE_OUTPUT
+        else {
+            printf("No Loop Filter\n");
+        }
+#endif
         vp8_yv12_extend_frame_borders_ptr(cm->frame_to_show);
     }
 
