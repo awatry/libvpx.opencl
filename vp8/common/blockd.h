@@ -200,11 +200,9 @@ typedef struct
     short *dqcoeff_base;
     int dqcoeff_offset;
 
-    //unsigned char  *predictor;
     unsigned char *predictor_base;
     int predictor_offset;
 
-    //short *diff;
     short *diff_base;
     int diff_offset;
 
@@ -226,7 +224,7 @@ typedef struct
 #endif
 
     /* 16 Y blocks, 4 U blocks, 4 V blocks each with 16 entries */
-    unsigned char **base_pre; //prediction base pointer
+    unsigned char **base_pre; //previous frame, same Macroblock, base pointer
     int pre;
     int pre_stride;
 
