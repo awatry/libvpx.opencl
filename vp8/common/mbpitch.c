@@ -228,13 +228,4 @@ void vp8_build_block_doffsets(MACROBLOCKD *x)
     vp8_setup_macroblock(x, DEST);
     vp8_setup_macroblock(x, PRED);
 
-#if CONFIG_OPENCL
-    if (cl_initialized == CL_SUCCESS){
-        int i;
-        for (i = 0; i < 25; i++){
-            x->block[i].pre_mem = x->pre.buffer_mem;
-            x->block[i].dst_mem = x->dst.buffer_mem;
-        }
-    }
-#endif
 }
