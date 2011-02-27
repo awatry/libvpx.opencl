@@ -44,6 +44,12 @@ extern void vp8_init_loop_filter(VP8_COMMON *cm);
 extern void vp8cx_init_de_quantizer(VP8D_COMP *pbi);
 
 #define PROFILE_OUTPUT 0
+#if PROFILE_OUTPUT
+struct vpx_usec_timer frame_timer;
+struct vpx_usec_timer loop_filter_timer;
+unsigned int total_mb = 0;
+unsigned int total_loop_filter = 0;
+#endif
 
 #if CONFIG_DEBUG
 void vp8_recon_write_yuv_frame(unsigned char *name, YV12_BUFFER_CONFIG *s)
@@ -439,11 +445,18 @@ int vp8dx_receive_compressed_data(VP8D_PTR ptr, unsigned long size, const unsign
 BUF_DONE:
 #endif
 
+#if PROFILE_OUTPUT
+    printf("Frame size = %d * %d\n", cm->Height, cm->Width);
+    printf("Macroblocks = %d * %d\n", cm->mb_rows, cm->mb_cols);
 
-    //printf("Frame size = %d * %d\n", cm->Height, cm->Width);
-    //printf("Macroblocks = %d * %d\n", cm->mb_rows, cm->mb_cols);
-
+    vpx_usec_timer_start(&frame_timer);
+#endif
     retcode = vp8_decode_frame(pbi);
+
+#if PROFILE_OUTPUT
+    vpx_usec_timer_mark(&frame_timer);
+    total_mb += vpx_usec_timer_elapsed(&frame_timer);
+#endif
 
     if (retcode < 0)
     {
@@ -507,7 +520,15 @@ BUF_DONE:
             pbi->time_loop_filtering += vpx_usec_timer_elapsed(&lpftimer);
 
 #if PROFILE_OUTPUT
-            printf("Loop Filter, Time (us): %d\n", vpx_usec_timer_elapsed(&lpftimer));
+            printf("Loop Filter\n");
+            total_loop_filter += vpx_usec_timer_elapsed(&lpftimer);
+#if 0
+            if (pbi->common.filter_type == NORMAL_LOOPFILTER){
+                printf("Normal LF Time (us): %d\n", vpx_usec_timer_elapsed(&lpftimer));
+            } else {
+                printf("Simple LF Time (us): %d\n", vpx_usec_timer_elapsed(&lpftimer));
+            }
+#endif
 #endif
 
             cm->last_frame_type = cm->frame_type;
@@ -547,7 +568,7 @@ BUF_DONE:
     pbi->decode_microseconds = vpx_usec_timer_elapsed(&timer);
 
 #if PROFILE_OUTPUT
-    printf("Frame decode time (us): %d\n", vpx_usec_timer_elapsed(&timer));
+    //printf("Frame decode time (us): %d\n", vpx_usec_timer_elapsed(&timer));
 #endif
 
     pbi->time_decoding += pbi->decode_microseconds;
@@ -603,8 +624,18 @@ BUF_DONE:
     }
 #endif
     pbi->common.error.setjmp = 0;
+
+
+#if PROFILE_OUTPUT
+    //Dump the total MB/Loop Filter processing times.
+    //This is cumulative between frames, so only use the last output value.
+    printf("MB Time (us): %d, LF Time (us): %d\n", total_mb, total_loop_filter);
+#endif
+
+
     return retcode;
 }
+
 int vp8dx_get_raw_frame(VP8D_PTR ptr, YV12_BUFFER_CONFIG *sd, INT64 *time_stamp, INT64 *time_end_stamp, int deblock_level,  int noise_level, int flags)
 {
     int ret = -1;

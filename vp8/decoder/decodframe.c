@@ -240,10 +240,15 @@ void vp8_decode_macroblock(VP8D_COMP *pbi, MACROBLOCKD *xd)
     xd->mode_info_context->mbmi.dc_diff = 1;
 
 #if PROFILE_OUTPUT
-     if (xd->frame_type == KEY_FRAME || xd->mode_info_context->mbmi.ref_frame == INTRA_FRAME)
+     if (xd->frame_type == KEY_FRAME)
          printf("Intra-Coded MB\n");
-     else
-         printf("Inter-Coded MB\n");
+     else{
+         if (xd->mode_info_context->mbmi.ref_frame == INTRA_FRAME){
+             printf("Intra-Coded Inter-Frame MB\n");
+         } else {
+            printf("Inter-Coded MB\n");
+         }
+     }
 #endif
 
     if (xd->mode_info_context->mbmi.mode != B_PRED && xd->mode_info_context->mbmi.mode != SPLITMV && eobtotal == 0)
