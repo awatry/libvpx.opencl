@@ -440,6 +440,9 @@ BUF_DONE:
 #endif
 
 
+    //printf("Frame size = %d * %d\n", cm->Height, cm->Width);
+    //printf("Macroblocks = %d * %d\n", cm->mb_rows, cm->mb_cols);
+
     retcode = vp8_decode_frame(pbi);
 
     if (retcode < 0)
