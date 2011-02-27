@@ -281,13 +281,6 @@ void vp8_decode_macroblock(VP8D_COMP *pbi, MACROBLOCKD *xd)
 
     }
 
-#if CONFIG_OPENCL
-#if ENABLE_CL_IDCT_DEQUANT
-    //Initialize the destination buffer if doing CL IDCT/Dequant
-    vp8_cl_mb_prep(xd,DST_BUF);
-#endif
-#endif
-
     /* dequantization and idct */
     if (xd->mode_info_context->mbmi.mode != B_PRED && xd->mode_info_context->mbmi.mode != SPLITMV)
     {
