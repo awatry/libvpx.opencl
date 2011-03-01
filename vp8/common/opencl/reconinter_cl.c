@@ -39,7 +39,6 @@
  */
 /*#define MUST_BE_ALIGNED*/
 
-
 static const int bbb[4] = {0, 2, 8, 10};
 
 static void vp8_memcpy(
@@ -81,6 +80,8 @@ static void vp8_copy_mem_cl(
 ){
 
     int err,block;
+
+#if MEM_COPY_KERNEL
     size_t global[3] = {num_bytes, num_iter, num_blocks};
 
     size_t local[3];
@@ -121,7 +122,21 @@ static void vp8_copy_mem_cl(
             return,
         );
     }
-
+#else
+    int iter;
+    for (block=0; block < num_blocks; block++){
+        for (iter = 0; iter < num_iter; iter++){
+            err = clEnqueueCopyBuffer(cq, src_mem, dst_mem,
+                    src_offsets[block]+iter*src_stride,
+                    dst_offsets[block]+iter*dst_stride,
+                    num_bytes, 0, NULL, NULL
+                  );
+            CL_CHECK_SUCCESS(cq, err != CL_SUCCESS, "Error copying between buffers\n",
+                    ,
+            );
+        }
+    }
+#endif
 }
 
 static void vp8_build_inter_predictors_b_cl(MACROBLOCKD *x, BLOCKD *d, int pitch)

@@ -15,6 +15,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "vp8_opencl.h"
 #include "filter_cl.h"
 #include "../blockd.h"
 
@@ -49,7 +50,10 @@ void cl_destroy_filter(){
     //CL_RELEASE_KERNEL(cl_data.vp8_bilinear_predict8x4_kernel);
     //CL_RELEASE_KERNEL(cl_data.vp8_bilinear_predict8x8_kernel);
     //CL_RELEASE_KERNEL(cl_data.vp8_bilinear_predict16x16_kernel);
+
+#if MEM_COPY_KERNEL
     CL_RELEASE_KERNEL(cl_data.vp8_memcpy_kernel);
+#endif
 
     CL_RELEASE_KERNEL(cl_data.vp8_filter_block2d_bil_first_pass_kernel);
     CL_RELEASE_KERNEL(cl_data.vp8_filter_block2d_bil_second_pass_kernel);
@@ -100,8 +104,10 @@ int cl_init_filter() {
     //CL_CREATE_KERNEL(cl_data,filter_program,vp8_bilinear_predict8x8_kernel,"vp8_bilinear_predict8x8_kernel");
     //CL_CREATE_KERNEL(cl_data,filter_program,vp8_bilinear_predict16x16_kernel,"vp8_bilinear_predict16x16_kernel");
 
+#if MEM_COPY_KERNEL
     CL_CREATE_KERNEL(cl_data,filter_program,vp8_memcpy_kernel,"vp8_memcpy_kernel");
     CL_CALC_LOCAL_SIZE(vp8_memcpy_kernel,vp8_memcpy_kernel_size);
+#endif
 
 #if STATIC_MEM
     CL_CREATE_BUF(NULL, int_mem, NULL, sizeof(cl_int)*21*16, NULL, ,err);

@@ -86,7 +86,7 @@ int load_cl(char *lib_name){
     CL_LOAD_FN("clFinish", cl.finish);
     CL_LOAD_FN("clEnqueueReadBuffer", cl.enqueueReadBuffer);
     CL_LOAD_FN("clEnqueueWriteBuffer", cl.enqueueWriteBuffer);
-//    CL_LOAD_FN("clEnqueueCopyBuffer", cl.enqueueCopyBuffer);
+    CL_LOAD_FN("clEnqueueCopyBuffer", cl.enqueueCopyBuffer);
 //    CL_LOAD_FN("clEnqueueReadImage", cl.enqueueReadImage);
 //    CL_LOAD_FN("clEnqueueWriteImage", cl.enqueueWriteImage);
 //    CL_LOAD_FN("clEnqueueCopyImage", cl.enqueueCopyImage);
