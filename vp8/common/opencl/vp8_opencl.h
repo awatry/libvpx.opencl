@@ -29,7 +29,7 @@ extern "C" {
 
 #define ENABLE_CL_IDCT_DEQUANT 0
 #define ENABLE_CL_SUBPIXEL 1
-#define MEM_COPY_KERNEL 0
+#define MEM_COPY_KERNEL 1
 #define ONE_CQ_PER_MB 1 //Value of 0 is racey... still experimental.
 #define ENABLE_CL_LOOPFILTER 0
 
