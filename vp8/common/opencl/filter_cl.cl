@@ -354,6 +354,9 @@ void vp8_filter_block2d_first_pass(
     uint tid = get_global_id(0);
     uint i = tid;
 
+    int nthreads = get_global_size(0);
+    int ngroups = nthreads / get_local_size(0);
+
     global unsigned char *src_ptr = &src_base[src_offset];
     //Note that src_offset will be reset later, which is why we capture it now
 
@@ -369,7 +372,29 @@ void vp8_filter_block2d_first_pass(
         short filter4 = vp8_filter[4];
         short filter5 = vp8_filter[5];
 
-        for (i=0; i < output_width*output_height; i++){
+        if (ngroups > 1){
+            for (i=0; i < output_width*output_height; i++){
+                src_offset = i + (i/output_width * (src_pixels_per_line - output_width));
+
+                Temp = (int)(src_ptr[src_offset - 2] * filter0) +
+                       (int)(src_ptr[src_offset - 1] * filter1) +
+                       (int)(src_ptr[src_offset]     * filter2) +
+                       (int)(src_ptr[src_offset + 1] * filter3) +
+                       (int)(src_ptr[src_offset + 2] * filter4) +
+                       (int)(src_ptr[src_offset + 3] * filter5) +
+                       (VP8_FILTER_WEIGHT >> 1);      /* Rounding */
+
+                /* Normalize back to 0-255 */
+                Temp >>= VP8_FILTER_SHIFT;
+
+                if (Temp < 0)
+                    Temp = 0;
+                else if ( Temp > 255 )
+                    Temp = 255;
+
+                output_ptr[i] = Temp;
+            }
+        } else {
             src_offset = i + (i/output_width * (src_pixels_per_line - output_width));
 
             Temp = (int)(src_ptr[src_offset - 2] * filter0) +
@@ -395,7 +420,9 @@ void vp8_filter_block2d_first_pass(
     //Add a fence so that no 2nd pass stuff starts before 1st pass writes are done.
     //write_mem_fence(CLK_GLOBAL_MEM_FENCE);
     //barrier(CLK_GLOBAL_MEM_FENCE);
-    barrier(CLK_LOCAL_MEM_FENCE);
+    if (ngroups > 1){
+        barrier(CLK_LOCAL_MEM_FENCE);
+    }
 }
 
 void vp8_filter_block2d_second_pass
@@ -462,7 +489,8 @@ __kernel void vp8_sixtap_predict_kernel
     __global unsigned char *dst_ptr,
     int dst_offset,
     int  dst_pitch
-        ) {
+)
+{
 
     local int FData[9*4];
 
