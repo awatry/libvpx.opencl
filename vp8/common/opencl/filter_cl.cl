@@ -246,10 +246,6 @@ void vp8_memset_short(
 
 
 
-//Here to EOF is old code that should be removed at end of project.
-
-
-
 __kernel void vp8_bilinear_predict4x4_kernel
 (
         __global unsigned char *src_base,
