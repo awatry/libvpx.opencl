@@ -369,6 +369,8 @@ void vp8_filter_block2d_first_pass(
         short filter5 = vp8_filter[5];
 
         if (ngroups > 1){
+            //This is generally only true on Apple CPU-CL, which gives a group
+            //size of 1, regardless of the CPU core count.
             for (i=0; i < output_width*output_height; i++){
                 src_offset = i + (i/output_width * (src_pixels_per_line - output_width));
 
@@ -414,11 +416,7 @@ void vp8_filter_block2d_first_pass(
     }
 
     //Add a fence so that no 2nd pass stuff starts before 1st pass writes are done.
-    //write_mem_fence(CLK_GLOBAL_MEM_FENCE);
-    //barrier(CLK_GLOBAL_MEM_FENCE);
-    if (ngroups > 1){
-        barrier(CLK_LOCAL_MEM_FENCE);
-    }
+    barrier(CLK_LOCAL_MEM_FENCE);
 }
 
 void vp8_filter_block2d_second_pass
