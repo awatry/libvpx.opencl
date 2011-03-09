@@ -138,6 +138,10 @@ int cl_common_init() {
     	}
     	//printf("Platform %d: %s\n",i,buf);
 
+        //If you need to force a platform (e.g. CPU-only testing), uncomment this
+        //if (strstr(buf,"NVIDIA"))
+        //    continue;
+
     	//Try to find a valid compute device
     	//Favor the GPU, but fall back to any other available device if necessary
 #ifdef __APPLE__
