@@ -29,8 +29,6 @@ const char *filter_cl_file_name = "vp8/common/opencl/filter_cl.cl";
 static cl_mem int_mem = NULL;
 #endif
 
-#define TWO_PASS_SIXTAP 0
-
 void cl_destroy_filter(){
 
     if (cl_data.filter_program)
