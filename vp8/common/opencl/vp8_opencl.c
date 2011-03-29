@@ -13,7 +13,7 @@
 #include <stdlib.h>
 #include "vp8_opencl.h"
 
-int cl_initialized = CL_NOT_INITIALIZED;
+int cl_initialized = VP8_CL_NOT_INITIALIZED;
 VP8_COMMON_CL cl_data;
 
 //Initialization functions for various CL programs.
@@ -107,7 +107,7 @@ int cl_common_init() {
     cl_device_id devices[MAX_NUM_DEVICES];
 
     //Don't allow multiple CL contexts..
-    if (cl_initialized != CL_NOT_INITIALIZED)
+    if (cl_initialized != VP8_CL_NOT_INITIALIZED)
         return cl_initialized;
 
     // Connect to a compute device
@@ -115,12 +115,12 @@ int cl_common_init() {
 
     if (err != CL_SUCCESS) {
         fprintf(stderr, "Couldn't query platform IDs\n");
-        return CL_TRIED_BUT_FAILED;
+        return VP8_CL_TRIED_BUT_FAILED;
     }
 
     if (num_found == 0) {
         fprintf(stderr, "No platforms found\n");
-        return CL_TRIED_BUT_FAILED;
+        return VP8_CL_TRIED_BUT_FAILED;
     }
 
     //printf("Enumerating %d platform(s)\n", num_found);
@@ -157,7 +157,7 @@ int cl_common_init() {
             //Get info for this device.
             err = clGetDeviceInfo(devices[dev], CL_DEVICE_EXTENSIONS,
                     sizeof(ext),ext,NULL);
-            CL_CHECK_SUCCESS(NULL,err != CL_SUCCESS,
+            VP8_CL_CHECK_SUCCESS(NULL,err != CL_SUCCESS,
                     "Error retrieving device extension list",continue, 0);
             //printf("Device %d supports: %s\n",dev,ext);
             
@@ -184,14 +184,14 @@ int cl_common_init() {
 
     if (cl_data.device_id == NULL){
     	printf("Error: Failed to find a valid OpenCL device. Using CPU paths\n");
-    	return CL_TRIED_BUT_FAILED;
+    	return VP8_CL_TRIED_BUT_FAILED;
     }
 
     // Create the compute context
     cl_data.context = clCreateContext(0, 1, &cl_data.device_id, NULL, NULL, &err);
     if (!cl_data.context) {
         printf("Error: Failed to create a compute context!\n");
-        return CL_TRIED_BUT_FAILED;
+        return VP8_CL_TRIED_BUT_FAILED;
     }
 
     //Initialize programs to null value
@@ -318,14 +318,14 @@ int cl_load_program(cl_program *prog_ref, const char *file_name, const char *opt
         *prog_ref = clCreateProgramWithSource(cl_data.context, 1, (const char**)&kernel_src, NULL, &err);
         free(kernel_src);
     } else {
-        cl_destroy(NULL, CL_TRIED_BUT_FAILED);
+        cl_destroy(NULL, VP8_CL_TRIED_BUT_FAILED);
         printf("Couldn't find OpenCL source files. \nUsing software path.\n");
-        return CL_TRIED_BUT_FAILED;
+        return VP8_CL_TRIED_BUT_FAILED;
     }
 
     if (*prog_ref == NULL) {
         printf("Error: Couldn't create program\n");
-        return CL_TRIED_BUT_FAILED;
+        return VP8_CL_TRIED_BUT_FAILED;
     }
 
     if (err != CL_SUCCESS) {
@@ -339,7 +339,7 @@ int cl_load_program(cl_program *prog_ref, const char *file_name, const char *opt
 
         show_build_log(prog_ref);
 
-        return CL_TRIED_BUT_FAILED;
+        return VP8_CL_TRIED_BUT_FAILED;
     }
     //else show_build_log(prog_ref);
 

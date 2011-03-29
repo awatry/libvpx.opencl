@@ -87,7 +87,7 @@ void vp8_dequant_idct_add_y_block_cl (VP8D_COMP *pbi, MACROBLOCKD *xd)
             {
                 vp8_cl_block_prep(&xd->block[0], DEQUANT);
                 vp8_dc_only_idct_add_cl(&xd->block[0], CL_FALSE, 0, q_offset, pre_offset, dst, dst_mem, dst_offset, dst_size+dst_offset, 16, stride);
-                CL_FINISH(xd->cl_commands);
+                VP8_CL_FINISH(xd->cl_commands);
                 ((int *)(q+q_offset))[0] = 0;
                 vp8_cl_mb_prep(xd,QCOEFF);
             }
@@ -144,7 +144,7 @@ void vp8_dequant_idct_add_uv_block_cl(VP8D_COMP *pbi, MACROBLOCKD *xd,
                 
                 //Need round trip + finish until qcoeff set in CL
                 vp8_cl_block_finish(&xd->block[0], QCOEFF);
-                CL_FINISH(xd->cl_commands); 
+                VP8_CL_FINISH(xd->cl_commands);
                 ((int *)(q+q_offset))[0] = 0;
                 vp8_cl_mb_prep(xd,QCOEFF);
             }
@@ -178,7 +178,7 @@ void vp8_dequant_idct_add_uv_block_cl(VP8D_COMP *pbi, MACROBLOCKD *xd,
 
                 //Eventually replace with memset kernel call to prevent round trip
                 vp8_cl_mb_finish(xd,QCOEFF);
-                CL_FINISH(xd->cl_commands);
+                VP8_CL_FINISH(xd->cl_commands);
                 ((int *)(q+q_offset))[0] = 0;
                 vp8_cl_mb_prep(xd,QCOEFF);
             }

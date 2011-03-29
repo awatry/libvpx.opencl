@@ -301,15 +301,15 @@ int cl_init_loop_filter() {
     // Create the filter compute program from the file-defined source code
     if ( cl_load_program(&cl_data.loop_filter_program, loop_filter_cl_file_name,
             loopFilterCompileOptions) != CL_SUCCESS )
-        return CL_TRIED_BUT_FAILED;
+        return VP8_CL_TRIED_BUT_FAILED;
 
     // Create the compute kernels in the program we wish to run
-    CL_CREATE_KERNEL(cl_data,loop_filter_program,vp8_loop_filter_horizontal_edge_kernel,"vp8_loop_filter_horizontal_edge_kernel");
-    CL_CREATE_KERNEL(cl_data,loop_filter_program,vp8_loop_filter_vertical_edge_kernel,"vp8_loop_filter_vertical_edge_kernel");
-    CL_CREATE_KERNEL(cl_data,loop_filter_program,vp8_mbloop_filter_horizontal_edge_kernel,"vp8_mbloop_filter_horizontal_edge_kernel");
-    CL_CREATE_KERNEL(cl_data,loop_filter_program,vp8_mbloop_filter_vertical_edge_kernel,"vp8_mbloop_filter_vertical_edge_kernel");
-    CL_CREATE_KERNEL(cl_data,loop_filter_program,vp8_loop_filter_simple_horizontal_edge_kernel,"vp8_loop_filter_simple_horizontal_edge_kernel");
-    CL_CREATE_KERNEL(cl_data,loop_filter_program,vp8_loop_filter_simple_vertical_edge_kernel,"vp8_loop_filter_simple_vertical_edge_kernel");
+    VP8_CL_CREATE_KERNEL(cl_data,loop_filter_program,vp8_loop_filter_horizontal_edge_kernel,"vp8_loop_filter_horizontal_edge_kernel");
+    VP8_CL_CREATE_KERNEL(cl_data,loop_filter_program,vp8_loop_filter_vertical_edge_kernel,"vp8_loop_filter_vertical_edge_kernel");
+    VP8_CL_CREATE_KERNEL(cl_data,loop_filter_program,vp8_mbloop_filter_horizontal_edge_kernel,"vp8_mbloop_filter_horizontal_edge_kernel");
+    VP8_CL_CREATE_KERNEL(cl_data,loop_filter_program,vp8_mbloop_filter_vertical_edge_kernel,"vp8_mbloop_filter_vertical_edge_kernel");
+    VP8_CL_CREATE_KERNEL(cl_data,loop_filter_program,vp8_loop_filter_simple_horizontal_edge_kernel,"vp8_loop_filter_simple_horizontal_edge_kernel");
+    VP8_CL_CREATE_KERNEL(cl_data,loop_filter_program,vp8_loop_filter_simple_vertical_edge_kernel,"vp8_loop_filter_simple_vertical_edge_kernel");
 
     return CL_SUCCESS;
 }
@@ -319,12 +319,12 @@ void cl_destroy_loop_filter(){
     if (cl_data.loop_filter_program)
         clReleaseProgram(cl_data.loop_filter_program);
 
-    CL_RELEASE_KERNEL(cl_data.vp8_loop_filter_horizontal_edge_kernel);
-    CL_RELEASE_KERNEL(cl_data.vp8_loop_filter_vertical_edge_kernel);
-    CL_RELEASE_KERNEL(cl_data.vp8_mbloop_filter_horizontal_edge_kernel);
-    CL_RELEASE_KERNEL(cl_data.vp8_mbloop_filter_vertical_edge_kernel);
-    CL_RELEASE_KERNEL(cl_data.vp8_loop_filter_simple_horizontal_edge_kernel);
-    CL_RELEASE_KERNEL(cl_data.vp8_loop_filter_simple_vertical_edge_kernel);
+    VP8_CL_RELEASE_KERNEL(cl_data.vp8_loop_filter_horizontal_edge_kernel);
+    VP8_CL_RELEASE_KERNEL(cl_data.vp8_loop_filter_vertical_edge_kernel);
+    VP8_CL_RELEASE_KERNEL(cl_data.vp8_mbloop_filter_horizontal_edge_kernel);
+    VP8_CL_RELEASE_KERNEL(cl_data.vp8_mbloop_filter_vertical_edge_kernel);
+    VP8_CL_RELEASE_KERNEL(cl_data.vp8_loop_filter_simple_horizontal_edge_kernel);
+    VP8_CL_RELEASE_KERNEL(cl_data.vp8_loop_filter_simple_vertical_edge_kernel);
 
     cl_data.loop_filter_program = NULL;
 }
@@ -398,7 +398,7 @@ void vp8_loop_filter_frame_cl
     u_off = post->u_buffer - buf_base;
     v_off = post->v_buffer - buf_base;
 
-    CL_SET_BUF(mbd->cl_commands, post->buffer_mem, post->buffer_size, post->buffer_alloc,
+    VP8_CL_SET_BUF(mbd->cl_commands, post->buffer_mem, post->buffer_size, post->buffer_alloc,
             vp8_loop_filter_frame(cm,mbd,default_filt_lvl),);
 
     /* vp8_filter each macro block */
@@ -465,10 +465,10 @@ void vp8_loop_filter_frame_cl
 
     //Retrieve buffer contents
     err = clEnqueueReadBuffer(mbd->cl_commands, post->buffer_mem, CL_FALSE, 0, post->buffer_size, post->buffer_alloc, 0, NULL, NULL);
-    CL_CHECK_SUCCESS(mbd->cl_commands, err != CL_SUCCESS,
+    VP8_CL_CHECK_SUCCESS(mbd->cl_commands, err != CL_SUCCESS,
         "Error: Failed to read loop filter output!\n",
         ,
     );
 
-    CL_FINISH(mbd->cl_commands);
+    VP8_CL_FINISH(mbd->cl_commands);
 }

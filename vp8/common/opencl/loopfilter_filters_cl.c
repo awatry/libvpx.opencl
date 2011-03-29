@@ -41,9 +41,9 @@ static void vp8_loop_filter_cl_run(
     cl_mem limit_mem;
     cl_mem thresh_mem;
 
-    CL_CREATE_BUF(cq, flimit_mem, , sizeof(uc)*16, flimit,, );
-    CL_CREATE_BUF(cq, limit_mem, , sizeof(uc)*16, limit,, );
-    CL_CREATE_BUF(cq, thresh_mem, , sizeof(uc)*16, thresh,, );
+    VP8_CL_CREATE_BUF(cq, flimit_mem, , sizeof(uc)*16, flimit,, );
+    VP8_CL_CREATE_BUF(cq, limit_mem, , sizeof(uc)*16, limit,, );
+    VP8_CL_CREATE_BUF(cq, thresh_mem, , sizeof(uc)*16, thresh,, );
 
     err = 0;
     err = clSetKernelArg(kernel, 0, sizeof (cl_mem), &buf_mem);
@@ -53,13 +53,13 @@ static void vp8_loop_filter_cl_run(
     err |= clSetKernelArg(kernel, 4, sizeof (cl_mem), &limit_mem);
     err |= clSetKernelArg(kernel, 5, sizeof (cl_mem), &thresh_mem);
     err |= clSetKernelArg(kernel, 6, sizeof (cl_int), &block_cnt);
-    CL_CHECK_SUCCESS( cq, err != CL_SUCCESS,
+    VP8_CL_CHECK_SUCCESS( cq, err != CL_SUCCESS,
         "Error: Failed to set kernel arguments!\n",,
     );
 
     /* Execute the kernel */
     err = clEnqueueNDRangeKernel(cq, kernel, 2, NULL, global, NULL , 0, NULL, NULL);
-    CL_CHECK_SUCCESS( cq, err != CL_SUCCESS,
+    VP8_CL_CHECK_SUCCESS( cq, err != CL_SUCCESS,
         "Error: Failed to execute kernel!\n",
         printf("err = %d\n",err);,
     );
@@ -68,7 +68,7 @@ static void vp8_loop_filter_cl_run(
     clReleaseMemObject(limit_mem);
     clReleaseMemObject(thresh_mem);
 
-    CL_FINISH(cq);
+    VP8_CL_FINISH(cq);
 }
 
 void vp8_loop_filter_horizontal_edge_cl

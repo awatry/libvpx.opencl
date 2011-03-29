@@ -26,12 +26,12 @@ void cl_destroy_idct(){
 
     cl_data.idct_program = NULL;
     
-    CL_RELEASE_KERNEL(cl_data.vp8_short_inv_walsh4x4_1_kernel);
-    CL_RELEASE_KERNEL(cl_data.vp8_short_inv_walsh4x4_1st_pass_kernel);
-    CL_RELEASE_KERNEL(cl_data.vp8_short_inv_walsh4x4_2nd_pass_kernel);
-    CL_RELEASE_KERNEL(cl_data.vp8_dc_only_idct_add_kernel);
-    //CL_RELEASE_KERNEL(cl_data.vp8_short_idct4x4llm_1_kernel);
-    //CL_RELEASE_KERNEL(cl_data.vp8_short_idct4x4llm_kernel);
+    VP8_CL_RELEASE_KERNEL(cl_data.vp8_short_inv_walsh4x4_1_kernel);
+    VP8_CL_RELEASE_KERNEL(cl_data.vp8_short_inv_walsh4x4_1st_pass_kernel);
+    VP8_CL_RELEASE_KERNEL(cl_data.vp8_short_inv_walsh4x4_2nd_pass_kernel);
+    VP8_CL_RELEASE_KERNEL(cl_data.vp8_dc_only_idct_add_kernel);
+    //VP8_CL_RELEASE_KERNEL(cl_data.vp8_short_idct4x4llm_1_kernel);
+    //VP8_CL_RELEASE_KERNEL(cl_data.vp8_short_idct4x4llm_kernel);
 
 }
 
@@ -41,17 +41,17 @@ int cl_init_idct() {
     // Create the filter compute program from the file-defined source code
     if (cl_load_program(&cl_data.idct_program, idctllm_cl_file_name,
             idctCompileOptions) != CL_SUCCESS)
-        return CL_TRIED_BUT_FAILED;
+        return VP8_CL_TRIED_BUT_FAILED;
 
     // Create the compute kernel in the program we wish to run
-    CL_CREATE_KERNEL(cl_data,idct_program,vp8_short_inv_walsh4x4_1_kernel,"vp8_short_inv_walsh4x4_1_kernel");
-    CL_CREATE_KERNEL(cl_data,idct_program,vp8_short_inv_walsh4x4_1st_pass_kernel,"vp8_short_inv_walsh4x4_1st_pass_kernel");
-    CL_CREATE_KERNEL(cl_data,idct_program,vp8_short_inv_walsh4x4_2nd_pass_kernel,"vp8_short_inv_walsh4x4_2nd_pass_kernel");
-    CL_CREATE_KERNEL(cl_data,idct_program,vp8_dc_only_idct_add_kernel,"vp8_dc_only_idct_add_kernel");
+    VP8_CL_CREATE_KERNEL(cl_data,idct_program,vp8_short_inv_walsh4x4_1_kernel,"vp8_short_inv_walsh4x4_1_kernel");
+    VP8_CL_CREATE_KERNEL(cl_data,idct_program,vp8_short_inv_walsh4x4_1st_pass_kernel,"vp8_short_inv_walsh4x4_1st_pass_kernel");
+    VP8_CL_CREATE_KERNEL(cl_data,idct_program,vp8_short_inv_walsh4x4_2nd_pass_kernel,"vp8_short_inv_walsh4x4_2nd_pass_kernel");
+    VP8_CL_CREATE_KERNEL(cl_data,idct_program,vp8_dc_only_idct_add_kernel,"vp8_dc_only_idct_add_kernel");
 
     ////idct4x4llm kernels are only useful for the encoder
-    //CL_CREATE_KERNEL(cl_data,idct_program,vp8_short_idct4x4llm_1_kernel,"vp8_short_idct4x4llm_1_kernel");
-    //CL_CREATE_KERNEL(cl_data,idct_program,vp8_short_idct4x4llm_kernel,"vp8_short_idct4x4llm_kernel");
+    //VP8_CL_CREATE_KERNEL(cl_data,idct_program,vp8_short_idct4x4llm_1_kernel,"vp8_short_idct4x4llm_1_kernel");
+    //VP8_CL_CREATE_KERNEL(cl_data,idct_program,vp8_short_idct4x4llm_kernel,"vp8_short_idct4x4llm_kernel");
 
     return CL_SUCCESS;
 }
@@ -77,12 +77,12 @@ void vp8_short_idct4x4llm_cl(BLOCKD *b, int pitch)
         return;
     }
 
-    CL_CREATE_BUF(b->cl_commands, src_mem,,
+    VP8_CL_CREATE_BUF(b->cl_commands, src_mem,,
             sizeof(short)*16, input,
             vp8_short_idct4x4llm_c(input,output,pitch),
     );
 
-    CL_CREATE_BUF(b->cl_commands, dst_mem,,
+    VP8_CL_CREATE_BUF(b->cl_commands, dst_mem,,
             sizeof(short)*(4+(pitch/2)*3), output,
             vp8_short_idct4x4llm_c(input,output,pitch),
     );
@@ -92,14 +92,14 @@ void vp8_short_idct4x4llm_cl(BLOCKD *b, int pitch)
     err = clSetKernelArg(cl_data.vp8_short_idct4x4llm_kernel, 0, sizeof (cl_mem), &src_mem);
     err |= clSetKernelArg(cl_data.vp8_short_idct4x4llm_kernel, 1, sizeof (cl_mem), &dst_mem);
     err |= clSetKernelArg(cl_data.vp8_short_idct4x4llm_kernel, 2, sizeof (int), &pitch);
-    CL_CHECK_SUCCESS( b->cl_commands, err != CL_SUCCESS,
+    VP8_CL_CHECK_SUCCESS( b->cl_commands, err != CL_SUCCESS,
         "Error: Failed to set kernel arguments!\n",
         vp8_short_idct4x4llm_c(input,output,pitch),
     );
     
     /* Execute the kernel */
     err = clEnqueueNDRangeKernel(b->cl_commands, cl_data.vp8_short_idct4x4llm_kernel, 1, NULL, &global, NULL , 0, NULL, NULL);
-    CL_CHECK_SUCCESS( b->cl_commands, err != CL_SUCCESS,
+    VP8_CL_CHECK_SUCCESS( b->cl_commands, err != CL_SUCCESS,
         "Error: Failed to execute kernel!\n",
         printf("err = %d\n",err);
         vp8_short_idct4x4llm_c(input,output,pitch),
@@ -107,7 +107,7 @@ void vp8_short_idct4x4llm_cl(BLOCKD *b, int pitch)
 
     /* Read back the result data from the device */
     err = clEnqueueReadBuffer(b->cl_commands, dst_mem, CL_FALSE, 0, sizeof(short)*(4+pitch/2*3), output, 0, NULL, NULL);
-    CL_CHECK_SUCCESS(b->cl_commands, err != CL_SUCCESS,
+    VP8_CL_CHECK_SUCCESS(b->cl_commands, err != CL_SUCCESS,
         "Error: Failed to read output array!\n",
         vp8_short_idct4x4llm_c(input,output,pitch),
     );
@@ -136,12 +136,12 @@ void vp8_short_idct4x4llm_1_cl(BLOCKD *b, int pitch)
 
     printf("vp8_short_idct4x4llm_1_cl\n");
 
-    CL_CREATE_BUF(b->cl_commands, src_mem,,
+    VP8_CL_CREATE_BUF(b->cl_commands, src_mem,,
             sizeof(short), input,
             vp8_short_idct4x4llm_1_c(input,output,pitch),
     );
 
-    CL_CREATE_BUF(b->cl_commands, dst_mem,,
+    VP8_CL_CREATE_BUF(b->cl_commands, dst_mem,,
             sizeof(short)*(4+(pitch/2)*3), output,
             vp8_short_idct4x4llm_1_c(input,output,pitch),
     );
@@ -151,14 +151,14 @@ void vp8_short_idct4x4llm_1_cl(BLOCKD *b, int pitch)
     err = clSetKernelArg(cl_data.vp8_short_idct4x4llm_1_kernel, 0, sizeof (cl_mem), &src_mem);
     err |= clSetKernelArg(cl_data.vp8_short_idct4x4llm_1_kernel, 1, sizeof (cl_mem), &dst_mem);
     err |= clSetKernelArg(cl_data.vp8_short_idct4x4llm_1_kernel, 2, sizeof (int), &pitch);
-    CL_CHECK_SUCCESS( b->cl_commands, err != CL_SUCCESS,
+    VP8_CL_CHECK_SUCCESS( b->cl_commands, err != CL_SUCCESS,
         "Error: Failed to set kernel arguments!\n",
         vp8_short_idct4x4llm_1_c(input,output,pitch),
     );
 
     /* Execute the kernel */
     err = clEnqueueNDRangeKernel(b->cl_commands, cl_data.vp8_short_idct4x4llm_1_kernel, 1, NULL, &global, NULL , 0, NULL, NULL);
-    CL_CHECK_SUCCESS( b->cl_commands, err != CL_SUCCESS,
+    VP8_CL_CHECK_SUCCESS( b->cl_commands, err != CL_SUCCESS,
         "Error: Failed to execute kernel!\n",
         printf("err = %d\n",err);
         vp8_short_idct4x4llm_1_c(input,output,pitch),
@@ -166,7 +166,7 @@ void vp8_short_idct4x4llm_1_cl(BLOCKD *b, int pitch)
 
     /* Read back the result data from the device */
     err = clEnqueueReadBuffer(b->cl_commands, dst_mem, CL_FALSE, 0, sizeof(short)*(4+pitch/2*3), output, 0, NULL, NULL);
-    CL_CHECK_SUCCESS(b->cl_commands, err != CL_SUCCESS,
+    VP8_CL_CHECK_SUCCESS(b->cl_commands, err != CL_SUCCESS,
         "Error: Failed to read output array!\n",
         vp8_short_idct4x4llm_1_c(input,output,pitch),
     );
@@ -192,7 +192,7 @@ void vp8_dc_only_idct_add_cl(BLOCKD *b, cl_int use_diff, int diff_offset,
     //cl_mem dest_mem = NULL;
 
     if (dst_mem == NULL){
-        CL_CREATE_BUF(b->cl_commands, dst_mem,,
+        VP8_CL_CREATE_BUF(b->cl_commands, dst_mem,,
                 dest_size, dst_base,,
         );
         free_mem = 1;
@@ -211,13 +211,13 @@ void vp8_dc_only_idct_add_cl(BLOCKD *b, cl_int use_diff, int diff_offset,
     err |= clSetKernelArg(cl_data.vp8_dc_only_idct_add_kernel, 9, sizeof (cl_mem), &b->cl_qcoeff_mem);
     err |= clSetKernelArg(cl_data.vp8_dc_only_idct_add_kernel, 10, sizeof (int), &qcoeff_offset);
     err |= clSetKernelArg(cl_data.vp8_dc_only_idct_add_kernel, 11, sizeof (cl_mem), &b->cl_dequant_mem);
-    CL_CHECK_SUCCESS( b->cl_commands, err != CL_SUCCESS,
+    VP8_CL_CHECK_SUCCESS( b->cl_commands, err != CL_SUCCESS,
         "Error: Failed to set kernel arguments!\n",,
     );
 
     /* Execute the kernel */
     err = clEnqueueNDRangeKernel(b->cl_commands, cl_data.vp8_dc_only_idct_add_kernel, 1, NULL, &global, NULL , 0, NULL, NULL);
-    CL_CHECK_SUCCESS( b->cl_commands, err != CL_SUCCESS,
+    VP8_CL_CHECK_SUCCESS( b->cl_commands, err != CL_SUCCESS,
         "Error: Failed to execute kernel!\n",
         printf("err = %d\n",err);,
     );
@@ -228,7 +228,7 @@ void vp8_dc_only_idct_add_cl(BLOCKD *b, cl_int use_diff, int diff_offset,
         err = clEnqueueReadBuffer(b->cl_commands, dst_mem, CL_FALSE, 0,
                 dest_size, dst_base, 0, NULL, NULL);
 
-        CL_CHECK_SUCCESS(b->cl_commands, err != CL_SUCCESS,
+        VP8_CL_CHECK_SUCCESS(b->cl_commands, err != CL_SUCCESS,
             "Error: Failed to read output array!\n",,
         );
 
@@ -254,14 +254,14 @@ void vp8_short_inv_walsh4x4_cl(BLOCKD *b)
     err |= clSetKernelArg(cl_data.vp8_short_inv_walsh4x4_1st_pass_kernel, 1, sizeof(int), &b->dqcoeff_offset);
     err |= clSetKernelArg(cl_data.vp8_short_inv_walsh4x4_1st_pass_kernel, 2, sizeof (cl_mem), &b->cl_diff_mem);
     err |= clSetKernelArg(cl_data.vp8_short_inv_walsh4x4_1st_pass_kernel, 3, sizeof(int), &b->diff_offset);
-    CL_CHECK_SUCCESS( b->cl_commands, err != CL_SUCCESS,
+    VP8_CL_CHECK_SUCCESS( b->cl_commands, err != CL_SUCCESS,
         "Error: Failed to set kernel arguments!\n",
         vp8_short_inv_walsh4x4_c(b->dqcoeff_base+b->dqcoeff_offset, &b->diff_base[b->diff_offset]),
     );
 
     /* Execute the kernel */
     err = clEnqueueNDRangeKernel(b->cl_commands, cl_data.vp8_short_inv_walsh4x4_1st_pass_kernel, 1, NULL, &global, NULL , 0, NULL, NULL);
-    CL_CHECK_SUCCESS( b->cl_commands, err != CL_SUCCESS,
+    VP8_CL_CHECK_SUCCESS( b->cl_commands, err != CL_SUCCESS,
         "Error: Failed to execute kernel!\n",
         printf("err = %d\n",err);
         vp8_short_inv_walsh4x4_c(b->dqcoeff_base+b->dqcoeff_offset, &b->diff_base[b->diff_offset]),
@@ -272,14 +272,14 @@ void vp8_short_inv_walsh4x4_cl(BLOCKD *b)
     err = 0;
     err = clSetKernelArg(cl_data.vp8_short_inv_walsh4x4_2nd_pass_kernel, 0, sizeof (cl_mem), &b->cl_diff_mem);
     err |= clSetKernelArg(cl_data.vp8_short_inv_walsh4x4_2nd_pass_kernel, 1, sizeof(int), &b->diff_offset);
-    CL_CHECK_SUCCESS( b->cl_commands, err != CL_SUCCESS,
+    VP8_CL_CHECK_SUCCESS( b->cl_commands, err != CL_SUCCESS,
         "Error: Failed to set kernel arguments!\n",
         vp8_short_inv_walsh4x4_c(b->dqcoeff_base+b->dqcoeff_offset, &b->diff_base[b->diff_offset]),
     );
 
     /* Execute the kernel */
     err = clEnqueueNDRangeKernel(b->cl_commands, cl_data.vp8_short_inv_walsh4x4_2nd_pass_kernel, 1, NULL, &global, NULL , 0, NULL, NULL);
-    CL_CHECK_SUCCESS( b->cl_commands, err != CL_SUCCESS,
+    VP8_CL_CHECK_SUCCESS( b->cl_commands, err != CL_SUCCESS,
         "Error: Failed to execute kernel!\n",
         printf("err = %d\n",err);
         vp8_short_inv_walsh4x4_c(b->dqcoeff_base+b->dqcoeff_offset, &b->diff_base[b->diff_offset]),
@@ -306,7 +306,7 @@ void vp8_short_inv_walsh4x4_1_cl(BLOCKD *b)
     err |= clSetKernelArg(cl_data.vp8_short_inv_walsh4x4_1_kernel, 1, sizeof (int), &b->dqcoeff_offset);
     err |= clSetKernelArg(cl_data.vp8_short_inv_walsh4x4_1_kernel, 2, sizeof (cl_mem), &b->cl_diff_mem);
     err |= clSetKernelArg(cl_data.vp8_short_inv_walsh4x4_1_kernel, 3, sizeof (int), &b->diff_offset);
-    CL_CHECK_SUCCESS( b->cl_commands, err != CL_SUCCESS,
+    VP8_CL_CHECK_SUCCESS( b->cl_commands, err != CL_SUCCESS,
         "Error: Failed to set kernel arguments!\n",
         vp8_short_inv_walsh4x4_1_c(b->dqcoeff_base + b->dqcoeff_offset,
             &b->diff_base[b->diff_offset]),
@@ -314,7 +314,7 @@ void vp8_short_inv_walsh4x4_1_cl(BLOCKD *b)
 
     /* Execute the kernel */
     err = clEnqueueNDRangeKernel(b->cl_commands, cl_data.vp8_short_inv_walsh4x4_1_kernel, 1, NULL, &global, NULL , 0, NULL, NULL);
-    CL_CHECK_SUCCESS( b->cl_commands, err != CL_SUCCESS,
+    VP8_CL_CHECK_SUCCESS( b->cl_commands, err != CL_SUCCESS,
         "Error: Failed to execute kernel!\n",
         printf("err = %d\n",err);
         vp8_short_inv_walsh4x4_1_c(b->dqcoeff_base + b->dqcoeff_offset,

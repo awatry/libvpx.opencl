@@ -252,7 +252,7 @@ static vpx_codec_err_t vp8_destroy(vpx_codec_alg_priv_t *ctx)
 
 #if CONFIG_OPENCL
     if (cl_initialized == CL_SUCCESS){
-        cl_destroy(NULL, CL_NOT_INITIALIZED);
+        cl_destroy(NULL, VP8_CL_NOT_INITIALIZED);
 #if HAVE_DLOPEN
         close_cl();
 #endif

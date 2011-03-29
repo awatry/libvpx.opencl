@@ -124,17 +124,17 @@ void vp8_setup_block_dptrs(MACROBLOCKD *x)
         y_cq = clCreateCommandQueue(cl_data.context, cl_data.device_id, 0, &err);
         if (!y_cq || err != CL_SUCCESS) {
             printf("Error: Failed to create a command queue!\n");
-            cl_destroy(NULL, CL_TRIED_BUT_FAILED);
+            cl_destroy(NULL, VP8_CL_TRIED_BUT_FAILED);
         }
         u_cq = clCreateCommandQueue(cl_data.context, cl_data.device_id, 0, &err);
         if (!u_cq || err != CL_SUCCESS) {
             printf("Error: Failed to create a command queue!\n");
-            cl_destroy(NULL, CL_TRIED_BUT_FAILED);
+            cl_destroy(NULL, VP8_CL_TRIED_BUT_FAILED);
         }
         v_cq = clCreateCommandQueue(cl_data.context, cl_data.device_id, 0, &err);
         if (!v_cq || err != CL_SUCCESS) {
             printf("Error: Failed to create a command queue!\n");
-            cl_destroy(NULL, CL_TRIED_BUT_FAILED);
+            cl_destroy(NULL, VP8_CL_TRIED_BUT_FAILED);
         }
     }
 #endif

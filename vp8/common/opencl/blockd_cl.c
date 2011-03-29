@@ -24,38 +24,38 @@ int vp8_cl_mb_prep(MACROBLOCKD *x, int flags){
 
     //Copy all blockd.cl_*_mem objects
     if (flags & DIFF)
-        CL_SET_BUF(x->cl_commands, x->cl_diff_mem, sizeof(cl_short)*400, x->diff,
+        VP8_CL_SET_BUF(x->cl_commands, x->cl_diff_mem, sizeof(cl_short)*400, x->diff,
             ,err
         );
 
     if (flags & PREDICTOR)
-        CL_SET_BUF(x->cl_commands, x->cl_predictor_mem, sizeof(cl_uchar)*384, x->predictor,
+        VP8_CL_SET_BUF(x->cl_commands, x->cl_predictor_mem, sizeof(cl_uchar)*384, x->predictor,
             ,err
         );
 
     if (flags & QCOEFF)
-        CL_SET_BUF(x->cl_commands, x->cl_qcoeff_mem, sizeof(cl_short)*400, x->qcoeff,
+        VP8_CL_SET_BUF(x->cl_commands, x->cl_qcoeff_mem, sizeof(cl_short)*400, x->qcoeff,
             ,err
         );
 
     if (flags & DQCOEFF)
-        CL_SET_BUF(x->cl_commands, x->cl_dqcoeff_mem, sizeof(cl_short)*400, x->dqcoeff,
+        VP8_CL_SET_BUF(x->cl_commands, x->cl_dqcoeff_mem, sizeof(cl_short)*400, x->dqcoeff,
             ,err
         );
 
     if (flags & EOBS)
-        CL_SET_BUF(x->cl_commands, x->cl_eobs_mem, sizeof(cl_char)*25, x->eobs,
+        VP8_CL_SET_BUF(x->cl_commands, x->cl_eobs_mem, sizeof(cl_char)*25, x->eobs,
             ,err
         );
 
     if (flags & PRE_BUF){
-        CL_SET_BUF(x->cl_commands, x->pre.buffer_mem, x->pre.buffer_size, x->pre.buffer_alloc,
+        VP8_CL_SET_BUF(x->cl_commands, x->pre.buffer_mem, x->pre.buffer_size, x->pre.buffer_alloc,
             ,err
         );
     }
 
     if (flags & DST_BUF){
-        CL_SET_BUF(x->cl_commands, x->dst.buffer_mem, x->dst.buffer_size, x->dst.buffer_alloc,
+        VP8_CL_SET_BUF(x->cl_commands, x->dst.buffer_mem, x->dst.buffer_size, x->dst.buffer_alloc,
             ,err
         );
     }
@@ -73,7 +73,7 @@ int vp8_cl_mb_finish(MACROBLOCKD *x, int flags){
 
     if (flags & DIFF){
         err = clEnqueueReadBuffer(x->cl_commands, x->cl_diff_mem, CL_FALSE, 0, sizeof(cl_short)*400, x->diff, 0, NULL, NULL);
-        CL_CHECK_SUCCESS( x->cl_commands, err != CL_SUCCESS,
+        VP8_CL_CHECK_SUCCESS( x->cl_commands, err != CL_SUCCESS,
         "Error: Failed to read from GPU!\n",
             , err
         );
@@ -81,7 +81,7 @@ int vp8_cl_mb_finish(MACROBLOCKD *x, int flags){
 
     if (flags & PREDICTOR){
     err = clEnqueueReadBuffer(x->cl_commands, x->cl_predictor_mem, CL_FALSE, 0, sizeof(cl_uchar)*384, x->predictor, 0, NULL, NULL);
-    CL_CHECK_SUCCESS( x->cl_commands, err != CL_SUCCESS,
+    VP8_CL_CHECK_SUCCESS( x->cl_commands, err != CL_SUCCESS,
         "Error: Failed to read from GPU!\n",
             , err
     );
@@ -89,7 +89,7 @@ int vp8_cl_mb_finish(MACROBLOCKD *x, int flags){
 
     if (flags & QCOEFF){
     err = clEnqueueReadBuffer(x->cl_commands, x->cl_qcoeff_mem, CL_FALSE, 0, sizeof(cl_short)*400, x->qcoeff, 0, NULL, NULL);
-    CL_CHECK_SUCCESS( x->cl_commands, err != CL_SUCCESS,
+    VP8_CL_CHECK_SUCCESS( x->cl_commands, err != CL_SUCCESS,
         "Error: Failed to read from GPU!\n",
             , err
     );
@@ -97,7 +97,7 @@ int vp8_cl_mb_finish(MACROBLOCKD *x, int flags){
 
     if (flags & DQCOEFF){
     err = clEnqueueReadBuffer(x->cl_commands, x->cl_dqcoeff_mem, CL_FALSE, 0, sizeof(cl_short)*400, x->dqcoeff, 0, NULL, NULL);
-    CL_CHECK_SUCCESS( x->cl_commands, err != CL_SUCCESS,
+    VP8_CL_CHECK_SUCCESS( x->cl_commands, err != CL_SUCCESS,
         "Error: Failed to read from GPU!\n",
             , err
     );
@@ -105,7 +105,7 @@ int vp8_cl_mb_finish(MACROBLOCKD *x, int flags){
 
     if (flags & EOBS){
         err = clEnqueueReadBuffer(x->cl_commands, x->cl_eobs_mem, CL_FALSE, 0, sizeof(cl_char)*25, x->eobs, 0, NULL, NULL);
-        CL_CHECK_SUCCESS( x->cl_commands, err != CL_SUCCESS,
+        VP8_CL_CHECK_SUCCESS( x->cl_commands, err != CL_SUCCESS,
           "Error: Failed to read from GPU!\n",
             , err
         );
@@ -114,7 +114,7 @@ int vp8_cl_mb_finish(MACROBLOCKD *x, int flags){
     if (flags & PRE_BUF){
         err = clEnqueueReadBuffer(x->cl_commands, x->pre.buffer_mem, CL_FALSE, 
                 0, x->pre.buffer_size, x->pre.buffer_alloc, 0, NULL, NULL);
-        CL_CHECK_SUCCESS( x->cl_commands, err != CL_SUCCESS,
+        VP8_CL_CHECK_SUCCESS( x->cl_commands, err != CL_SUCCESS,
           "Error: Failed to read from GPU!\n",
             , err
         );
@@ -123,7 +123,7 @@ int vp8_cl_mb_finish(MACROBLOCKD *x, int flags){
     if (flags & DST_BUF){
         err = clEnqueueReadBuffer(x->cl_commands, x->dst.buffer_mem, CL_FALSE,
                 0, x->dst.buffer_size, x->dst.buffer_alloc, 0, NULL, NULL);
-        CL_CHECK_SUCCESS( x->cl_commands, err != CL_SUCCESS,
+        VP8_CL_CHECK_SUCCESS( x->cl_commands, err != CL_SUCCESS,
           "Error: Failed to read from GPU!\n",
             , err
         );
@@ -142,32 +142,32 @@ int vp8_cl_block_prep(BLOCKD *b, int flags){
 
     //Copy all blockd.cl_*_mem objects
     if (flags & DIFF)
-        CL_SET_BUF(b->cl_commands, b->cl_diff_mem, sizeof(cl_short)*400, b->diff_base,
+        VP8_CL_SET_BUF(b->cl_commands, b->cl_diff_mem, sizeof(cl_short)*400, b->diff_base,
             ,err
         );
 
     if (flags & PREDICTOR)
-        CL_SET_BUF(b->cl_commands, b->cl_predictor_mem, sizeof(cl_uchar)*384, b->predictor_base,
+        VP8_CL_SET_BUF(b->cl_commands, b->cl_predictor_mem, sizeof(cl_uchar)*384, b->predictor_base,
             ,err
         );
 
     if (flags & QCOEFF)
-        CL_SET_BUF(b->cl_commands, b->cl_qcoeff_mem, sizeof(cl_short)*400, b->qcoeff_base,
+        VP8_CL_SET_BUF(b->cl_commands, b->cl_qcoeff_mem, sizeof(cl_short)*400, b->qcoeff_base,
             ,err
         );
 
     if (flags & DQCOEFF)
-        CL_SET_BUF(b->cl_commands, b->cl_dqcoeff_mem, sizeof(cl_short)*400, b->dqcoeff_base,
+        VP8_CL_SET_BUF(b->cl_commands, b->cl_dqcoeff_mem, sizeof(cl_short)*400, b->dqcoeff_base,
             ,err
         );
 
     if (flags & EOBS)
-        CL_SET_BUF(b->cl_commands, b->cl_eobs_mem, sizeof(cl_char)*25, b->eobs_base,
+        VP8_CL_SET_BUF(b->cl_commands, b->cl_eobs_mem, sizeof(cl_char)*25, b->eobs_base,
             ,err
         );
 
     if (flags & DEQUANT)
-        CL_SET_BUF(b->cl_commands, b->cl_dequant_mem, sizeof(cl_short)*16 ,b->dequant,
+        VP8_CL_SET_BUF(b->cl_commands, b->cl_dequant_mem, sizeof(cl_short)*16 ,b->dequant,
             ,err
         );
 
@@ -183,7 +183,7 @@ int vp8_cl_block_finish(BLOCKD *b, int flags){
 
     if (flags & DIFF){
         err = clEnqueueReadBuffer(b->cl_commands, b->cl_diff_mem, CL_FALSE, 0, sizeof(cl_short)*400, b->diff_base, 0, NULL, NULL);
-        CL_CHECK_SUCCESS( b->cl_commands, err != CL_SUCCESS,
+        VP8_CL_CHECK_SUCCESS( b->cl_commands, err != CL_SUCCESS,
         "Error: Failed to read from GPU!\n",
             , err
         );
@@ -191,7 +191,7 @@ int vp8_cl_block_finish(BLOCKD *b, int flags){
 
     if (flags & PREDICTOR){
     err = clEnqueueReadBuffer(b->cl_commands, b->cl_predictor_mem, CL_FALSE, 0, sizeof(cl_uchar)*384, b->predictor_base, 0, NULL, NULL);
-    CL_CHECK_SUCCESS( b->cl_commands, err != CL_SUCCESS,
+    VP8_CL_CHECK_SUCCESS( b->cl_commands, err != CL_SUCCESS,
         "Error: Failed to read from GPU!\n",
             , err
     );
@@ -199,7 +199,7 @@ int vp8_cl_block_finish(BLOCKD *b, int flags){
 
     if (flags & QCOEFF){
     err = clEnqueueReadBuffer(b->cl_commands, b->cl_qcoeff_mem, CL_FALSE, 0, sizeof(cl_short)*400, b->qcoeff_base, 0, NULL, NULL);
-    CL_CHECK_SUCCESS( b->cl_commands, err != CL_SUCCESS,
+    VP8_CL_CHECK_SUCCESS( b->cl_commands, err != CL_SUCCESS,
         "Error: Failed to read from GPU!\n",
             , err
     );
@@ -207,7 +207,7 @@ int vp8_cl_block_finish(BLOCKD *b, int flags){
 
     if (flags & DQCOEFF){
     err = clEnqueueReadBuffer(b->cl_commands, b->cl_dqcoeff_mem, CL_FALSE, 0, sizeof(cl_short)*400, b->dqcoeff_base, 0, NULL, NULL);
-    CL_CHECK_SUCCESS( b->cl_commands, err != CL_SUCCESS,
+    VP8_CL_CHECK_SUCCESS( b->cl_commands, err != CL_SUCCESS,
         "Error: Failed to read from GPU!\n",
             , err
     );
@@ -215,7 +215,7 @@ int vp8_cl_block_finish(BLOCKD *b, int flags){
 
     if (flags & EOBS){
     err = clEnqueueReadBuffer(b->cl_commands, b->cl_eobs_mem, CL_FALSE, 0, sizeof(cl_char)*25, b->eobs_base, 0, NULL, NULL);
-    CL_CHECK_SUCCESS( b->cl_commands, err != CL_SUCCESS,
+    VP8_CL_CHECK_SUCCESS( b->cl_commands, err != CL_SUCCESS,
         "Error: Failed to read from GPU!\n",
             , err
     );
@@ -223,7 +223,7 @@ int vp8_cl_block_finish(BLOCKD *b, int flags){
 
     if (flags & DEQUANT){
     err = clEnqueueReadBuffer(b->cl_commands, b->cl_dequant_mem, CL_FALSE, 0, sizeof(cl_short)*16 ,b->dequant, 0, NULL, NULL);
-    CL_CHECK_SUCCESS( b->cl_commands, err != CL_SUCCESS,
+    VP8_CL_CHECK_SUCCESS( b->cl_commands, err != CL_SUCCESS,
         "Error: Failed to read from GPU!\n",
             , err
     );

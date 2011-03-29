@@ -32,7 +32,7 @@ void vp8_arch_opencl_common_init(VP8_COMMON *ctx)
         if (cl_loaded == CL_SUCCESS)
             cl_initialized = cl_common_init();
         else
-            cl_initialized = CL_TRIED_BUT_FAILED;
+            cl_initialized = VP8_CL_TRIED_BUT_FAILED;
 
 #else //!HAVE_DLOPEN (e.g. Apple)
         cl_initialized = cl_common_init();

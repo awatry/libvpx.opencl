@@ -95,7 +95,7 @@ static void vp8_copy_mem_cl(
     err |= clSetKernelArg(cl_data.vp8_memcpy_kernel, 5, sizeof (int), &dst_stride);
     err |= clSetKernelArg(cl_data.vp8_memcpy_kernel, 6, sizeof (int), &num_bytes);
     err |= clSetKernelArg(cl_data.vp8_memcpy_kernel, 7, sizeof (int), &num_iter);
-    CL_CHECK_SUCCESS( cq, err != CL_SUCCESS,
+    VP8_CL_CHECK_SUCCESS( cq, err != CL_SUCCESS,
         "Error: Failed to set kernel arguments!\n",
         return,
     );
@@ -105,7 +105,7 @@ static void vp8_copy_mem_cl(
         /* Set kernel arguments */
         err = clSetKernelArg(cl_data.vp8_memcpy_kernel, 1, sizeof (int), &src_offsets[block]);
         err |= clSetKernelArg(cl_data.vp8_memcpy_kernel, 4, sizeof (int), &dst_offsets[block]);
-        CL_CHECK_SUCCESS( cq, err != CL_SUCCESS,
+        VP8_CL_CHECK_SUCCESS( cq, err != CL_SUCCESS,
             "Error: Failed to set kernel arguments!\n",
             return,
         );
@@ -117,7 +117,7 @@ static void vp8_copy_mem_cl(
             err = clEnqueueNDRangeKernel( cq, cl_data.vp8_memcpy_kernel, 2, NULL, global, local , 0, NULL, NULL);
         }
 
-        CL_CHECK_SUCCESS( cq, err != CL_SUCCESS,
+        VP8_CL_CHECK_SUCCESS( cq, err != CL_SUCCESS,
             "Error: Failed to execute kernel!\n",
             return,
         );
@@ -131,7 +131,7 @@ static void vp8_copy_mem_cl(
                     dst_offsets[block]+iter*dst_stride,
                     num_bytes, 0, NULL, NULL
                   );
-            CL_CHECK_SUCCESS(cq, err != CL_SUCCESS, "Error copying between buffers\n",
+            VP8_CL_CHECK_SUCCESS(cq, err != CL_SUCCESS, "Error copying between buffers\n",
                     ,
             );
         }
@@ -227,7 +227,7 @@ void vp8_build_inter_predictors_mbuv_cl(MACROBLOCKD *x)
     vp8_cl_mb_prep(x, PREDICTOR|PRE_BUF);
 
 #if !ONE_CQ_PER_MB
-    CL_FINISH(x->cl_commands);
+    VP8_CL_FINISH(x->cl_commands);
 #endif
 
     if (x->mode_info_context->mbmi.ref_frame != INTRA_FRAME &&
@@ -287,9 +287,9 @@ void vp8_build_inter_predictors_mbuv_cl(MACROBLOCKD *x)
     }
 
 #if !ONE_CQ_PER_MB
-    CL_FINISH(x->block[0].cl_commands);
-    CL_FINISH(x->block[16].cl_commands);
-    CL_FINISH(x->block[20].cl_commands);
+    VP8_CL_FINISH(x->block[0].cl_commands);
+    VP8_CL_FINISH(x->block[16].cl_commands);
+    VP8_CL_FINISH(x->block[20].cl_commands);
 #endif
 
     vp8_cl_mb_finish(x, PREDICTOR);
@@ -301,7 +301,7 @@ void vp8_build_inter_predictors_mb_cl(MACROBLOCKD *x)
     //vp8_cl_mb_prep(x, PRE_BUF);
 
 #if !ONE_CQ_PER_MB
-    CL_FINISH(x->cl_commands);
+    VP8_CL_FINISH(x->cl_commands);
 #endif
 
     if (x->mode_info_context->mbmi.ref_frame != INTRA_FRAME &&
@@ -410,9 +410,9 @@ void vp8_build_inter_predictors_mb_cl(MACROBLOCKD *x)
     }
 
 #if !ONE_CQ_PER_MB
-    CL_FINISH(x->block[0].cl_commands);
-    CL_FINISH(x->block[16].cl_commands);
-    CL_FINISH(x->block[20].cl_commands);
+    VP8_CL_FINISH(x->block[0].cl_commands);
+    VP8_CL_FINISH(x->block[16].cl_commands);
+    VP8_CL_FINISH(x->block[20].cl_commands);
 #endif
 
     vp8_cl_mb_finish(x, PREDICTOR);
@@ -466,7 +466,7 @@ void vp8_build_inter_predictors_mb_s_cl(MACROBLOCKD *x)
     vp8_cl_mb_prep(x, DST_BUF);
 
 #if !ONE_CQ_PER_MB
-    CL_FINISH(x->cl_commands);
+    VP8_CL_FINISH(x->cl_commands);
 #endif
 
     if (x->mode_info_context->mbmi.mode != SPLITMV)
@@ -633,9 +633,9 @@ void vp8_build_inter_predictors_mb_s_cl(MACROBLOCKD *x)
     }
 
 #if !ONE_CQ_PER_MB
-    CL_FINISH(x->block[0].cl_commands);
-    CL_FINISH(x->block[16].cl_commands);
-    CL_FINISH(x->block[20].cl_commands);
+    VP8_CL_FINISH(x->block[0].cl_commands);
+    VP8_CL_FINISH(x->block[16].cl_commands);
+    VP8_CL_FINISH(x->block[20].cl_commands);
 #endif
 
     vp8_cl_mb_finish(x, DST_BUF);

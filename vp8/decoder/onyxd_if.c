@@ -392,7 +392,7 @@ int vp8dx_receive_compressed_data(VP8D_PTR ptr, unsigned long size, const unsign
         pbi->mb.cl_commands = clCreateCommandQueue(cl_data.context, cl_data.device_id, 0, &err);
         if (!pbi->mb.cl_commands || err != CL_SUCCESS) {
             printf("Error: Failed to create a command queue!\n");
-            cl_destroy(NULL, CL_TRIED_BUT_FAILED);
+            cl_destroy(NULL, VP8_CL_TRIED_BUT_FAILED);
         }
 
         pbi->mb.cl_diff_mem = NULL;
@@ -404,40 +404,40 @@ int vp8dx_receive_compressed_data(VP8D_PTR ptr, unsigned long size, const unsign
 #define SET_ON_ALLOC 0
 #if SET_ON_ALLOC
 #if ENABLE_CL_SUBPIXEL || ENABLE_CL_IDCT_DEQUANT
-            CL_CREATE_BUF(pbi->mb.cl_commands, pbi->mb.cl_predictor_mem, CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,
+            VP8_CL_CREATE_BUF(pbi->mb.cl_commands, pbi->mb.cl_predictor_mem, CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,
                     sizeof(cl_uchar)*384, pbi->mb.predictor, goto BUF_DONE, -1);
 #endif
 
 #if ENABLE_CL_IDCT_DEQUANT
-            CL_CREATE_BUF(pbi->mb.cl_commands, pbi->mb.cl_diff_mem, CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,
+            VP8_CL_CREATE_BUF(pbi->mb.cl_commands, pbi->mb.cl_diff_mem, CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,
                     sizeof(cl_short)*400, pbi->mb.diff, goto BUF_DONE, -1);
 
-            CL_CREATE_BUF(pbi->mb.cl_commands, pbi->mb.cl_qcoeff_mem, CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,
+            VP8_CL_CREATE_BUF(pbi->mb.cl_commands, pbi->mb.cl_qcoeff_mem, CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,
                     sizeof(cl_short)*400, pbi->mb.qcoeff, goto BUF_DONE,-1);
 
-            CL_CREATE_BUF(pbi->mb.cl_commands, pbi->mb.cl_dqcoeff_mem, CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,
+            VP8_CL_CREATE_BUF(pbi->mb.cl_commands, pbi->mb.cl_dqcoeff_mem, CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,
                     sizeof(cl_short)*400, pbi->mb.dqcoeff, goto BUF_DONE,-1);
 
-            CL_CREATE_BUF(pbi->mb.cl_commands, pbi->mb.cl_eobs_mem, CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,
+            VP8_CL_CREATE_BUF(pbi->mb.cl_commands, pbi->mb.cl_eobs_mem, CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,
                     sizeof(cl_char)*25, pbi->mb.eobs, goto BUF_DONE,-1);
 #endif
 #else
 #if ENABLE_CL_IDCT_DEQUANT || ENABLE_CL_SUBPIXEL
-            CL_CREATE_BUF(pbi->mb.cl_commands, pbi->mb.cl_predictor_mem, CL_MEM_READ_WRITE,
+            VP8_CL_CREATE_BUF(pbi->mb.cl_commands, pbi->mb.cl_predictor_mem, CL_MEM_READ_WRITE,
                     sizeof(cl_uchar)*384, NULL, goto BUF_DONE,-1);
 #endif
 
 #if ENABLE_CL_IDCT_DEQUANT
-            CL_CREATE_BUF(pbi->mb.cl_commands, pbi->mb.cl_diff_mem, CL_MEM_READ_WRITE,
+            VP8_CL_CREATE_BUF(pbi->mb.cl_commands, pbi->mb.cl_diff_mem, CL_MEM_READ_WRITE,
                     sizeof(cl_short)*400, NULL, goto BUF_DONE,-1);
 
-            CL_CREATE_BUF(pbi->mb.cl_commands, pbi->mb.cl_qcoeff_mem, CL_MEM_READ_WRITE,
+            VP8_CL_CREATE_BUF(pbi->mb.cl_commands, pbi->mb.cl_qcoeff_mem, CL_MEM_READ_WRITE,
                     sizeof(cl_short)*400, NULL, goto BUF_DONE,-1);
 
-            CL_CREATE_BUF(pbi->mb.cl_commands, pbi->mb.cl_dqcoeff_mem, CL_MEM_READ_WRITE,
+            VP8_CL_CREATE_BUF(pbi->mb.cl_commands, pbi->mb.cl_dqcoeff_mem, CL_MEM_READ_WRITE,
                     sizeof(cl_short)*400, NULL, goto BUF_DONE,-1);
 
-            CL_CREATE_BUF(pbi->mb.cl_commands, pbi->mb.cl_eobs_mem, CL_MEM_READ_WRITE,
+            VP8_CL_CREATE_BUF(pbi->mb.cl_commands, pbi->mb.cl_eobs_mem, CL_MEM_READ_WRITE,
                     sizeof(cl_char) * 25, NULL, goto BUF_DONE,-1);
 #endif
 #endif
