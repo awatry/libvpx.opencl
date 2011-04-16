@@ -42,81 +42,81 @@ extern int cl_load_program(cl_program *prog_ref, const char *file_name, const ch
 #define MAX_NUM_PLATFORMS 4
 #define MAX_NUM_DEVICES 10
 
-#define CL_TRIED_BUT_FAILED 1
-#define CL_NOT_INITIALIZED -1
+#define VP8_CL_TRIED_BUT_FAILED 1
+#define VP8_CL_NOT_INITIALIZED -1
 extern int cl_initialized;
 
 extern const char *vpx_codec_lib_dir(void);
 
-#define CL_FINISH(cq) \
+#define VP8_CL_FINISH(cq) \
     if (cl_initialized == CL_SUCCESS){ \
         /* Wait for kernels to finish. */ \
         clFinish(cq); \
     }
 
-#define CL_BARRIER(cq) \
+#define VP8_CL_BARRIER(cq) \
     if (cl_initialized == CL_SUCCESS){ \
         /* Insert a barrier into the command queue. */ \
         clEnqueueBarrier(cq); \
     }
 
-#define CL_CHECK_SUCCESS(cq,cond,msg,alt,retCode) \
+#define VP8_CL_CHECK_SUCCESS(cq,cond,msg,alt,retCode) \
     if ( cond ){ \
         fprintf(stderr, msg);  \
-        cl_destroy(cq, CL_TRIED_BUT_FAILED); \
+        cl_destroy(cq, VP8_CL_TRIED_BUT_FAILED); \
         alt; \
         return retCode; \
     }
 
-#define CL_CALC_LOCAL_SIZE(kernel, kernel_size) \
+#define VP8_CL_CALC_LOCAL_SIZE(kernel, kernel_size) \
     err = clGetKernelWorkGroupInfo( cl_data.kernel, \
   	cl_data.device_id, \
   	CL_KERNEL_WORK_GROUP_SIZE, \
   	sizeof(size_t), \
   	&cl_data.kernel_size, \
   	NULL);\
-    CL_CHECK_SUCCESS(NULL, err != CL_SUCCESS, \
+    VP8_CL_CHECK_SUCCESS(NULL, err != CL_SUCCESS, \
         "Error: Failed to calculate local size of kernel!\n", \
         ,\
-        CL_TRIED_BUT_FAILED \
+        VP8_CL_TRIED_BUT_FAILED \
     ); \
 
-#define CL_CREATE_KERNEL(data,program,name,str_name) \
+#define VP8_CL_CREATE_KERNEL(data,program,name,str_name) \
     data.name = clCreateKernel(data.program, str_name , &err); \
-    CL_CHECK_SUCCESS(NULL, err != CL_SUCCESS || !data.name, \
+    VP8_CL_CHECK_SUCCESS(NULL, err != CL_SUCCESS || !data.name, \
         "Error: Failed to create compute kernel "#str_name"!\n", \
         ,\
-        CL_TRIED_BUT_FAILED \
+        VP8_CL_TRIED_BUT_FAILED \
     );
 
-#define CL_READ_BUF(cq, bufRef, bufSize, dstPtr) \
+#define VP8_CL_READ_BUF(cq, bufRef, bufSize, dstPtr) \
     err = clEnqueueReadBuffer(cq, bufRef, CL_FALSE, 0, bufSize , dstPtr, 0, NULL, NULL); \
-    CL_CHECK_SUCCESS( cq, err != CL_SUCCESS, \
+    VP8_CL_CHECK_SUCCESS( cq, err != CL_SUCCESS, \
         "Error: Failed to read from GPU!\n",, err \
     ); \
 
-#define CL_SET_BUF(cq, bufRef, bufSize, dataPtr, altPath, retCode) \
+#define VP8_CL_SET_BUF(cq, bufRef, bufSize, dataPtr, altPath, retCode) \
     { \
         err = clEnqueueWriteBuffer(cq, bufRef, CL_FALSE, 0, \
             bufSize, dataPtr, 0, NULL, NULL); \
         \
-        CL_CHECK_SUCCESS(cq, err != CL_SUCCESS, \
+        VP8_CL_CHECK_SUCCESS(cq, err != CL_SUCCESS, \
             "Error: Failed to write to buffer!\n", \
             altPath, retCode\
         ); \
     } \
 
-#define CL_CREATE_BUF(cq, bufRef, bufType, bufSize, dataPtr, altPath, retCode) \
+#define VP8_CL_CREATE_BUF(cq, bufRef, bufType, bufSize, dataPtr, altPath, retCode) \
     bufRef = clCreateBuffer(cl_data.context, CL_MEM_READ_WRITE, bufSize, NULL, NULL); \
     if (dataPtr != NULL && bufRef != NULL){ \
-        CL_SET_BUF(cq, bufRef, bufSize, dataPtr, altPath, retCode)\
+        VP8_CL_SET_BUF(cq, bufRef, bufSize, dataPtr, altPath, retCode)\
     } \
-    CL_CHECK_SUCCESS(cq, !bufRef, \
+    VP8_CL_CHECK_SUCCESS(cq, !bufRef, \
         "Error: Failed to allocate buffer. Using CPU path!\n", \
         altPath, retCode\
     ); \
 
-#define CL_RELEASE_KERNEL(kernel) \
+#define VP8_CL_RELEASE_KERNEL(kernel) \
     if (kernel) \
         clReleaseKernel(kernel); \
     kernel = NULL;

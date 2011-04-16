@@ -59,13 +59,13 @@ void mb_init_dequantizer_cl(MACROBLOCKD *xd){
         for (i=0; i < 25; i++){
 
 #if 1 //Initialize CL memory on allocation?
-            CL_CREATE_BUF(xd->cl_commands, xd->block[i].cl_dequant_mem,
+            VP8_CL_CREATE_BUF(xd->cl_commands, xd->block[i].cl_dequant_mem,
                 ,
                 16*sizeof(cl_short),
                 xd->block[i].dequant,,
             );
 #else
-            CL_CREATE_BUF(xd->cl_commands, xd->block[i].cl_dequant_mem,
+            VP8_CL_CREATE_BUF(xd->cl_commands, xd->block[i].cl_dequant_mem,
                 ,
                 16*sizeof(cl_short),
                 NULL,,
@@ -100,11 +100,11 @@ static void skip_recon_mb_cl(VP8D_COMP *pbi, MACROBLOCKD *xd)
         } else {
             vp8_build_inter_predictors_mb_s(xd);
         }
-        CL_FINISH(xd->cl_commands);
+        VP8_CL_FINISH(xd->cl_commands);
 #if !ONE_CQ_PER_MB
-        CL_FINISH(xd->block[0].cl_commands);
-        CL_FINISH(xd->block[16].cl_commands);
-        CL_FINISH(xd->block[20].cl_commands);
+        VP8_CL_FINISH(xd->block[0].cl_commands);
+        VP8_CL_FINISH(xd->block[16].cl_commands);
+        VP8_CL_FINISH(xd->block[20].cl_commands);
 #endif
     }
 }
@@ -146,7 +146,7 @@ void vp8_decode_macroblock_cl(VP8D_COMP *pbi, MACROBLOCKD *xd, int eobtotal)
 
 #if !ENABLE_CL_IDCT_DEQUANT
         //Wait for inter-predict if dequant/IDCT is being done on the CPU
-        CL_FINISH(xd->cl_commands);
+        VP8_CL_FINISH(xd->cl_commands);
 #endif
     }
 
@@ -162,7 +162,7 @@ void vp8_decode_macroblock_cl(VP8D_COMP *pbi, MACROBLOCKD *xd, int eobtotal)
             vp8_cl_block_prep(b, DEQUANT|QCOEFF);
             vp8_dequantize_b_cl(b);
             vp8_cl_block_finish(b, DQCOEFF);
-            CL_FINISH(b->cl_commands); //Keep until qcoeff memset below is CL
+            VP8_CL_FINISH(b->cl_commands); //Keep until qcoeff memset below is CL
         }
         else
 #endif
@@ -225,7 +225,7 @@ void vp8_decode_macroblock_cl(VP8D_COMP *pbi, MACROBLOCKD *xd, int eobtotal)
             BLOCKD *b = &xd->block[i];
             short *qcoeff = b->qcoeff_base + b->qcoeff_offset;
 #if ENABLE_CL_IDCT_DEQUANT
-            CL_FINISH(b->cl_commands);
+            VP8_CL_FINISH(b->cl_commands);
 #endif
             vp8_predict_intra4x4(b, b->bmi.mode, b->predictor_base + b->predictor_offset);
 
@@ -247,7 +247,7 @@ void vp8_decode_macroblock_cl(VP8D_COMP *pbi, MACROBLOCKD *xd, int eobtotal)
                     vp8_cl_block_prep(b, PREDICTOR|DIFF|QCOEFF|DEQUANT);
                     vp8_dc_only_idct_add_cl(b, CL_FALSE, 0, b->qcoeff_offset, b->predictor_offset,
                         *(b->base_dst), dst_mem, dst_off+b->dst, dst_size, 16, b->dst_stride);
-                    CL_FINISH(b->cl_commands);
+                    VP8_CL_FINISH(b->cl_commands);
                     ((int *)(b->qcoeff_base + b->qcoeff_offset))[0] = 0; //Move into follow-up kernel?
                 }
                 vp8_cl_mb_finish(xd,DST_BUF);
@@ -295,7 +295,7 @@ void vp8_decode_macroblock_cl(VP8D_COMP *pbi, MACROBLOCKD *xd, int eobtotal)
         vp8_cl_mb_prep(xd,DST_BUF);
         vp8_dequant_idct_add_uv_block_cl(pbi, xd,  DEQUANT_INVOKE (&pbi->dequant, idct_add_uv_block));
         vp8_cl_mb_finish(xd,DST_BUF);
-        CL_FINISH(xd->cl_commands);
+        VP8_CL_FINISH(xd->cl_commands);
     } else
 #endif
     {

@@ -14,7 +14,7 @@
 
 CL_FUNCTIONS cl;
 void *dll = NULL;
-int cl_loaded = CL_NOT_INITIALIZED;
+int cl_loaded = VP8_CL_NOT_INITIALIZED;
 
 int close_cl(){
     int ret = dlclose(dll);
@@ -34,7 +34,7 @@ int load_cl(char *lib_name){
         //printf("Found CL library\n");
     } else {
         //printf("Didn't find CL library\n");
-        return CL_TRIED_BUT_FAILED;
+        return VP8_CL_TRIED_BUT_FAILED;
     }
 
     CL_LOAD_FN("clGetPlatformIDs", cl.getPlatformIDs);

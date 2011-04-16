@@ -31,9 +31,9 @@ void vp8_memset_short_cl(cl_mem mem, int offset, short val){
 int cl_destroy_dequant(){
     printf("Freeing dequant decoder resources\n");
 
-    CL_RELEASE_KERNEL(cl_data.vp8_dequant_dc_idct_add_kernel);
-    CL_RELEASE_KERNEL(cl_data.vp8_dequant_idct_add_kernel);
-    CL_RELEASE_KERNEL(cl_data.vp8_dequantize_b_kernel);
+    VP8_CL_RELEASE_KERNEL(cl_data.vp8_dequant_dc_idct_add_kernel);
+    VP8_CL_RELEASE_KERNEL(cl_data.vp8_dequant_idct_add_kernel);
+    VP8_CL_RELEASE_KERNEL(cl_data.vp8_dequantize_b_kernel);
 
     if (cl_data.dequant_program)
         clReleaseProgram(cl_data.dequant_program);
@@ -50,12 +50,12 @@ int cl_init_dequant() {
     // Create the compute program from the file-defined source code
     if (cl_load_program(&cl_data.dequant_program, dequant_cl_file_name,
             dequantCompileOptions) != CL_SUCCESS)
-        return CL_TRIED_BUT_FAILED;
+        return VP8_CL_TRIED_BUT_FAILED;
 
     // Create the compute kernels in the program we wish to run
-    CL_CREATE_KERNEL(cl_data,dequant_program,vp8_dequant_dc_idct_add_kernel,"vp8_dequant_dc_idct_add_kernel");
-    CL_CREATE_KERNEL(cl_data,dequant_program,vp8_dequant_idct_add_kernel,"vp8_dequant_idct_add_kernel");
-    CL_CREATE_KERNEL(cl_data,dequant_program,vp8_dequantize_b_kernel,"vp8_dequantize_b_kernel");
+    VP8_CL_CREATE_KERNEL(cl_data,dequant_program,vp8_dequant_dc_idct_add_kernel,"vp8_dequant_dc_idct_add_kernel");
+    VP8_CL_CREATE_KERNEL(cl_data,dequant_program,vp8_dequant_idct_add_kernel,"vp8_dequant_idct_add_kernel");
+    VP8_CL_CREATE_KERNEL(cl_data,dequant_program,vp8_dequantize_b_kernel,"vp8_dequantize_b_kernel");
 
     //printf("Created dequant kernels\n");
 
@@ -74,14 +74,14 @@ void vp8_dequantize_b_cl(BLOCKD *d)
     err |= clSetKernelArg(cl_data.vp8_dequantize_b_kernel, 2, sizeof (cl_mem), &d->cl_qcoeff_mem);
     err |= clSetKernelArg(cl_data.vp8_dequantize_b_kernel, 3, sizeof (cl_int), &d->qcoeff_offset);
     err |= clSetKernelArg(cl_data.vp8_dequantize_b_kernel, 4, sizeof (cl_mem), &d->cl_dequant_mem);
-    CL_CHECK_SUCCESS( d->cl_commands, err != CL_SUCCESS,
+    VP8_CL_CHECK_SUCCESS( d->cl_commands, err != CL_SUCCESS,
         "Error: Failed to set kernel arguments!\n",
         vp8_dequantize_b_c(d),
     );
 
     /* Execute the kernel */
     err = clEnqueueNDRangeKernel( d->cl_commands, cl_data.vp8_dequantize_b_kernel, 1, NULL, &global, NULL , 0, NULL, NULL);
-    CL_CHECK_SUCCESS( d->cl_commands, err != CL_SUCCESS,
+    VP8_CL_CHECK_SUCCESS( d->cl_commands, err != CL_SUCCESS,
         "Error: Failed to execute kernel!\n",
         printf("err = %d\n",err);\
         vp8_dequantize_b_c(d),
@@ -98,7 +98,7 @@ void vp8_dequant_idct_add_cl(BLOCKD *b, unsigned char *dest_base, cl_mem dest_me
 
     if (dest_mem == NULL){
         //Initialize destination memory
-        CL_CREATE_BUF(b->cl_commands, dest_mem, CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,
+        VP8_CL_CREATE_BUF(b->cl_commands, dest_mem, CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,
                 dst_size, dest_base,,
         );
         free_mem = 1;
@@ -115,7 +115,7 @@ void vp8_dequant_idct_add_cl(BLOCKD *b, unsigned char *dest_base, cl_mem dest_me
     err |= clSetKernelArg(cl_data.vp8_dequant_idct_add_kernel, 6, sizeof (int), &dest_offset);
     err |= clSetKernelArg(cl_data.vp8_dequant_idct_add_kernel, 7, sizeof (int), &pitch);
     err |= clSetKernelArg(cl_data.vp8_dequant_idct_add_kernel, 8, sizeof (int), &stride);
-    CL_CHECK_SUCCESS( b->cl_commands, err != CL_SUCCESS,
+    VP8_CL_CHECK_SUCCESS( b->cl_commands, err != CL_SUCCESS,
         "Error: Failed to set kernel arguments!\n",
         idct_add(b->qcoeff_base+q_offset, b->dequant,  b->predictor_base + pred_offset,
             dest_base + dest_offset, pitch, stride),
@@ -123,7 +123,7 @@ void vp8_dequant_idct_add_cl(BLOCKD *b, unsigned char *dest_base, cl_mem dest_me
 
     /* Execute the kernel */
     err = clEnqueueNDRangeKernel( b->cl_commands, cl_data.vp8_dequant_idct_add_kernel, 1, NULL, &global, NULL , 0, NULL, NULL);
-    CL_CHECK_SUCCESS( b->cl_commands, err != CL_SUCCESS,
+    VP8_CL_CHECK_SUCCESS( b->cl_commands, err != CL_SUCCESS,
         "Error: Failed to execute kernel!\n",
         printf("err = %d\n",err);\
         idct_add(b->qcoeff_base+q_offset, b->dequant,  b->predictor_base + pred_offset,
@@ -133,7 +133,7 @@ void vp8_dequant_idct_add_cl(BLOCKD *b, unsigned char *dest_base, cl_mem dest_me
     if (free_mem == 1){
         /* Read back the result data from the device */
         err = clEnqueueReadBuffer(b->cl_commands, dest_mem, CL_FALSE, 0, dst_size, dest_base, 0, NULL, NULL);
-        CL_CHECK_SUCCESS( b->cl_commands, err != CL_SUCCESS,
+        VP8_CL_CHECK_SUCCESS( b->cl_commands, err != CL_SUCCESS,
             "Error: Failed to read output array!\n",
             idct_add(b->qcoeff_base+q_offset, b->dequant,  b->predictor_base + pred_offset,
                 dest_base + dest_offset, pitch, stride),
@@ -168,7 +168,7 @@ void vp8_dequant_dc_idct_add_cl(
 
     //Initialize dest_mem
     dest_size = sizeof(cl_uchar)*(4*stride + dest_offset + 4);
-    CL_CREATE_BUF(b->cl_commands, dest_mem, CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,
+    VP8_CL_CREATE_BUF(b->cl_commands, dest_mem, CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,
             dest_size, dest,,
     );
 
@@ -188,20 +188,20 @@ void vp8_dequant_dc_idct_add_cl(
     err |= clSetKernelArg(cl_data.vp8_dequant_dc_idct_add_kernel, 9, sizeof (int), &pitch);
     err |= clSetKernelArg(cl_data.vp8_dequant_dc_idct_add_kernel, 10, sizeof (int), &stride);
 
-    CL_CHECK_SUCCESS( b->cl_commands, err != CL_SUCCESS,
+    VP8_CL_CHECK_SUCCESS( b->cl_commands, err != CL_SUCCESS,
         "Error: Failed to set kernel arguments!\n",,
     );
 
     /* Execute the kernel */
     err = clEnqueueNDRangeKernel( b->cl_commands, cl_data.vp8_dequant_dc_idct_add_kernel, 1, NULL, &global, NULL , 0, NULL, NULL);
-    CL_CHECK_SUCCESS( b->cl_commands, err != CL_SUCCESS,
+    VP8_CL_CHECK_SUCCESS( b->cl_commands, err != CL_SUCCESS,
         "Error: Failed to execute kernel!\n",
         printf("err = %d\n",err);,
     );
 
     /* Read back the result data from the device */
     err = clEnqueueReadBuffer(b->cl_commands, dest_mem, CL_FALSE, 0, dest_size, dest, 0, NULL, NULL);
-    CL_CHECK_SUCCESS( b->cl_commands, err != CL_SUCCESS,
+    VP8_CL_CHECK_SUCCESS( b->cl_commands, err != CL_SUCCESS,
         "Error: Failed to read output array!\n",,
     );
 
