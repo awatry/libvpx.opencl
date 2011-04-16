@@ -336,13 +336,6 @@ void vp8_build_inter_predictors_mby(MACROBLOCKD *x)
 void vp8_build_inter_predictors_mb(MACROBLOCKD *x)
 {
 
-#if CONFIG_OPENCL && ENABLE_CL_SUBPIXEL
-    if ( cl_initialized == CL_SUCCESS){
-        vp8_build_inter_predictors_mb_cl(x);
-        return;
-    }
-#endif
-
     if (x->mode_info_context->mbmi.ref_frame != INTRA_FRAME &&
         x->mode_info_context->mbmi.mode != SPLITMV)
     {

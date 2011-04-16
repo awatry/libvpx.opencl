@@ -95,9 +95,13 @@ static void skip_recon_mb_cl(VP8D_COMP *pbi, MACROBLOCKD *xd)
     }
     else
     {
-        if (cl_initialized == CL_SUCCESS){
+#if ENABLE_CL_SUBPIXEL
+        if (cl_initialized == CL_SUCCESS)
+        {
             vp8_build_inter_predictors_mb_s_cl(xd);
-        } else {
+        } else
+#endif
+        {
             vp8_build_inter_predictors_mb_s(xd);
         }
         VP8_CL_FINISH(xd->cl_commands);

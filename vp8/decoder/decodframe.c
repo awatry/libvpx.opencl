@@ -110,30 +110,7 @@ void mb_init_dequantizer(VP8D_COMP *pbi, MACROBLOCKD *xd)
     xd->block[24].dequant = pc->Y2dequant[QIndex];
 
 #if CONFIG_OPENCL && ENABLE_CL_IDCT_DEQUANT
-<<<<<<< HEAD
     mb_init_dequantizer_cl(xd);
-=======
-    //Set up per-block dequant CL memory. Eventually, might be able to set up
-    //one large buffer containing the entire large dequant buffer.
-    if (cl_initialized == CL_SUCCESS){
-        for (i=0; i < 25; i++){
-
-#if 1 //Initialize CL memory on allocation?
-            VP8_CL_CREATE_BUF(xd->cl_commands, xd->block[i].cl_dequant_mem,
-                ,
-                16*sizeof(cl_short),
-                xd->block[i].dequant,,
-            );
-#else
-            VP8_CL_CREATE_BUF(xd->cl_commands, xd->block[i].cl_dequant_mem,
-                ,
-                16*sizeof(cl_short),
-                NULL,,
-            );
-#endif
-        }
-    }
->>>>>>> 23ef9c1ed1fd4df4ba3376855ca6f481dd25a6c8
 #endif
 
 }
@@ -149,7 +126,6 @@ void mb_init_dequantizer(VP8D_COMP *pbi, MACROBLOCKD *xd)
  */
 static void skip_recon_mb(VP8D_COMP *pbi, MACROBLOCKD *xd)
 {
-    printf("skip_recon_mb\n");
     if (xd->frame_type == KEY_FRAME  ||  xd->mode_info_context->mbmi.ref_frame == INTRA_FRAME)
     {
 
