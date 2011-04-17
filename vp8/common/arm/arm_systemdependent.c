@@ -11,21 +11,13 @@
 
 #include "vpx_ports/config.h"
 #include "vpx_ports/arm.h"
-#include "g_common.h"
-#include "pragmas.h"
-#include "subpixel.h"
-#include "loopfilter.h"
-#include "recon.h"
-#include "idct.h"
-#include "onyxc_int.h"
-
-extern void (*vp8_build_intra_predictors_mby_ptr)(MACROBLOCKD *x);
-extern void vp8_build_intra_predictors_mby(MACROBLOCKD *x);
-extern void vp8_build_intra_predictors_mby_neon(MACROBLOCKD *x);
-
-extern void (*vp8_build_intra_predictors_mby_s_ptr)(MACROBLOCKD *x);
-extern void vp8_build_intra_predictors_mby_s(MACROBLOCKD *x);
-extern void vp8_build_intra_predictors_mby_s_neon(MACROBLOCKD *x);
+#include "vp8/common/g_common.h"
+#include "vp8/common/pragmas.h"
+#include "vp8/common/subpixel.h"
+#include "vp8/common/loopfilter.h"
+#include "vp8/common/recon.h"
+#include "vp8/common/idct.h"
+#include "vp8/common/onyxc_int.h"
 
 void vp8_arch_arm_common_init(VP8_COMMON *ctx)
 {
@@ -106,31 +98,12 @@ void vp8_arch_arm_common_init(VP8_COMMON *ctx)
         rtcd->recon.recon2      = vp8_recon2b_neon;
         rtcd->recon.recon4      = vp8_recon4b_neon;
         rtcd->recon.recon_mb    = vp8_recon_mb_neon;
-
+        rtcd->recon.build_intra_predictors_mby =
+            vp8_build_intra_predictors_mby_neon;
+        rtcd->recon.build_intra_predictors_mby_s =
+            vp8_build_intra_predictors_mby_s_neon;
     }
 #endif
 
-#endif
-
-#if HAVE_ARMV6
-#if CONFIG_RUNTIME_CPU_DETECT
-    if (has_media)
-#endif
-    {
-        vp8_build_intra_predictors_mby_ptr = vp8_build_intra_predictors_mby;
-        vp8_build_intra_predictors_mby_s_ptr = vp8_build_intra_predictors_mby_s;
-    }
-#endif
-
-#if HAVE_ARMV7
-#if CONFIG_RUNTIME_CPU_DETECT
-    if (has_neon)
-#endif
-    {
-        vp8_build_intra_predictors_mby_ptr =
-         vp8_build_intra_predictors_mby_neon;
-        vp8_build_intra_predictors_mby_s_ptr =
-         vp8_build_intra_predictors_mby_s_neon;
-    }
 #endif
 }

@@ -25,7 +25,6 @@ extern void accum_mv_refs(MB_PREDICTION_MODE, const int near_mv_ref_cts[4]);
 #define MAX_FULL_PEL_VAL ((1 << (MAX_MVSEARCH_STEPS+3)) - 8)    // Max full pel mv specified in 1/8 pel units
 #define MAX_FIRST_STEP (1 << (MAX_MVSEARCH_STEPS-1))            // Maximum size of the first step in full pel units
 
-
 extern void print_mode_context(void);
 extern int vp8_mv_bit_cost(MV *mv, MV *ref, int *mvcost[2], int Weight);
 extern void vp8_init_dsmotion_compensation(MACROBLOCK *x, int stride);
@@ -44,13 +43,13 @@ extern int vp8_hex_search
     int *num00,
     const vp8_variance_fn_ptr_t *vf,
     int *mvsadcost[2],
-    int *mvcost[2]
-
+    int *mvcost[2],
+    MV *center_mv
 );
 
 typedef int (fractional_mv_step_fp)
     (MACROBLOCK *x, BLOCK *b, BLOCKD *d, MV *bestmv, MV *ref_mv,
-     int error_per_bit, const vp8_variance_fn_ptr_t *vfp, int *mvcost[2]);
+     int error_per_bit, const vp8_variance_fn_ptr_t *vfp, int *mvcost[2], int *distortion);
 extern fractional_mv_step_fp vp8_find_best_sub_pixel_step_iteratively;
 extern fractional_mv_step_fp vp8_find_best_sub_pixel_step;
 extern fractional_mv_step_fp vp8_find_best_half_pixel_step;
@@ -67,7 +66,7 @@ extern fractional_mv_step_fp vp8_skip_fractional_mv_step;
      int distance, \
      vp8_variance_fn_ptr_t *fn_ptr, \
      int *mvcost[2], \
-     int *mvsadcost[2] \
+     MV *center_mv \
     )
 
 #define prototype_diamond_search_sad(sym)\
@@ -82,8 +81,8 @@ extern fractional_mv_step_fp vp8_skip_fractional_mv_step;
      int error_per_bit, \
      int *num00, \
      vp8_variance_fn_ptr_t *fn_ptr, \
-     int *mvsadcost[2], \
-     int *mvcost[2] \
+     int *mvcost[2], \
+     MV *center_mv \
     )
 
 #if ARCH_X86 || ARCH_X86_64

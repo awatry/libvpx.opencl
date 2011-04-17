@@ -10,15 +10,13 @@
 
 
 #include "vpx_ports/config.h"
-#include "variance.h"
-#include "onyx_int.h"
+#include "vp8/encoder/variance.h"
+#include "vp8/encoder/onyx_int.h"
 
 
 void vp8_arch_x86_encoder_init(VP8_COMP *cpi);
 void vp8_arch_arm_encoder_init(VP8_COMP *cpi);
 
-
-void (*vp8_fast_quantize_b)(BLOCK *b, BLOCKD *d);
 extern void vp8_fast_quantize_b_c(BLOCK *b, BLOCKD *d);
 
 void (*vp8_yv12_copy_partial_frame_ptr)(YV12_BUFFER_CONFIG *src_ybc, YV12_BUFFER_CONFIG *dst_ybc, int Fraction);
@@ -91,14 +89,20 @@ void vp8_cmachine_specific_config(VP8_COMP *cpi)
 
     cpi->rtcd.quantize.quantb                = vp8_regular_quantize_b;
     cpi->rtcd.quantize.fastquantb            = vp8_fast_quantize_b_c;
-
     cpi->rtcd.search.full_search             = vp8_full_search_sad;
     cpi->rtcd.search.diamond_search          = vp8_diamond_search_sad;
+#if !(CONFIG_REALTIME_ONLY)
+    cpi->rtcd.temporal.apply                 = vp8_temporal_filter_apply_c;
+#endif
 #endif
 
     // Pure C:
     vp8_yv12_copy_partial_frame_ptr = vp8_yv12_copy_partial_frame;
 
+#if CONFIG_PSNR
+    cpi->rtcd.variance.ssimpf_8x8            = ssim_parms_8x8_c;
+    cpi->rtcd.variance.ssimpf                = ssim_parms_c;
+#endif
 
 #if ARCH_X86 || ARCH_X86_64
     vp8_arch_x86_encoder_init(cpi);

@@ -12,22 +12,22 @@
 #include "vpx_ports/config.h"
 #include "encodemb.h"
 #include "encodemv.h"
-#include "common.h"
+#include "vp8/common/common.h"
 #include "onyx_int.h"
-#include "extend.h"
-#include "entropymode.h"
-#include "quant_common.h"
+#include "vp8/common/extend.h"
+#include "vp8/common/entropymode.h"
+#include "vp8/common/quant_common.h"
 #include "segmentation.h"
-#include "setupintrarecon.h"
+#include "vp8/common/setupintrarecon.h"
 #include "encodeintra.h"
-#include "reconinter.h"
+#include "vp8/common/reconinter.h"
 #include "rdopt.h"
 #include "pickinter.h"
-#include "findnearmv.h"
-#include "reconintra.h"
+#include "vp8/common/findnearmv.h"
+#include "vp8/common/reconintra.h"
 #include <stdio.h>
 #include <limits.h>
-#include "subpixel.h"
+#include "vp8/common/subpixel.h"
 #include "vpx_ports/vpx_timer.h"
 
 #if CONFIG_RUNTIME_CPU_DETECT
@@ -62,7 +62,6 @@ unsigned int b_modes[14]  = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
 static const int qrounding_factors[129] =
 {
-    56, 56, 56, 56, 48, 48, 56, 56,
     48, 48, 48, 48, 48, 48, 48, 48,
     48, 48, 48, 48, 48, 48, 48, 48,
     48, 48, 48, 48, 48, 48, 48, 48,
@@ -78,12 +77,18 @@ static const int qrounding_factors[129] =
     48, 48, 48, 48, 48, 48, 48, 48,
     48, 48, 48, 48, 48, 48, 48, 48,
     48, 48, 48, 48, 48, 48, 48, 48,
-    48,
+    48, 48, 48, 48, 48, 48, 48, 48,
+    48
 };
 
 static const int qzbin_factors[129] =
 {
-    72, 72, 72, 72, 80, 80, 72, 72,
+    84, 84, 84, 84, 84, 84, 84, 84,
+    84, 84, 84, 84, 84, 84, 84, 84,
+    84, 84, 84, 84, 84, 84, 84, 84,
+    84, 84, 84, 84, 84, 84, 84, 84,
+    84, 84, 84, 84, 84, 84, 84, 84,
+    84, 84, 84, 84, 84, 84, 84, 84,
     80, 80, 80, 80, 80, 80, 80, 80,
     80, 80, 80, 80, 80, 80, 80, 80,
     80, 80, 80, 80, 80, 80, 80, 80,
@@ -94,17 +99,11 @@ static const int qzbin_factors[129] =
     80, 80, 80, 80, 80, 80, 80, 80,
     80, 80, 80, 80, 80, 80, 80, 80,
     80, 80, 80, 80, 80, 80, 80, 80,
-    80, 80, 80, 80, 80, 80, 80, 80,
-    80, 80, 80, 80, 80, 80, 80, 80,
-    80, 80, 80, 80, 80, 80, 80, 80,
-    80, 80, 80, 80, 80, 80, 80, 80,
-    80, 80, 80, 80, 80, 80, 80, 80,
-    80,
+    80
 };
 
 static const int qrounding_factors_y2[129] =
 {
-    56, 56, 56, 56, 48, 48, 56, 56,
     48, 48, 48, 48, 48, 48, 48, 48,
     48, 48, 48, 48, 48, 48, 48, 48,
     48, 48, 48, 48, 48, 48, 48, 48,
@@ -120,12 +119,18 @@ static const int qrounding_factors_y2[129] =
     48, 48, 48, 48, 48, 48, 48, 48,
     48, 48, 48, 48, 48, 48, 48, 48,
     48, 48, 48, 48, 48, 48, 48, 48,
-    48,
+    48, 48, 48, 48, 48, 48, 48, 48,
+    48
 };
 
 static const int qzbin_factors_y2[129] =
 {
-    72, 72, 72, 72, 80, 80, 72, 72,
+    84, 84, 84, 84, 84, 84, 84, 84,
+    84, 84, 84, 84, 84, 84, 84, 84,
+    84, 84, 84, 84, 84, 84, 84, 84,
+    84, 84, 84, 84, 84, 84, 84, 84,
+    84, 84, 84, 84, 84, 84, 84, 84,
+    84, 84, 84, 84, 84, 84, 84, 84,
     80, 80, 80, 80, 80, 80, 80, 80,
     80, 80, 80, 80, 80, 80, 80, 80,
     80, 80, 80, 80, 80, 80, 80, 80,
@@ -136,26 +141,30 @@ static const int qzbin_factors_y2[129] =
     80, 80, 80, 80, 80, 80, 80, 80,
     80, 80, 80, 80, 80, 80, 80, 80,
     80, 80, 80, 80, 80, 80, 80, 80,
-    80, 80, 80, 80, 80, 80, 80, 80,
-    80, 80, 80, 80, 80, 80, 80, 80,
-    80, 80, 80, 80, 80, 80, 80, 80,
-    80, 80, 80, 80, 80, 80, 80, 80,
-    80, 80, 80, 80, 80, 80, 80, 80,
-    80,
+    80
 };
 
-//#define EXACT_QUANT
+#define EXACT_QUANT
 #ifdef EXACT_QUANT
-static void vp8cx_invert_quant(short *quant, short *shift, short d)
+static void vp8cx_invert_quant(int improved_quant, short *quant,
+                               short *shift, short d)
 {
-    unsigned t;
-    int l;
-    t = d;
-    for(l = 0; t > 1; l++)
-        t>>=1;
-    t = 1 + (1<<(16+l))/d;
-    *quant = (short)(t - (1<<16));
-    *shift = l;
+    if(improved_quant)
+    {
+        unsigned t;
+        int l;
+        t = d;
+        for(l = 0; t > 1; l++)
+            t>>=1;
+        t = 1 + (1<<(16+l))/d;
+        *quant = (short)(t - (1<<16));
+        *shift = l;
+    }
+    else
+    {
+        *quant = (1 << 16) / d;
+        *shift = 0;
+    }
 }
 
 void vp8cx_init_quantizer(VP8_COMP *cpi)
@@ -170,7 +179,8 @@ void vp8cx_init_quantizer(VP8_COMP *cpi)
     {
         // dc values
         quant_val = vp8_dc_quant(Q, cpi->common.y1dc_delta_q);
-        vp8cx_invert_quant(cpi->Y1quant[Q] + 0,
+        cpi->Y1quant_fast[Q][0] = (1 << 16) / quant_val;
+        vp8cx_invert_quant(cpi->sf.improved_quant, cpi->Y1quant[Q] + 0,
                            cpi->Y1quant_shift[Q] + 0, quant_val);
         cpi->Y1zbin[Q][0] = ((qzbin_factors[Q] * quant_val) + 64) >> 7;
         cpi->Y1round[Q][0] = (qrounding_factors[Q] * quant_val) >> 7;
@@ -178,7 +188,8 @@ void vp8cx_init_quantizer(VP8_COMP *cpi)
         cpi->zrun_zbin_boost_y1[Q][0] = (quant_val * zbin_boost[0]) >> 7;
 
         quant_val = vp8_dc2quant(Q, cpi->common.y2dc_delta_q);
-        vp8cx_invert_quant(cpi->Y2quant[Q] + 0,
+        cpi->Y2quant_fast[Q][0] = (1 << 16) / quant_val;
+        vp8cx_invert_quant(cpi->sf.improved_quant, cpi->Y2quant[Q] + 0,
                            cpi->Y2quant_shift[Q] + 0, quant_val);
         cpi->Y2zbin[Q][0] = ((qzbin_factors_y2[Q] * quant_val) + 64) >> 7;
         cpi->Y2round[Q][0] = (qrounding_factors_y2[Q] * quant_val) >> 7;
@@ -186,7 +197,8 @@ void vp8cx_init_quantizer(VP8_COMP *cpi)
         cpi->zrun_zbin_boost_y2[Q][0] = (quant_val * zbin_boost[0]) >> 7;
 
         quant_val = vp8_dc_uv_quant(Q, cpi->common.uvdc_delta_q);
-        vp8cx_invert_quant(cpi->UVquant[Q] + 0,
+        cpi->UVquant_fast[Q][0] = (1 << 16) / quant_val;
+        vp8cx_invert_quant(cpi->sf.improved_quant, cpi->UVquant[Q] + 0,
                            cpi->UVquant_shift[Q] + 0, quant_val);
         cpi->UVzbin[Q][0] = ((qzbin_factors[Q] * quant_val) + 64) >> 7;;
         cpi->UVround[Q][0] = (qrounding_factors[Q] * quant_val) >> 7;
@@ -199,7 +211,8 @@ void vp8cx_init_quantizer(VP8_COMP *cpi)
             int rc = vp8_default_zig_zag1d[i];
 
             quant_val = vp8_ac_yquant(Q);
-            vp8cx_invert_quant(cpi->Y1quant[Q] + rc,
+            cpi->Y1quant_fast[Q][rc] = (1 << 16) / quant_val;
+            vp8cx_invert_quant(cpi->sf.improved_quant, cpi->Y1quant[Q] + rc,
                                cpi->Y1quant_shift[Q] + rc, quant_val);
             cpi->Y1zbin[Q][rc] = ((qzbin_factors[Q] * quant_val) + 64) >> 7;
             cpi->Y1round[Q][rc] = (qrounding_factors[Q] * quant_val) >> 7;
@@ -207,7 +220,8 @@ void vp8cx_init_quantizer(VP8_COMP *cpi)
             cpi->zrun_zbin_boost_y1[Q][i] = (quant_val * zbin_boost[i]) >> 7;
 
             quant_val = vp8_ac2quant(Q, cpi->common.y2ac_delta_q);
-            vp8cx_invert_quant(cpi->Y2quant[Q] + rc,
+            cpi->Y2quant_fast[Q][rc] = (1 << 16) / quant_val;
+            vp8cx_invert_quant(cpi->sf.improved_quant, cpi->Y2quant[Q] + rc,
                                cpi->Y2quant_shift[Q] + rc, quant_val);
             cpi->Y2zbin[Q][rc] = ((qzbin_factors_y2[Q] * quant_val) + 64) >> 7;
             cpi->Y2round[Q][rc] = (qrounding_factors_y2[Q] * quant_val) >> 7;
@@ -215,7 +229,8 @@ void vp8cx_init_quantizer(VP8_COMP *cpi)
             cpi->zrun_zbin_boost_y2[Q][i] = (quant_val * zbin_boost[i]) >> 7;
 
             quant_val = vp8_ac_uv_quant(Q, cpi->common.uvac_delta_q);
-            vp8cx_invert_quant(cpi->UVquant[Q] + rc,
+            cpi->UVquant_fast[Q][rc] = (1 << 16) / quant_val;
+            vp8cx_invert_quant(cpi->sf.improved_quant, cpi->UVquant[Q] + rc,
                                cpi->UVquant_shift[Q] + rc, quant_val);
             cpi->UVzbin[Q][rc] = ((qzbin_factors[Q] * quant_val) + 64) >> 7;
             cpi->UVround[Q][rc] = (qrounding_factors[Q] * quant_val) >> 7;
@@ -316,6 +331,7 @@ void vp8cx_mb_init_quantizer(VP8_COMP *cpi, MACROBLOCK *x)
     for (i = 0; i < 16; i++)
     {
         x->block[i].quant = cpi->Y1quant[QIndex];
+        x->block[i].quant_fast = cpi->Y1quant_fast[QIndex];
         x->block[i].quant_shift = cpi->Y1quant_shift[QIndex];
         x->block[i].zbin = cpi->Y1zbin[QIndex];
         x->block[i].round = cpi->Y1round[QIndex];
@@ -330,6 +346,7 @@ void vp8cx_mb_init_quantizer(VP8_COMP *cpi, MACROBLOCK *x)
     for (i = 16; i < 24; i++)
     {
         x->block[i].quant = cpi->UVquant[QIndex];
+        x->block[i].quant_fast = cpi->UVquant_fast[QIndex];
         x->block[i].quant_shift = cpi->UVquant_shift[QIndex];
         x->block[i].zbin = cpi->UVzbin[QIndex];
         x->block[i].round = cpi->UVround[QIndex];
@@ -340,6 +357,7 @@ void vp8cx_mb_init_quantizer(VP8_COMP *cpi, MACROBLOCK *x)
 
     // Y2
     zbin_extra = (cpi->common.Y2dequant[QIndex][1] * ((cpi->zbin_over_quant / 2) + cpi->zbin_mode_boost)) >> 7;
+    x->block[24].quant_fast = cpi->Y2quant_fast[QIndex];
     x->block[24].quant = cpi->Y2quant[QIndex];
     x->block[24].quant_shift = cpi->Y2quant_shift[QIndex];
     x->block[24].zbin = cpi->Y2zbin[QIndex];
@@ -347,19 +365,97 @@ void vp8cx_mb_init_quantizer(VP8_COMP *cpi, MACROBLOCK *x)
     x->e_mbd.block[24].dequant = cpi->common.Y2dequant[QIndex];
     x->block[24].zrun_zbin_boost = cpi->zrun_zbin_boost_y2[QIndex];
     x->block[24].zbin_extra = (short)zbin_extra;
+
+    /* save this macroblock QIndex for vp8_update_zbin_extra() */
+    x->q_index = QIndex;
+}
+void vp8_update_zbin_extra(VP8_COMP *cpi, MACROBLOCK *x)
+{
+    int i;
+    int QIndex = x->q_index;
+    int zbin_extra;
+
+    // Y
+    zbin_extra = (cpi->common.Y1dequant[QIndex][1] * (cpi->zbin_over_quant + cpi->zbin_mode_boost)) >> 7;
+    for (i = 0; i < 16; i++)
+    {
+        x->block[i].zbin_extra = (short)zbin_extra;
+    }
+
+    // UV
+    zbin_extra = (cpi->common.UVdequant[QIndex][1] * (cpi->zbin_over_quant + cpi->zbin_mode_boost)) >> 7;
+    for (i = 16; i < 24; i++)
+    {
+        x->block[i].zbin_extra = (short)zbin_extra;
+    }
+
+    // Y2
+    zbin_extra = (cpi->common.Y2dequant[QIndex][1] * ((cpi->zbin_over_quant / 2) + cpi->zbin_mode_boost)) >> 7;
+    x->block[24].zbin_extra = (short)zbin_extra;
 }
 
 void vp8cx_frame_init_quantizer(VP8_COMP *cpi)
 {
-    // vp8cx_init_quantizer() is first called in vp8_create_compressor(). A check is added here so that vp8cx_init_quantizer() is only called
-    // when these values are not all zero.
-    if (cpi->common.y1dc_delta_q | cpi->common.y2dc_delta_q | cpi->common.uvdc_delta_q | cpi->common.y2ac_delta_q | cpi->common.uvac_delta_q)
-    {
-        vp8cx_init_quantizer(cpi);
-    }
+    // Clear Zbin mode boost for default case
+    cpi->zbin_mode_boost = 0;
 
     // MB level quantizer setup
     vp8cx_mb_init_quantizer(cpi, &cpi->mb);
+}
+
+
+/* activity_avg must be positive, or flat regions could get a zero weight
+ *  (infinite lambda), which confounds analysis.
+ * This also avoids the need for divide by zero checks in
+ *  vp8_activity_masking().
+ */
+#define VP8_ACTIVITY_AVG_MIN (64)
+
+/* This is used as a reference when computing the source variance for the
+ *  purposes of activity masking.
+ * Eventually this should be replaced by custom no-reference routines,
+ *  which will be faster.
+ */
+static const unsigned char VP8_VAR_OFFS[16]=
+{
+    128,128,128,128,128,128,128,128,128,128,128,128,128,128,128,128
+};
+
+unsigned int vp8_activity_masking(VP8_COMP *cpi, MACROBLOCK *x)
+{
+    unsigned int act;
+    unsigned int sse;
+    int sum;
+    unsigned int a;
+    unsigned int b;
+    /* TODO: This could also be done over smaller areas (8x8), but that would
+     *  require extensive changes elsewhere, as lambda is assumed to be fixed
+     *  over an entire MB in most of the code.
+     * Another option is to compute four 8x8 variances, and pick a single
+     *  lambda using a non-linear combination (e.g., the smallest, or second
+     *  smallest, etc.).
+     */
+    VARIANCE_INVOKE(&cpi->rtcd.variance, get16x16var)(x->src.y_buffer,
+     x->src.y_stride, VP8_VAR_OFFS, 0, &sse, &sum);
+    /* This requires a full 32 bits of precision. */
+    act = (sse<<8) - sum*sum;
+    /* Drop 4 to give us some headroom to work with. */
+    act = (act + 8) >> 4;
+    /* If the region is flat, lower the activity some more. */
+    if (act < 8<<12)
+        act = act < 5<<12 ? act : 5<<12;
+    /* TODO: For non-flat regions, edge regions should receive less masking
+     *  than textured regions, but identifying edge regions quickly and
+     *  reliably enough is still a subject of experimentation.
+     * This will be most noticable near edges with a complex shape (e.g.,
+     *  text), but the 4x4 transform size should make this less of a problem
+     *  than it would be for an 8x8 transform.
+     */
+    /* Apply the masking to the RD multiplier. */
+    a = act + 4*cpi->activity_avg;
+    b = 4*act + cpi->activity_avg;
+    x->rdmult = (unsigned int)(((INT64)x->rdmult*b + (a>>1))/a);
+    return act;
 }
 
 
@@ -374,6 +470,7 @@ void encode_mb_row(VP8_COMP *cpi,
                    int *segment_counts,
                    int *totalrate)
 {
+    INT64 activity_sum = 0;
     int i;
     int recon_yoffset, recon_uvoffset;
     int mb_col;
@@ -383,6 +480,16 @@ void encode_mb_row(VP8_COMP *cpi,
     int recon_uv_stride = cm->yv12_fb[ref_fb_idx].uv_stride;
     int seg_map_index = (mb_row * cpi->common.mb_cols);
 
+#if CONFIG_MULTITHREAD
+    const int nsync = cpi->mt_sync_range;
+    const int rightmost_col = cm->mb_cols - 1;
+    volatile const int *last_row_current_mb_col;
+
+    if ((cpi->b_multi_threaded != 0) && (mb_row != 0))
+        last_row_current_mb_col = &cpi->mt_current_mb_col[mb_row - 1];
+    else
+        last_row_current_mb_col = &rightmost_col;
+#endif
 
     // reset above block coeffs
     xd->above_context = cm->above_context;
@@ -402,14 +509,14 @@ void encode_mb_row(VP8_COMP *cpi,
     // Set up limit values for vertical motion vector components
     // to prevent them extending beyond the UMV borders
     x->mv_row_min = -((mb_row * 16) + (VP8BORDERINPIXELS - 16));
-    x->mv_row_max = ((cm->mb_rows - 1 - mb_row) * 16) 
+    x->mv_row_max = ((cm->mb_rows - 1 - mb_row) * 16)
                         + (VP8BORDERINPIXELS - 16);
 
     // for each macroblock col in image
     for (mb_col = 0; mb_col < cm->mb_cols; mb_col++)
     {
-        // Distance of Mb to the left & right edges, specified in 
-        // 1/8th pel units as they are always compared to values 
+        // Distance of Mb to the left & right edges, specified in
+        // 1/8th pel units as they are always compared to values
         // that are in 1/8th pel units
         xd->mb_to_left_edge = -((mb_col * 16) << 3);
         xd->mb_to_right_edge = ((cm->mb_cols - 1 - mb_col) * 16) << 3;
@@ -417,13 +524,34 @@ void encode_mb_row(VP8_COMP *cpi,
         // Set up limit values for horizontal motion vector components
         // to prevent them extending beyond the UMV borders
         x->mv_col_min = -((mb_col * 16) + (VP8BORDERINPIXELS - 16));
-        x->mv_col_max = ((cm->mb_cols - 1 - mb_col) * 16) 
+        x->mv_col_max = ((cm->mb_cols - 1 - mb_col) * 16)
                             + (VP8BORDERINPIXELS - 16);
 
         xd->dst.y_buffer = cm->yv12_fb[dst_fb_idx].y_buffer + recon_yoffset;
         xd->dst.u_buffer = cm->yv12_fb[dst_fb_idx].u_buffer + recon_uvoffset;
         xd->dst.v_buffer = cm->yv12_fb[dst_fb_idx].v_buffer + recon_uvoffset;
         xd->left_available = (mb_col != 0);
+
+        x->rddiv = cpi->RDDIV;
+        x->rdmult = cpi->RDMULT;
+
+#if CONFIG_MULTITHREAD
+        if ((cpi->b_multi_threaded != 0) && (mb_row != 0))
+        {
+            if ((mb_col & (nsync - 1)) == 0)
+            {
+                while (mb_col > (*last_row_current_mb_col - nsync)
+                        && (*last_row_current_mb_col) != (cm->mb_cols - 1))
+                {
+                    x86_pause_hint();
+                    thread_sleep(0);
+                }
+            }
+        }
+#endif
+
+        if(cpi->oxcf.tuning == VP8_TUNE_SSIM)
+            activity_sum += vp8_activity_masking(cpi, x);
 
         // Is segmentation enabled
         // MB level adjutment to quantizer
@@ -518,7 +646,12 @@ void encode_mb_row(VP8_COMP *cpi,
         x->partition_info++;
 
         xd->above_context++;
-        cpi->current_mb_col_main = mb_col;
+#if CONFIG_MULTITHREAD
+        if (cpi->b_multi_threaded != 0)
+        {
+            cpi->mt_current_mb_col[mb_row] = mb_col;
+        }
+#endif
     }
 
     //extend the recon for intra prediction
@@ -531,11 +664,15 @@ void encode_mb_row(VP8_COMP *cpi,
     // this is to account for the border
     xd->mode_info_context++;
     x->partition_info++;
+    x->activity_sum += activity_sum;
+
+#if CONFIG_MULTITHREAD
+    if ((cpi->b_multi_threaded != 0) && (mb_row == cm->mb_rows - 1))
+    {
+        sem_post(&cpi->h_event_end_encoding); /* signal frame encoding end */
+    }
+#endif
 }
-
-
-
-
 
 void vp8_encode_frame(VP8_COMP *cpi)
 {
@@ -544,7 +681,6 @@ void vp8_encode_frame(VP8_COMP *cpi)
     VP8_COMMON *const cm = & cpi->common;
     MACROBLOCKD *const xd = & x->e_mbd;
 
-    int i;
     TOKENEXTRA *tp = cpi->tok;
     int segment_counts[MAX_MB_SEGMENTS];
     int totalrate;
@@ -627,9 +763,7 @@ void vp8_encode_frame(VP8_COMP *cpi)
     }
 
     vp8_initialize_rd_consts(cpi, vp8_dc_quant(cm->base_qindex, cm->y1dc_delta_q));
-    //vp8_initialize_rd_consts( cpi, vp8_dc_quant(cpi->avg_frame_qindex, cm->y1dc_delta_q) );
     vp8cx_initialize_me_consts(cpi, cm->base_qindex);
-    //vp8cx_initialize_me_consts( cpi, cpi->avg_frame_qindex);
 
     // Copy data over into macro block data sturctures.
 
@@ -647,22 +781,7 @@ void vp8_encode_frame(VP8_COMP *cpi)
 
     vp8_setup_block_ptrs(x);
 
-    x->rddiv = cpi->RDDIV;
-    x->rdmult = cpi->RDMULT;
-
-#if 0
-    // Experimental rd code
-    // 2 Pass - Possibly set Rdmult based on last frame distortion + this frame target bits or other metrics
-    // such as cpi->rate_correction_factor that indicate relative complexity.
-    /*if ( cpi->pass == 2 && (cpi->last_frame_distortion > 0) && (cpi->target_bits_per_mb > 0) )
-    {
-        //x->rdmult = ((cpi->last_frame_distortion * 256)/cpi->common.MBs)/ cpi->target_bits_per_mb;
-        x->rdmult = (int)(cpi->RDMULT * cpi->rate_correction_factor);
-    }
-    else
-        x->rdmult = cpi->RDMULT; */
-    //x->rdmult = (int)(cpi->RDMULT * pow( (cpi->rate_correction_factor * 2.0), 0.75 ));
-#endif
+    x->activity_sum = 0;
 
     xd->mode_info_context->mbmi.mode = DC_PRED;
     xd->mode_info_context->mbmi.uv_mode = DC_PRED;
@@ -681,7 +800,76 @@ void vp8_encode_frame(VP8_COMP *cpi)
         struct vpx_usec_timer  emr_timer;
         vpx_usec_timer_start(&emr_timer);
 
-        if (!cpi->b_multi_threaded)
+#if CONFIG_MULTITHREAD
+        if (cpi->b_multi_threaded)
+        {
+            int i;
+
+            vp8cx_init_mbrthread_data(cpi, x, cpi->mb_row_ei, 1,  cpi->encoding_thread_count);
+
+            for (i = 0; i < cm->mb_rows; i++)
+                cpi->mt_current_mb_col[i] = -1;
+
+            for (i = 0; i < cpi->encoding_thread_count; i++)
+            {
+                sem_post(&cpi->h_event_start_encoding[i]);
+            }
+
+            for (mb_row = 0; mb_row < cm->mb_rows; mb_row += (cpi->encoding_thread_count + 1))
+            {
+                vp8_zero(cm->left_context)
+
+                tp = cpi->tok + mb_row * (cm->mb_cols * 16 * 24);
+
+                encode_mb_row(cpi, cm, mb_row, x, xd, &tp, segment_counts, &totalrate);
+
+                // adjust to the next row of mbs
+                x->src.y_buffer += 16 * x->src.y_stride * (cpi->encoding_thread_count + 1) - 16 * cm->mb_cols;
+                x->src.u_buffer +=  8 * x->src.uv_stride * (cpi->encoding_thread_count + 1) - 8 * cm->mb_cols;
+                x->src.v_buffer +=  8 * x->src.uv_stride * (cpi->encoding_thread_count + 1) - 8 * cm->mb_cols;
+
+                xd->mode_info_context += xd->mode_info_stride * cpi->encoding_thread_count;
+                x->partition_info  += xd->mode_info_stride * cpi->encoding_thread_count;
+
+            }
+
+            sem_wait(&cpi->h_event_end_encoding); /* wait for other threads to finish */
+
+            cpi->tok_count = 0;
+
+            for (mb_row = 0; mb_row < cm->mb_rows; mb_row ++)
+            {
+                cpi->tok_count += cpi->tplist[mb_row].stop - cpi->tplist[mb_row].start;
+            }
+
+            if (xd->segmentation_enabled)
+            {
+                int i, j;
+
+                if (xd->segmentation_enabled)
+                {
+
+                    for (i = 0; i < cpi->encoding_thread_count; i++)
+                    {
+                        for (j = 0; j < 4; j++)
+                            segment_counts[j] += cpi->mb_row_ei[i].segment_counts[j];
+                    }
+                }
+            }
+
+            for (i = 0; i < cpi->encoding_thread_count; i++)
+            {
+                totalrate += cpi->mb_row_ei[i].totalrate;
+            }
+
+            for (i = 0; i < cpi->encoding_thread_count; i++)
+            {
+                x->activity_sum += cpi->mb_row_ei[i].mb.activity_sum;
+            }
+
+        }
+        else
+#endif
         {
             // for each macroblock row in image
             for (mb_row = 0; mb_row < cm->mb_rows; mb_row++)
@@ -698,94 +886,6 @@ void vp8_encode_frame(VP8_COMP *cpi)
             }
 
             cpi->tok_count = tp - cpi->tok;
-
-        }
-        else
-        {
-#if CONFIG_MULTITHREAD
-            vp8cx_init_mbrthread_data(cpi, x, cpi->mb_row_ei, 1,  cpi->encoding_thread_count);
-
-            for (mb_row = 0; mb_row < cm->mb_rows; mb_row += (cpi->encoding_thread_count + 1))
-            {
-                int i;
-                cpi->current_mb_col_main = -1;
-
-                for (i = 0; i < cpi->encoding_thread_count; i++)
-                {
-                    if ((mb_row + i + 1) >= cm->mb_rows)
-                        break;
-
-                    cpi->mb_row_ei[i].mb_row = mb_row + i + 1;
-                    cpi->mb_row_ei[i].tp  = cpi->tok + (mb_row + i + 1) * (cm->mb_cols * 16 * 24);
-                    cpi->mb_row_ei[i].current_mb_col = -1;
-                    //SetEvent(cpi->h_event_mbrencoding[i]);
-                    sem_post(&cpi->h_event_mbrencoding[i]);
-                }
-
-                vp8_zero(cm->left_context)
-
-                tp = cpi->tok + mb_row * (cm->mb_cols * 16 * 24);
-
-                encode_mb_row(cpi, cm, mb_row, x, xd, &tp, segment_counts, &totalrate);
-
-                // adjust to the next row of mbs
-                x->src.y_buffer += 16 * x->src.y_stride * (cpi->encoding_thread_count + 1) - 16 * cm->mb_cols;
-                x->src.u_buffer +=  8 * x->src.uv_stride * (cpi->encoding_thread_count + 1) - 8 * cm->mb_cols;
-                x->src.v_buffer +=  8 * x->src.uv_stride * (cpi->encoding_thread_count + 1) - 8 * cm->mb_cols;
-
-                xd->mode_info_context += xd->mode_info_stride * cpi->encoding_thread_count;
-                x->partition_info  += xd->mode_info_stride * cpi->encoding_thread_count;
-
-                if (mb_row < cm->mb_rows - 1)
-                    //WaitForSingleObject(cpi->h_event_main, INFINITE);
-                    sem_wait(&cpi->h_event_main);
-            }
-
-            /*
-            for( ;mb_row<cm->mb_rows; mb_row ++)
-            {
-            vp8_zero( cm->left_context)
-
-            tp = cpi->tok + mb_row * (cm->mb_cols * 16 * 24);
-
-            encode_mb_row(cpi, cm, mb_row, x, xd, &tp, segment_counts, &totalrate);
-            // adjust to the next row of mbs
-            x->src.y_buffer += 16 * x->src.y_stride - 16 * cm->mb_cols;
-            x->src.u_buffer +=  8 * x->src.uv_stride - 8 * cm->mb_cols;
-            x->src.v_buffer +=  8 * x->src.uv_stride - 8 * cm->mb_cols;
-
-            }
-            */
-            cpi->tok_count = 0;
-
-            for (mb_row = 0; mb_row < cm->mb_rows; mb_row ++)
-            {
-                cpi->tok_count += cpi->tplist[mb_row].stop - cpi->tplist[mb_row].start;
-            }
-
-            if (xd->segmentation_enabled)
-            {
-
-                int i, j;
-
-                if (xd->segmentation_enabled)
-                {
-
-                    for (i = 0; i < cpi->encoding_thread_count; i++)
-                    {
-                        for (j = 0; j < 4; j++)
-                            segment_counts[j] += cpi->mb_row_ei[i].segment_counts[j];
-                    }
-                }
-
-            }
-
-            for (i = 0; i < cpi->encoding_thread_count; i++)
-            {
-                totalrate += cpi->mb_row_ei[i].totalrate;
-            }
-
-#endif
 
         }
 
@@ -879,7 +979,7 @@ void vp8_encode_frame(VP8_COMP *cpi)
         }
 
         if (flag[0] || flag[1])
-            vp8_build_component_cost_table(cpi->mb.mvcost, cpi->mb.mvsadcost, (const MV_CONTEXT *) cm->fc.mvc, flag);
+            vp8_build_component_cost_table(cpi->mb.mvcost, (const MV_CONTEXT *) cm->fc.mvc, flag);
     }
 #endif
 
@@ -919,6 +1019,14 @@ void vp8_encode_frame(VP8_COMP *cpi)
     // Keep record of the total distortion this time around for future use
     cpi->last_frame_distortion = cpi->frame_distortion;
 #endif
+
+    /* Update the average activity for the next frame.
+     * This is feed-forward for now; it could also be saved in two-pass, or
+     *  done during lookahead when that is eventually added.
+     */
+    cpi->activity_avg = (unsigned int )(x->activity_sum/cpi->common.MBs);
+    if (cpi->activity_avg < VP8_ACTIVITY_AVG_MIN)
+        cpi->activity_avg = VP8_ACTIVITY_AVG_MIN;
 
 }
 void vp8_setup_block_ptrs(MACROBLOCK *x)
@@ -1039,116 +1147,72 @@ static void sum_intra_stats(VP8_COMP *cpi, MACROBLOCK *x)
 }
 int vp8cx_encode_intra_macro_block(VP8_COMP *cpi, MACROBLOCK *x, TOKENEXTRA **t)
 {
-    int Error4x4, Error16x16, error_uv;
-    B_PREDICTION_MODE intra_bmodes[16];
+    int Error4x4, Error16x16;
     int rate4x4, rate16x16, rateuv;
     int dist4x4, dist16x16, distuv;
     int rate = 0;
     int rate4x4_tokenonly = 0;
     int rate16x16_tokenonly = 0;
     int rateuv_tokenonly = 0;
-    int i;
 
     x->e_mbd.mode_info_context->mbmi.ref_frame = INTRA_FRAME;
 
-#if !(CONFIG_REALTIME_ONLY)
-
-    if (cpi->sf.RD || cpi->compressor_speed != 2)
+    if (cpi->sf.RD && cpi->compressor_speed != 2)
     {
-        Error4x4 = vp8_rd_pick_intra4x4mby_modes(cpi, x, &rate4x4, &rate4x4_tokenonly, &dist4x4);
-
-        //save the b modes for possible later use
-        for (i = 0; i < 16; i++)
-            intra_bmodes[i] = x->e_mbd.block[i].bmi.mode;
+        vp8_rd_pick_intra_mbuv_mode(cpi, x, &rateuv, &rateuv_tokenonly, &distuv);
+        rate += rateuv;
 
         Error16x16 = vp8_rd_pick_intra16x16mby_mode(cpi, x, &rate16x16, &rate16x16_tokenonly, &dist16x16);
 
-        error_uv = vp8_rd_pick_intra_mbuv_mode(cpi, x, &rateuv, &rateuv_tokenonly, &distuv);
+        Error4x4 = vp8_rd_pick_intra4x4mby_modes(cpi, x, &rate4x4, &rate4x4_tokenonly, &dist4x4, Error16x16);
 
-        vp8_encode_intra16x16mbuv(IF_RTCD(&cpi->rtcd), x);
-        rate += rateuv;
-
-        if (Error4x4 < Error16x16)
-        {
-            rate += rate4x4;
-            x->e_mbd.mode_info_context->mbmi.mode = B_PRED;
-
-            // get back the intra block modes
-            for (i = 0; i < 16; i++)
-                x->e_mbd.block[i].bmi.mode = intra_bmodes[i];
-
-            vp8_encode_intra4x4mby(IF_RTCD(&cpi->rtcd), x);
-            cpi->prediction_error += Error4x4 ;
-#if 0
-            // Experimental RD code
-            cpi->frame_distortion += dist4x4;
-#endif
-        }
-        else
-        {
-            vp8_encode_intra16x16mby(IF_RTCD(&cpi->rtcd), x);
-            rate += rate16x16;
-
-#if 0
-            // Experimental RD code
-            cpi->prediction_error += Error16x16;
-            cpi->frame_distortion += dist16x16;
-#endif
-        }
-
-        sum_intra_stats(cpi, x);
-
-        vp8_tokenize_mb(cpi, &x->e_mbd, t);
+        rate += (Error4x4 < Error16x16) ? rate4x4 : rate16x16;
     }
     else
-#endif
     {
-
-        int rate2, distortion2;
+        int rate2, best_distortion;
         MB_PREDICTION_MODE mode, best_mode = DC_PRED;
         int this_rd;
         Error16x16 = INT_MAX;
 
+        vp8_pick_intra_mbuv_mode(x);
+
         for (mode = DC_PRED; mode <= TM_PRED; mode ++)
         {
+            int distortion2;
+
             x->e_mbd.mode_info_context->mbmi.mode = mode;
-            vp8_build_intra_predictors_mby_ptr(&x->e_mbd);
+            RECON_INVOKE(&cpi->common.rtcd.recon, build_intra_predictors_mby)
+                (&x->e_mbd);
             distortion2 = VARIANCE_INVOKE(&cpi->rtcd.variance, get16x16prederror)(x->src.y_buffer, x->src.y_stride, x->e_mbd.predictor, 16, 0x7fffffff);
             rate2  = x->mbmode_cost[x->e_mbd.frame_type][mode];
-            this_rd = RD_ESTIMATE(x->rdmult, x->rddiv, rate2, distortion2);
+            this_rd = RDCOST(x->rdmult, x->rddiv, rate2, distortion2);
 
             if (Error16x16 > this_rd)
             {
                 Error16x16 = this_rd;
                 best_mode = mode;
+                best_distortion = distortion2;
             }
         }
+        x->e_mbd.mode_info_context->mbmi.mode = best_mode;
 
-        vp8_pick_intra4x4mby_modes(IF_RTCD(&cpi->rtcd), x, &rate2, &distortion2);
-
-        if (distortion2 == INT_MAX)
-            Error4x4 = INT_MAX;
-        else
-            Error4x4 = RD_ESTIMATE(x->rdmult, x->rddiv, rate2, distortion2);
-
-        if (Error4x4 < Error16x16)
-        {
-            x->e_mbd.mode_info_context->mbmi.mode = B_PRED;
-            vp8_encode_intra4x4mby(IF_RTCD(&cpi->rtcd), x);
-            cpi->prediction_error += Error4x4;
-        }
-        else
-        {
-            x->e_mbd.mode_info_context->mbmi.mode = best_mode;
-            vp8_encode_intra16x16mby(IF_RTCD(&cpi->rtcd), x);
-            cpi->prediction_error += Error16x16;
-        }
-
-        vp8_pick_intra_mbuv_mode(x);
-        vp8_encode_intra16x16mbuv(IF_RTCD(&cpi->rtcd), x);
-        sum_intra_stats(cpi, x);
-        vp8_tokenize_mb(cpi, &x->e_mbd, t);
+        Error4x4 = vp8_pick_intra4x4mby_modes(IF_RTCD(&cpi->rtcd), x, &rate2, &best_distortion);
     }
+
+    if (Error4x4 < Error16x16)
+    {
+        x->e_mbd.mode_info_context->mbmi.mode = B_PRED;
+        vp8_encode_intra4x4mby(IF_RTCD(&cpi->rtcd), x);
+    }
+    else
+    {
+        vp8_encode_intra16x16mby(IF_RTCD(&cpi->rtcd), x);
+    }
+
+    vp8_encode_intra16x16mbuv(IF_RTCD(&cpi->rtcd), x);
+    sum_intra_stats(cpi, x);
+    vp8_tokenize_mb(cpi, &x->e_mbd, t);
 
     return rate;
 }
@@ -1165,7 +1229,6 @@ int vp8cx_encode_inter_macroblock
 )
 {
     MACROBLOCKD *const xd = &x->e_mbd;
-    int inter_error;
     int intra_error = 0;
     int rate;
     int distortion;
@@ -1177,18 +1240,35 @@ int vp8cx_encode_inter_macroblock
     else
         x->encode_breakout = cpi->oxcf.encode_breakout;
 
-#if !(CONFIG_REALTIME_ONLY)
-
     if (cpi->sf.RD)
     {
-        inter_error = vp8_rd_pick_inter_mode(cpi, x, recon_yoffset, recon_uvoffset, &rate, &distortion, &intra_error);
+        int zbin_mode_boost_enabled = cpi->zbin_mode_boost_enabled;
+
+        /* Are we using the fast quantizer for the mode selection? */
+        if(cpi->sf.use_fastquant_for_pick)
+        {
+            cpi->mb.quantize_b      = QUANTIZE_INVOKE(&cpi->rtcd.quantize, fastquantb);
+
+            /* the fast quantizer does not use zbin_extra, so
+             * do not recalculate */
+            cpi->zbin_mode_boost_enabled = 0;
+        }
+        vp8_rd_pick_inter_mode(cpi, x, recon_yoffset, recon_uvoffset, &rate, &distortion, &intra_error);
+
+        /* switch back to the regular quantizer for the encode */
+        if (cpi->sf.improved_quant)
+        {
+            cpi->mb.quantize_b    = QUANTIZE_INVOKE(&cpi->rtcd.quantize, quantb);
+        }
+
+        /* restore cpi->zbin_mode_boost_enabled */
+        cpi->zbin_mode_boost_enabled = zbin_mode_boost_enabled;
+
     }
     else
-#endif
-        inter_error = vp8_pick_inter_mode(cpi, x, recon_yoffset, recon_uvoffset, &rate, &distortion, &intra_error);
+        vp8_pick_inter_mode(cpi, x, recon_yoffset, recon_uvoffset, &rate, &distortion, &intra_error);
 
-
-    cpi->prediction_error += inter_error;
+    cpi->prediction_error += distortion;
     cpi->intra_error += intra_error;
 
 #if 0
@@ -1198,7 +1278,7 @@ int vp8cx_encode_inter_macroblock
 #endif
 
     // MB level adjutment to quantizer setup
-    if (xd->segmentation_enabled || cpi->zbin_mode_boost_enabled)
+    if (xd->segmentation_enabled)
     {
         // If cyclic update enabled
         if (cpi->cyclic_refresh_mode_enabled)
@@ -1208,19 +1288,38 @@ int vp8cx_encode_inter_macroblock
                 ((xd->mode_info_context->mbmi.ref_frame != LAST_FRAME) || (xd->mode_info_context->mbmi.mode != ZEROMV)))
             {
                 xd->mode_info_context->mbmi.segment_id = 0;
+
+                /* segment_id changed, so update */
+                vp8cx_mb_init_quantizer(cpi, x);
             }
         }
+    }
 
+    {
         // Experimental code. Special case for gf and arf zeromv modes. Increase zbin size to supress noise
         if (cpi->zbin_mode_boost_enabled)
         {
-            if ((xd->mode_info_context->mbmi.mode == ZEROMV) && (xd->mode_info_context->mbmi.ref_frame != LAST_FRAME))
-                cpi->zbin_mode_boost = GF_ZEROMV_ZBIN_BOOST;
+            if ( xd->mode_info_context->mbmi.ref_frame == INTRA_FRAME )
+                 cpi->zbin_mode_boost = 0;
             else
-                cpi->zbin_mode_boost = 0;
+            {
+                if (xd->mode_info_context->mbmi.mode == ZEROMV)
+                {
+                    if (xd->mode_info_context->mbmi.ref_frame != LAST_FRAME)
+                        cpi->zbin_mode_boost = GF_ZEROMV_ZBIN_BOOST;
+                    else
+                        cpi->zbin_mode_boost = LF_ZEROMV_ZBIN_BOOST;
+                }
+                else if (xd->mode_info_context->mbmi.mode == SPLITMV)
+                    cpi->zbin_mode_boost = 0;
+                else
+                    cpi->zbin_mode_boost = MV_ZBIN_BOOST;
+            }
         }
+        else
+            cpi->zbin_mode_boost = 0;
 
-        vp8cx_mb_init_quantizer(cpi,  x);
+        vp8_update_zbin_extra(cpi, x);
     }
 
     cpi->count_mb_ref_frame_usage[xd->mode_info_context->mbmi.ref_frame] ++;

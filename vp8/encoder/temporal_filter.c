@@ -9,27 +9,26 @@
  */
 
 
-#include "onyxc_int.h"
+#include "vp8/common/onyxc_int.h"
 #include "onyx_int.h"
-#include "systemdependent.h"
+#include "vp8/common/systemdependent.h"
 #include "quantize.h"
-#include "alloccommon.h"
+#include "vp8/common/alloccommon.h"
 #include "mcomp.h"
 #include "firstpass.h"
 #include "psnr.h"
 #include "vpx_scale/vpxscale.h"
-#include "extend.h"
+#include "vp8/common/extend.h"
 #include "ratectrl.h"
-#include "quant_common.h"
+#include "vp8/common/quant_common.h"
 #include "segmentation.h"
-#include "g_common.h"
+#include "vp8/common/g_common.h"
 #include "vpx_scale/yv12extend.h"
-#include "postproc.h"
+#include "vp8/common/postproc.h"
 #include "vpx_mem/vpx_mem.h"
-#include "swapyv12buffer.h"
-#include "threading.h"
+#include "vp8/common/swapyv12buffer.h"
+#include "vp8/common/threading.h"
 #include "vpx_ports/vpx_timer.h"
-#include "vpxerrors.h"
 
 #include <math.h>
 #include <limits.h>
@@ -37,29 +36,9 @@
 #define ALT_REF_MC_ENABLED 1    // dis/enable MC in AltRef filtering
 #define ALT_REF_SUBPEL_ENABLED 1 // dis/enable subpel in MC AltRef filtering
 
-#define USE_FILTER_LUT 1
 #if VP8_TEMPORAL_ALT_REF
 
-#if USE_FILTER_LUT
-static int modifier_lut[7][19] =
-{
-    // Strength=0
-    {16, 13, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-    // Strength=1
-    {16, 15, 10, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-    // Strength=2
-    {16, 15, 13, 9, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-    // Strength=3
-    {16, 16, 15, 13, 10, 7, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-    // Strength=4
-    {16, 16, 15, 14, 13, 11, 9, 7, 4, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-    // Strength=5
-    {16, 16, 16, 15, 15, 14, 13, 11, 10, 8, 7, 5, 3, 0, 0, 0, 0, 0, 0},
-    // Strength=6
-    {16, 16, 16, 16, 15, 15, 14, 14, 13, 12, 11, 10, 9, 8, 7, 5, 4, 2, 1}
-};
-#endif
-static void build_predictors_mb
+static void vp8_temporal_filter_predictors_mb_c
 (
     MACROBLOCKD *x,
     unsigned char *y_mb_ptr,
@@ -79,21 +58,18 @@ static void build_predictors_mb
 
     if ((mv_row | mv_col) & 7)
     {
-//        vp8_sixtap_predict16x16_c(yptr, stride,
-//                                    mv_col & 7, mv_row & 7, &pred[0], 16);
         x->subpixel_predict16x16(yptr, stride,
                                     mv_col & 7, mv_row & 7, &pred[0], 16);
     }
     else
     {
-        //vp8_copy_mem16x16_c (yptr, stride, &pred[0], 16);
         RECON_INVOKE(&x->rtcd->recon, copy16x16)(yptr, stride, &pred[0], 16);
     }
 
     // U & V
     mv_row >>= 1;
     mv_col >>= 1;
-    stride >>= 1;
+    stride = (stride + 1) >> 1;
     offset = (mv_row >> 3) * stride + (mv_col >> 3);
     uptr = u_mb_ptr + offset;
     vptr = v_mb_ptr + offset;
@@ -111,7 +87,7 @@ static void build_predictors_mb
         RECON_INVOKE(&x->rtcd->recon, copy8x8)(vptr, stride, &pred[320], 8);
     }
 }
-static void apply_temporal_filter
+void vp8_temporal_filter_apply_c
 (
     unsigned char *frame1,
     unsigned int stride,
@@ -120,16 +96,12 @@ static void apply_temporal_filter
     int strength,
     int filter_weight,
     unsigned int *accumulator,
-    unsigned int *count
+    unsigned short *count
 )
 {
     int i, j, k;
     int modifier;
     int byte = 0;
-
-#if USE_FILTER_LUT
-    int *lut = modifier_lut[strength];
-#endif
 
     for (i = 0,k = 0; i < block_size; i++)
     {
@@ -139,23 +111,19 @@ static void apply_temporal_filter
             int src_byte = frame1[byte];
             int pixel_value = *frame2++;
 
-#if USE_FILTER_LUT
-            // LUT implementation --
-            // improves precision of filter
-            modifier = abs(src_byte-pixel_value);
-            modifier = modifier>18 ? 0 : lut[modifier];
-#else
-            modifier   = src_byte;
-            modifier  -= pixel_value;
+            modifier   = src_byte - pixel_value;
+            // This is an integer approximation of:
+            // float coeff = (3.0 * modifer * modifier) / pow(2, strength);
+            // modifier =  (int)roundf(coeff > 16 ? 0 : 16-coeff);
             modifier  *= modifier;
-            modifier >>= strength;
             modifier  *= 3;
+            modifier  += 1 << (strength - 1);
+            modifier >>= strength;
 
             if (modifier > 16)
                 modifier = 16;
 
             modifier = 16 - modifier;
-#endif
             modifier *= filter_weight;
 
             count[k] += modifier;
@@ -171,7 +139,7 @@ static void apply_temporal_filter
 #if ALT_REF_MC_ENABLED
 static int dummy_cost[2*mv_max+1];
 
-static int find_matching_mb
+static int vp8_temporal_filter_find_matching_mb_c
 (
     VP8_COMP *cpi,
     YV12_BUFFER_CONFIG *arf_frame,
@@ -227,72 +195,24 @@ static int find_matching_mb
         further_steps = 0;
     }
 
-    if (1/*cpi->sf.search_method == HEX*/)
-    {
-        // TODO Check that the 16x16 vf & sdf are selected here
-        bestsme = vp8_hex_search(x, b, d,
-            &best_ref_mv1, &d->bmi.mv.as_mv,
-            step_param,
-            sadpb/*x->errorperbit*/,
-            &num00, &cpi->fn_ptr[BLOCK_16X16],
-            mvsadcost, mvcost);
-    }
-    else
-    {
-        int mv_x, mv_y;
-
-        bestsme = cpi->diamond_search_sad(x, b, d,
-            &best_ref_mv1, &d->bmi.mv.as_mv,
-            step_param,
-            sadpb / 2/*x->errorperbit*/,
-            &num00, &cpi->fn_ptr[BLOCK_16X16],
-            mvsadcost, mvcost); //sadpb < 9
-
-        // Further step/diamond searches as necessary
-        n = 0;
-        //further_steps = (cpi->sf.max_step_search_steps - 1) - step_param;
-
-        n = num00;
-        num00 = 0;
-
-        while (n < further_steps)
-        {
-            n++;
-
-            if (num00)
-                num00--;
-            else
-            {
-                thissme = cpi->diamond_search_sad(x, b, d,
-                    &best_ref_mv1, &d->bmi.mv.as_mv,
-                    step_param + n,
-                    sadpb / 4/*x->errorperbit*/,
-                    &num00, &cpi->fn_ptr[BLOCK_16X16],
-                    mvsadcost, mvcost); //sadpb = 9
-
-                if (thissme < bestsme)
-                {
-                    bestsme = thissme;
-                    mv_y = d->bmi.mv.as_mv.row;
-                    mv_x = d->bmi.mv.as_mv.col;
-                }
-                else
-                {
-                    d->bmi.mv.as_mv.row = mv_y;
-                    d->bmi.mv.as_mv.col = mv_x;
-                }
-            }
-        }
-    }
+    /*cpi->sf.search_method == HEX*/
+    // TODO Check that the 16x16 vf & sdf are selected here
+    bestsme = vp8_hex_search(x, b, d,
+        &best_ref_mv1, &d->bmi.mv.as_mv,
+        step_param,
+        sadpb/*x->errorperbit*/,
+        &num00, &cpi->fn_ptr[BLOCK_16X16],
+        mvsadcost, mvcost, &best_ref_mv1);
 
 #if ALT_REF_SUBPEL_ENABLED
     // Try sub-pixel MC?
     //if (bestsme > error_thresh && bestsme < INT_MAX)
     {
+        int distortion;
         bestsme = cpi->find_fractional_mv_step(x, b, d,
                     &d->bmi.mv.as_mv, &best_ref_mv1,
                     x->errorperbit, &cpi->fn_ptr[BLOCK_16X16],
-                    cpi->mb.mvcost);
+                    mvcost, &distortion);
     }
 #endif
 
@@ -308,7 +228,7 @@ static int find_matching_mb
 }
 #endif
 
-static void vp8cx_temp_blur1_c
+static void vp8_temporal_filter_iterate_c
 (
     VP8_COMP *cpi,
     int frame_count,
@@ -319,33 +239,25 @@ static void vp8cx_temp_blur1_c
     int byte;
     int frame;
     int mb_col, mb_row;
-    unsigned int filter_weight[MAX_LAG_BUFFERS];
-    unsigned char *mm_ptr = cpi->fp_motion_map;
-    int cols = cpi->common.mb_cols;
-    int rows = cpi->common.mb_rows;
+    unsigned int filter_weight;
+    int mb_cols = cpi->common.mb_cols;
+    int mb_rows = cpi->common.mb_rows;
     int MBs  = cpi->common.MBs;
     int mb_y_offset = 0;
     int mb_uv_offset = 0;
-    unsigned int accumulator[384];
-    unsigned int count[384];
+    DECLARE_ALIGNED_ARRAY(16, unsigned int, accumulator, 16*16 + 8*8 + 8*8);
+    DECLARE_ALIGNED_ARRAY(16, unsigned short, count, 16*16 + 8*8 + 8*8);
     MACROBLOCKD *mbd = &cpi->mb.e_mbd;
     YV12_BUFFER_CONFIG *f = cpi->frames[alt_ref_index];
     unsigned char *dst1, *dst2;
-    DECLARE_ALIGNED(16, unsigned char,  predictor[384]);
+    DECLARE_ALIGNED_ARRAY(16, unsigned char,  predictor, 16*16 + 8*8 + 8*8);
 
     // Save input state
     unsigned char *y_buffer = mbd->pre.y_buffer;
     unsigned char *u_buffer = mbd->pre.u_buffer;
     unsigned char *v_buffer = mbd->pre.v_buffer;
 
-    if (!cpi->use_weighted_temporal_filter)
-    {
-        // Temporal filtering is unweighted
-        for (frame = 0; frame < frame_count; frame++)
-            filter_weight[frame] = 1;
-    }
-
-    for (mb_row = 0; mb_row < rows; mb_row++)
+    for (mb_row = 0; mb_row < mb_rows; mb_row++)
     {
 #if ALT_REF_MC_ENABLED
         // Reduced search extent by 3 for 6-tap filter & smaller UMV border
@@ -354,14 +266,14 @@ static void vp8cx_temp_blur1_c
                                 + (VP8BORDERINPIXELS - 19);
 #endif
 
-        for (mb_col = 0; mb_col < cols; mb_col++)
+        for (mb_col = 0; mb_col < mb_cols; mb_col++)
         {
             int i, j, k, w;
             int weight_cap;
             int stride;
 
             vpx_memset(accumulator, 0, 384*sizeof(unsigned int));
-            vpx_memset(count, 0, 384*sizeof(unsigned int));
+            vpx_memset(count, 0, 384*sizeof(unsigned short));
 
 #if ALT_REF_MC_ENABLED
             // Reduced search extent by 3 for 6-tap filter & smaller UMV border
@@ -370,34 +282,9 @@ static void vp8cx_temp_blur1_c
                                     + (VP8BORDERINPIXELS - 19);
 #endif
 
-            // Read & process macroblock weights from motion map
-            if (cpi->use_weighted_temporal_filter)
-            {
-                weight_cap = 2;
-
-                for (frame = alt_ref_index-1; frame >= 0; frame--)
-                {
-                    w = *(mm_ptr + (frame+1)*MBs);
-                    filter_weight[frame] = w < weight_cap ? w : weight_cap;
-                    weight_cap = w;
-                }
-
-                filter_weight[alt_ref_index] = 2;
-
-                weight_cap = 2;
-
-                for (frame = alt_ref_index+1; frame < frame_count; frame++)
-                {
-                    w = *(mm_ptr + frame*MBs);
-                    filter_weight[frame] = w < weight_cap ? w : weight_cap;
-                    weight_cap = w;
-                }
-
-            }
-
             for (frame = 0; frame < frame_count; frame++)
             {
-                int err;
+                int err = 0;
 
                 if (cpi->frames[frame] == NULL)
                     continue;
@@ -406,72 +293,73 @@ static void vp8cx_temp_blur1_c
                 mbd->block[0].bmi.mv.as_mv.col = 0;
 
 #if ALT_REF_MC_ENABLED
-                //if (filter_weight[frame] == 0)
-                {
 #define THRESH_LOW   10000
 #define THRESH_HIGH  20000
 
-                    // Correlation has been lost try MC
-                    err = find_matching_mb ( cpi,
-                                             cpi->frames[alt_ref_index],
-                                             cpi->frames[frame],
-                                             mb_y_offset,
-                                             THRESH_LOW );
+                // Find best match in this frame by MC
+                err = vp8_temporal_filter_find_matching_mb_c
+                      (cpi,
+                       cpi->frames[alt_ref_index],
+                       cpi->frames[frame],
+                       mb_y_offset,
+                       THRESH_LOW);
 
-                    if (filter_weight[frame] < 2)
-                    {
-                        // Set weight depending on error
-                        filter_weight[frame] = err<THRESH_LOW
-                                                ? 2 : err<THRESH_HIGH ? 1 : 0;
-                    }
-                }
 #endif
-                if (filter_weight[frame] != 0)
+                // Assign higher weight to matching MB if it's error
+                // score is lower. If not applying MC default behavior
+                // is to weight all MBs equal.
+                filter_weight = err<THRESH_LOW
+                                  ? 2 : err<THRESH_HIGH ? 1 : 0;
+
+                if (filter_weight != 0)
                 {
                     // Construct the predictors
-                    build_predictors_mb (
-                              mbd,
-                              cpi->frames[frame]->y_buffer + mb_y_offset,
-                              cpi->frames[frame]->u_buffer + mb_uv_offset,
-                              cpi->frames[frame]->v_buffer + mb_uv_offset,
-                              cpi->frames[frame]->y_stride,
-                              mbd->block[0].bmi.mv.as_mv.row,
-                              mbd->block[0].bmi.mv.as_mv.col,
-                              predictor );
+                    vp8_temporal_filter_predictors_mb_c
+                        (mbd,
+                         cpi->frames[frame]->y_buffer + mb_y_offset,
+                         cpi->frames[frame]->u_buffer + mb_uv_offset,
+                         cpi->frames[frame]->v_buffer + mb_uv_offset,
+                         cpi->frames[frame]->y_stride,
+                         mbd->block[0].bmi.mv.as_mv.row,
+                         mbd->block[0].bmi.mv.as_mv.col,
+                         predictor);
 
                     // Apply the filter (YUV)
-                    apply_temporal_filter ( f->y_buffer + mb_y_offset,
-                                            f->y_stride,
-                                            predictor,
-                                            16,
-                                            strength,
-                                            filter_weight[frame],
-                                            accumulator,
-                                            count );
+                    TEMPORAL_INVOKE(&cpi->rtcd.temporal, apply)
+                        (f->y_buffer + mb_y_offset,
+                         f->y_stride,
+                         predictor,
+                         16,
+                         strength,
+                         filter_weight,
+                         accumulator,
+                         count);
 
-                    apply_temporal_filter ( f->u_buffer + mb_uv_offset,
-                                            f->uv_stride,
-                                            predictor + 256,
-                                            8,
-                                            strength,
-                                            filter_weight[frame],
-                                            accumulator + 256,
-                                            count + 256 );
+                    TEMPORAL_INVOKE(&cpi->rtcd.temporal, apply)
+                        (f->u_buffer + mb_uv_offset,
+                         f->uv_stride,
+                         predictor + 256,
+                         8,
+                         strength,
+                         filter_weight,
+                         accumulator + 256,
+                         count + 256);
 
-                    apply_temporal_filter ( f->v_buffer + mb_uv_offset,
-                                            f->uv_stride,
-                                            predictor + 320,
-                                            8,
-                                            strength,
-                                            filter_weight[frame],
-                                            accumulator + 320,
-                                            count + 320 );
+                    TEMPORAL_INVOKE(&cpi->rtcd.temporal, apply)
+                        (f->v_buffer + mb_uv_offset,
+                         f->uv_stride,
+                         predictor + 320,
+                         8,
+                         strength,
+                         filter_weight,
+                         accumulator + 320,
+                         count + 320);
                 }
             }
 
             // Normalize filter output to produce AltRef frame
-            dst1 = cpi->alt_ref_buffer.source_buffer.y_buffer;
-            stride = cpi->alt_ref_buffer.source_buffer.y_stride;
+            dst1 = cpi->alt_ref_buffer.y_buffer;
+            stride = cpi->alt_ref_buffer.y_stride;
             byte = mb_y_offset;
             for (i = 0,k = 0; i < 16; i++)
             {
@@ -490,9 +378,9 @@ static void vp8cx_temp_blur1_c
                 byte += stride - 16;
             }
 
-            dst1 = cpi->alt_ref_buffer.source_buffer.u_buffer;
-            dst2 = cpi->alt_ref_buffer.source_buffer.v_buffer;
-            stride = cpi->alt_ref_buffer.source_buffer.uv_stride;
+            dst1 = cpi->alt_ref_buffer.u_buffer;
+            dst2 = cpi->alt_ref_buffer.v_buffer;
+            stride = cpi->alt_ref_buffer.uv_stride;
             byte = mb_uv_offset;
             for (i = 0,k = 256; i < 8; i++)
             {
@@ -519,13 +407,12 @@ static void vp8cx_temp_blur1_c
                 byte += stride - 8;
             }
 
-            mm_ptr++;
             mb_y_offset += 16;
             mb_uv_offset += 8;
         }
 
-        mb_y_offset += 16*f->y_stride-f->y_width;
-        mb_uv_offset += 8*f->uv_stride-f->uv_width;
+        mb_y_offset += 16*(f->y_stride-mb_cols);
+        mb_uv_offset += 8*(f->uv_stride-mb_cols);
     }
 
     // Restore input state
@@ -534,9 +421,10 @@ static void vp8cx_temp_blur1_c
     mbd->pre.v_buffer = v_buffer;
 }
 
-void vp8cx_temp_filter_c
+void vp8_temporal_filter_prepare_c
 (
-    VP8_COMP *cpi
+    VP8_COMP *cpi,
+    int distance
 )
 {
     int frame = 0;
@@ -555,12 +443,9 @@ void vp8cx_temp_filter_c
 
     int max_frames = cpi->active_arnr_frames;
 
-    num_frames_backward = cpi->last_alt_ref_sei - cpi->source_encode_index;
-
-    if (num_frames_backward < 0)
-        num_frames_backward += cpi->oxcf.lag_in_frames;
-
-    num_frames_forward = cpi->oxcf.lag_in_frames - (num_frames_backward + 1);
+    num_frames_backward = distance;
+    num_frames_forward = vp8_lookahead_depth(cpi->lookahead)
+                         - (num_frames_backward + 1);
 
     switch (blur_type)
     {
@@ -612,8 +497,7 @@ void vp8cx_temp_filter_c
         break;
     }
 
-    start_frame = (cpi->last_alt_ref_sei
-                    + frames_to_blur_forward) % cpi->oxcf.lag_in_frames;
+    start_frame = distance + frames_to_blur_forward;
 
 #ifdef DEBUGFWG
     // DEBUG FWG
@@ -634,15 +518,12 @@ void vp8cx_temp_filter_c
     for (frame = 0; frame < frames_to_blur; frame++)
     {
         int which_buffer =  start_frame - frame;
-
-        if (which_buffer < 0)
-            which_buffer += cpi->oxcf.lag_in_frames;
-
-        cpi->frames[frames_to_blur-1-frame]
-                = &cpi->src_buffer[which_buffer].source_buffer;
+        struct lookahead_entry* buf = vp8_lookahead_peek(cpi->lookahead,
+                                                         which_buffer);
+        cpi->frames[frames_to_blur-1-frame] = &buf->img;
     }
 
-    vp8cx_temp_blur1_c (
+    vp8_temporal_filter_iterate_c (
         cpi,
         frames_to_blur,
         frames_to_blur_backward,

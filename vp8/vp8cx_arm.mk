@@ -15,9 +15,11 @@
 # encoder
 VP8_CX_SRCS-$(ARCH_ARM)  += encoder/arm/arm_csystemdependent.c
 
-VP8_CX_SRCS-$(HAVE_ARMV7)  += encoder/arm/encodemb_arm.c
 VP8_CX_SRCS-$(HAVE_ARMV7)  += encoder/arm/quantize_arm.c
 VP8_CX_SRCS-$(HAVE_ARMV7)  += encoder/arm/picklpf_arm.c
+VP8_CX_SRCS-$(HAVE_ARMV6)  += encoder/arm/dct_arm.c
+VP8_CX_SRCS-$(HAVE_ARMV6)  += encoder/arm/variance_arm.c
+VP8_CX_SRCS-$(HAVE_ARMV6)  += encoder/arm/variance_arm.h
 VP8_CX_SRCS-$(HAVE_ARMV5TE) += encoder/arm/boolhuff_arm.c
 
 VP8_CX_SRCS_REMOVE-$(HAVE_ARMV5TE)  += encoder/boolhuff.c
@@ -31,6 +33,16 @@ VP8_CX_SRCS-$(HAVE_ARMV5TE)  += encoder/arm/armv5te/vp8_packtokens_partitions_ar
 
 #File list for armv6
 # encoder
+VP8_CX_SRCS-$(HAVE_ARMV6)  += encoder/arm/armv6/vp8_subtract_armv6$(ASM)
+VP8_CX_SRCS-$(HAVE_ARMV6)  += encoder/arm/armv6/vp8_fast_fdct4x4_armv6$(ASM)
+VP8_CX_SRCS-$(HAVE_ARMV6)  += encoder/arm/armv6/vp8_fast_quantize_b_armv6$(ASM)
+VP8_CX_SRCS-$(HAVE_ARMV6)  += encoder/arm/armv6/vp8_sad16x16_armv6$(ASM)
+VP8_CX_SRCS-$(HAVE_ARMV6)  += encoder/arm/armv6/vp8_variance16x16_armv6$(ASM)
+VP8_CX_SRCS-$(HAVE_ARMV6)  += encoder/arm/armv6/vp8_variance_halfpixvar16x16_h_armv6$(ASM)
+VP8_CX_SRCS-$(HAVE_ARMV6)  += encoder/arm/armv6/vp8_variance_halfpixvar16x16_v_armv6$(ASM)
+VP8_CX_SRCS-$(HAVE_ARMV6)  += encoder/arm/armv6/vp8_variance_halfpixvar16x16_hv_armv6$(ASM)
+VP8_CX_SRCS-$(HAVE_ARMV6)  += encoder/arm/armv6/vp8_mse16x16_armv6$(ASM)
+VP8_CX_SRCS-$(HAVE_ARMV6)  += encoder/arm/armv6/vp8_variance8x8_armv6$(ASM)
 VP8_CX_SRCS-$(HAVE_ARMV6)  += encoder/arm/armv6/walsh_v6$(ASM)
 
 #File list for neon
@@ -49,17 +61,3 @@ VP8_CX_SRCS-$(HAVE_ARMV7)  += encoder/arm/neon/vp8_subpixelvariance16x16_neon$(A
 VP8_CX_SRCS-$(HAVE_ARMV7)  += encoder/arm/neon/vp8_subpixelvariance16x16s_neon$(ASM)
 VP8_CX_SRCS-$(HAVE_ARMV7)  += encoder/arm/neon/vp8_memcpy_neon$(ASM)
 VP8_CX_SRCS-$(HAVE_ARMV7)  += encoder/arm/neon/vp8_shortwalsh4x4_neon$(ASM)
-
-VP8_CX_SRCS-$(HAVE_ARMV7)  += encoder/arm/vpx_vp8_enc_asm_offsets.c
-
-#
-# Rule to extract assembly constants from C sources
-#
-ifeq ($(ARCH_ARM),yes)
-vpx_vp8_enc_asm_offsets.asm: obj_int_extract
-vpx_vp8_enc_asm_offsets.asm: $(VP8_PREFIX)encoder/arm/vpx_vp8_enc_asm_offsets.c.o
-	./obj_int_extract rvds $< $(ADS2GAS) > $@
-OBJS-yes += $(VP8_PREFIX)encoder/arm/vpx_vp7_enc_asm_offsets.c.o
-CLEAN-OBJS += vpx_vp8_enc_asm_offsets.asm
-$(filter %$(ASM).o,$(OBJS-yes)): vpx_vp8_enc_asm_offsets.asm
-endif

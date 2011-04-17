@@ -11,47 +11,16 @@
 
 #include "findnearmv.h"
 
-#define FINDNEAR_SEARCH_SITES   3
+const unsigned char vp8_mbsplit_offset[4][16] = {
+    { 0,  8,  0,  0,  0,  0,  0,  0,  0,  0,   0,  0,  0,  0,  0,  0},
+    { 0,  2,  0,  0,  0,  0,  0,  0,  0,  0,   0,  0,  0,  0,  0,  0},
+    { 0,  2,  8, 10,  0,  0,  0,  0,  0,  0,   0,  0,  0,  0,  0,  0},
+    { 0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14, 15}
+};
 
 /* Predict motion vectors using those from already-decoded nearby blocks.
    Note that we only consider one 4x4 subblock from each candidate 16x16
    macroblock.   */
-
-typedef union
-{
-    unsigned int as_int;
-    MV           as_mv;
-} int_mv;        /* facilitates rapid equality tests */
-
-static void mv_bias(const MODE_INFO *x, int refframe, int_mv *mvp, const int *ref_frame_sign_bias)
-{
-    MV xmv;
-    xmv = x->mbmi.mv.as_mv;
-
-    if (ref_frame_sign_bias[x->mbmi.ref_frame] != ref_frame_sign_bias[refframe])
-    {
-        xmv.row *= -1;
-        xmv.col *= -1;
-    }
-
-    mvp->as_mv = xmv;
-}
-
-
-void vp8_clamp_mv(MV *mv, const MACROBLOCKD *xd)
-{
-    if (mv->col < (xd->mb_to_left_edge - LEFT_TOP_MARGIN))
-        mv->col = xd->mb_to_left_edge - LEFT_TOP_MARGIN;
-    else if (mv->col > xd->mb_to_right_edge + RIGHT_BOTTOM_MARGIN)
-        mv->col = xd->mb_to_right_edge + RIGHT_BOTTOM_MARGIN;
-
-    if (mv->row < (xd->mb_to_top_edge - LEFT_TOP_MARGIN))
-        mv->row = xd->mb_to_top_edge - LEFT_TOP_MARGIN;
-    else if (mv->row > xd->mb_to_bottom_edge + RIGHT_BOTTOM_MARGIN)
-        mv->row = xd->mb_to_bottom_edge + RIGHT_BOTTOM_MARGIN;
-}
-
-
 void vp8_find_near_mvs
 (
     MACROBLOCKD *xd,
@@ -82,7 +51,7 @@ void vp8_find_near_mvs
         if (above->mbmi.mv.as_int)
         {
             (++mv)->as_int = above->mbmi.mv.as_int;
-            mv_bias(above, refframe, mv, ref_frame_sign_bias);
+            mv_bias(ref_frame_sign_bias[above->mbmi.ref_frame], refframe, mv, ref_frame_sign_bias);
             ++cntx;
         }
 
@@ -97,7 +66,7 @@ void vp8_find_near_mvs
             int_mv this_mv;
 
             this_mv.as_int = left->mbmi.mv.as_int;
-            mv_bias(left, refframe, &this_mv, ref_frame_sign_bias);
+            mv_bias(ref_frame_sign_bias[left->mbmi.ref_frame], refframe, &this_mv, ref_frame_sign_bias);
 
             if (this_mv.as_int != mv->as_int)
             {
@@ -119,7 +88,7 @@ void vp8_find_near_mvs
             int_mv this_mv;
 
             this_mv.as_int = aboveleft->mbmi.mv.as_int;
-            mv_bias(aboveleft, refframe, &this_mv, ref_frame_sign_bias);
+            mv_bias(ref_frame_sign_bias[aboveleft->mbmi.ref_frame], refframe, &this_mv, ref_frame_sign_bias);
 
             if (this_mv.as_int != mv->as_int)
             {

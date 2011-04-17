@@ -12,7 +12,7 @@
 #ifndef tokenize_h
 #define tokenize_h
 
-#include "entropy.h"
+#include "vp8/common/entropy.h"
 #include "block.h"
 
 void vp8_tokenize_initialize();
@@ -25,11 +25,10 @@ typedef struct
 
 typedef struct
 {
-    int Token;
-    int Extra;
     const vp8_prob *context_tree;
-    int skip_eob_node;
-    int section;
+    short           Extra;
+    unsigned char   Token;
+    unsigned char   skip_eob_node;
 } TOKENEXTRA;
 
 int rd_cost_mby(MACROBLOCKD *);

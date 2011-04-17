@@ -24,9 +24,6 @@ endif
 
 VP8_DX_SRCS-yes += vp8_dx_iface.c
 
-CFLAGS+=-I$(SRC_PATH_BARE)/$(VP8_PREFIX)decoder
-
-
 # common
 #define ARM
 #define DISABLE_THREAD
@@ -65,7 +62,7 @@ VP8_DX_SRCS-yes += decoder/detokenize.h
 VP8_DX_SRCS-yes += decoder/onyxd_int.h
 VP8_DX_SRCS-yes += decoder/treereader.h
 VP8_DX_SRCS-yes += decoder/onyxd_if.c
-VP8_DX_SRCS-yes += decoder/threading.c
+VP8_DX_SRCS-$(CONFIG_MULTITHREAD) += decoder/threading.c
 VP8_DX_SRCS-yes += decoder/idct_blk.c
 VP8_DX_SRCS-$(CONFIG_MULTITHREAD) += decoder/reconintra_mt.h
 VP8_DX_SRCS-$(CONFIG_MULTITHREAD) += decoder/reconintra_mt.c

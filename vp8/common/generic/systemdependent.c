@@ -10,22 +10,16 @@
 
 
 #include "vpx_ports/config.h"
-#include "g_common.h"
-#include "subpixel.h"
-#include "loopfilter.h"
-#include "recon.h"
-#include "idct.h"
-#include "onyxc_int.h"
+#include "vp8/common/g_common.h"
+#include "vp8/common/subpixel.h"
+#include "vp8/common/loopfilter.h"
+#include "vp8/common/recon.h"
+#include "vp8/common/idct.h"
+#include "vp8/common/onyxc_int.h"
 
 extern void vp8_arch_x86_common_init(VP8_COMMON *ctx);
 extern void vp8_arch_arm_common_init(VP8_COMMON *ctx);
 extern void vp8_arch_opencl_common_init(VP8_COMMON *ctx);
-
-void (*vp8_build_intra_predictors_mby_ptr)(MACROBLOCKD *x);
-extern void vp8_build_intra_predictors_mby(MACROBLOCKD *x);
-
-void (*vp8_build_intra_predictors_mby_s_ptr)(MACROBLOCKD *x);
-extern void vp8_build_intra_predictors_mby_s(MACROBLOCKD *x);
 
 void vp8_machine_specific_config(VP8_COMMON *ctx)
 {
@@ -46,6 +40,10 @@ void vp8_machine_specific_config(VP8_COMMON *ctx)
     rtcd->recon.recon4      = vp8_recon4b_c;
     rtcd->recon.recon_mb    = vp8_recon_mb_c;
     rtcd->recon.recon_mby   = vp8_recon_mby_c;
+    rtcd->recon.build_intra_predictors_mby =
+        vp8_build_intra_predictors_mby;
+    rtcd->recon.build_intra_predictors_mby_s =
+        vp8_build_intra_predictors_mby_s;
 
     rtcd->subpix.sixtap16x16   = vp8_sixtap_predict16x16_c;
     rtcd->subpix.sixtap8x8     = vp8_sixtap_predict8x8_c;
@@ -66,17 +64,16 @@ void vp8_machine_specific_config(VP8_COMMON *ctx)
     rtcd->loopfilter.simple_b_h  = vp8_loop_filter_bhs_c;
 
 #if CONFIG_POSTPROC || (CONFIG_VP8_ENCODER && CONFIG_PSNR)
-    rtcd->postproc.down        = vp8_mbpost_proc_down_c;
-    rtcd->postproc.across      = vp8_mbpost_proc_across_ip_c;
-    rtcd->postproc.downacross  = vp8_post_proc_down_and_across_c;
-    rtcd->postproc.addnoise    = vp8_plane_add_noise_c;
-    rtcd->postproc.blend_mb    = vp8_blend_mb_c;
+    rtcd->postproc.down             = vp8_mbpost_proc_down_c;
+    rtcd->postproc.across           = vp8_mbpost_proc_across_ip_c;
+    rtcd->postproc.downacross       = vp8_post_proc_down_and_across_c;
+    rtcd->postproc.addnoise         = vp8_plane_add_noise_c;
+    rtcd->postproc.blend_mb_inner   = vp8_blend_mb_inner_c;
+    rtcd->postproc.blend_mb_outer   = vp8_blend_mb_outer_c;
+    rtcd->postproc.blend_b          = vp8_blend_b_c;
 #endif
 
 #endif
-    /* Pure C: */
-    vp8_build_intra_predictors_mby_ptr = vp8_build_intra_predictors_mby;
-    vp8_build_intra_predictors_mby_s_ptr = vp8_build_intra_predictors_mby_s;
 
 #if ARCH_X86 || ARCH_X86_64
     vp8_arch_x86_common_init(ctx);

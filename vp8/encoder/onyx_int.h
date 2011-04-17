@@ -14,20 +14,22 @@
 
 #include <stdio.h>
 #include "vpx_ports/config.h"
-#include "onyx.h"
+#include "vp8/common/onyx.h"
 #include "treewriter.h"
 #include "tokenize.h"
-#include "onyxc_int.h"
-#include "preproc.h"
+#include "vp8/common/onyxc_int.h"
 #include "variance.h"
 #include "dct.h"
 #include "encodemb.h"
 #include "quantize.h"
-#include "entropy.h"
-#include "threading.h"
+#include "vp8/common/entropy.h"
+#include "vp8/common/threading.h"
 #include "vpx_ports/mem.h"
 #include "vpx/internal/vpx_codec_internal.h"
 #include "mcomp.h"
+#include "temporal_filter.h"
+#include "vp8/common/findnearmv.h"
+#include "lookahead.h"
 
 //#define SPEEDSTATS 1
 #define MIN_GF_INTERVAL             4
@@ -46,9 +48,13 @@
 #define MAX_THRESHMULT  512
 
 #define GF_ZEROMV_ZBIN_BOOST 24
+#define LF_ZEROMV_ZBIN_BOOST 12
+#define MV_ZBIN_BOOST        4
 #define ZBIN_OQ_MAX 192
 
+#if !(CONFIG_REALTIME_ONLY)
 #define VP8_TEMPORAL_ALT_REF 1
+#endif
 
 typedef struct
 {
@@ -94,6 +100,7 @@ typedef struct
     double pcnt_inter;
     double pcnt_motion;
     double pcnt_second_ref;
+    double pcnt_neutral;
     double MVr;
     double mvr_abs;
     double MVc;
@@ -180,16 +187,17 @@ typedef struct
     int first_step;
     int optimize_coefficients;
 
+    int use_fastquant_for_pick;
+    int no_skip_block4x4_search;
+    int improved_mv_pred;
+
 } SPEED_FEATURES;
 
 typedef struct
 {
     MACROBLOCK  mb;
-    int mb_row;
-    TOKENEXTRA *tp;
     int segment_counts[MAX_MB_SEGMENTS];
     int totalrate;
-    int current_mb_col;
 } MB_ROW_COMP;
 
 typedef struct
@@ -210,14 +218,6 @@ typedef struct
     void *ptr1;
 } LPFTHREAD_DATA;
 
-typedef struct
-{
-    INT64  source_time_stamp;
-    INT64  source_end_time_stamp;
-
-    DECLARE_ALIGNED(16, YV12_BUFFER_CONFIG, source_buffer);
-    unsigned int source_frame_flags;
-} SOURCE_SAMPLE;
 
 typedef struct VP8_ENCODER_RTCD
 {
@@ -227,6 +227,7 @@ typedef struct VP8_ENCODER_RTCD
     vp8_encodemb_rtcd_vtable_t  encodemb;
     vp8_quantize_rtcd_vtable_t  quantize;
     vp8_search_rtcd_vtable_t    search;
+    vp8_temporal_rtcd_vtable_t  temporal;
 } VP8_ENCODER_RTCD;
 
 enum
@@ -260,6 +261,9 @@ typedef struct
     DECLARE_ALIGNED(16, short, zrun_zbin_boost_y1[QINDEX_RANGE][16]);
     DECLARE_ALIGNED(16, short, zrun_zbin_boost_y2[QINDEX_RANGE][16]);
     DECLARE_ALIGNED(16, short, zrun_zbin_boost_uv[QINDEX_RANGE][16]);
+    DECLARE_ALIGNED(16, short, Y1quant_fast[QINDEX_RANGE][16]);
+    DECLARE_ALIGNED(16, short, Y2quant_fast[QINDEX_RANGE][16]);
+    DECLARE_ALIGNED(16, short, UVquant_fast[QINDEX_RANGE][16]);
 
 
     MACROBLOCK mb;
@@ -269,32 +273,26 @@ typedef struct
 
     VP8_CONFIG oxcf;
 
+    struct lookahead_ctx    *lookahead;
+    struct lookahead_entry  *source;
+    struct lookahead_entry  *alt_ref_source;
+
     YV12_BUFFER_CONFIG *Source;
     YV12_BUFFER_CONFIG *un_scaled_source;
-    INT64 source_time_stamp;
-    INT64 source_end_time_stamp;
-    unsigned int source_frame_flags;
     YV12_BUFFER_CONFIG scaled_source;
 
-    int source_buffer_count;
-    int source_encode_index;
-    int source_alt_ref_pending;
-    int source_alt_ref_active;
+    int source_alt_ref_pending; // frame in src_buffers has been identified to be encoded as an alt ref
+    int source_alt_ref_active;  // an alt ref frame has been encoded and is usable
 
-    int last_alt_ref_sei;
-    int is_src_frame_alt_ref;
-    int is_next_src_alt_ref;
+    int is_src_frame_alt_ref;   // source of frame to encode is an exact copy of an alt ref frame
+    int is_next_src_alt_ref;    // source of next frame to encode is an exact copy of an alt ref frame
 
     int gold_is_last; // golden frame same as last frame ( short circuit gold searches)
     int alt_is_last;  // Alt reference frame same as last ( short circuit altref search)
     int gold_is_alt;  // don't do both alt and gold search ( just do gold).
 
     //int refresh_alt_ref_frame;
-    SOURCE_SAMPLE src_buffer[MAX_LAG_BUFFERS];
-
     YV12_BUFFER_CONFIG last_frame_uf;
-
-    char *Dest;
 
     TOKENEXTRA *tok;
     unsigned int tok_count;
@@ -302,7 +300,11 @@ typedef struct
 
     unsigned int frames_since_key;
     unsigned int key_frame_frequency;
-    unsigned int next_key;
+    unsigned int this_key_frame_forced;
+    unsigned int next_key_frame_forced;
+
+    // Ambient reconstruction err target for force key frames
+    int ambient_err;
 
     unsigned int mode_check_freq[MAX_MODES];
     unsigned int mode_test_hit_counts[MAX_MODES];
@@ -319,14 +321,10 @@ typedef struct
     int mvcostmultiplier;
     int subseqblockweight;
     int errthresh;
+    unsigned int activity_avg;
 
     int RDMULT;
     int RDDIV ;
-
-    TOKENEXTRA *rdtok;
-    vp8_writer rdbc;
-    int intra_mode_costs[10];
-
 
     CODING_CONTEXT coding_context;
 
@@ -335,7 +333,6 @@ typedef struct
     long long last_prediction_error;
     long long intra_error;
     long long last_intra_error;
-    long long last_auto_filter_prediction_error;
 
 #if 0
     // Experimental RD code
@@ -350,7 +347,6 @@ typedef struct
     int this_frame_target;
     int projected_frame_size;
     int last_q[2];                   // Separate values for Intra/Inter
-    int target_bits_per_mb;
 
     double rate_correction_factor;
     double key_frame_rate_correction_factor;
@@ -383,6 +379,7 @@ typedef struct
     int kf_overspend_bits;            // Extra bits spent on key frames that need to be recovered on inter frames
     int kf_bitrate_adjustment;        // Current number of bit s to try and recover on each inter frame.
     int max_gf_interval;
+    int static_scene_max_gf_interval;
     int baseline_gf_interval;
     int gf_decay_rate;
     int active_arnr_frames;           // <= cpi->oxcf.arnr_max_frames
@@ -399,6 +396,7 @@ typedef struct
     int inter_frame_target;
     double output_frame_rate;
     long long last_time_stamp_seen;
+    long long last_end_time_stamp_seen;
     long long first_time_stamp_ever;
 
     int ni_av_qi;
@@ -431,6 +429,10 @@ typedef struct
     int best_quality;
     int active_best_quality;
 
+    int cq_target_quality;
+    int maxq_max_limit;
+    int maxq_min_limit;
+
     int drop_frames_allowed;          // Are we permitted to drop frames?
     int drop_frame;                  // Drop this frame?
     int drop_count;                  // How many frames have we dropped?
@@ -454,8 +456,6 @@ typedef struct
     unsigned char *output_partition2;
     size_t output_partition2size;
 
-    pre_proc_instance ppi;
-
     int frames_to_key;
     int gfu_boost;
     int kf_boost;
@@ -465,20 +465,25 @@ typedef struct
     double total_coded_error_left;
     double start_tot_err_left;
     double min_error;
+    double kf_intra_err_min;
+    double gf_intra_err_min;
 
-    double modified_total_error_left;
+    double modified_error_total;
+    double modified_error_used;
+    double modified_error_left;
+    double clip_bpe;
+    double observed_bpe;
+
     double avg_iiratio;
 
     int target_bandwidth;
     long long bits_left;
+    long long clip_bits_total;
     FIRSTPASS_STATS *total_stats;
     FIRSTPASS_STATS *this_frame_stats;
     FIRSTPASS_STATS *stats_in, *stats_in_end;
     struct vpx_codec_pkt_list  *output_pkt_list;
     int                          first_pass_done;
-    unsigned char *fp_motion_map;
-
-    unsigned char *fp_motion_map_stats, *fp_motion_map_stats_save;
 
 #if 0
     // Experimental code for lagged and one pass
@@ -529,8 +534,6 @@ typedef struct
 
     int ref_frame_flags;
 
-    int exp[512];
-
     SPEED_FEATURES sf;
     int error_bins[1024];
 
@@ -576,22 +579,26 @@ typedef struct
     int cyclic_refresh_q;
     signed char *cyclic_refresh_map;
 
+#if CONFIG_MULTITHREAD
     // multithread data
-    int current_mb_col_main;
+    int * mt_current_mb_col;
+    int mt_sync_range;
     int processor_core_count;
     int b_multi_threaded;
     int encoding_thread_count;
 
-#if CONFIG_MULTITHREAD
     pthread_t *h_encoding_thread;
-#endif
+    pthread_t h_filter_thread;
+
     MB_ROW_COMP *mb_row_ei;
     ENCODETHREAD_DATA *en_thread_data;
+    LPFTHREAD_DATA lpf_thread_data;
 
-#if CONFIG_MULTITHREAD
     //events
-    sem_t *h_event_mbrencoding;
-    sem_t h_event_main;
+    sem_t *h_event_start_encoding;
+    sem_t h_event_end_encoding;
+    sem_t h_event_start_lpf;
+    sem_t h_event_end_lpf;
 #endif
 
     TOKENLIST *tplist;
@@ -611,9 +618,6 @@ typedef struct
     unsigned int tempdata2;
 
     int base_skip_false_prob[128];
-    unsigned int section_is_low_motion;
-    unsigned int section_benefits_from_aggresive_q;
-    unsigned int section_is_fast_motion;
     unsigned int section_intra_rating;
 
     double section_max_qfactor;
@@ -623,12 +627,10 @@ typedef struct
     VP8_ENCODER_RTCD            rtcd;
 #endif
 #if VP8_TEMPORAL_ALT_REF
-    SOURCE_SAMPLE alt_ref_buffer;
+    YV12_BUFFER_CONFIG alt_ref_buffer;
     YV12_BUFFER_CONFIG *frames[MAX_LAG_BUFFERS];
     int fixed_divide[512];
 #endif
-    // Flag to indicate temporal filter method
-    int use_weighted_temporal_filter;
 
 #if CONFIG_PSNR
     int    count;
@@ -661,7 +663,14 @@ typedef struct
     unsigned char *gf_active_flags;   // Record of which MBs still refer to last golden frame either directly or through 0,0
     int gf_active_count;
 
+    //Store last frame's MV info for next frame MV prediction
+    int_mv *lfmv;
+    int *lf_ref_frame_sign_bias;
+    int *lf_ref_frame;
 
+#if CONFIG_REALTIME_ONLY
+    int force_next_frame_intra; /* force next frame to intra when kf_auto says so */
+#endif
 } VP8_COMP;
 
 void control_data_rate(VP8_COMP *cpi);
@@ -669,6 +678,8 @@ void control_data_rate(VP8_COMP *cpi);
 void vp8_encode_frame(VP8_COMP *cpi);
 
 void vp8_pack_bitstream(VP8_COMP *cpi, unsigned char *dest, unsigned long *size);
+
+unsigned int vp8_activity_masking(VP8_COMP *cpi, MACROBLOCK *x);
 
 int rd_cost_intra_mb(MACROBLOCKD *x);
 

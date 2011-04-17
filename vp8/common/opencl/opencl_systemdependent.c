@@ -9,9 +9,9 @@
  */
 
 #include "vpx_ports/config.h"
-#include "subpixel.h"
+#include "../subpixel.h"
 #include "subpixel_cl.h"
-#include "onyxc_int.h"
+#include "../onyxc_int.h"
 #include "vp8_opencl.h"
 
 #if HAVE_DLOPEN

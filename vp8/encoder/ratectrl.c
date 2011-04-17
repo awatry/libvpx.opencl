@@ -16,11 +16,11 @@
 #include <assert.h>
 
 #include "math.h"
-#include "common.h"
+#include "vp8/common/common.h"
 #include "ratectrl.h"
-#include "entropymode.h"
+#include "vp8/common/entropymode.h"
 #include "vpx_mem/vpx_mem.h"
-#include "systemdependent.h"
+#include "vp8/common/systemdependent.h"
 #include "encodemv.h"
 
 
@@ -45,50 +45,52 @@ extern int inter_b_modes[10];
 // Bits Per MB at different Q (Multiplied by 512)
 #define BPER_MB_NORMBITS    9
 
+// Work in progress recalibration of baseline rate tables based on
+// the assumption that bits per mb is inversely proportional to the
+// quantizer value.
 const int vp8_bits_per_mb[2][QINDEX_RANGE] =
 {
-    // (Updated 19 March 08) Baseline estimate of INTRA-frame Bits Per MB at each Q:
+    // Intra case 450000/Qintra
     {
-        674781, 606845, 553905, 524293, 500428, 452540, 435379, 414719,
-        390970, 371082, 359416, 341807, 336957, 317263, 303724, 298402,
-        285688, 275237, 268455, 262560, 256038, 248734, 241087, 237615,
-        229247, 225211, 219112, 213920, 211559, 202714, 198482, 193401,
-        187866, 183453, 179212, 175965, 171852, 167235, 163972, 160560,
-        156032, 154349, 151390, 148725, 145708, 142311, 139981, 137700,
-        134084, 131863, 129746, 128498, 126077, 123461, 121290, 117782,
-        114883, 112332, 108410, 105685, 103434, 101192,  98587,  95959,
-        94059,  92017,  89970,  87936,  86142,  84801,  82736,  81106,
-        79668,  78135,  76641,  75103,  73943,  72693,  71401,  70098,
-        69165,  67901,  67170,  65987,  64923,  63534,  62378,  61302,
-        59921,  58941,  57844,  56782,  55960,  54973,  54257,  53454,
-        52230,  50938,  49962,  49190,  48288,  47270,  46738,  46037,
-        45020,  44027,  43216,  42287,  41594,  40702,  40081,  39414,
-        38282,  37627,  36987,  36375,  35808,  35236,  34710,  34162,
-        33659,  33327,  32751,  32384,  31936,  31461,  30982,  30582,
+        1125000,900000, 750000, 642857, 562500, 500000, 450000, 450000,
+        409090, 375000, 346153, 321428, 300000, 281250, 264705, 264705,
+        250000, 236842, 225000, 225000, 214285, 214285, 204545, 204545,
+        195652, 195652, 187500, 180000, 180000, 173076, 166666, 160714,
+        155172, 150000, 145161, 140625, 136363, 132352, 128571, 125000,
+        121621, 121621, 118421, 115384, 112500, 109756, 107142, 104651,
+        102272, 100000, 97826,  97826,  95744,  93750,  91836,  90000,
+        88235,  86538,  84905,  83333,  81818,  80357,  78947,  77586,
+        76271,  75000,  73770,  72580,  71428,  70312,  69230,  68181,
+        67164,  66176,  65217,  64285,  63380,  62500,  61643,  60810,
+        60000,  59210,  59210,  58441,  57692,  56962,  56250,  55555,
+        54878,  54216,  53571,  52941,  52325,  51724,  51136,  50561,
+        49450,  48387,  47368,  46875,  45918,  45000,  44554,  44117,
+        43269,  42452,  41666,  40909,  40178,  39473,  38793,  38135,
+        36885,  36290,  35714,  35156,  34615,  34090,  33582,  33088,
+        32608,  32142,  31468,  31034,  30405,  29801,  29220,  28662,
     },
-
-    // (Updated 19 March 08) Baseline estimate of INTER-frame Bits Per MB at each Q:
+    // Inter case 285000/Qinter
     {
-        497401, 426316, 372064, 352732, 335763, 283921, 273848, 253321,
-        233181, 217727, 210030, 196685, 194836, 178396, 167753, 164116,
-        154119, 146929, 142254, 138488, 133591, 127741, 123166, 120226,
-        114188, 111756, 107882, 104749, 102522,  96451,  94424,  90905,
-        87286,  84931,  82111,  80534,  77610,  74700,  73037,  70715,
-        68006,  67235,  65374,  64009,  62134,  60180,  59105,  57691,
-        55509,  54512,  53318,  52693,  51194,  49840,  48944,  46980,
-        45668,  44177,  42348,  40994,  39859,  38889,  37717,  36391,
-        35482,  34622,  33795,  32756,  32002,  31492,  30573,  29737,
-        29152,  28514,  27941,  27356,  26859,  26329,  25874,  25364,
-        24957,  24510,  24290,  23689,  23380,  22845,  22481,  22066,
-        21587,  21219,  20880,  20452,  20260,  19926,  19661,  19334,
-        18915,  18391,  18046,  17833,  17441,  17105,  16888,  16729,
-        16383,  16023,  15706,  15442,  15222,  14938,  14673,  14452,
-        14005,  13807,  13611,  13447,  13223,  13102,  12963,  12801,
-        12627,  12534,  12356,  12228,  12056,  11907,  11746,  11643,
+        712500, 570000, 475000, 407142, 356250, 316666, 285000, 259090,
+        237500, 219230, 203571, 190000, 178125, 167647, 158333, 150000,
+        142500, 135714, 129545, 123913, 118750, 114000, 109615, 105555,
+        101785, 98275,  95000,  91935,  89062,  86363,  83823,  81428,
+        79166,  77027,  75000,  73076,  71250,  69512,  67857,  66279,
+        64772,  63333,  61956,  60638,  59375,  58163,  57000,  55882,
+        54807,  53773,  52777,  51818,  50892,  50000,  49137,  47500,
+        45967,  44531,  43181,  41911,  40714,  39583,  38513,  37500,
+        36538,  35625,  34756,  33928,  33139,  32386,  31666,  30978,
+        30319,  29687,  29081,  28500,  27941,  27403,  26886,  26388,
+        25909,  25446,  25000,  24568,  23949,  23360,  22800,  22265,
+        21755,  21268,  20802,  20357,  19930,  19520,  19127,  18750,
+        18387,  18037,  17701,  17378,  17065,  16764,  16473,  16101,
+        15745,  15405,  15079,  14766,  14467,  14179,  13902,  13636,
+        13380,  13133,  12895,  12666,  12445,  12179,  11924,  11632,
+        11445,  11220,  11003,  10795,  10594,  10401,  10215,  10035,
     }
 };
 
-const int vp8_kf_boost_qadjustment[QINDEX_RANGE] =
+static const int kf_boost_qadjustment[QINDEX_RANGE] =
 {
     128, 129, 130, 131, 132, 133, 134, 135,
     136, 137, 138, 139, 140, 141, 142, 143,
@@ -152,7 +154,7 @@ const int vp8_gf_boost_qadjustment[QINDEX_RANGE] =
 };
 */
 
-const int vp8_kf_gf_boost_qlimits[QINDEX_RANGE] =
+static const int kf_gf_boost_qlimits[QINDEX_RANGE] =
 {
     150, 155, 160, 165, 170, 175, 180, 185,
     190, 195, 200, 205, 210, 215, 220, 225,
@@ -173,14 +175,14 @@ const int vp8_kf_gf_boost_qlimits[QINDEX_RANGE] =
 };
 
 // % adjustment to target kf size based on seperation from previous frame
-const int vp8_kf_boost_seperationt_adjustment[16] =
+static const int kf_boost_seperation_adjustment[16] =
 {
     30,   40,   50,   55,   60,   65,   70,   75,
     80,   85,   90,   95,  100,  100,  100,  100,
 };
 
 
-const int vp8_gf_adjust_table[101] =
+static const int gf_adjust_table[101] =
 {
     100,
     115, 130, 145, 160, 175, 190, 200, 210, 220, 230,
@@ -195,13 +197,13 @@ const int vp8_gf_adjust_table[101] =
     400, 400, 400, 400, 400, 400, 400, 400, 400, 400,
 };
 
-const int vp8_gf_intra_useage_adjustment[20] =
+static const int gf_intra_usage_adjustment[20] =
 {
     125, 120, 115, 110, 105, 100,  95,  85,  80,  75,
     70,  65,  60,  55,  50,  50,  50,  50,  50,  50,
 };
 
-const int vp8_gf_interval_table[101] =
+static const int gf_interval_table[101] =
 {
     7,
     7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
@@ -308,7 +310,7 @@ void vp8_setup_key_frame(VP8_COMP *cpi)
     vpx_memcpy(cpi->common.fc.mvc, vp8_default_mv_context, sizeof(vp8_default_mv_context));
     {
         int flag[2] = {1, 1};
-        vp8_build_component_cost_table(cpi->mb.mvcost, cpi->mb.mvsadcost, (const MV_CONTEXT *) cpi->common.fc.mvc, flag);
+        vp8_build_component_cost_table(cpi->mb.mvcost, (const MV_CONTEXT *) cpi->common.fc.mvc, flag);
     }
 
     vpx_memset(cpi->common.fc.pre_mvc, 0, sizeof(cpi->common.fc.pre_mvc));  //initialize pre_mvc to all zero.
@@ -324,6 +326,7 @@ void vp8_setup_key_frame(VP8_COMP *cpi)
         cpi->frames_till_gf_update_due = cpi->goldfreq;
 
     cpi->common.refresh_golden_frame = TRUE;
+    cpi->common.refresh_alt_ref_frame = TRUE;
 }
 
 void vp8_calc_auto_iframe_target_size(VP8_COMP *cpi)
@@ -350,7 +353,7 @@ void vp8_calc_auto_iframe_target_size(VP8_COMP *cpi)
         kf_boost = (int)(2 * cpi->output_frame_rate - 16);
 
         // adjustment up based on q
-        kf_boost = kf_boost * vp8_kf_boost_qadjustment[cpi->ni_av_qi] / 100;
+        kf_boost = kf_boost * kf_boost_qadjustment[cpi->ni_av_qi] / 100;
 
         // frame separation adjustment ( down)
         if (cpi->frames_since_key  < cpi->output_frame_rate / 2)
@@ -485,10 +488,10 @@ static void calc_gf_params(VP8_COMP *cpi)
             Boost = GFQ_ADJUSTMENT;
 
             // Adjust based upon most recently measure intra useage
-            Boost = Boost * vp8_gf_intra_useage_adjustment[(cpi->this_frame_percent_intra < 15) ? cpi->this_frame_percent_intra : 14] / 100;
+            Boost = Boost * gf_intra_usage_adjustment[(cpi->this_frame_percent_intra < 15) ? cpi->this_frame_percent_intra : 14] / 100;
 
             // Adjust gf boost based upon GF usage since last GF
-            Boost = Boost * vp8_gf_adjust_table[gf_frame_useage] / 100;
+            Boost = Boost * gf_adjust_table[gf_frame_useage] / 100;
 #endif
         }
 
@@ -500,8 +503,8 @@ static void calc_gf_params(VP8_COMP *cpi)
         }
 
         // Apply an upper limit based on Q for 1 pass encodes
-        if (Boost > vp8_kf_gf_boost_qlimits[Q] && (cpi->pass == 0))
-            Boost = vp8_kf_gf_boost_qlimits[Q];
+        if (Boost > kf_gf_boost_qlimits[Q] && (cpi->pass == 0))
+            Boost = kf_gf_boost_qlimits[Q];
 
         // Apply lower limits to boost.
         else if (Boost < 110)
@@ -536,8 +539,8 @@ static void calc_gf_params(VP8_COMP *cpi)
             if (cpi->last_boost >= 1500)
                 cpi->frames_till_gf_update_due ++;
 
-            if (vp8_gf_interval_table[gf_frame_useage] > cpi->frames_till_gf_update_due)
-                cpi->frames_till_gf_update_due = vp8_gf_interval_table[gf_frame_useage];
+            if (gf_interval_table[gf_frame_useage] > cpi->frames_till_gf_update_due)
+                cpi->frames_till_gf_update_due = gf_interval_table[gf_frame_useage];
 
             if (cpi->frames_till_gf_update_due > cpi->max_gf_interval)
                 cpi->frames_till_gf_update_due = cpi->max_gf_interval;
@@ -591,17 +594,17 @@ void vp8_calc_iframe_target_size(VP8_COMP *cpi)
         // between key frames.
 
         // Adjust boost based upon ambient Q
-        Boost = vp8_kf_boost_qadjustment[Q];
+        Boost = kf_boost_qadjustment[Q];
 
         // Make the Key frame boost less if the seperation from the previous key frame is small
         if (cpi->frames_since_key < 16)
-            Boost = Boost * vp8_kf_boost_seperationt_adjustment[cpi->frames_since_key] / 100;
+            Boost = Boost * kf_boost_seperation_adjustment[cpi->frames_since_key] / 100;
         else
-            Boost = Boost * vp8_kf_boost_seperationt_adjustment[15] / 100;
+            Boost = Boost * kf_boost_seperation_adjustment[15] / 100;
 
         // Apply limits on boost
-        if (Boost > vp8_kf_gf_boost_qlimits[Q])
-            Boost = vp8_kf_gf_boost_qlimits[Q];
+        if (Boost > kf_gf_boost_qlimits[Q])
+            Boost = kf_gf_boost_qlimits[Q];
         else if (Boost < 120)
             Boost = 120;
     }
@@ -839,7 +842,8 @@ void vp8_calc_pframe_target_size(VP8_COMP *cpi)
         {
             int one_percent_bits = 1 + cpi->oxcf.optimal_buffer_level / 100;
 
-            if ((cpi->buffer_level < cpi->oxcf.optimal_buffer_level) || (cpi->bits_off_target < cpi->oxcf.optimal_buffer_level))
+            if ((cpi->buffer_level < cpi->oxcf.optimal_buffer_level) ||
+                (cpi->bits_off_target < cpi->oxcf.optimal_buffer_level))
             {
                 int percent_low = 0;
 
@@ -848,9 +852,12 @@ void vp8_calc_pframe_target_size(VP8_COMP *cpi)
                 // If we are are below the optimal buffer fullness level and adherence
                 // to buffering contraints is important to the end useage then adjust
                 // the per frame target.
-                if ((cpi->oxcf.end_usage == USAGE_STREAM_FROM_SERVER) && (cpi->buffer_level < cpi->oxcf.optimal_buffer_level))
+                if ((cpi->oxcf.end_usage == USAGE_STREAM_FROM_SERVER) &&
+                    (cpi->buffer_level < cpi->oxcf.optimal_buffer_level))
                 {
-                    percent_low = (cpi->oxcf.optimal_buffer_level - cpi->buffer_level) / one_percent_bits;
+                    percent_low =
+                        (cpi->oxcf.optimal_buffer_level - cpi->buffer_level) /
+                        one_percent_bits;
 
                     if (percent_low > 100)
                         percent_low = 100;
@@ -861,7 +868,8 @@ void vp8_calc_pframe_target_size(VP8_COMP *cpi)
                 else if (cpi->bits_off_target < 0)
                 {
                     // Adjust per frame data target downwards to compensate.
-                    percent_low = (int)(100 * -cpi->bits_off_target / (cpi->total_byte_count * 8));
+                    percent_low = (int)(100 * -cpi->bits_off_target /
+                                       (cpi->total_byte_count * 8));
 
                     if (percent_low > 100)
                         percent_low = 100;
@@ -870,39 +878,60 @@ void vp8_calc_pframe_target_size(VP8_COMP *cpi)
                 }
 
                 // lower the target bandwidth for this frame.
-                cpi->this_frame_target = (cpi->this_frame_target * (100 - (percent_low / 2))) / 100;
+                cpi->this_frame_target =
+                    (cpi->this_frame_target * (100 - (percent_low / 2))) / 100;
 
-                // Are we using allowing control of active_worst_allowed_q according to buffer level.
+                // Are we using allowing control of active_worst_allowed_q
+                // according to buffer level.
                 if (cpi->auto_worst_q)
                 {
                     int critical_buffer_level;
 
-                    // For streaming applications the most important factor is cpi->buffer_level as this takes
-                    // into account the specified short term buffering constraints. However, hitting the long
-                    // term clip data rate target is also important.
+                    // For streaming applications the most important factor is
+                    // cpi->buffer_level as this takes into account the
+                    // specified short term buffering constraints. However,
+                    // hitting the long term clip data rate target is also
+                    // important.
                     if (cpi->oxcf.end_usage == USAGE_STREAM_FROM_SERVER)
                     {
-                        // Take the smaller of cpi->buffer_level and cpi->bits_off_target
-                        critical_buffer_level = (cpi->buffer_level < cpi->bits_off_target) ? cpi->buffer_level : cpi->bits_off_target;
+                        // Take the smaller of cpi->buffer_level and
+                        // cpi->bits_off_target
+                        critical_buffer_level =
+                            (cpi->buffer_level < cpi->bits_off_target)
+                            ? cpi->buffer_level : cpi->bits_off_target;
                     }
-                    // For local file playback short term buffering contraints are less of an issue
+                    // For local file playback short term buffering contraints
+                    // are less of an issue
                     else
                     {
-                        // Consider only how we are doing for the clip as a whole
+                        // Consider only how we are doing for the clip as a
+                        // whole
                         critical_buffer_level = cpi->bits_off_target;
                     }
 
-                    // Set the active worst quality based upon the selected buffer fullness number.
+                    // Set the active worst quality based upon the selected
+                    // buffer fullness number.
                     if (critical_buffer_level < cpi->oxcf.optimal_buffer_level)
                     {
-                        if (critical_buffer_level > (cpi->oxcf.optimal_buffer_level / 4))
+                        if ( critical_buffer_level >
+                             (cpi->oxcf.optimal_buffer_level >> 2) )
                         {
-                            int qadjustment_range = cpi->worst_quality - cpi->ni_av_qi;
-                            int above_base = (critical_buffer_level - (cpi->oxcf.optimal_buffer_level / 4));
+                            INT64 qadjustment_range =
+                                      cpi->worst_quality - cpi->ni_av_qi;
+                            INT64 above_base =
+                                      (critical_buffer_level -
+                                       (cpi->oxcf.optimal_buffer_level >> 2));
 
-                            // Step active worst quality down from cpi->ni_av_qi when (critical_buffer_level == cpi->optimal_buffer_level)
-                            // to cpi->oxcf.worst_allowed_q when (critical_buffer_level == cpi->optimal_buffer_level/4)
-                            cpi->active_worst_quality = cpi->worst_quality - ((qadjustment_range * above_base) / (cpi->oxcf.optimal_buffer_level * 3 / 4));
+                            // Step active worst quality down from
+                            // cpi->ni_av_qi when (critical_buffer_level ==
+                            // cpi->optimal_buffer_level) to
+                            // cpi->worst_quality when
+                            // (critical_buffer_level ==
+                            //     cpi->optimal_buffer_level >> 2)
+                            cpi->active_worst_quality =
+                                cpi->worst_quality -
+                                ((qadjustment_range * above_base) /
+                                 (cpi->oxcf.optimal_buffer_level*3>>2));
                         }
                         else
                         {
@@ -961,6 +990,15 @@ void vp8_calc_pframe_target_size(VP8_COMP *cpi)
         {
             // Set the active worst quality
             cpi->active_worst_quality = cpi->worst_quality;
+        }
+
+        // Special trap for constrained quality mode
+        // "active_worst_quality" may never drop below cq level
+        // for any frame type.
+        if ( cpi->oxcf.end_usage == USAGE_CONSTRAINED_QUALITY &&
+             cpi->active_worst_quality < cpi->cq_target_quality)
+        {
+            cpi->active_worst_quality = cpi->cq_target_quality;
         }
     }
 
@@ -1034,9 +1072,7 @@ void vp8_calc_pframe_target_size(VP8_COMP *cpi)
             gf_frame_useage = pct_gf_active;
 
         // Is a fixed manual GF frequency being used
-        if (!cpi->auto_gold)
-            cpi->common.refresh_golden_frame = TRUE;
-        else
+        if (cpi->auto_gold)
         {
             // For one pass throw a GF if recent frame intra useage is low or the GF useage is high
             if ((cpi->pass == 0) && (cpi->this_frame_percent_intra < 15 || gf_frame_useage >= 5))
@@ -1549,12 +1585,21 @@ void vp8_compute_frame_size_bounds(VP8_COMP *cpi, int *frame_under_shoot_limit, 
                         *frame_under_shoot_limit = cpi->this_frame_target * 5 / 8;
                     }
                 }
-                // VBR
+                // VBR and CQ mode
                 // Note that tighter restrictions here can help quality but hurt encode speed
                 else
                 {
-                    *frame_over_shoot_limit  = cpi->this_frame_target * 11 / 8;
-                    *frame_under_shoot_limit = cpi->this_frame_target * 5 / 8;
+                    // Stron overshoot limit for constrained quality
+                    if (cpi->oxcf.end_usage == USAGE_CONSTRAINED_QUALITY)
+                    {
+                        *frame_over_shoot_limit  = cpi->this_frame_target * 11 / 8;
+                        *frame_under_shoot_limit = cpi->this_frame_target * 2 / 8;
+                    }
+                    else
+                    {
+                        *frame_over_shoot_limit  = cpi->this_frame_target * 11 / 8;
+                        *frame_under_shoot_limit = cpi->this_frame_target * 5 / 8;
+                    }
                 }
             }
         }

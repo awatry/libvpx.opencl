@@ -9,15 +9,15 @@
  */
 
 
-#include "header.h"
+#include "vp8/common/header.h"
 #include "encodemv.h"
-#include "entropymode.h"
-#include "findnearmv.h"
+#include "vp8/common/entropymode.h"
+#include "vp8/common/findnearmv.h"
 #include "mcomp.h"
-#include "systemdependent.h"
+#include "vp8/common/systemdependent.h"
 #include <assert.h>
 #include <stdio.h>
-#include "pragmas.h"
+#include "vp8/common/pragmas.h"
 #include "vpx_mem/vpx_mem.h"
 #include "bitstream.h"
 
@@ -58,16 +58,6 @@ extern unsigned int active_section;
 int count_mb_seg[4] = { 0, 0, 0, 0 };
 #endif
 
-#if CONFIG_BIG_ENDIAN
-# define make_endian_16(a)  \
-    (((unsigned int)(a & 0xff)) << 8) | (((unsigned int)(a & 0xff00)) >> 8)
-# define make_endian_32(a)                              \
-    (((unsigned int)(a & 0xff)) << 24)    | (((unsigned int)(a & 0xff00)) << 8) |   \
-    (((unsigned int)(a & 0xff0000)) >> 8) | (((unsigned int)(a & 0xff000000)) >> 24)
-#else
-# define make_endian_16(a)  a
-# define make_endian_32(a)  a
-#endif
 
 static void update_mode(
     vp8_writer *const w,
@@ -1376,6 +1366,7 @@ void vp8_pack_bitstream(VP8_COMP *cpi, unsigned char *dest, unsigned long *size)
     oh.show_frame = (int) pc->show_frame;
     oh.type = (int)pc->frame_type;
     oh.version = pc->version;
+    oh.first_partition_length_in_bytes = 0;
 
     mb_feature_data_bits = vp8_mb_feature_data_bits;
     cx_data += 3;
@@ -1392,13 +1383,20 @@ void vp8_pack_bitstream(VP8_COMP *cpi, unsigned char *dest, unsigned long *size)
     // every keyframe send startcode, width, height, scale factor, clamp and color type
     if (oh.type == KEY_FRAME)
     {
+        int v;
+
         // Start / synch code
         cx_data[0] = 0x9D;
         cx_data[1] = 0x01;
         cx_data[2] = 0x2a;
 
-        *((unsigned short *)(cx_data + 3)) = make_endian_16((pc->horiz_scale << 14) | pc->Width);
-        *((unsigned short *)(cx_data + 5)) = make_endian_16((pc->vert_scale << 14) | pc->Height);
+        v = (pc->horiz_scale << 14) | pc->Width;
+        cx_data[3] = v;
+        cx_data[4] = v >> 8;
+
+        v = (pc->vert_scale << 14) | pc->Height;
+        cx_data[5] = v;
+        cx_data[6] = v >> 8;
 
         extra_bytes_packed = 7;
         cx_data += extra_bytes_packed ;
@@ -1637,6 +1635,21 @@ void vp8_pack_bitstream(VP8_COMP *cpi, unsigned char *dest, unsigned long *size)
 
     vp8_stop_encode(bc);
 
+    oh.first_partition_length_in_bytes = cpi->bc.pos;
+
+    /* update frame tag */
+    {
+        int v = (oh.first_partition_length_in_bytes << 5) |
+                (oh.show_frame << 4) |
+                (oh.version << 1) |
+                oh.type;
+
+        dest[0] = v;
+        dest[1] = v >> 8;
+        dest[2] = v >> 16;
+    }
+
+    *size = VP8_HEADER_SIZE + extra_bytes_packed + cpi->bc.pos;
 
     if (pc->multi_token_partition != ONE_PARTITION)
     {
@@ -1646,37 +1659,23 @@ void vp8_pack_bitstream(VP8_COMP *cpi, unsigned char *dest, unsigned long *size)
 
         pack_tokens_into_partitions(cpi, cx_data + bc->pos, num_part, &asize);
 
-        oh.first_partition_length_in_bytes = cpi->bc.pos;
-
-        *size = cpi->bc.pos + VP8_HEADER_SIZE + asize + extra_bytes_packed;
+        *size += asize;
     }
     else
     {
         vp8_start_encode(&cpi->bc2, cx_data + bc->pos);
 
-        if (!cpi->b_multi_threaded)
-            pack_tokens(&cpi->bc2, cpi->tok, cpi->tok_count);
-        else
+#if CONFIG_MULTITHREAD
+        if (cpi->b_multi_threaded)
             pack_mb_row_tokens(cpi, &cpi->bc2);
+        else
+#endif
+            pack_tokens(&cpi->bc2, cpi->tok, cpi->tok_count);
 
         vp8_stop_encode(&cpi->bc2);
-        oh.first_partition_length_in_bytes = cpi->bc.pos ;
-        *size = cpi->bc2.pos + cpi->bc.pos + VP8_HEADER_SIZE + extra_bytes_packed;
-    }
 
-#if CONFIG_BIG_ENDIAN
-    {
-        int v = (oh.first_partition_length_in_bytes << 5) |
-                (oh.show_frame << 4) |
-                (oh.version << 1) |
-                oh.type;
-
-        v = make_endian_32(v);
-        vpx_memcpy(dest, &v, 3);
+        *size += cpi->bc2.pos;
     }
-#else
-    vpx_memcpy(dest, &oh, 3);
-#endif
 }
 
 #ifdef ENTROPY_STATS

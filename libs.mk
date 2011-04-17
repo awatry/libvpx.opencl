@@ -9,7 +9,13 @@
 ##
 
 
-ASM:=$(if $(filter yes,$(CONFIG_GCC)),.asm.s,.asm)
+# ARM assembly files are written in RVCT-style. We use some make magic to
+# filter those files to allow GCC compilation
+ifeq ($(ARCH_ARM),yes)
+  ASM:=$(if $(filter yes,$(CONFIG_GCC)),.asm.s,.asm)
+else
+  ASM:=.asm
+endif
 
 CODEC_SRCS-yes += libs.mk
 
@@ -138,28 +144,22 @@ INSTALL-SRCS-$(CONFIG_CODEC_SRCS) += $(call enabled,CODEC_EXPORTS)
 ifeq ($(CONFIG_EXTERNAL_BUILD),yes)
 ifeq ($(CONFIG_MSVS),yes)
 
-ifeq ($(ARCH_ARM),yes)
-ifeq ($(HAVE_ARMV5TE),yes)
-ARM_ARCH=v5
-endif
-ifeq ($(HAVE_ARMV6),yes)
-ARM_ARCH=v6
-endif
 obj_int_extract.vcproj: $(SRC_PATH_BARE)/build/make/obj_int_extract.c
-	@cp $(SRC_PATH_BARE)/build/arm-wince-vs8/obj_int_extract.bat .
+	@cp $(SRC_PATH_BARE)/build/x86-msvs/obj_int_extract.bat .
 	@echo "    [CREATE] $@"
-	$(SRC_PATH_BARE)/build/make/gen_msvs_proj.sh\
-			--exe\
-			--target=$(TOOLCHAIN)\
-            $(if $(CONFIG_STATIC_MSVCRT),--static-crt) \
-            --name=obj_int_extract\
-            --proj-guid=E1360C65-D375-4335-8057-7ED99CC3F9B2\
-            --out=$@ $^\
-            -I".&quot;;&quot;$(SRC_PATH_BARE)"
+	$(SRC_PATH_BARE)/build/make/gen_msvs_proj.sh \
+    --exe \
+    --target=$(TOOLCHAIN) \
+    --name=obj_int_extract \
+    --ver=$(CONFIG_VS_VERSION) \
+    --proj-guid=E1360C65-D375-4335-8057-7ED99CC3F9B2 \
+    $(if $(CONFIG_STATIC_MSVCRT),--static-crt) \
+    --out=$@ $^ \
+    -I. \
+    -I"$(SRC_PATH_BARE)" \
 
 PROJECTS-$(BUILD_LIBVPX) += obj_int_extract.vcproj
 PROJECTS-$(BUILD_LIBVPX) += obj_int_extract.bat
-endif
 
 vpx.def: $(call enabled,CODEC_EXPORTS)
 	@echo "    [CREATE] $@"
@@ -170,15 +170,16 @@ CLEAN-OBJS += vpx.def
 
 vpx.vcproj: $(CODEC_SRCS) vpx.def
 	@echo "    [CREATE] $@"
-	$(SRC_PATH_BARE)/build/make/gen_msvs_proj.sh\
-			--lib\
-			--target=$(TOOLCHAIN)\
+	$(SRC_PATH_BARE)/build/make/gen_msvs_proj.sh \
+			--lib \
+			--target=$(TOOLCHAIN) \
             $(if $(CONFIG_STATIC_MSVCRT),--static-crt) \
-            --name=vpx\
-            --proj-guid=DCE19DAF-69AC-46DB-B14A-39F0FAA5DB74\
-            --module-def=vpx.def\
-            --ver=$(CONFIG_VS_VERSION)\
-            --out=$@ $(CFLAGS) $^\
+            --name=vpx \
+            --proj-guid=DCE19DAF-69AC-46DB-B14A-39F0FAA5DB74 \
+            --module-def=vpx.def \
+            --ver=$(CONFIG_VS_VERSION) \
+            --out=$@ $(CFLAGS) $^ \
+            --src-path-bare="$(SRC_PATH_BARE)" \
 
 PROJECTS-$(BUILD_LIBVPX) += vpx.vcproj
 
@@ -215,6 +216,26 @@ $(addprefix $(DIST_DIR)/,$(LIBVPX_SO_SYMLINKS)):
 
 INSTALL-LIBS-$(CONFIG_SHARED) += $(LIBVPX_SO_SYMLINKS)
 INSTALL-LIBS-$(CONFIG_SHARED) += $(LIBSUBDIR)/$(LIBVPX_SO)
+
+LIBS-$(BUILD_LIBVPX) += vpx.pc
+vpx.pc: config.mk libs.mk
+	@echo "    [CREATE] $@"
+	$(qexec)echo '# pkg-config file from libvpx $(VERSION_STRING)' > $@
+	$(qexec)echo 'prefix=$(PREFIX)' >> $@
+	$(qexec)echo 'exec_prefix=$${prefix}' >> $@
+	$(qexec)echo 'libdir=$${prefix}/lib' >> $@
+	$(qexec)echo 'includedir=$${prefix}/include' >> $@
+	$(qexec)echo '' >> $@
+	$(qexec)echo 'Name: vpx' >> $@
+	$(qexec)echo 'Description: WebM Project VPx codec implementation' >> $@
+	$(qexec)echo 'Version: $(VERSION_MAJOR).$(VERSION_MINOR).$(VERSION_PATCH)' >> $@
+	$(qexec)echo 'Requires:' >> $@
+	$(qexec)echo 'Conflicts:' >> $@
+	$(qexec)echo 'Libs: -L$${libdir} -lvpx' >> $@
+	$(qexec)echo 'Cflags: -I$${includedir}' >> $@
+INSTALL-LIBS-yes += $(LIBSUBDIR)/pkgconfig/vpx.pc
+INSTALL_MAPS += $(LIBSUBDIR)/pkgconfig/%.pc %.pc
+CLEAN-OBJS += vpx.pc
 endif
 
 LIBS-$(LIPO_LIBVPX) += libvpx.a
@@ -242,9 +263,44 @@ endif
 #
 # Add assembler dependencies for configuration and offsets
 #
-#$(filter %$(ASM).o,$(OBJS-yes)): $(BUILD_PFX)vpx_config.asm $(BUILD_PFX)vpx_asm_offsets.asm
-$(filter %.s.o,$(OBJS-yes)):   $(BUILD_PFX)vpx_config.asm
-$(filter %.asm.o,$(OBJS-yes)): $(BUILD_PFX)vpx_config.asm
+$(filter %.s.o,$(OBJS-yes)):     $(BUILD_PFX)vpx_config.asm
+$(filter %$(ASM).o,$(OBJS-yes)): $(BUILD_PFX)vpx_config.asm
+
+#
+# Calculate platform- and compiler-specific offsets for hand coded assembly
+#
+ifeq ($(CONFIG_EXTERNAL_BUILD),) # Visual Studio uses obj_int_extract.bat
+  ifeq ($(ARCH_ARM), yes)
+    asm_com_offsets.asm: obj_int_extract
+    asm_com_offsets.asm: $(VP8_PREFIX)common/asm_com_offsets.c.o
+	./obj_int_extract rvds $< $(ADS2GAS) > $@
+    OBJS-yes += $(VP8_PREFIX)common/asm_com_offsets.c.o
+    CLEAN-OBJS += asm_com_offsets.asm
+    $(filter %$(ASM).o,$(OBJS-yes)): $(BUILD_PFX)asm_com_offsets.asm
+  endif
+
+  ifeq ($(ARCH_ARM)$(ARCH_X86)$(ARCH_X86_64), yes)
+    ifeq ($(CONFIG_VP8_ENCODER), yes)
+      asm_enc_offsets.asm: obj_int_extract
+      asm_enc_offsets.asm: $(VP8_PREFIX)encoder/asm_enc_offsets.c.o
+	./obj_int_extract rvds $< $(ADS2GAS) > $@
+      OBJS-yes += $(VP8_PREFIX)encoder/asm_enc_offsets.c.o
+      CLEAN-OBJS += asm_enc_offsets.asm
+      $(filter %$(ASM).o,$(OBJS-yes)): $(BUILD_PFX)asm_enc_offsets.asm
+    endif
+  endif
+
+  ifeq ($(ARCH_ARM), yes)
+    ifeq ($(CONFIG_VP8_DECODER), yes)
+      asm_dec_offsets.asm: obj_int_extract
+      asm_dec_offsets.asm: $(VP8_PREFIX)decoder/asm_dec_offsets.c.o
+	./obj_int_extract rvds $< $(ADS2GAS) > $@
+      OBJS-yes += $(VP8_PREFIX)decoder/asm_dec_offsets.c.o
+      CLEAN-OBJS += asm_dec_offsets.asm
+      $(filter %$(ASM).o,$(OBJS-yes)): $(BUILD_PFX)asm_dec_offsets.asm
+    endif
+  endif
+endif
 
 $(shell $(SRC_PATH_BARE)/build/make/version.sh "$(SRC_PATH_BARE)" $(BUILD_PFX)vpx_version.h)
 CLEAN-OBJS += $(BUILD_PFX)vpx_version.h

@@ -14,6 +14,8 @@
 
 #define VPXINFINITE 10000       /* 10second. */
 
+#if CONFIG_OS_SUPPORT && CONFIG_MULTITHREAD
+
 /* Thread management macros */
 #ifdef _WIN32
 /* Win32 */
@@ -36,6 +38,7 @@
 #define pthread_self() GetCurrentThreadId()
 #else
 #ifdef __APPLE__
+#include <mach/mach_init.h>
 #include <mach/semaphore.h>
 #include <mach/task.h>
 #include <time.h>
@@ -87,5 +90,7 @@
 #else
 #define x86_pause_hint()
 #endif
+
+#endif /* CONFIG_OS_SUPPORT && CONFIG_MULTITHREAD */
 
 #endif

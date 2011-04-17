@@ -9,8 +9,8 @@
  */
 
 
-#include "variance.h"
-#include "pragmas.h"
+#include "vp8/encoder/variance.h"
+#include "vp8/common/pragmas.h"
 #include "vpx_ports/mem.h"
 
 extern void filter_block1d_h6_mmx
@@ -53,13 +53,6 @@ extern unsigned int vp8_get4x4var_mmx
     unsigned int *SSE,
     int *Sum
 );
-extern unsigned int vp8_get4x4sse_cs_mmx
-(
-    const unsigned char *src_ptr,
-    int  source_stride,
-    const unsigned char *ref_ptr,
-    int  recon_stride
-);
 extern void vp8_filter_block2d_bil4x4_var_mmx
 (
     const unsigned char *ref_ptr,
@@ -90,39 +83,6 @@ extern unsigned int vp8_get16x16pred_error_mmx
     unsigned char *ref_ptr,
     int ref_stride
 );
-
-
-void vp8_test_get_mb_ss(void)
-{
-    short zz[] =
-    {
-        -4, -4, -4, -4, 4, 4, 4, 4, -4, -4, -4, -4, 4, 4, 4, 4,
-        -2, -2, -2, -2, 2, 2, 2, 2, -2, -2, -2, -2, 2, 2, 2, 2,
-        -4, -4, -4, -4, 4, 4, 4, 4, -4, -4, -4, -4, 4, 4, 4, 4,
-        -4, -4, -4, -4, 4, 4, 4, 4, -4, -4, -4, -4, 4, 4, 4, 4,
-        -4, -4, -4, -4, 4, 4, 4, 4, -4, -4, -4, -4, 4, 4, 4, 4,
-        -4, -4, -4, -4, 4, 4, 4, 4, -4, -4, -4, -4, 4, 4, 4, 4,
-        -4, -4, -4, -4, 4, 4, 4, 4, -4, -4, -4, -4, 4, 4, 4, 4,
-        -4, -4, -4, -4, 4, 4, 4, 4, -4, -4, -4, -4, 4, 4, 4, 4,
-        -4, -4, -4, -4, 4, 4, 4, 4, -4, -4, -4, -4, 4, 4, 4, 4,
-        -4, -4, -4, -4, 4, 4, 4, 4, -4, -4, -4, -4, 4, 4, 4, 4,
-        -4, -4, -4, -4, 4, 4, 4, 4, -4, -4, -4, -4, 4, 4, 4, 4,
-        -4, -4, -4, -4, 4, 4, 4, 4, -4, -4, -4, -4, 4, 4, 4, 4,
-        -4, -4, -4, -4, 4, 4, 4, 4, -4, -4, -4, -4, 4, 4, 4, 4,
-        -3, -3, -3, -3, 3, 3, 3, 3, -3, -3, -3, -3, 3, 3, 3, 3,
-        -4, -4, -4, -4, 4, 4, 4, 4, -4, -4, -4, -4, 4, 4, 4, 4,
-        -4, -4, -4, -4, 4, 4, 4, 4, -4, -4, -4, -4, 4, 4, 4, 4,
-    };
-    int s = 0, x = vp8_get_mb_ss_mmx(zz);
-    {
-        int y;
-
-        for (y = 0; y < 256; y++)
-            s += (zz[y] * zz[y]);
-    }
-
-    x += 0;
-}
 
 
 unsigned int vp8_get16x16var_mmx(
@@ -454,146 +414,6 @@ unsigned int vp8_sub_pixel_variance8x16_mmx
     );
     *sse = xxsum;
     return (xxsum - ((xsum * xsum) >> 7));
-}
-
-unsigned int vp8_i_variance16x16_mmx(
-    const unsigned char *src_ptr,
-    int  source_stride,
-    const unsigned char *ref_ptr,
-    int  recon_stride,
-    unsigned int *sse)
-{
-    unsigned int sse0, sse1, sse2, sse3, var;
-    int sum0, sum1, sum2, sum3, avg;
-
-
-    vp8_get8x8var_mmx(src_ptr, source_stride, ref_ptr, recon_stride, &sse0, &sum0) ;
-    vp8_get8x8var_mmx(src_ptr + 8, source_stride, ref_ptr + 8, recon_stride, &sse1, &sum1);
-    vp8_get8x8var_mmx(src_ptr + (source_stride >> 1), source_stride, ref_ptr + (recon_stride >> 1), recon_stride, &sse2, &sum2) ;
-    vp8_get8x8var_mmx(src_ptr + (source_stride >> 1) + 8, source_stride, ref_ptr + (recon_stride >> 1) + 8, recon_stride, &sse3, &sum3);
-
-    var = sse0 + sse1 + sse2 + sse3;
-    avg = sum0 + sum1 + sum2 + sum3;
-    *sse = var;
-    return (var - ((avg * avg) >> 8));
-
-}
-
-unsigned int vp8_i_variance8x16_mmx(
-    const unsigned char *src_ptr,
-    int  source_stride,
-    const unsigned char *ref_ptr,
-    int  recon_stride,
-    unsigned int *sse)
-{
-    unsigned int sse0, sse1, var;
-    int sum0, sum1, avg;
-    vp8_get8x8var_mmx(src_ptr, source_stride, ref_ptr, recon_stride, &sse0, &sum0) ;
-    vp8_get8x8var_mmx(src_ptr + (source_stride >> 1), source_stride, ref_ptr + (recon_stride >> 1), recon_stride, &sse1, &sum1) ;
-
-    var = sse0 + sse1;
-    avg = sum0 + sum1;
-
-    *sse = var;
-    return (var - ((avg * avg) >> 7));
-
-}
-
-unsigned int vp8_i_sub_pixel_variance16x16_mmx
-(
-    const unsigned char  *src_ptr,
-    int  src_pixels_per_line,
-    int  xoffset,
-    int  yoffset,
-    const unsigned char *dst_ptr,
-    int dst_pixels_per_line,
-    unsigned int *sse
-)
-{
-    int xsum0, xsum1;
-    unsigned int xxsum0, xxsum1;
-    int f2soffset = (src_pixels_per_line >> 1);
-    int f2doffset = (dst_pixels_per_line >> 1);
-
-
-    vp8_filter_block2d_bil_var_mmx(
-        src_ptr, src_pixels_per_line,
-        dst_ptr, dst_pixels_per_line, 8,
-        vp8_vp7_bilinear_filters_mmx[xoffset], vp8_vp7_bilinear_filters_mmx[yoffset],
-        &xsum0, &xxsum0
-    );
-
-
-    vp8_filter_block2d_bil_var_mmx(
-        src_ptr + 8, src_pixels_per_line,
-        dst_ptr + 8, dst_pixels_per_line, 8,
-        vp8_vp7_bilinear_filters_mmx[xoffset], vp8_vp7_bilinear_filters_mmx[yoffset],
-        &xsum1, &xxsum1
-    );
-
-    xsum0 += xsum1;
-    xxsum0 += xxsum1;
-
-    vp8_filter_block2d_bil_var_mmx(
-        src_ptr + f2soffset, src_pixels_per_line,
-        dst_ptr + f2doffset, dst_pixels_per_line, 8,
-        vp8_vp7_bilinear_filters_mmx[xoffset], vp8_vp7_bilinear_filters_mmx[yoffset],
-        &xsum1, &xxsum1
-    );
-
-    xsum0 += xsum1;
-    xxsum0 += xxsum1;
-
-    vp8_filter_block2d_bil_var_mmx(
-        src_ptr + f2soffset + 8, src_pixels_per_line,
-        dst_ptr + f2doffset + 8, dst_pixels_per_line, 8,
-        vp8_vp7_bilinear_filters_mmx[xoffset], vp8_vp7_bilinear_filters_mmx[yoffset],
-        &xsum1, &xxsum1
-    );
-
-    xsum0 += xsum1;
-    xxsum0 += xxsum1;
-    *sse = xxsum0;
-    return (xxsum0 - ((xsum0 * xsum0) >> 8));
-}
-
-
-unsigned int vp8_i_sub_pixel_variance8x16_mmx
-(
-    const unsigned char  *src_ptr,
-    int  src_pixels_per_line,
-    int  xoffset,
-    int  yoffset,
-    const unsigned char *dst_ptr,
-    int dst_pixels_per_line,
-    unsigned int *sse
-)
-{
-    int xsum0, xsum1;
-    unsigned int xxsum0, xxsum1;
-    int f2soffset = (src_pixels_per_line >> 1);
-    int f2doffset = (dst_pixels_per_line >> 1);
-
-
-    vp8_filter_block2d_bil_var_mmx(
-        src_ptr, src_pixels_per_line,
-        dst_ptr, dst_pixels_per_line, 8,
-        vp8_vp7_bilinear_filters_mmx[xoffset], vp8_vp7_bilinear_filters_mmx[yoffset],
-        &xsum0, &xxsum0
-    );
-
-
-    vp8_filter_block2d_bil_var_mmx(
-        src_ptr + f2soffset, src_pixels_per_line,
-        dst_ptr + f2doffset, dst_pixels_per_line, 8,
-        vp8_vp7_bilinear_filters_mmx[xoffset], vp8_vp7_bilinear_filters_mmx[yoffset],
-        &xsum1, &xxsum1
-    );
-
-    xsum0 += xsum1;
-    xxsum0 += xxsum1;
-    *sse = xxsum0;
-    return (xxsum0 - ((xsum0 * xsum0) >> 7));
 }
 
 

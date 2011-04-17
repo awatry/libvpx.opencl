@@ -9,8 +9,8 @@
  */
 
 
-#include "type_aliases.h"
-#include "blockd.h"
+#include "vp8/common/type_aliases.h"
+#include "vp8/common/blockd.h"
 #include "onyxd_int.h"
 #include "vpx_mem/vpx_mem.h"
 #include "vpx_ports/mem.h"
@@ -19,7 +19,13 @@
 #define BOOL_DATA UINT8
 
 #define OCB_X PREV_COEF_CONTEXTS * ENTROPY_NODES
-DECLARE_ALIGNED(16, UINT8, vp8_coef_bands_x[16]) = { 0, 1 * OCB_X, 2 * OCB_X, 3 * OCB_X, 6 * OCB_X, 4 * OCB_X, 5 * OCB_X, 6 * OCB_X, 6 * OCB_X, 6 * OCB_X, 6 * OCB_X, 6 * OCB_X, 6 * OCB_X, 6 * OCB_X, 6 * OCB_X, 7 * OCB_X};
+DECLARE_ALIGNED(16, static const unsigned char, coef_bands_x[16]) =
+{
+    0 * OCB_X, 1 * OCB_X, 2 * OCB_X, 3 * OCB_X,
+    6 * OCB_X, 4 * OCB_X, 5 * OCB_X, 6 * OCB_X,
+    6 * OCB_X, 6 * OCB_X, 6 * OCB_X, 6 * OCB_X,
+    6 * OCB_X, 6 * OCB_X, 6 * OCB_X, 7 * OCB_X
+};
 #define EOB_CONTEXT_NODE            0
 #define ZERO_CONTEXT_NODE           1
 #define ONE_CONTEXT_NODE            2
@@ -73,37 +79,6 @@ void vp8_reset_mb_tokens_context(MACROBLOCKD *x)
         vpx_memset(x->left_context, 0, sizeof(ENTROPY_CONTEXT_PLANES)-1);
     }
 }
-
-#if CONFIG_ARM_ASM_DETOK
-/* mashup of vp8_block2left and vp8_block2above so we only need one pointer
- * for the assembly version.
- */
-DECLARE_ALIGNED(16, const UINT8, vp8_block2leftabove[25*2]) =
-{
-    /* vp8_block2left */
-    0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8,
-    /* vp8_block2above */
-    0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 4, 5, 4, 5, 6, 7, 6, 7, 8
-};
-
-void vp8_init_detokenizer(VP8D_COMP *dx)
-{
-    const VP8_COMMON *const oc = & dx->common;
-    MACROBLOCKD *x = & dx->mb;
-
-    dx->detoken.vp8_coef_tree_ptr = vp8_coef_tree;
-    dx->detoken.ptr_block2leftabove = vp8_block2leftabove;
-    dx->detoken.ptr_coef_bands_x = vp8_coef_bands_x;
-    dx->detoken.scan = vp8_default_zig_zag1d;
-    dx->detoken.teb_base_ptr = vp8d_token_extra_bits2;
-    dx->detoken.qcoeff_start_ptr = &x->qcoeff[0];
-
-    dx->detoken.coef_probs[0] = (oc->fc.coef_probs [0] [ 0 ] [0]);
-    dx->detoken.coef_probs[1] = (oc->fc.coef_probs [1] [ 0 ] [0]);
-    dx->detoken.coef_probs[2] = (oc->fc.coef_probs [2] [ 0 ] [0]);
-    dx->detoken.coef_probs[3] = (oc->fc.coef_probs [3] [ 0 ] [0]);
-}
-#endif
 
 DECLARE_ALIGNED(16, extern const unsigned char, vp8dx_bitreader_norm[256]);
 #define FILL \
@@ -166,7 +141,7 @@ DECLARE_ALIGNED(16, extern const unsigned char, vp8dx_bitreader_norm[256]);
             Prob = coef_probs; \
             if(c<15) {\
             ++c; \
-            Prob += vp8_coef_bands_x[c]; \
+            Prob += coef_bands_x[c]; \
             goto branch; \
             } goto BLOCK_FINISHED; /*for malformed input */\
         } \
@@ -202,40 +177,11 @@ DECLARE_ALIGNED(16, extern const unsigned char, vp8dx_bitreader_norm[256]);
     }\
     NORMALIZE
 
-#if CONFIG_ARM_ASM_DETOK
-int vp8_decode_mb_tokens(VP8D_COMP *dx, MACROBLOCKD *x)
-{
-    int eobtotal = 0;
-    int i, type;
-
-    dx->detoken.current_bc = x->current_bc;
-    dx->detoken.A = x->above_context;
-    dx->detoken.L = x->left_context;
-
-    type = 3;
-
-    if (x->mode_info_context->mbmi.mode != B_PRED && x->mode_info_context->mbmi.mode != SPLITMV)
-    {
-        type = 1;
-        eobtotal -= 16;
-    }
-
-    vp8_decode_mb_tokens_v6(&dx->detoken, type);
-
-    for (i = 0; i < 25; i++)
-    {
-        x->eobs[i] = dx->detoken.eob[i];
-        eobtotal += dx->detoken.eob[i];
-    }
-
-    return eobtotal;
-}
-#else
 int vp8_decode_mb_tokens(VP8D_COMP *dx, MACROBLOCKD *x)
 {
     ENTROPY_CONTEXT *A = (ENTROPY_CONTEXT *)x->above_context;
     ENTROPY_CONTEXT *L = (ENTROPY_CONTEXT *)x->left_context;
-    const VP8_COMMON *const oc = & dx->common;
+    const FRAME_CONTEXT * const fc = &dx->common.fc;
 
     BOOL_DECODER *bc = x->current_bc;
 
@@ -290,7 +236,7 @@ int vp8_decode_mb_tokens(VP8D_COMP *dx, MACROBLOCKD *x)
     range   = bc->range;
 
 
-    coef_probs = oc->fc.coef_probs [type] [ 0 ] [0];
+    coef_probs = fc->coef_probs [type] [ 0 ] [0];
 
 BLOCK_LOOP:
     a = A + vp8_block2above[i];
@@ -306,7 +252,7 @@ BLOCK_LOOP:
 DO_WHILE:
 do{
 
-    Prob += vp8_coef_bands_x[c];
+    Prob += coef_bands_x[c];
     DECODE_AND_BRANCH_IF_ZERO(Prob[EOB_CONTEXT_NODE], BLOCK_FINISHED);
 
 CHECK_0_:
@@ -403,7 +349,7 @@ BLOCK_FINISHED:
         type = 0;
         i = 0;
         stop = 16;
-        coef_probs = oc->fc.coef_probs [type] [ 0 ] [0];
+        coef_probs = fc->coef_probs [type] [ 0 ] [0];
         qcoeff_ptr -= (24*16 + 16);
         goto BLOCK_LOOP;
     }
@@ -411,7 +357,7 @@ BLOCK_FINISHED:
     if (i == 16)
     {
         type = 2;
-        coef_probs = oc->fc.coef_probs [type] [ 0 ] [0];
+        coef_probs = fc->coef_probs [type] [ 0 ] [0];
         stop = 24;
         goto BLOCK_LOOP;
     }
@@ -424,4 +370,3 @@ BLOCK_FINISHED:
     return eobtotal;
 
 }
-#endif /*!CONFIG_ASM_DETOK*/

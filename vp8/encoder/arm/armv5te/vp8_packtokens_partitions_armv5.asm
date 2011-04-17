@@ -11,7 +11,7 @@
 
     EXPORT |vp8cx_pack_tokens_into_partitions_armv5|
 
-    INCLUDE vpx_vp8_enc_asm_offsets.asm
+    INCLUDE asm_enc_offsets.asm
 
     ARM
     REQUIRE8
@@ -65,6 +65,8 @@
 numparts_loop
     ldr     r10, [sp, #40]              ; ptr
     ldr     r5,  [sp, #36]              ; move mb_rows to the counting section
+    sub     r5, r5, r11                 ; move start point with each partition
+                                        ; mb_rows starts at i
     str     r5,  [sp, #12]
 
     ; Reset all of the VP8 Writer data for each partition that
@@ -90,13 +92,13 @@ mb_row_loop
     ; actual work gets done here!
 
 while_p_lt_stop
-    ldr     r6, [r1, #tokenextra_token] ; t
+    ldrb    r6, [r1, #tokenextra_token] ; t
     ldr     r4, [sp, #80]               ; vp8_coef_encodings
     mov     lr, #0
     add     r4, r4, r6, lsl #3          ; a = vp8_coef_encodings + t
     ldr     r9, [r1, #tokenextra_context_tree]   ; pp
 
-    ldr     r7, [r1, #tokenextra_skip_eob_node]
+    ldrb    r7, [r1, #tokenextra_skip_eob_node]
 
     ldr     r6, [r4, #vp8_token_value]  ; v
     ldr     r8, [r4, #vp8_token_len]    ; n
@@ -191,12 +193,11 @@ token_count_lt_zero
     subs    r8, r8, #1                  ; --n
     bne     token_loop
 
-    ldr     r6, [r1, #tokenextra_token] ; t
+    ldrb    r6, [r1, #tokenextra_token] ; t
     ldr     r7, [sp, #84]                ; vp8_extra_bits
     ; Add t * sizeof (vp8_extra_bit_struct) to get the desired
-    ;  element.  Here vp8_extra_bit_struct == 20
-    add     r6, r6, r6, lsl #2          ; b = vp8_extra_bits + t
-    add     r12, r7, r6, lsl #2         ; b = vp8_extra_bits + t
+    ;  element.  Here vp8_extra_bit_struct == 16
+    add     r12, r7, r6, lsl #4         ; b = vp8_extra_bits + t
 
     ldr     r4, [r12, #vp8_extra_bit_struct_base_val]
     cmp     r4, #0
@@ -204,7 +205,7 @@ token_count_lt_zero
 
 ;   if( b->base_val)
     ldr     r8, [r12, #vp8_extra_bit_struct_len] ; L
-    ldr     lr, [r1, #tokenextra_extra] ; e = p->Extra
+    ldrsh   lr, [r1, #tokenextra_extra] ; e = p->Extra
     cmp     r8, #0                      ; if( L)
     beq     no_extra_bits
 

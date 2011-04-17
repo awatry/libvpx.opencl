@@ -9,7 +9,7 @@
 ;
 
 
-    EXPORT  |vp8_sub_pixel_variance16x16_neon|
+    EXPORT  |vp8_sub_pixel_variance16x16_neon_func|
     ARM
     REQUIRE8
     PRESERVE8
@@ -24,7 +24,7 @@
 ; stack(r6) unsigned int *sse
 ;note: most of the code is copied from bilinear_predict16x16_neon and vp8_variance16x16_neon.
 
-|vp8_sub_pixel_variance16x16_neon| PROC
+|vp8_sub_pixel_variance16x16_neon_func| PROC
     push            {r4-r6, lr}
 
     ldr             r12, _BilinearTaps_coeff_
@@ -416,10 +416,7 @@ sub_pixel_variance16x16_neon_loop
     ENDP
 
 ;-----------------
-    AREA    vp8e_bilinear_taps_dat, DATA, READWRITE          ;read/write by default
-;Data section with name data_area is specified. DCD reserves space in memory for 48 data.
-;One word each is reserved. Label filter_coeff can be used to access the data.
-;Data address: filter_coeff, filter_coeff+4, filter_coeff+8 ...
+
 _BilinearTaps_coeff_
     DCD     bilinear_taps_coeff
 bilinear_taps_coeff

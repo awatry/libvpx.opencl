@@ -23,7 +23,7 @@ typedef enum
     DEST = 1
 } BLOCKSET;
 
-void vp8_setup_block
+static void setup_block
 (
     BLOCKD *b,
     unsigned char **base,
@@ -48,7 +48,8 @@ void vp8_setup_block
 
 }
 
-void vp8_setup_macroblock(MACROBLOCKD *x, BLOCKSET bs)
+
+static void setup_macroblock(MACROBLOCKD *x, BLOCKSET bs)
 {
     int block;
 
@@ -95,7 +96,7 @@ void vp8_setup_macroblock(MACROBLOCKD *x, BLOCKSET bs)
 
     for (block = 0; block < 16; block++) /* y blocks */
     {
-        vp8_setup_block(&x->block[block], y, x->dst.y_stride,
+        setup_block(&x->block[block], y, x->dst.y_stride,
                         y_off + ((block >> 2) * 4 * x->dst.y_stride + (block & 3) * 4), bs);
     }
 
@@ -103,10 +104,10 @@ void vp8_setup_macroblock(MACROBLOCKD *x, BLOCKSET bs)
     {
         int block_off = ((block - 16) >> 1) * 4 * x->dst.uv_stride + (block & 1) * 4;
 
-        vp8_setup_block(&x->block[block], u, x->dst.uv_stride,
+        setup_block(&x->block[block], u, x->dst.uv_stride,
                         u_off + block_off, bs);
 
-        vp8_setup_block(&x->block[block+4], v, x->dst.uv_stride,
+        setup_block(&x->block[block+4], v, x->dst.uv_stride,
                         v_off + block_off, bs);
     }
 }
@@ -223,9 +224,7 @@ void vp8_setup_block_dptrs(MACROBLOCKD *x)
 
 void vp8_build_block_doffsets(MACROBLOCKD *x)
 {
-
     /* handle the destination pitch features */
-    vp8_setup_macroblock(x, DEST);
-    vp8_setup_macroblock(x, PRED);
-
+    setup_macroblock(x, DEST);
+    setup_macroblock(x, PRED);
 }

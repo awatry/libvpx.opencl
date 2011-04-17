@@ -17,6 +17,7 @@ vpxdec.SRCS                 += md5_utils.c md5_utils.h
 vpxdec.SRCS                 += vpx_ports/vpx_timer.h
 vpxdec.SRCS                 += vpx/vpx_integer.h
 vpxdec.SRCS                 += args.c args.h vpx_ports/config.h
+vpxdec.SRCS                 += tools_common.c tools_common.h
 vpxdec.SRCS                 += nestegg/halloc/halloc.h
 vpxdec.SRCS                 += nestegg/halloc/src/align.h
 vpxdec.SRCS                 += nestegg/halloc/src/halloc.c
@@ -28,6 +29,7 @@ vpxdec.GUID                  = BA5FE66F-38DD-E034-F542-B1578C5FB950
 vpxdec.DESCRIPTION           = Full featured decoder
 UTILS-$(CONFIG_ENCODERS)    += vpxenc.c
 vpxenc.SRCS                 += args.c args.h y4minput.c y4minput.h
+vpxenc.SRCS                 += tools_common.c tools_common.h
 vpxenc.SRCS                 += vpx_ports/config.h vpx_ports/mem_ops.h
 vpxenc.SRCS                 += vpx_ports/mem_ops_aligned.h
 vpxenc.SRCS                 += libmkv/EbmlIDs.h
@@ -91,8 +93,16 @@ vp8cx_set_ref.DESCRIPTION           = VP8 set encoder reference frame
 
 
 # Handle extra library flags depending on codec configuration
-CODEC_EXTRA_LIBS-$(CONFIG_VP8)         += m
 
+# We should not link to math library (libm) on RVCT
+# when building for bare-metal targets
+ifeq ($(CONFIG_OS_SUPPORT), yes)
+CODEC_EXTRA_LIBS-$(CONFIG_VP8)         += m
+else
+    ifeq ($(CONFIG_GCC), yes)
+    CODEC_EXTRA_LIBS-$(CONFIG_VP8)         += m
+    endif
+endif
 #
 # End of specified files. The rest of the build rules should happen
 # automagically from here.
