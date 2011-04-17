@@ -224,8 +224,8 @@ void vp8_tokenize_mb(VP8_COMP *cpi, MACROBLOCKD *x, TOKENEXTRA **t)
     int plane_type;
     int b;
 
-    TOKENEXTRA *start = *t;
-    TOKENEXTRA *tp = *t;
+    //TOKENEXTRA *start = *t;
+    //TOKENEXTRA *tp = *t;
 
     x->mode_info_context->mbmi.dc_diff = 1;
 

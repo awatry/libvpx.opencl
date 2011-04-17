@@ -26,7 +26,6 @@ int close_cl(){
 }
 
 int load_cl(char *lib_name){
-    int i;
 
     //printf("Loading OpenCL library\n");
     dll = dlopen(lib_name, RTLD_NOW|RTLD_LOCAL);

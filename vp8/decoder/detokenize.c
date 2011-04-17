@@ -249,7 +249,6 @@ BLOCK_LOOP:
     Prob = coef_probs;
     Prob += v * ENTROPY_NODES;
 
-DO_WHILE:
 do{
 
     Prob += coef_bands_x[c];

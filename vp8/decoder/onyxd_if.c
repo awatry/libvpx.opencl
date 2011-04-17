@@ -356,6 +356,7 @@ int vp8dx_receive_compressed_data(VP8D_PTR ptr, unsigned long size, const unsign
 
 #define SET_ON_ALLOC 0
 #if SET_ON_ALLOC
+        
 #if ENABLE_CL_SUBPIXEL || ENABLE_CL_IDCT_DEQUANT
             VP8_CL_CREATE_BUF(pbi->mb.cl_commands, pbi->mb.cl_predictor_mem, CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,
                     sizeof(cl_uchar)*384, pbi->mb.predictor, goto BUF_DONE, -1);
@@ -395,7 +396,9 @@ int vp8dx_receive_compressed_data(VP8D_PTR ptr, unsigned long size, const unsign
 #endif
 #endif
     }
-BUF_DONE:
+#if ENABLE_CL_IDCT_DEQUANT || ENABLE_CL_SUBPIXEL
+    BUF_DONE:
+#endif
 #endif
 
 #if PROFILE_OUTPUT

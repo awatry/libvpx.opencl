@@ -73,8 +73,8 @@ void vp8_fast_quantize_b_c(BLOCK *b, BLOCKD *d)
     short *coeff_ptr   = b->coeff;
     short *round_ptr   = b->round;
     short *quant_ptr   = b->quant_fast;
-    short *qcoeff_ptr  = d->qcoeff;
-    short *dqcoeff_ptr = d->dqcoeff;
+    short *qcoeff_ptr  = d->qcoeff_base + d->qcoeff_offset;
+    short *dqcoeff_ptr = d->dqcoeff_base + d->dqcoeff_offset;
     short *dequant_ptr = d->dequant;
 
     eob = -1;

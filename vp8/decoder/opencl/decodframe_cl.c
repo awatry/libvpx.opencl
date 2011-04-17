@@ -90,7 +90,8 @@ static void skip_recon_mb_cl(VP8D_COMP *pbi, MACROBLOCKD *xd)
     {
 
         vp8_build_intra_predictors_mbuv_s(xd);
-        vp8_build_intra_predictors_mby_s_ptr(xd);
+        RECON_INVOKE(&pbi->common.rtcd.recon,
+                     build_intra_predictors_mby_s)(xd);
 
     }
     else
@@ -116,7 +117,6 @@ static void skip_recon_mb_cl(VP8D_COMP *pbi, MACROBLOCKD *xd)
 void vp8_decode_macroblock_cl(VP8D_COMP *pbi, MACROBLOCKD *xd, int eobtotal)
 {
     int i;
-    int err; //CL return code tracking
 
     if (xd->mode_info_context->mbmi.mode != B_PRED && xd->mode_info_context->mbmi.mode != SPLITMV && eobtotal == 0)
     {
@@ -135,7 +135,8 @@ void vp8_decode_macroblock_cl(VP8D_COMP *pbi, MACROBLOCKD *xd, int eobtotal)
 
         if (xd->mode_info_context->mbmi.mode != B_PRED)
         {
-            vp8_build_intra_predictors_mby_ptr(xd);
+            RECON_INVOKE(&pbi->common.rtcd.recon,
+                         build_intra_predictors_mby)(xd);
         } else {
             vp8_intra_prediction_down_copy(xd);
         }
@@ -314,7 +315,9 @@ void vp8_decode_frame_cl_finish(VP8D_COMP *pbi){
 
     //If using OpenCL, free all of the GPU buffers we've allocated.
     if (cl_initialized == CL_SUCCESS){
+#if ENABLE_CL_IDCT_DEQUANT
         int i;
+#endif
 
         //Wait for stuff to finish, just in case
         clFinish(pbi->mb.cl_commands);

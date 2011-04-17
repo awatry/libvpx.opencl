@@ -85,7 +85,7 @@ static void filter_block2d_first_pass
 #endif
 
     int ps2 = 2*(int)pixel_step;
-    int ps3 = 3*(int)pixel_step;//two_pixel_steps + (int)pixel_step;
+    int ps3 = 3*(int)pixel_step;
 
     unsigned int src_increment = src_pixels_per_line - output_width;
     for (i = 0; i < output_height; i++)
@@ -139,9 +139,9 @@ static void filter_block2d_second_pass
 #endif
 
     int ps2 = ((int)pixel_step) << 1;
-    int ps3 = two_pixel_steps + (int)pixel_step;
-
+    int ps3 = ps2 + (int)pixel_step;
     unsigned int src_increment = src_pixels_per_line - output_width;
+
     for (i = 0; i < output_height; i++)
     {
         for (j = 0; j < output_width; j++)
@@ -164,7 +164,7 @@ static void filter_block2d_second_pass
         }
 
         /* Start next row */
-        src_ptr    += src_pixels_per_line - output_width;
+        src_ptr    += src_increment;
         output_ptr += output_pitch;
     }
 }

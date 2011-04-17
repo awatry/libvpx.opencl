@@ -14,7 +14,7 @@
 #include "vp8/common/reconinter.h"
 #include "quantize.h"
 #include "tokenize.h"
-#include "vp8/common/invtrans.h"
+#include "invtrans.h"
 #include "vp8/common/recon.h"
 #include "vp8/common/reconintra.h"
 #include "dct.h"

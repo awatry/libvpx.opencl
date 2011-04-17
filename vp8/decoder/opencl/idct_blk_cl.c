@@ -126,7 +126,6 @@ void vp8_dequant_idct_add_uv_block_cl(VP8D_COMP *pbi, MACROBLOCKD *xd,
     int pre_offset = block_num*16;
     int q_offset = block_num*16;
     int dst_offset = 0;
-    int err;
 
     vp8_cl_mb_prep(xd, DIFF|QCOEFF|PREDICTOR);
     for (i = 0; i < 2; i++)

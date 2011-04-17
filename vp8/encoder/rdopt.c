@@ -300,7 +300,7 @@ void vp8_initialize_rd_consts(VP8_COMP *cpi, int Qvalue)
 
 void vp8_auto_select_speed(VP8_COMP *cpi)
 {
-    int used = cpi->oxcf.cpu_used;
+    //int used = cpi->oxcf.cpu_used;
 
     int milliseconds_for_compress = (int)(1000000 / cpi->oxcf.frame_rate);
 
@@ -574,7 +574,7 @@ static void macro_block_yrd( MACROBLOCK *mb,
 
     // Distortion
     d = ENCODEMB_INVOKE(rtcd, mberr)(mb, 1) << 2;
-    d += ENCODEMB_INVOKE(rtcd, berr)(mb_y2->coeff, x_y2->dqcoeff);
+    d += ENCODEMB_INVOKE(rtcd, berr)(mb_y2->coeff, x_y2->dqcoeff_base + x_y2->dqcoeff_offset);
 
     *Distortion = (d >> 4);
 
@@ -627,7 +627,7 @@ static int rd_pick_intra4x4block(
 
         rate = bmode_costs[mode];
 
-        vp8_predict_intra4x4(b, mode, b->predictor);
+        vp8_predict_intra4x4(b, mode, b->predictor_base + b->predictor_offset);
         ENCODEMB_INVOKE(IF_RTCD(&cpi->rtcd.encodemb), subb)(be, b, 16);
         x->vp8_short_fdct4x4(be->src_diff, be->coeff, 32);
         x->quantize_b(be, b);
@@ -650,15 +650,15 @@ static int rd_pick_intra4x4block(
             *best_mode = mode;
             *a = tempa;
             *l = templ;
-            copy_predictor(best_predictor, b->predictor);
-            vpx_memcpy(best_dqcoeff, b->dqcoeff, 32);
+            copy_predictor(best_predictor, b->predictor_base + b->predictor_offset);
+            vpx_memcpy(best_dqcoeff, b->dqcoeff_base + b->dqcoeff_offset, 32);
         }
     }
 
     b->bmi.mode = (B_PREDICTION_MODE)(*best_mode);
 
-    IDCT_INVOKE(IF_RTCD(&cpi->rtcd.common->idct), idct16)(best_dqcoeff, b->diff, 32);
-    RECON_INVOKE(IF_RTCD(&cpi->rtcd.common->recon), recon)(best_predictor, b->diff, *(b->base_dst) + b->dst, b->dst_stride);
+    IDCT_INVOKE(IF_RTCD(&cpi->rtcd.common->idct), idct16)(best_dqcoeff, b->diff_base + b->diff_offset, 32);
+    RECON_INVOKE(IF_RTCD(&cpi->rtcd.common->recon), recon)(best_predictor, b->diff_base + b->diff_offset, *(b->base_dst) + b->dst, b->dst_stride);
 
     return best_rd;
 }

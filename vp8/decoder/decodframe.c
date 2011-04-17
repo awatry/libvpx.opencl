@@ -32,15 +32,15 @@
 #include "vp8/common/threading.h"
 #include "decoderthreading.h"
 #include "dboolhuff.h"
-#include "blockd.h"
+#include "vp8/common/blockd.h"
 
 #include <assert.h>
 #include <stdio.h>
 
 #include "vpx_config.h"
 #if CONFIG_OPENCL
-#include "opencl/vp8_opencl.h"
-#include "opencl/blockd_cl.h"
+#include "vp8/common/opencl/vp8_opencl.h"
+#include "vp8/common/opencl/blockd_cl.h"
 #include "opencl/dequantize_cl.h"
 #include "opencl/decodframe_cl.h"
 #endif
@@ -73,7 +73,7 @@ void vp8cx_init_de_quantizer(VP8D_COMP *pbi)
 
 void mb_init_dequantizer(VP8D_COMP *pbi, MACROBLOCKD *xd)
 {
-    int i,err;
+    int i;
     int QIndex;
     MB_MODE_INFO *mbmi = &xd->mode_info_context->mbmi;
     VP8_COMMON *const pc = & pbi->common;
@@ -202,7 +202,6 @@ static void decode_macroblock(VP8D_COMP *pbi, MACROBLOCKD *xd)
 
     int eobtotal = 0;
     int i, do_clamp = xd->mode_info_context->mbmi.need_to_clamp_mvs;
-    int err; //CL return code tracking
 
     if (xd->mode_info_context->mbmi.mb_skip_coeff)
     {
@@ -677,7 +676,9 @@ int vp8_decode_frame(VP8D_COMP *pbi)
         //Allow resolution changes on key frames.
         if (Width != pc->Width  ||  Height != pc->Height)
         {
+#if CONFIG_MULTITHREAD
             int prev_mb_rows = pc->mb_rows;
+#endif
 
             if (pc->Width <= 0)
             {

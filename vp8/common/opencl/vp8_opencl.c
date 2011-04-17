@@ -127,8 +127,6 @@ int cl_common_init() {
     //Enumerate the platforms found
     for (i = 0; i < num_found; i++){
     	char buf[2048];
-        char version[2048];
-        char features[2048];
         size_t len;
         
     	err = clGetPlatformInfo( platform_ids[i], CL_PLATFORM_VENDOR, sizeof(buf), buf, &len);
@@ -309,8 +307,6 @@ void show_build_log(cl_program *prog_ref){
 int cl_load_program(cl_program *prog_ref, const char *file_name, const char *opts) {
 
     int err;
-    char *buffer;
-    size_t len;
     char *kernel_src = cl_read_file(file_name);
     
     *prog_ref = NULL;
@@ -341,7 +337,6 @@ int cl_load_program(cl_program *prog_ref, const char *file_name, const char *opt
 
         return VP8_CL_TRIED_BUT_FAILED;
     }
-    //else show_build_log(prog_ref);
 
     return CL_SUCCESS;
 }

@@ -368,14 +368,15 @@ void vp8_sixtap_predict4x4_cl
 ) {
 
     int output_width=4, output_height=4, FData_height=9, FData_width=4;
-    int int_offset = 8;
-    unsigned char *src_ptr = src_base + src_offset;
 
     //Size of output to transfer
     int dst_len = DST_LEN(dst_pitch,output_height,output_width);
     int src_len = SIXTAP_SRC_LEN(FData_width,FData_height,src_pixels_per_line);
 
 #if TWO_PASS_SIXTAP
+    int int_offset = 8;
+    unsigned char *src_ptr = src_base + src_offset;
+
     vp8_sixtap_run_cl(cq, src_mem, dst_mem,
             (src_ptr-2*src_pixels_per_line),src_offset, src_len,
             src_pixels_per_line, xoffset,yoffset,dst_base,dst_offset,
@@ -422,14 +423,15 @@ void vp8_sixtap_predict8x8_cl
     int dst_pitch
 ) {
     int output_width=8, output_height=8, FData_height=13, FData_width=8;
-    int int_offset = 16;
-    unsigned char *src_ptr = src_base + src_offset;
 
     //Size of output to transfer
     int dst_len = DST_LEN(dst_pitch,output_height,output_width);
     int src_len = SIXTAP_SRC_LEN(FData_width,FData_height,src_pixels_per_line);
 
 #if TWO_PASS_SIXTAP
+    int int_offset = 16;
+    unsigned char *src_ptr = src_base + src_offset;
+
     vp8_sixtap_run_cl(cq, src_mem, dst_mem,
             (src_ptr-2*src_pixels_per_line),src_offset, src_len,
             src_pixels_per_line, xoffset,yoffset,dst_base,dst_offset,
@@ -476,14 +478,15 @@ void vp8_sixtap_predict8x4_cl
 ) {
 
     int output_width=8, output_height=4, FData_height=9, FData_width=8;
-    int int_offset = 16;
-    unsigned char *src_ptr = src_base + src_offset;
 
     //Size of output to transfer
     int dst_len = DST_LEN(dst_pitch,output_height,output_width);
     int src_len = SIXTAP_SRC_LEN(FData_width,FData_height,src_pixels_per_line);
 
 #if TWO_PASS_SIXTAP
+    int int_offset = 16;
+    unsigned char *src_ptr = src_base + src_offset;
+    
     vp8_sixtap_run_cl(cq, src_mem, dst_mem,
             (src_ptr-2*src_pixels_per_line),src_offset, src_len,
             src_pixels_per_line, xoffset,yoffset,dst_base,dst_offset,
@@ -530,14 +533,15 @@ void vp8_sixtap_predict16x16_cl
 ) {
 
     int output_width=16, output_height=16, FData_height=21, FData_width=16;
-    int int_offset = 32;
-    unsigned char *src_ptr = src_base + src_offset;
 
     //Size of output to transfer
     int dst_len = DST_LEN(dst_pitch,output_height,output_width);
     int src_len = SIXTAP_SRC_LEN(FData_width,FData_height,src_pixels_per_line);
 
 #if TWO_PASS_SIXTAP
+    int int_offset = 32;
+    unsigned char *src_ptr = src_base + src_offset;
+
     vp8_sixtap_run_cl(cq, src_mem, dst_mem,
             (src_ptr-2*src_pixels_per_line),src_offset, src_len,
             src_pixels_per_line, xoffset,yoffset,dst_base,dst_offset,
@@ -637,7 +641,6 @@ void vp8_filter_block2d_bil_second_pass_cl(
     int err;
     size_t global = width*height;
 
-
     //Size of output data
     int dst_len = DST_LEN(dst_pitch,height,width);
 
@@ -695,11 +698,10 @@ void vp8_bilinear_predict4x4_cl
     int dst_pitch
 ) {
 
-    int err;
-
     const int height = 4, width = 4;
 
 #if !STATIC_MEM
+    int err;
     cl_mem int_mem = NULL;
     VP8_CL_CREATE_BUF(NULL, int_mem, NULL, sizeof(cl_int)*21*16, NULL, ,);
 #endif
@@ -731,11 +733,10 @@ void vp8_bilinear_predict8x8_cl
     int dst_pitch
 ) {
 
-    int err;
-
     const int height = 8, width = 8;
 
 #if !STATIC_MEM
+    int err;
     cl_mem int_mem = NULL;
     VP8_CL_CREATE_BUF(NULL, int_mem, NULL, sizeof(cl_int)*21*16, NULL, ,);
 #endif
@@ -767,11 +768,10 @@ void vp8_bilinear_predict8x4_cl
     int dst_pitch
 ) {
 
-    int err;
-
     const int height = 4, width = 8;
 
 #if !STATIC_MEM
+    int err;
     cl_mem int_mem = NULL;
     VP8_CL_CREATE_BUF(NULL, int_mem, NULL, sizeof(cl_int)*21*16, NULL, ,);
 #endif
@@ -803,11 +803,10 @@ void vp8_bilinear_predict16x16_cl
     int dst_pitch
 ) {
 
-    int err;
-
     const int height = 16, width = 16;
 
 #if !STATIC_MEM
+    int err;
     cl_mem int_mem = NULL;
     VP8_CL_CREATE_BUF(NULL, int_mem, NULL, sizeof(cl_int)*21*16, NULL, ,);
 #endif

@@ -552,9 +552,6 @@ static void vp8_build_inter_predictors_b_s(BLOCKD *d, unsigned char *dst_ptr, vp
 
 void vp8_build_inter_predictors_mb_s(MACROBLOCKD *x)
 {
-    /*unsigned char *pred_ptr = x->block[0].predictor_base + x->block[0].predictor_offset;
-    unsigned char *dst_ptr = *(x->block[0].base_dst) + x->block[0].dst;*/
-    unsigned char *pred_ptr = x->predictor;
     unsigned char *dst_ptr = x->dst.y_buffer;
 
 #if CONFIG_OPENCL && ENABLE_CL_SUBPIXEL
@@ -629,7 +626,6 @@ void vp8_build_inter_predictors_mb_s(MACROBLOCKD *x)
                 {
                     unsigned char *ptr_base;
                     unsigned char *ptr;
-                    unsigned char *pred_ptr = d->predictor_base + d->predictor_offset;
 
                     ptr_base = *(d->base_pre);
                     ptr = ptr_base + d->pre + (d->bmi.mv.as_mv.row >> 3) * d->pre_stride + (d->bmi.mv.as_mv.col >> 3);
@@ -657,7 +653,6 @@ void vp8_build_inter_predictors_mb_s(MACROBLOCKD *x)
                     /*build_inter_predictors2b(x, d0, 16);*/
                     unsigned char *ptr_base;
                     unsigned char *ptr;
-                    unsigned char *pred_ptr = d0->predictor_base + d0->predictor_offset;
 
                     ptr_base = *(d0->base_pre);
                     ptr = ptr_base + d0->pre + (d0->bmi.mv.as_mv.row >> 3) * d0->pre_stride + (d0->bmi.mv.as_mv.col >> 3);
@@ -689,7 +684,6 @@ void vp8_build_inter_predictors_mb_s(MACROBLOCKD *x)
                 /*build_inter_predictors2b(x, d0, 8);*/
                 unsigned char *ptr_base;
                 unsigned char *ptr;
-                unsigned char *pred_ptr = d0->predictor_base + d0->predictor_offset;
 
                 ptr_base = *(d0->base_pre);
                 ptr = ptr_base + d0->pre + (d0->bmi.mv.as_mv.row >> 3) * d0->pre_stride + (d0->bmi.mv.as_mv.col >> 3);

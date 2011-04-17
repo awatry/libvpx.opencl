@@ -9,9 +9,9 @@ extern int cl_init_dequant();
 extern int cl_destroy_dequant();
 
 int cl_decode_destroy(){
-    int err;
 
 #if ENABLE_CL_IDCT_DEQUANT
+    int err;
     err = cl_destroy_dequant();
 #endif
     
@@ -20,7 +20,9 @@ int cl_decode_destroy(){
 
 int cl_decode_init()
 {
+#if ENABLE_CL_IDCT_DEQUANT
     int err;
+#endif
 
     //Initialize programs to null value
     //Enables detection of if they've been initialized as well.
