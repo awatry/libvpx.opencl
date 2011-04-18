@@ -89,7 +89,6 @@ VP8D_PTR vp8dx_create_decompressor(VP8D_CONFIG *oxcf)
     pbi->common.current_video_frame = 0;
     pbi->ready_for_new_data = 1;
 
-    pbi->CPUFreq = 0; /*vp8_get_processor_freq();*/
 #if CONFIG_MULTITHREAD
     pbi->max_threads = oxcf->max_threads;
     vp8_decoder_create_threads(pbi);
@@ -266,7 +265,6 @@ int vp8dx_receive_compressed_data(VP8D_PTR ptr, unsigned long size, const unsign
     VP8D_COMP *pbi = (VP8D_COMP *) ptr;
     VP8_COMMON *cm = &pbi->common;
     int retcode = 0;
-    struct vpx_usec_timer timer;
 
     /*if(pbi->ready_for_new_data == 0)
         return -1;*/
@@ -330,8 +328,6 @@ int vp8dx_receive_compressed_data(VP8D_PTR ptr, unsigned long size, const unsign
     }
 
     pbi->common.error.setjmp = 1;
-
-    vpx_usec_timer_start(&timer);
 
     /*cm->current_video_frame++;*/
     pbi->Source = source;
@@ -468,16 +464,19 @@ int vp8dx_receive_compressed_data(VP8D_PTR ptr, unsigned long size, const unsign
 
         if(pbi->common.filter_level)
         {
+
+#if PROFILE_OUTPUT
             struct vpx_usec_timer lpftimer;
             vpx_usec_timer_start(&lpftimer);
+#endif
            
             /* Apply the loop filter if appropriate. */
             vp8_loop_filter_frame(cm, &pbi->mb, cm->filter_level);
 
+#if PROFILE_OUTPUT
             vpx_usec_timer_mark(&lpftimer);
             pbi->time_loop_filtering += vpx_usec_timer_elapsed(&lpftimer);
 
-#if PROFILE_OUTPUT
             printf("Loop Filter\n");
             total_loop_filter += vpx_usec_timer_elapsed(&lpftimer);
 #if 0
@@ -514,15 +513,6 @@ int vp8dx_receive_compressed_data(VP8D_PTR ptr, unsigned long size, const unsign
 #endif
 
     vp8_clear_system_state();
-
-    vpx_usec_timer_mark(&timer);
-    pbi->decode_microseconds = vpx_usec_timer_elapsed(&timer);
-
-#if PROFILE_OUTPUT
-    //printf("Frame decode time (us): %d\n", vpx_usec_timer_elapsed(&timer));
-#endif
-
-    pbi->time_decoding += pbi->decode_microseconds;
 
     /*vp8_print_modes_and_motion_vectors( cm->mi, cm->mb_rows,cm->mb_cols, cm->current_video_frame);*/
 

@@ -884,6 +884,8 @@ process_common_toolchain() {
                 link_with_cc=gcc
                 tune_cflags="-march="
             setup_gnu_toolchain
+                #for 32 bit x86 builds, -O3 did not turn on this flag
+                enabled optimizations && check_add_cflags -fomit-frame-pointer
                 ;;
         esac
 
@@ -973,6 +975,7 @@ process_common_toolchain() {
                     add_extralibs -ldl 
                     enable dlopen
                 else
+                    #This shouldn't be a hard-coded path in the long term
                     add_extralibs -L/cygdrive/c/Windows/System32 -lOpenCL
                 fi
                 ;;
