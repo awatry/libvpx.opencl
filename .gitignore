@@ -66,3 +66,4 @@ vpxenc
 .cproject
 *.csv
 *.oclpj
+/nbproject/private/
