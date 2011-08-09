@@ -68,6 +68,25 @@ extern const char *vpx_codec_lib_dir(void);
         return retCode; \
     }
 
+//Determines the greatest common factor of two numbers for calculating ideal
+//local work sizes and sets the local size to the GCF.
+//WARNING: This will destroy the existing value of global, so use a temp copy.
+#define VP8_CL_CALC_GCF(global,local,temp) \
+    if ( local>global ){ \
+        temp=local; local=global; global = temp; \
+    } \
+    while ( local != 0  ) { \
+        temp=local; \
+        local = global - local; \
+        global = temp; \
+        if ( local > global ) { \
+            temp=local; local=global; global = temp; \
+        } \
+    } \
+    local = global;
+
+
+//Gets the maximum work group size supported on the device for the kernel
 #define VP8_CL_CALC_LOCAL_SIZE(kernel, kernel_size) \
     err = clGetKernelWorkGroupInfo( cl_data.kernel, \
   	cl_data.device_id, \

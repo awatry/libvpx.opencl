@@ -127,8 +127,13 @@ void vp8_filter_block2d_first_pass_cl(
     int err;
     size_t global = int_width*int_height;
     size_t local = cl_data.vp8_filter_block2d_first_pass_kernel_size;
-    if (local > global)
+    if (local > global){
         local = global;
+    } else if (global % local){
+        //Set local size to GCF of global/local
+        int t, global_tmp=global;
+        VP8_CL_CALC_GCF(global_tmp,local,t);
+    }
 
     err =  clSetKernelArg(cl_data.vp8_filter_block2d_first_pass_kernel, 0, sizeof (cl_mem), &src_mem);
     err |= clSetKernelArg(cl_data.vp8_filter_block2d_first_pass_kernel, 1, sizeof (int), &src_offset);
@@ -165,8 +170,11 @@ void vp8_filter_block2d_second_pass_cl(
     size_t global = output_width*output_height;
     size_t local = cl_data.vp8_filter_block2d_second_pass_kernel_size;
     if (local > global){
-        //printf("Local is now %ld\n",global);
         local = global;
+    } else if (global % local){
+        //Set local size to GCF of global/local
+        int t, global_tmp=global;
+        VP8_CL_CALC_GCF(global_tmp,local,t);
     }
 
     /* Set kernel arguments */
@@ -221,6 +229,10 @@ void vp8_sixtap_single_pass(
 
     if (local > global){
         local = global;
+    } else if (global % local){
+        //Set local size to GCF of global/local
+        int t, global_tmp=global;
+        VP8_CL_CALC_GCF(global_tmp,local,t);
     }
 
     /* Make space for kernel input/output data.
