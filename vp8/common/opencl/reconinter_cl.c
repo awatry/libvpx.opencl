@@ -41,6 +41,7 @@
 
 static const int bbb[4] = {0, 2, 8, 10};
 
+#if 0  //Old memcpy code. Performs similarly to vp8_copy_mem_cl on a single block
 static void vp8_memcpy(
     unsigned char *src_base,
     int src_offset,
@@ -65,6 +66,7 @@ static void vp8_memcpy(
         }
     }
 }
+#endif
 
 static void vp8_copy_mem_cl(
     cl_command_queue cq,
@@ -124,17 +126,25 @@ static void vp8_copy_mem_cl(
     }
 #else
     int iter;
+
     for (block=0; block < num_blocks; block++){
-        for (iter = 0; iter < num_iter; iter++){
-            err = clEnqueueCopyBuffer(cq, src_mem, dst_mem,
-                    src_offsets[block]+iter*src_stride,
-                    dst_offsets[block]+iter*dst_stride,
-                    num_bytes, 0, NULL, NULL
-                  );
-            VP8_CL_CHECK_SUCCESS(cq, err != CL_SUCCESS, "Error copying between buffers\n",
-                    ,
-            );
-        }
+        const size_t src_origin[3] = { src_offsets[block] % src_stride, src_offsets[block] / src_stride, 0};
+        const size_t dst_origin[3] = { dst_offsets[block] % dst_stride, dst_offsets[block] / dst_stride, 0};
+        const size_t region[3] = {num_bytes, num_iter, 1};
+
+        err = clEnqueueCopyBufferRect( cq, src_mem, dst_mem,
+                    src_origin, dst_origin, region,
+                    src_stride,
+                    src_stride*(src_origin[1]+iter),
+                    dst_stride,
+                    dst_stride*(dst_origin[1]+iter),
+                    0,
+                    NULL,
+                    NULL);
+
+        VP8_CL_CHECK_SUCCESS(cq, err != CL_SUCCESS, "Error copying between buffers\n",
+                ,
+        );
     }
 #endif
 }

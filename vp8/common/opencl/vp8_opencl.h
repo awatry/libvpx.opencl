@@ -31,7 +31,7 @@ extern "C" {
 #define ENABLE_CL_SUBPIXEL 1
 #define ENABLE_CL_LOOPFILTER 0
 #define TWO_PASS_SIXTAP 0
-#define MEM_COPY_KERNEL 1
+#define MEM_COPY_KERNEL 0 //0 = clEnqueueCopyBufferRect, 1 = kernel
 #define ONE_CQ_PER_MB 1 //Value of 0 is racey... still experimental.
 
 extern char *cl_read_file(const char* file_name);

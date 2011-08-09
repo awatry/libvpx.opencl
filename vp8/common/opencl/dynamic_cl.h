@@ -78,6 +78,7 @@ typedef cl_int(*fn_clFinish_t)(cl_command_queue);
 typedef cl_int(*fn_clEnqueueReadBuffer_t)(cl_command_queue, cl_mem, cl_bool, size_t, size_t, void *, cl_uint, const cl_event *, cl_event *);
 typedef cl_int(*fn_clEnqueueWriteBuffer_t)(cl_command_queue,  cl_mem,  cl_bool,  size_t,  size_t,  const void *,  cl_uint,  const cl_event *,  cl_event *);
 typedef cl_int(*fn_clEnqueueCopyBuffer_t)(cl_command_queue,  cl_mem, cl_mem, size_t, size_t, size_t, cl_uint, const cl_event *, cl_event *);
+typedef cl_int(*fn_clEnqueueCopyBufferRect_t)(cl_command_queue, cl_mem, cl_mem, const size_t *, const size_t *, const size_t *, size_t, size_t, size_t, size_t, cl_uint, const cl_event *, cl_event *);
 typedef cl_int(*fn_clEnqueueReadImage_t)(cl_command_queue, cl_mem, cl_bool, const size_t *, const size_t *, size_t, size_t, void *, cl_uint, const cl_event *, cl_event *);
 typedef cl_int(*fn_clEnqueueWriteImage_t)(cl_command_queue, cl_mem, cl_bool, const size_t *, const size_t *, size_t, size_t, const void *, cl_uint, const cl_event *, cl_event *);
 typedef cl_int(*fn_clEnqueueCopyImage_t)(cl_command_queue, cl_mem, cl_mem, const size_t *, const size_t *, const size_t *, cl_uint, const cl_event *, cl_event *);
@@ -145,6 +146,7 @@ typedef struct CL_FUNCTIONS {
     fn_clEnqueueReadBuffer_t enqueueReadBuffer;
     fn_clEnqueueWriteBuffer_t enqueueWriteBuffer;
     fn_clEnqueueCopyBuffer_t enqueueCopyBuffer;
+    fn_clEnqueueCopyBufferRect_t enqueueCopyBufferRect;
     fn_clEnqueueReadImage_t enqueueReadImage;
     fn_clEnqueueWriteImage_t enqueueWriteImage;
     fn_clEnqueueCopyImage_t enqueueCopyImage;
