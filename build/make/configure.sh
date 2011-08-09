@@ -985,6 +985,7 @@ process_common_toolchain() {
                     enable dlopen
                 else
                     add_extralibs -lOpenCL
+                    #add_extralibs -I${HOME}/OpenCL/inc -L/home/awatry/OpenCL/lib/lnx_x86 -lpthread -ldl -lsnusamsung_opencl -lrt
                 fi
                 ;;
         esac
