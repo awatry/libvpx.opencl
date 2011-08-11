@@ -293,6 +293,50 @@ int vp8_adjust_mb_lf_value(MACROBLOCKD *mbd, int filter_level)
     return filter_level;
 }
 
+void vp8_loop_filter_macroblock(int mb_row, int mb_col, VP8_COMMON *cm,
+        MACROBLOCKD *mbd, int baseline_filter_level[],
+        YV12_BUFFER_CONFIG *post) {
+
+    int Segment;
+    int mb_cols = cm->mb_cols;
+    int alt_flt_enabled = mbd->segmentation_enabled;
+    loop_filter_info *lfi = cm->lf_info;
+    int filter_level;
+
+    unsigned char *y_ptr, *u_ptr, *v_ptr;
+    int y_offset = 16 * (mb_col + (mb_row*mb_cols)) + mb_row * (post->y_stride * 16 - post->y_width);
+    int uv_offset = 8 * (mb_col + (mb_row*mb_cols)) + mb_row * (post->uv_stride * 8 - post->uv_width);
+
+    mbd->mode_info_context = cm->mi + ((mb_row * (mb_cols+1) + mb_col));
+    Segment = (alt_flt_enabled) ? mbd->mode_info_context->mbmi.segment_id : 0;
+    filter_level = baseline_filter_level[Segment];
+
+    y_ptr = post->y_buffer + y_offset;
+    u_ptr = post->u_buffer + uv_offset;
+    v_ptr = post->v_buffer + uv_offset;
+
+    /* Distance of Mb to the various image edges.
+     * These specified to 8th pel as they are always compared to values that are in 1/8th pel units
+     * Apply any context driven MB level adjustment
+     */
+    filter_level = vp8_adjust_mb_lf_value(mbd, filter_level);
+
+    if (filter_level) {
+        if (mb_col > 0)
+            cm->lf_mbv(y_ptr, u_ptr, v_ptr, post->y_stride, post->uv_stride, &lfi[filter_level], cm->simpler_lpf);
+
+        if (mbd->mode_info_context->mbmi.dc_diff > 0)
+            cm->lf_bv(y_ptr, u_ptr, v_ptr, post->y_stride, post->uv_stride, &lfi[filter_level], cm->simpler_lpf);
+
+        /* don't apply across umv border */
+        if (mb_row > 0)
+            cm->lf_mbh(y_ptr, u_ptr, v_ptr, post->y_stride, post->uv_stride, &lfi[filter_level], cm->simpler_lpf);
+
+        if (mbd->mode_info_context->mbmi.dc_diff > 0)
+            cm->lf_bh(y_ptr, u_ptr, v_ptr, post->y_stride, post->uv_stride, &lfi[filter_level], cm->simpler_lpf);
+    }
+
+}
 
 void vp8_loop_filter_frame
 (
@@ -307,7 +351,6 @@ void vp8_loop_filter_frame
 
     int mb_row;
     int mb_col;
-
 
     int baseline_filter_level[MAX_MB_SEGMENTS];
     int filter_level;
@@ -358,6 +401,8 @@ void vp8_loop_filter_frame
     u_ptr = post->u_buffer;
     v_ptr = post->v_buffer;
 
+#if 0
+
     /* vp8_filter each macro block */
     for (mb_row = 0; mb_row < cm->mb_rows; mb_row++)
     {
@@ -366,12 +411,19 @@ void vp8_loop_filter_frame
             int Segment = (alt_flt_enabled) ? mbd->mode_info_context->mbmi.segment_id : 0;
 
             filter_level = baseline_filter_level[Segment];
+            
+            printf("mode_info_offset = %d\n", mbd->mode_info_context - cm->mi);
+            printf("row = %d, col = %d\n", mb_row, mb_col);
+            printf("y_offset = %d, uv_offset = %d\n", y_ptr - post->y_buffer, u_ptr - post->u_buffer);
 
             /* Distance of Mb to the various image edges.
              * These specified to 8th pel as they are always compared to values that are in 1/8th pel units
              * Apply any context driven MB level adjustment
              */
             filter_level = vp8_adjust_mb_lf_value(mbd, filter_level);
+
+            printf("filter_level = %d\n", filter_level);
+            
 
             if (filter_level)
             {
@@ -402,6 +454,33 @@ void vp8_loop_filter_frame
 
         mbd->mode_info_context++;         /* Skip border mb */
     }
+
+#else
+#define VP8_LOOP_FILTER_RASTER_SCAN 1
+#if VP8_LOOP_FILTER_RASTER_SCAN
+    for (mb_row = 0; mb_row < cm->mb_rows; mb_row++) {
+        for (mb_col = 0; mb_col < cm->mb_cols; mb_col++) {
+#else
+    //Maximum priority 
+    for (i = 0; i < cm->mb_rows + cm->mb_cols - 1 ; i++){
+        //Process all MBs in current priority
+        printf("Current priority = %d\n", i);
+        for (mb_row = i; mb_row >= 0; mb_row--){
+            mb_col = i - mb_row; //Column for current priority/row combination
+            printf("row = %d, col = %d\n", mb_row, mb_col);
+
+            if ((mb_col < cm->mb_cols) && (mb_row < cm->mb_rows))
+                printf("processing row = %d, col = %d\n", mb_row, mb_col);
+
+            //Skip non-existant MBs
+            if ((mb_col < cm->mb_cols) && (mb_row < cm->mb_rows))
+#endif
+            vp8_loop_filter_macroblock(mb_row, mb_col, cm, mbd, baseline_filter_level, post);
+        }
+
+    }
+#endif
+
 }
 
 
