@@ -21,12 +21,6 @@ typedef struct
     signed char flim[16];
     signed char thr[16];
     signed char mbflim[16];
-    signed char mbthr[16];
-    signed char uvlim[16];
-    signed char uvflim[16];
-    signed char uvthr[16];
-    signed char uvmbflim[16];
-    signed char uvmbthr[16];
 } loop_filter_info;
 
 

@@ -68,7 +68,7 @@ static void vp8_loop_filter_cl_run(
     clReleaseMemObject(limit_mem);
     clReleaseMemObject(thresh_mem);
 
-    VP8_CL_FINISH(cq);
+    //VP8_CL_FINISH(cq);
 }
 
 void vp8_loop_filter_horizontal_edge_cl

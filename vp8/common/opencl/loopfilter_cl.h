@@ -25,7 +25,7 @@
 
 #define prototype_loopfilter_block_cl(sym) \
     void sym(MACROBLOCKD*, unsigned char *y, unsigned char *u, unsigned char *v,\
-             int ystride, int uv_stride, loop_filter_info *lfi, int simpler)
+             int ystride, int uv_stride, loop_filter_info *lfi, int filter_level)
 
 extern void vp8_loop_filter_frame_cl
 (
