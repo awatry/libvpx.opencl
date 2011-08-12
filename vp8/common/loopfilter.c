@@ -463,7 +463,6 @@ void vp8_loop_filter_frame
 #else
     //Maximum priority 
     for (i = 0; i < 2 * (cm->mb_rows - 1) + cm->mb_cols ; i++){
-        printf("priority = %d\n", i);
         //Process all MBs in current priority
         for (mb_row = 0; mb_row <= i && mb_row < cm->mb_rows; mb_row++){
         //for (mb_row = (i > cm->mb_rows ? cm->mb_rows : i); mb_row >= 0; mb_row--){
@@ -479,7 +478,6 @@ void vp8_loop_filter_frame
 
             //Skip non-existant MBs
             if ((mb_col > -1 && (mb_col < cm->mb_cols)) && (mb_row < cm->mb_rows)){
-                printf("row = %d, col = %d\n", mb_row, mb_col);
 #endif
                 vp8_loop_filter_macroblock(mb_row, mb_col, cm, mbd, baseline_filter_level, post);
 #if !VP8_LOOP_FILTER_RASTER_SCAN
