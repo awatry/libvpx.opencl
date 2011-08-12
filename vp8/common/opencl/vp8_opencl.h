@@ -29,13 +29,17 @@ extern "C" {
 
 #define ENABLE_CL_IDCT_DEQUANT 0
 #define ENABLE_CL_SUBPIXEL 0
-#define ENABLE_CL_LOOPFILTER 0
+#define ENABLE_CL_LOOPFILTER 1
 #define TWO_PASS_SIXTAP 0
+
+//Snow Leopard doesn't support CopyRect, Lion does.
 #ifdef __APPLE__
-#define MEM_COPY_KERNEL 1 //Snow Leopard doesn't support CopyRect, Lion does.
+#define MEM_COPY_KERNEL 1
 #else
-#define MEM_COPY_KERNEL 0 //0 = clEnqueueCopyBufferRect, 1 = kernel
+//Note that OpenCL 1.0 also doesn't support clEnqueueCopyBufferRect, 1.1 does.
+#define MEM_COPY_KERNEL 1 //0 = clEnqueueCopyBufferRect, 1 = kernel
 #endif
+
 #define ONE_CQ_PER_MB 1 //Value of 0 is racey... still experimental.
 
 extern char *cl_read_file(const char* file_name);

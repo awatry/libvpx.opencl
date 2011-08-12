@@ -339,6 +339,97 @@ void vp8_loop_filter_set_baselines_cl(MACROBLOCKD *mbd, int default_filt_lvl, in
     }
 }
 
+
+void vp8_loop_filter_macroblock_cl(int mb_row, int mb_col, VP8_COMMON *cm,
+        MACROBLOCKD *mbd, int baseline_filter_level[],
+        YV12_BUFFER_CONFIG *post) {
+
+    int Segment;
+    int mb_cols = cm->mb_cols;
+    int alt_flt_enabled = mbd->segmentation_enabled;
+    loop_filter_info *lfi = cm->lf_info;
+    int filter_level;
+    LOOPFILTERTYPE filter_type = cm->filter_type;
+
+    //unsigned char *y_ptr, *u_ptr, *v_ptr;
+    int y_offset = 16 * (mb_col + (mb_row*mb_cols)) + mb_row * (post->y_stride * 16 - post->y_width);
+    int uv_offset = 8 * (mb_col + (mb_row*mb_cols)) + mb_row * (post->uv_stride * 8 - post->uv_width);
+
+    unsigned char *buf_base = post->buffer_alloc;
+    int y_off = post->y_buffer - buf_base + y_offset;
+    int u_off = post->u_buffer - buf_base + uv_offset;
+    int v_off = post->v_buffer - buf_base + uv_offset;
+
+    mbd->mode_info_context = cm->mi + ((mb_row * (mb_cols+1) + mb_col));
+    Segment = (alt_flt_enabled) ? mbd->mode_info_context->mbmi.segment_id : 0;
+    filter_level = baseline_filter_level[Segment];
+
+    /* Distance of Mb to the various image edges.
+     * These specified to 8th pel as they are always compared to values that are in 1/8th pel units
+     * Apply any context driven MB level adjustment
+     */
+    filter_level = vp8_adjust_mb_lf_value(mbd, filter_level);
+
+    if (filter_level) {
+        if (filter_level)
+        {
+            if (mb_col > 0){
+                if (filter_type == NORMAL_LOOPFILTER)
+                    vp8_loop_filter_mbv_cl(mbd, post->buffer_mem, y_off, u_off, v_off, post->y_stride, post->uv_stride, &lfi[filter_level], cm->simpler_lpf);
+                else
+                    vp8_loop_filter_mbvs_cl(mbd, post->buffer_mem, y_off, u_off, v_off, post->y_stride, post->uv_stride, &lfi[filter_level], cm->simpler_lpf);
+            }
+
+            if (mbd->mode_info_context->mbmi.dc_diff > 0){
+                if (filter_type == NORMAL_LOOPFILTER)
+                    vp8_loop_filter_bv_cl(mbd, post->buffer_mem, y_off, u_off, v_off, post->y_stride, post->uv_stride, &lfi[filter_level], cm->simpler_lpf);
+                else
+                    vp8_loop_filter_bvs_cl(mbd, post->buffer_mem, y_off, u_off, v_off, post->y_stride, post->uv_stride, &lfi[filter_level], cm->simpler_lpf);
+            }
+
+            /* don't apply across umv border */
+            if (mb_row > 0){
+                if (filter_type == NORMAL_LOOPFILTER)
+                    vp8_loop_filter_mbh_cl(mbd, post->buffer_mem, y_off, u_off, v_off, post->y_stride, post->uv_stride, &lfi[filter_level], cm->simpler_lpf);
+                else
+                    vp8_loop_filter_mbhs_cl(mbd, post->buffer_mem, y_off, u_off, v_off, post->y_stride, post->uv_stride, &lfi[filter_level], cm->simpler_lpf);
+            }
+
+            if (mbd->mode_info_context->mbmi.dc_diff > 0){
+                if (filter_type == NORMAL_LOOPFILTER)
+                    vp8_loop_filter_bh_cl(mbd, post->buffer_mem, y_off, u_off, v_off, post->y_stride, post->uv_stride, &lfi[filter_level], cm->simpler_lpf);
+                else
+                    vp8_loop_filter_bhs_cl(mbd, post->buffer_mem, y_off, u_off, v_off, post->y_stride, post->uv_stride, &lfi[filter_level], cm->simpler_lpf);
+            }
+        }
+    }
+
+}
+
+void vp8_loop_filter_priority_cl(int priority, VP8_COMMON *cm, MACROBLOCKD *mbd, int baseline_filter_level[],
+        YV12_BUFFER_CONFIG *post )
+{
+    int mb_row, mb_col;    
+    
+    //Process all MBs in current priority
+    for (mb_row = 0; mb_row <= priority && mb_row < cm->mb_rows; mb_row++){
+        //First row is done left to right, subsequent rows are offset two
+        //to the left to prevent corruption of a pure diagonal scan that
+        //is offset by 1.
+        if (mb_row == 0){
+            mb_col = priority - mb_row;
+        } else {
+            mb_col = priority - 2 * mb_row;
+        }
+
+        //Skip non-existant MBs
+        if ((mb_col > -1 && (mb_col < cm->mb_cols)) && (mb_row < cm->mb_rows)){
+            //printf("Loop filter for row %d col %d\n", mb_row, mb_col);
+            vp8_loop_filter_macroblock_cl(mb_row, mb_col, cm, mbd, baseline_filter_level, post);
+        }
+    }
+}
+
 void vp8_loop_filter_frame_cl
 (
     VP8_COMMON *cm,
@@ -349,21 +440,11 @@ void vp8_loop_filter_frame_cl
     YV12_BUFFER_CONFIG *post = cm->frame_to_show;
     loop_filter_info *lfi = cm->lf_info;
     FRAME_TYPE frame_type = cm->frame_type;
-    LOOPFILTERTYPE filter_type = cm->filter_type;
-
-    int mb_row;
-    int mb_col;
 
     int baseline_filter_level[MAX_MB_SEGMENTS];
-    int filter_level;
-    int alt_flt_enabled = mbd->segmentation_enabled;
+    int err, priority;
 
-    int err;
-    unsigned char *buf_base;
-    int y_off, u_off, v_off;
-    //unsigned char *y_ptr, *u_ptr, *v_ptr;
-
-    mbd->mode_info_context = cm->mi;          /* Point at base of Mb MODE_INFO list */
+    mbd->mode_info_context = cm->mi; /* Point at base of Mb MODE_INFO list */
 
     /* Note the baseline filter values for each segment */
     vp8_loop_filter_set_baselines_cl(mbd, default_filt_lvl, baseline_filter_level);
@@ -374,76 +455,12 @@ void vp8_loop_filter_frame_cl
     else if (frame_type != cm->last_frame_type)
         vp8_frame_init_loop_filter_cl(lfi, frame_type);
 
-    /* Set up the buffer pointers */
-
-    buf_base = post->buffer_alloc;
-    y_off = post->y_buffer - buf_base;
-    u_off = post->u_buffer - buf_base;
-    v_off = post->v_buffer - buf_base;
-
     VP8_CL_SET_BUF(mbd->cl_commands, post->buffer_mem, post->buffer_size, post->buffer_alloc,
             vp8_loop_filter_frame(cm,mbd,default_filt_lvl),);
 
-    /* vp8_filter each macro block */
-    for (mb_row = 0; mb_row < cm->mb_rows; mb_row++)
-    {
-        for (mb_col = 0; mb_col < cm->mb_cols; mb_col++)
-        {
-            int Segment = (alt_flt_enabled) ? mbd->mode_info_context->mbmi.segment_id : 0;
-
-            filter_level = baseline_filter_level[Segment];
-
-            /* Distance of Mb to the various image edges.
-             * These specified to 8th pel as they are always compared to values 
-             * that are in 1/8th pel units. Apply any context driven MB level
-             * adjustment
-             */
-            filter_level = vp8_adjust_mb_lf_value(mbd, filter_level);
-
-            if (filter_level)
-            {
-                if (mb_col > 0){
-                    if (filter_type == NORMAL_LOOPFILTER)
-                        vp8_loop_filter_mbv_cl(mbd, post->buffer_mem, y_off, u_off, v_off, post->y_stride, post->uv_stride, &lfi[filter_level], cm->simpler_lpf);
-                    else
-                        vp8_loop_filter_mbvs_cl(mbd, post->buffer_mem, y_off, u_off, v_off, post->y_stride, post->uv_stride, &lfi[filter_level], cm->simpler_lpf);
-                }
-
-                if (mbd->mode_info_context->mbmi.dc_diff > 0){
-                    if (filter_type == NORMAL_LOOPFILTER)
-                        vp8_loop_filter_bv_cl(mbd, post->buffer_mem, y_off, u_off, v_off, post->y_stride, post->uv_stride, &lfi[filter_level], cm->simpler_lpf);
-                    else
-                        vp8_loop_filter_bvs_cl(mbd, post->buffer_mem, y_off, u_off, v_off, post->y_stride, post->uv_stride, &lfi[filter_level], cm->simpler_lpf);
-                }
-
-                /* don't apply across umv border */
-                if (mb_row > 0){
-                    if (filter_type == NORMAL_LOOPFILTER)
-                        vp8_loop_filter_mbh_cl(mbd, post->buffer_mem, y_off, u_off, v_off, post->y_stride, post->uv_stride, &lfi[filter_level], cm->simpler_lpf);
-                    else
-                        vp8_loop_filter_mbhs_cl(mbd, post->buffer_mem, y_off, u_off, v_off, post->y_stride, post->uv_stride, &lfi[filter_level], cm->simpler_lpf);
-                }
-
-                if (mbd->mode_info_context->mbmi.dc_diff > 0){
-                    if (filter_type == NORMAL_LOOPFILTER)
-                        vp8_loop_filter_bh_cl(mbd, post->buffer_mem, y_off, u_off, v_off, post->y_stride, post->uv_stride, &lfi[filter_level], cm->simpler_lpf);
-                    else
-                        vp8_loop_filter_bhs_cl(mbd, post->buffer_mem, y_off, u_off, v_off, post->y_stride, post->uv_stride, &lfi[filter_level], cm->simpler_lpf);
-                }
-            }
-
-            y_off += 16;
-            u_off += 8;
-            v_off += 8;
-
-            mbd->mode_info_context++;     /* step to next MB */
-        }
-
-        y_off += post->y_stride  * 16 - post->y_width;
-        u_off += post->uv_stride *  8 - post->uv_width;
-        v_off += post->uv_stride *  8 - post->uv_width;
-
-        mbd->mode_info_context++;         /* Skip border mb */
+    //Maximum priority = 2*(Height-1) + Width in Macroblocks
+    for (priority = 0; priority < 2 * (cm->mb_rows - 1) + cm->mb_cols ; priority++){
+        vp8_loop_filter_priority_cl(priority, cm, mbd, baseline_filter_level, post);
     }
 
     //Retrieve buffer contents
