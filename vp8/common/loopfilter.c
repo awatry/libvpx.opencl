@@ -462,23 +462,32 @@ void vp8_loop_filter_frame
         for (mb_col = 0; mb_col < cm->mb_cols; mb_col++) {
 #else
     //Maximum priority 
-        for (i = 0; i < cm->mb_rows + cm->mb_cols - 1 ; i++){
-            //Process all MBs in current priority
-            for (mb_row = 0; mb_row <= i; mb_row++){
-            //for (mb_row = i; mb_row >= 0; mb_row--){
-            mb_col = i - mb_row; //Column for current priority/row combination
+    for (i = 0; i < 2 * (cm->mb_rows - 1) + cm->mb_cols ; i++){
+        printf("priority = %d\n", i);
+        //Process all MBs in current priority
+        for (mb_row = 0; mb_row <= i && mb_row < cm->mb_rows; mb_row++){
+        //for (mb_row = (i > cm->mb_rows ? cm->mb_rows : i); mb_row >= 0; mb_row--){
+
+            //First row is done left to right, subsequent rows are offset two
+            //to the left to prevent corruption of a pure diagonal scan that
+            //is offset by 1.
+            if (mb_row == 0){
+                mb_col = i - mb_row;
+            } else {
+                mb_col = i - 2 * mb_row;
+            }
 
             //Skip non-existant MBs
-            if ((mb_col < cm->mb_cols) && (mb_row < cm->mb_rows)){
+            if ((mb_col > -1 && (mb_col < cm->mb_cols)) && (mb_row < cm->mb_rows)){
+                printf("row = %d, col = %d\n", mb_row, mb_col);
 #endif
-            vp8_loop_filter_macroblock(mb_row, mb_col, cm, mbd, baseline_filter_level, post);
+                vp8_loop_filter_macroblock(mb_row, mb_col, cm, mbd, baseline_filter_level, post);
 #if !VP8_LOOP_FILTER_RASTER_SCAN
             }
 #endif
         }
-
     }
-#endif
+#endif //if !RASTER_SCAN
 }
 
 
