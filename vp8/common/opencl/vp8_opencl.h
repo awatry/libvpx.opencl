@@ -28,10 +28,14 @@ extern "C" {
 #endif
 
 #define ENABLE_CL_IDCT_DEQUANT 0
-#define ENABLE_CL_SUBPIXEL 1
+#define ENABLE_CL_SUBPIXEL 0
 #define ENABLE_CL_LOOPFILTER 0
 #define TWO_PASS_SIXTAP 0
+#ifdef __APPLE__
+#define MEM_COPY_KERNEL 1 //Snow Leopard doesn't support CopyRect, Lion does.
+#else
 #define MEM_COPY_KERNEL 0 //0 = clEnqueueCopyBufferRect, 1 = kernel
+#endif
 #define ONE_CQ_PER_MB 1 //Value of 0 is racey... still experimental.
 
 extern char *cl_read_file(const char* file_name);
