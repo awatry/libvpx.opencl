@@ -91,9 +91,9 @@ kernel void vp8_loop_filter_horizontal_edge_kernel
     global unsigned char *s_base,
     int s_off,
     int p, /* pitch */
-    global signed char *flimit,
-    global signed char *limit,
-    global signed char *thresh,
+    global loop_filter_info *lfi,
+    int filter_level,
+    int use_mbflim,
     int off_stride
 )
 {
@@ -101,7 +101,20 @@ kernel void vp8_loop_filter_horizontal_edge_kernel
     signed char mask = 0;
     int i = get_global_id(0);
 
+    global signed char *limit, *flimit, *thresh;
+    global loop_filter_info *lf_info;
+
     if (i < get_global_size(0)){
+        lf_info = &lfi[filter_level];
+        if (use_mbflim == 0){
+            flimit = lf_info->flim;
+        } else {
+            flimit = lf_info->mbflim;
+        }
+
+        limit = lf_info->lim;
+        thresh = lf_info->thr;
+
         s_off += i;
 
         mask = vp8_filter_mask(limit[i], flimit[i], s_base[s_off - 4*p],
@@ -123,9 +136,9 @@ kernel void vp8_loop_filter_vertical_edge_kernel
     global unsigned char *s_base,
     int s_off,
     int p,
-    global signed char *flimit,
-    global signed char *limit,
-    global signed char *thresh,
+    global loop_filter_info *lfi,
+    int filter_level,
+    int use_mbflim,
     int off_stride
 )
 {
@@ -134,7 +147,20 @@ kernel void vp8_loop_filter_vertical_edge_kernel
     signed char mask = 0;
     int i = get_global_id(0);
 
-    if ( i < get_global_size(0) ){
+    global signed char *limit, *flimit, *thresh;
+    global loop_filter_info *lf_info;
+
+    if (i < get_global_size(0)){
+        lf_info = &lfi[filter_level];
+        if (use_mbflim == 0){
+            flimit = lf_info->flim;
+        } else {
+            flimit = lf_info->mbflim;
+        }
+
+        limit = lf_info->lim;
+        thresh = lf_info->thr;
+
         s_off += p * i;
         mask = vp8_filter_mask(limit[i], flimit[i],
                 s_base[s_off-4], s_base[s_off-3], s_base[s_off-2],
@@ -155,9 +181,9 @@ kernel void vp8_mbloop_filter_horizontal_edge_kernel
     global unsigned char *s_base,
     int s_off,
     int p,
-    global signed char *flimit,
-    global signed char *limit,
-    global signed char *thresh,
+    global loop_filter_info *lfi,
+    int filter_level,
+    int use_mbflim,
     int off_stride
 )
 {
@@ -168,7 +194,21 @@ kernel void vp8_mbloop_filter_horizontal_edge_kernel
     signed char mask = 0;
     int i = get_global_id(0);
 
+    global signed char *limit, *flimit, *thresh;
+    global loop_filter_info *lf_info;
+
     if (i < get_global_size(0)){
+        lf_info = &lfi[filter_level];
+        if (use_mbflim == 0){
+            flimit = lf_info->flim;
+        } else {
+            flimit = lf_info->mbflim;
+        }
+
+        limit = lf_info->lim;
+        thresh = lf_info->thr;
+
+
         s += i;
 
         mask = vp8_filter_mask(limit[i], flimit[i],
@@ -188,9 +228,9 @@ kernel void vp8_mbloop_filter_vertical_edge_kernel
     global unsigned char *s_base,
     int s_off,
     int p,
-    global signed char *flimit,
-    global signed char *limit,
-    global signed char *thresh,
+    global loop_filter_info *lfi,
+    int filter_level,
+    int use_mbflim,
     int off_stride
 )
 {
@@ -201,7 +241,20 @@ kernel void vp8_mbloop_filter_vertical_edge_kernel
     signed char mask = 0;
     int i = get_global_id(0);
 
+    global signed char *limit, *flimit, *thresh;
+    global loop_filter_info *lf_info;
+
     if (i < get_global_size(0)){
+        lf_info = &lfi[filter_level];
+        if (use_mbflim == 0){
+            flimit = lf_info->flim;
+        } else {
+            flimit = lf_info->mbflim;
+        }
+
+        limit = lf_info->lim;
+        thresh = lf_info->thr;
+
         s += p * i;
 
         mask = vp8_filter_mask(limit[i], flimit[i],
@@ -220,19 +273,29 @@ kernel void vp8_loop_filter_simple_horizontal_edge_kernel
     global unsigned char *s_base,
     int s_off,
     int p,
-    global const signed char *flimit,
-    global const signed char *limit,
-    global const signed char *thresh,
+    global loop_filter_info *lfi,
+    int filter_level,
+    int use_mbflim,
     int off_stride
 )
 {
 
     signed char mask = 0;
     int i = get_global_id(0);
-    (void) thresh;
 
-    if (i < get_global_size(0))
-    {
+    global signed char *limit, *flimit;
+    global loop_filter_info *lf_info;
+
+    if (i < get_global_size(0)){
+        lf_info = &lfi[filter_level];
+        if (use_mbflim == 0){
+            flimit = lf_info->flim;
+        } else {
+            flimit = lf_info->mbflim;
+        }
+
+        limit = lf_info->lim;
+
         s_off += i;
         mask = vp8_simple_filter_mask(limit[i], flimit[i], s_base[s_off-2*p], s_base[s_off-p], s_base[s_off], s_base[s_off+p]);
         vp8_simple_filter(mask, s_base, s_off - 2 * p, s_off - 1 * p, s_off, s_off + 1 * p);
@@ -245,18 +308,29 @@ kernel void vp8_loop_filter_simple_vertical_edge_kernel
     global unsigned char *s_base,
     int s_off,
     int p,
-    global signed char *flimit,
-    global signed char *limit,
-    global signed char *thresh,
+    global loop_filter_info *lfi,
+    int filter_level,
+    int use_mbflim,
     int off_stride
 )
 {
 
     signed char mask = 0;
     int i = get_global_id(0);
-    (void) thresh;
+
+    global signed char *limit, *flimit;
+    global loop_filter_info *lf_info;
 
     if (i < get_global_size(0)){
+        lf_info = &lfi[filter_level];
+        if (use_mbflim == 0){
+            flimit = lf_info->flim;
+        } else {
+            flimit = lf_info->mbflim;
+        }
+
+        limit = lf_info->lim;
+
         s_off += p * i;
         mask = vp8_simple_filter_mask(limit[i], flimit[i], s_base[s_off-2], s_base[s_off-1], s_base[s_off], s_base[s_off+1]);
         vp8_simple_filter(mask, s_base, s_off - 2, s_off - 1, s_off, s_off + 1);
