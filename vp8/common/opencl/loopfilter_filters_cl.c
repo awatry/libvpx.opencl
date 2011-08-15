@@ -31,10 +31,9 @@ static void vp8_loop_filter_cl_run(
     cl_mem lfi_mem,
     int filter_level,
     int use_mbflim,
-    int count,
-    int block_cnt
+    int thread_count
 ){
-    size_t global[] = {count,block_cnt};
+    size_t global[] = {thread_count};
     int err;
 
     err = 0;
@@ -44,13 +43,12 @@ static void vp8_loop_filter_cl_run(
     err |= clSetKernelArg(kernel, 3, sizeof (cl_mem), &lfi_mem);
     err |= clSetKernelArg(kernel, 4, sizeof (cl_int), &filter_level);
     err |= clSetKernelArg(kernel, 5, sizeof (cl_int), &use_mbflim);
-    err |= clSetKernelArg(kernel, 6, sizeof (cl_int), &block_cnt);
     VP8_CL_CHECK_SUCCESS( cq, err != CL_SUCCESS,
         "Error: Failed to set kernel arguments!\n",,
     );
 
     /* Execute the kernel */
-    err = clEnqueueNDRangeKernel(cq, kernel, 2, NULL, global, NULL , 0, NULL, NULL);
+    err = clEnqueueNDRangeKernel(cq, kernel, 1, NULL, global, NULL , 0, NULL, NULL);
     VP8_CL_CHECK_SUCCESS( cq, err != CL_SUCCESS,
         "Error: Failed to execute kernel!\n",
         printf("err = %d\n",err);,
@@ -67,13 +65,12 @@ void vp8_loop_filter_horizontal_edge_cl
     cl_mem lfi_mem,
     int filter_level,
     int use_mbflim,
-    int count,
-    int block_cnt
+    int count
 )
 {
     vp8_loop_filter_cl_run(x->cl_commands,
         cl_data.vp8_loop_filter_horizontal_edge_kernel, s_base, s_off,
-        p, lfi_mem, filter_level, use_mbflim, count*8, block_cnt
+        p, lfi_mem, filter_level, use_mbflim, count
     );
 }
 
@@ -86,13 +83,12 @@ void vp8_loop_filter_vertical_edge_cl
     cl_mem lfi_mem,
     int filter_level,
     int use_mbflim,
-    int count,
-    int block_cnt
+    int count
 )
 {
     vp8_loop_filter_cl_run(x->cl_commands,
         cl_data.vp8_loop_filter_vertical_edge_kernel, s_base, s_off,
-        p, lfi_mem, filter_level, use_mbflim, count*8, block_cnt
+        p, lfi_mem, filter_level, use_mbflim, count
     );
 }
 
@@ -105,13 +101,12 @@ void vp8_mbloop_filter_horizontal_edge_cl
     cl_mem lfi_mem,
     int filter_level,
     int use_mbflim,
-    int count,
-    int block_cnt
+    int count
 )
 {
     vp8_loop_filter_cl_run(x->cl_commands,
         cl_data.vp8_mbloop_filter_horizontal_edge_kernel, s_base, s_off,
-        p, lfi_mem, filter_level, use_mbflim, count*8, block_cnt
+        p, lfi_mem, filter_level, use_mbflim, count
     );
 }
 
@@ -125,13 +120,12 @@ void vp8_mbloop_filter_vertical_edge_cl
     cl_mem lfi_mem,
     int filter_level,
     int use_mbflim,
-    int count,
-    int block_cnt
+    int count
 )
 {
     vp8_loop_filter_cl_run(x->cl_commands,
         cl_data.vp8_mbloop_filter_vertical_edge_kernel, s_base, s_off,
-        p, lfi_mem, filter_level, use_mbflim, count*8, block_cnt
+        p, lfi_mem, filter_level, use_mbflim, count
     );
 }
 
@@ -144,13 +138,12 @@ void vp8_loop_filter_simple_horizontal_edge_cl
     cl_mem lfi_mem,
     int filter_level,
     int use_mbflim,
-    int count,
-    int block_cnt
+    int count
 )
 {
     vp8_loop_filter_cl_run(x->cl_commands,
         cl_data.vp8_loop_filter_simple_horizontal_edge_kernel, s_base, s_off,
-        p, lfi_mem, filter_level, use_mbflim, count*8, block_cnt
+        p, lfi_mem, filter_level, use_mbflim, count
     );
 }
 
@@ -163,12 +156,11 @@ void vp8_loop_filter_simple_vertical_edge_cl
     cl_mem lfi_mem,
     int filter_level,
     int use_mbflim,
-    int count,
-    int block_cnt
+    int count
 )
 {
     vp8_loop_filter_cl_run(x->cl_commands,
         cl_data.vp8_loop_filter_simple_vertical_edge_kernel, s_base, s_off,
-        p, lfi_mem, filter_level, use_mbflim, count*8, block_cnt
+        p, lfi_mem, filter_level, use_mbflim, count
     );
 }

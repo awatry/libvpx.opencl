@@ -93,8 +93,7 @@ kernel void vp8_loop_filter_horizontal_edge_kernel
     int p, /* pitch */
     global loop_filter_info *lfi,
     int filter_level,
-    int use_mbflim,
-    int off_stride
+    int use_mbflim
 )
 {
     int  hev = 0; /* high edge variance */
@@ -138,8 +137,7 @@ kernel void vp8_loop_filter_vertical_edge_kernel
     int p,
     global loop_filter_info *lfi,
     int filter_level,
-    int use_mbflim,
-    int off_stride
+    int use_mbflim
 )
 {
 
@@ -183,8 +181,7 @@ kernel void vp8_mbloop_filter_horizontal_edge_kernel
     int p,
     global loop_filter_info *lfi,
     int filter_level,
-    int use_mbflim,
-    int off_stride
+    int use_mbflim
 )
 {
 
@@ -230,8 +227,7 @@ kernel void vp8_mbloop_filter_vertical_edge_kernel
     int p,
     global loop_filter_info *lfi,
     int filter_level,
-    int use_mbflim,
-    int off_stride
+    int use_mbflim
 )
 {
 
@@ -275,8 +271,7 @@ kernel void vp8_loop_filter_simple_horizontal_edge_kernel
     int p,
     global loop_filter_info *lfi,
     int filter_level,
-    int use_mbflim,
-    int off_stride
+    int use_mbflim
 )
 {
 
@@ -310,8 +305,7 @@ kernel void vp8_loop_filter_simple_vertical_edge_kernel
     int p,
     global loop_filter_info *lfi,
     int filter_level,
-    int use_mbflim,
-    int off_stride
+    int use_mbflim
 )
 {
 
