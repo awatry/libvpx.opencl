@@ -49,7 +49,7 @@ static void vp8_loop_filter_cl_run(
             global[1] = thread_counts[1];
     }
 
-    VP8_CL_CREATE_BUF(cq, offsets_mem, , sizeof(int)*num_planes, offsets,, );
+    VP8_CL_CREATE_BUF(cq, offsets_mem, , sizeof(cl_int)*num_planes, offsets,, );
     VP8_CL_CREATE_BUF(cq, pitches_mem, , sizeof(cl_int)*num_planes, pitches,, );
     //VP8_CL_CREATE_BUF(cq, threads_mem, , sizeof(cl_int)*num_planes, thread_counts,, );
 
