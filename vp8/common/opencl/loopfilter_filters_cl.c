@@ -35,42 +35,34 @@ static void vp8_loop_filter_cl_run(
     int *thread_counts
 ){
 
-    //size_t global[2] = {num_planes, thread_counts[0]};
-    size_t global[2] = {thread_counts[0], num_planes};
+    size_t global[3] = {thread_counts[0], num_planes, 1};
     int err, i;
 
     cl_mem offsets_mem, pitches_mem, threads_mem;
 
-    if (num_planes > 1)
-        printf("num_planes = %d\n", num_planes);
-
     for ( i = 0 ; i < num_planes; i++){
-        if (thread_counts[i] > global[1])
-            global[1] = thread_counts[1];
+        if (thread_counts[i] > global[0])
+            global[0] = thread_counts[i];
     }
 
     VP8_CL_CREATE_BUF(cq, offsets_mem, , sizeof(cl_int)*num_planes, offsets,, );
     VP8_CL_CREATE_BUF(cq, pitches_mem, , sizeof(cl_int)*num_planes, pitches,, );
-    //VP8_CL_CREATE_BUF(cq, threads_mem, , sizeof(cl_int)*num_planes, thread_counts,, );
+    VP8_CL_CREATE_BUF(cq, threads_mem, , sizeof(cl_int)*num_planes, thread_counts,, );
 
     err = 0;
     err = clSetKernelArg(kernel, 0, sizeof (cl_mem), &buf_mem);
     err |= clSetKernelArg(kernel, 1, sizeof (cl_mem), &offsets_mem);
     err |= clSetKernelArg(kernel, 2, sizeof (cl_mem), &pitches_mem);
-    //err |= clSetKernelArg(kernel, 1, sizeof (cl_int), offsets);
-    //err |= clSetKernelArg(kernel, 2, sizeof (cl_int), pitches);
-
     err |= clSetKernelArg(kernel, 3, sizeof (cl_mem), &lfi_mem);
     err |= clSetKernelArg(kernel, 4, sizeof (cl_int), &filter_level);
     err |= clSetKernelArg(kernel, 5, sizeof (cl_int), &use_mbflim);
-    //err |= clSetKernelArg(kernel, 6, sizeof (cl_mem), &threads_mem);
+    err |= clSetKernelArg(kernel, 6, sizeof (cl_mem), &threads_mem);
     VP8_CL_CHECK_SUCCESS( cq, err != CL_SUCCESS,
         "Error: Failed to set kernel arguments!\n",,
     );
 
     /* Execute the kernel */
-    //printf("enqueueing 2D kernel with num_planes = %d\n", num_planes);
-    err = clEnqueueNDRangeKernel(cq, kernel, 1, NULL, global, NULL , 0, NULL, NULL);
+    err = clEnqueueNDRangeKernel(cq, kernel, 3, NULL, global, NULL , 0, NULL, NULL);
     VP8_CL_CHECK_SUCCESS( cq, err != CL_SUCCESS,
         "Error: Failed to execute kernel!\n",
         printf("err = %d\n",err);,
@@ -79,7 +71,7 @@ static void vp8_loop_filter_cl_run(
     VP8_CL_FINISH(cq);
     clReleaseMemObject(offsets_mem);
     clReleaseMemObject(pitches_mem);
-    //clReleaseMemObject(threads_mem);
+    clReleaseMemObject(threads_mem);
     //VP8_CL_FINISH(cq);
 
 }

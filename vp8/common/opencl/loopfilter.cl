@@ -93,24 +93,25 @@ kernel void vp8_loop_filter_horizontal_edge_kernel
     global int *pitches, /* pitch */
     global loop_filter_info *lfi,
     int filter_level,
-    int use_mbflim
+    int use_mbflim,
+    global int *threads
 )
 {
-    int plane = 0;
+    size_t plane = get_global_id(1);
 #ifdef cl_amd_printf
     //printf("num_dimensions = %d\tmax_plane = %d\tplane = %d\t thread = %d\n", get_work_dim(), get_global_size(1), plane, get_global_id(0));
 #endif
-    if (plane < 1){
+    if (plane < get_global_size(1)){
         int p = pitches[plane];
         int s_off = offsets[plane];
         int  hev = 0; /* high edge variance */
         signed char mask = 0;
-        int i = get_global_id(0);
+        size_t i = get_global_id(0);
 
         global signed char *limit, *flimit, *thresh;
         global loop_filter_info *lf_info;
 
-        if (i < get_global_size(0)){
+        if (i < threads[plane]){
             lf_info = &lfi[filter_level];
             if (use_mbflim == 0){
                 flimit = lf_info->flim;
@@ -145,25 +146,26 @@ kernel void vp8_loop_filter_vertical_edge_kernel
     global int *pitches,
     global loop_filter_info *lfi,
     int filter_level,
-    int use_mbflim
+    int use_mbflim,
+    global int *threads
 )
 {
-    int plane = 0;
+    size_t plane = get_global_id(1);
 #ifdef cl_amd_printf
     //printf("num_dimensions = %d\tmax_plane = %d\tplane = %d\t thread = %d\n", get_work_dim(), get_global_size(1), plane, get_global_id(0));
 #endif
-    if (plane < 1){
+    if (plane < get_global_size(1)){
         int p = pitches[plane];
         int s_off = offsets[plane];
 
         int  hev = 0; /* high edge variance */
         signed char mask = 0;
-        int i = get_global_id(0);
+        size_t i= get_global_id(0);
 
         global signed char *limit, *flimit, *thresh;
         global loop_filter_info *lf_info;
 
-        if (i < get_global_size(0)){
+        if (i < threads[plane]){
             lf_info = &lfi[filter_level];
             if (use_mbflim == 0){
                 flimit = lf_info->flim;
@@ -197,14 +199,15 @@ kernel void vp8_mbloop_filter_horizontal_edge_kernel
     global int *pitches,
     global loop_filter_info *lfi,
     int filter_level,
-    int use_mbflim
+    int use_mbflim,
+    global int *threads
 )
 {
-    int plane = 0;
+    size_t plane = get_global_id(1);
 #ifdef cl_amd_printf
-    //printf("num_dimensions = %d\tmax_plane = %d\tplane = %d\t thread = %d\n", get_work_dim(), get_global_size(1), plane, get_global_id(0));
+    //printf("num_dimensions = %d\tmax_plane = %d\tplane = %d\tthread = %d\n", get_work_dim(), get_global_size(1), plane, get_global_id(0));
 #endif
-    if (plane < 1){
+    if (plane < get_global_size(1)){
         int p = pitches[plane];
         int s_off = offsets[plane];
 
@@ -212,12 +215,12 @@ kernel void vp8_mbloop_filter_horizontal_edge_kernel
 
         signed char hev = 0; /* high edge variance */
         signed char mask = 0;
-        int i = get_global_id(0);
+        size_t i= get_global_id(0);
 
         global signed char *limit, *flimit, *thresh;
         global loop_filter_info *lf_info;
 
-        if (i < get_global_size(0)){
+        if (i < threads[plane]){
             lf_info = &lfi[filter_level];
             if (use_mbflim == 0){
                 flimit = lf_info->flim;
@@ -251,14 +254,15 @@ kernel void vp8_mbloop_filter_vertical_edge_kernel
     global int *pitches,
     global loop_filter_info *lfi,
     int filter_level,
-    int use_mbflim
+    int use_mbflim,
+    global int *threads
 )
 {
-    int plane = 0;
+    size_t plane = get_global_id(1);
 #ifdef cl_amd_printf
     //printf("num_dimensions = %d\tmax_plane = %d\tplane = %d\t thread = %d\n", get_work_dim(), get_global_size(1), plane, get_global_id(0));
 #endif
-    if (plane < 1){
+    if (plane < get_global_size(1)){
         int p = pitches[plane];
         int s_off = offsets[plane];
 
@@ -266,12 +270,12 @@ kernel void vp8_mbloop_filter_vertical_edge_kernel
 
         signed char hev = 0; /* high edge variance */
         signed char mask = 0;
-        int i = get_global_id(0);
+        size_t i= get_global_id(0);
 
         global signed char *limit, *flimit, *thresh;
         global loop_filter_info *lf_info;
 
-        if (i < get_global_size(0)){
+        if (i < threads[plane]){
             lf_info = &lfi[filter_level];
             if (use_mbflim == 0){
                 flimit = lf_info->flim;
@@ -303,24 +307,25 @@ kernel void vp8_loop_filter_simple_horizontal_edge_kernel
     global int *pitches,
     global loop_filter_info *lfi,
     int filter_level,
-    int use_mbflim
+    int use_mbflim,
+    global int *threads
 )
 {
-    int plane = 0;
+    size_t plane = get_global_id(1);
 #ifdef cl_amd_printf
     //printf("num_dimensions = %d\tmax_plane = %d\tplane = %d\t thread = %d\n", get_work_dim(), get_global_size(1), plane, get_global_id(0));
 #endif
-    if (plane < 1){
+    if (plane < get_global_size(1)){
         int p = pitches[plane];
         int s_off = offsets[plane];
 
         signed char mask = 0;
-        int i = get_global_id(0);
+        size_t i= get_global_id(0);
 
         global signed char *limit, *flimit;
         global loop_filter_info *lf_info;
 
-        if (i < get_global_size(0)){
+        if (i < threads[plane]){
             lf_info = &lfi[filter_level];
             if (use_mbflim == 0){
                 flimit = lf_info->flim;
@@ -345,24 +350,25 @@ kernel void vp8_loop_filter_simple_vertical_edge_kernel
     global int *pitches,
     global loop_filter_info *lfi,
     int filter_level,
-    int use_mbflim
+    int use_mbflim,
+    global int *threads
 )
 {
-    int plane = 0;
+    size_t plane = get_global_id(1);
 #ifdef cl_amd_printf
     //printf("num_dimensions = %d\tmax_plane = %d\tplane = %d\t thread = %d\n", get_work_dim(), get_global_size(1), plane, get_global_id(0));
 #endif
-    if (plane < 1){
+    if (plane < get_global_size(1)){
         int p = pitches[plane];
         int s_off = offsets[plane];
 
         signed char mask = 0;
-        int i = get_global_id(0);
+        size_t i= get_global_id(0);
 
         global signed char *limit, *flimit;
         global loop_filter_info *lf_info;
 
-        if (i < get_global_size(0)){
+        if (i < threads[plane]){
             lf_info = &lfi[filter_level];
             if (use_mbflim == 0){
                 flimit = lf_info->flim;
