@@ -19,8 +19,8 @@
 #include "../loopfilter.h"
 
 #define prototype_loopfilter_cl(sym) \
-    void sym(MACROBLOCKD*, cl_mem src_base, int src_offset,  \
-             int pitch, cl_mem lfi_mem, int filter_level, cl_bool use_mbflim, int count)
+    void sym(MACROBLOCKD*, cl_mem src_base, int num_planes, int src_offsets[],  \
+             int pitch[], cl_mem lfi_mem, int filter_level, cl_bool use_mbflim, int thread_count[])
 
 #define prototype_loopfilter_block_cl(sym) \
     void sym(MACROBLOCKD*, unsigned char *y, unsigned char *u, unsigned char *v,\
