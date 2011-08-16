@@ -41,11 +41,18 @@ prototype_loopfilter_cl(vp8_loop_filter_simple_vertical_edge_cl);
 void vp8_loop_filter_mbh_cl(MACROBLOCKD *x, cl_mem buf_base, int y_off, int u_off, int v_off,
                             int y_stride, int uv_stride, cl_mem lfi_mem, int filter_level)
 {
+#if 0
     int sizes[] = { 16, 8 };
 
     vp8_mbloop_filter_horizontal_edge_cl(x, buf_base, 1, &y_off, &y_stride, lfi_mem, filter_level, CL_TRUE, &sizes[0]);
     vp8_mbloop_filter_horizontal_edge_cl(x, buf_base, 1, &u_off, &uv_stride, lfi_mem, filter_level, CL_TRUE, &sizes[1]);
     vp8_mbloop_filter_horizontal_edge_cl(x, buf_base, 1, &v_off, &uv_stride, lfi_mem, filter_level, CL_TRUE, &sizes[1]);
+#else
+    int offsets[3] = {y_off, u_off, v_off};
+    int strides[3] = {y_stride, uv_stride, uv_stride};
+    int sizes[3] = {16, 8, 8};
+    vp8_mbloop_filter_horizontal_edge_cl(x, buf_base, 3, offsets, strides, lfi_mem, filter_level, CL_TRUE, sizes);
+#endif
 }
 
 void vp8_loop_filter_mbhs_cl(MACROBLOCKD *x, cl_mem buf_base, int y_off, int u_off, int v_off,
@@ -61,11 +68,18 @@ void vp8_loop_filter_mbhs_cl(MACROBLOCKD *x, cl_mem buf_base, int y_off, int u_o
 void vp8_loop_filter_mbv_cl(MACROBLOCKD *x, cl_mem buf_base, int y_off, int u_off, int v_off,
                            int y_stride, int uv_stride, cl_mem lfi_mem, int filter_level)
 {
+#if 0
     int sizes[] = { 16, 8 };
 
     vp8_mbloop_filter_vertical_edge_cl(x, buf_base, 1, &y_off, &y_stride, lfi_mem, filter_level, CL_TRUE, &sizes[0]);
     vp8_mbloop_filter_vertical_edge_cl(x, buf_base, 1, &u_off, &uv_stride, lfi_mem, filter_level, CL_TRUE, &sizes[1]);
     vp8_mbloop_filter_vertical_edge_cl(x, buf_base, 1, &v_off, &uv_stride, lfi_mem, filter_level, CL_TRUE, &sizes[1]);
+#else
+    int offsets[3] = {y_off, u_off, v_off};
+    int strides[3] = {y_stride, uv_stride, uv_stride};
+    int sizes[3] = {16, 8, 8};
+    vp8_mbloop_filter_vertical_edge_cl(x, buf_base, 3, offsets, strides, lfi_mem, filter_level, CL_TRUE, sizes);
+#endif
 }
 
 void vp8_loop_filter_mbvs_cl(MACROBLOCKD *x, cl_mem buf_base, int y_off, int u_off, int v_off,
@@ -85,8 +99,7 @@ void vp8_loop_filter_bh_cl(MACROBLOCKD *x, cl_mem buf_base, int y_off, int u_off
     int off;
     int sizes[] = { 16, 8 };
 
-
-#if 1
+#if 0
     int offsets[2] = {u_off + 4*uv_stride, v_off + 4*uv_stride};
     int strides[2] = {uv_stride, uv_stride};
     int size[2] = {8, 8};
@@ -127,18 +140,27 @@ void vp8_loop_filter_bv_cl(MACROBLOCKD *x, cl_mem buf_base, int y_off, int u_off
                           int y_stride, int uv_stride, cl_mem lfi_mem, int filter_level)
 {
     int sizes[] = { 16, 8 };
+    int off;
 
-    int off = y_off + 4;
+#if 0
+    off = y_off + 4;
     vp8_loop_filter_vertical_edge_cl(x, buf_base, 1, &off, &y_stride, lfi_mem, filter_level, CL_FALSE, &sizes[0]);
+    off = u_off + 4;
+    vp8_loop_filter_vertical_edge_cl(x, buf_base, 1, &off, &uv_stride, lfi_mem, filter_level, CL_FALSE, &sizes[1]);
+    off = v_off + 4;
+    vp8_loop_filter_vertical_edge_cl(x, buf_base, 1, &off, &uv_stride, lfi_mem, filter_level, CL_FALSE, &sizes[1]);
+#else
+    int offsets[3] = {y_off + 4, u_off + 4, v_off + 4};
+    int strides[3] = {y_stride, uv_stride, uv_stride};
+    int size[3] = {16, 8, 8};
+    vp8_loop_filter_vertical_edge_cl(x, buf_base, 3, offsets, strides, lfi_mem, filter_level, CL_FALSE, size);
+#endif
+
     off = y_off + 8;
     vp8_loop_filter_vertical_edge_cl(x, buf_base, 1, &off, &y_stride, lfi_mem, filter_level, CL_FALSE, &sizes[0]);
     off = y_off + 12;
     vp8_loop_filter_vertical_edge_cl(x, buf_base, 1, &off, &y_stride, lfi_mem, filter_level, CL_FALSE, &sizes[0]);
 
-    off = u_off + 4;
-    vp8_loop_filter_vertical_edge_cl(x, buf_base, 1, &off, &uv_stride, lfi_mem, filter_level, CL_FALSE, &sizes[1]);
-    off = v_off + 4;
-    vp8_loop_filter_vertical_edge_cl(x, buf_base, 1, &off, &uv_stride, lfi_mem, filter_level, CL_FALSE, &sizes[1]);
 }
 
 void vp8_loop_filter_bvs_cl(MACROBLOCKD *x, cl_mem buf_base, int y_off, int u_off, int v_off,
