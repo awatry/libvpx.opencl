@@ -38,7 +38,6 @@ typedef struct VP8_LOOP_MEM{
     cl_mem dc_diffs_mem;
     cl_mem rows_mem;
     cl_mem cols_mem;
-    cl_mem threads_mem;
     cl_mem threads_yuv_mem;
     cl_mem threads_y_mem;
 } VP8_LOOP_MEM;
@@ -184,7 +183,6 @@ int cl_free_loop_mem(){
     if (loop_mem.dc_diffs_mem != NULL) err |= clReleaseMemObject(loop_mem.dc_diffs_mem);
     if (loop_mem.offsets_mem != NULL) err |= clReleaseMemObject(loop_mem.offsets_mem);
     if (loop_mem.pitches_mem != NULL) err |= clReleaseMemObject(loop_mem.pitches_mem);
-    if (loop_mem.threads_mem != NULL) err |= clReleaseMemObject(loop_mem.threads_mem);
     if (loop_mem.threads_y_mem != NULL) err |= clReleaseMemObject(loop_mem.threads_y_mem);
     if (loop_mem.threads_yuv_mem != NULL) err |= clReleaseMemObject(loop_mem.threads_yuv_mem);
     if (loop_mem.rows_mem != NULL) err |= clReleaseMemObject(loop_mem.rows_mem);
@@ -192,7 +190,6 @@ int cl_free_loop_mem(){
     loop_mem.dc_diffs_mem = NULL;
     loop_mem.offsets_mem = NULL;
     loop_mem.pitches_mem = NULL;
-    loop_mem.threads_mem = NULL;
     loop_mem.threads_y_mem = NULL;
     loop_mem.threads_yuv_mem = NULL;
     loop_mem.rows_mem = NULL;
@@ -256,11 +253,6 @@ int cl_grow_loop_mem(MACROBLOCKD *mbd, YV12_BUFFER_CONFIG *post, int num_blocks,
         printf("Error creating loop filter buffer\n");
         return err;
     }
-    loop_mem.threads_mem = clCreateBuffer(cl_data.context, CL_MEM_READ_WRITE, sizeof(cl_int)*num_iter, NULL, &err);
-    if (err != CL_SUCCESS){
-        printf("Error creating loop filter buffer\n");
-        return err;
-    }
     loop_mem.threads_y_mem = clCreateBuffer(cl_data.context, CL_MEM_READ_WRITE, sizeof(cl_int)*num_blocks, NULL, &err);
     if (err != CL_SUCCESS){
         printf("Error creating loop filter buffer\n");
@@ -311,7 +303,6 @@ int cl_init_loop_filter() {
     loop_mem.dc_diffs_mem = NULL;
     loop_mem.offsets_mem = NULL;
     loop_mem.pitches_mem = NULL;
-    loop_mem.threads_mem = NULL;
     loop_mem.threads_y_mem = NULL;
     loop_mem.threads_yuv_mem = NULL;
     loop_mem.rows_mem = NULL;
