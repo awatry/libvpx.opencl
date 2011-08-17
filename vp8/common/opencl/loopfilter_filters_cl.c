@@ -58,8 +58,6 @@ static void vp8_loop_filter_cl_run(
         "Error: Failed to execute kernel!\n",
         printf("err = %d\n",err);,
     );
-
-    VP8_CL_FINISH(cq);
 }
 
 void vp8_loop_filter_horizontal_edge_cl

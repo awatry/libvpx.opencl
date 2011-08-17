@@ -124,7 +124,7 @@ extern const char *vpx_codec_lib_dir(void);
 
 #define VP8_CL_SET_BUF(cq, bufRef, bufSize, dataPtr, altPath, retCode) \
     { \
-        err = clEnqueueWriteBuffer(cq, bufRef, CL_FALSE, 0, \
+        err = clEnqueueWriteBuffer(cq, bufRef, CL_TRUE, 0, \
             bufSize, dataPtr, 0, NULL, NULL); \
         \
         VP8_CL_CHECK_SUCCESS(cq, err != CL_SUCCESS, \

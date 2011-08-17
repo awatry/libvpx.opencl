@@ -346,7 +346,31 @@ int cl_free_loop_mem(){
     return err;
 }
 
-int cl_grow_loop_mem(int num_blocks, int num_planes){
+int cl_populate_loop_mem(MACROBLOCKD *mbd, YV12_BUFFER_CONFIG *post, int num_blocks){
+    int block, err;
+
+    cl_int threads_y[sizeof(cl_int)*num_blocks];
+    cl_int threads_yuv[sizeof(cl_int)*num_blocks*3];
+    cl_int pitches[sizeof(cl_int)*num_blocks*3];
+
+    for (block = 0; block < num_blocks; block++){
+        threads_y[block] = 16;
+        threads_yuv[block * 3] = 16;
+        threads_yuv[block*3+1] = 8;
+        threads_yuv[block*3+2] = 8;
+        pitches[ block*3 ] = post->y_stride;
+        pitches[block*3+1] = post->uv_stride;
+        pitches[block*3+2] = post->uv_stride;
+    }
+
+    VP8_CL_SET_BUF(mbd->cl_commands, loop_mem.threads_y_mem, sizeof(cl_int)*num_blocks, threads_y, , err);
+    VP8_CL_SET_BUF(mbd->cl_commands, loop_mem.threads_yuv_mem, sizeof(cl_int)*3*num_blocks, threads_yuv, , err);
+    VP8_CL_SET_BUF(mbd->cl_commands, loop_mem.pitches_mem, sizeof(cl_int)*3*num_blocks, pitches, , err);
+
+    return err;
+}
+
+int cl_grow_loop_mem(MACROBLOCKD *mbd, YV12_BUFFER_CONFIG *post, int num_blocks, int num_planes){
 
     int err;
     int num_iter = num_blocks * num_planes;
@@ -403,7 +427,7 @@ int cl_grow_loop_mem(int num_blocks, int num_planes){
     loop_mem.num_blocks = num_blocks;
     loop_mem.num_planes = num_planes;
 
-    return CL_SUCCESS;
+    return cl_populate_loop_mem(mbd, post, num_blocks);
 }
 
 //Start of externally callable functions.
@@ -493,10 +517,9 @@ int vp8_loop_filter_level(MACROBLOCKD *mbd, int baseline_filter_level[] ){
 void vp8_loop_filter_macroblock_cl(int mb_row, int mb_col, int dc_diff, int y_off, int u_off, int v_off, int filter_level, VP8_COMMON *cm,
         MACROBLOCKD *mbd,  cl_mem lfi_mem, YV12_BUFFER_CONFIG *post)
 {
-    int err, ret;
     LOOPFILTERTYPE filter_type = cm->filter_type;
 
-    cl_grow_loop_mem(1, 3);
+    cl_grow_loop_mem(mbd, post, 1, 3);
 
     if (filter_type == NORMAL_LOOPFILTER){
         if (filter_level){
@@ -616,13 +639,6 @@ void vp8_loop_filter_frame_cl
     int err, priority;
 
     cl_mem lfi_mem;
-    cl_int threads[3] = {16, 8, 8};
-    cl_int strides[3] = {post->y_stride, post->uv_stride, post->uv_stride};
-    VP8_CL_CREATE_BUF(mbd->cl_commands, lfi_mem, , sizeof(loop_filter_info)*(MAX_LOOP_FILTER+1), cm->lf_info,, );
-    cl_grow_loop_mem(1, 3);
-    VP8_CL_SET_BUF(mbd->cl_commands, loop_mem.threads_y_mem, sizeof(cl_int), threads, , );
-    VP8_CL_SET_BUF(mbd->cl_commands, loop_mem.threads_yuv_mem, sizeof(cl_int)*3, threads, , );
-    VP8_CL_SET_BUF(mbd->cl_commands, loop_mem.pitches_mem, sizeof(cl_int)*3, &strides,,);
 
     mbd->mode_info_context = cm->mi; /* Point at base of Mb MODE_INFO list */
 
@@ -631,10 +647,13 @@ void vp8_loop_filter_frame_cl
 
     /* Initialize the loop filter for this frame. */
     if ((cm->last_filter_type != cm->filter_type) || (cm->last_sharpness_level != cm->sharpness_level))
-        vp8_init_loop_filter_cl(cm);
+        vp8_init_loop_filter(cm);
     else if (frame_type != cm->last_frame_type)
-        vp8_frame_init_loop_filter_cl(lfi, frame_type);
+        vp8_frame_init_loop_filter(lfi, frame_type);
 
+    VP8_CL_CREATE_BUF(mbd->cl_commands, lfi_mem, , sizeof(loop_filter_info)*(MAX_LOOP_FILTER+1), cm->lf_info,, );
+    cl_grow_loop_mem(mbd, post, 1, 3);
+    
     VP8_CL_SET_BUF(mbd->cl_commands, post->buffer_mem, post->buffer_size, post->buffer_alloc,
             vp8_loop_filter_frame(cm,mbd,default_filt_lvl),);
 
