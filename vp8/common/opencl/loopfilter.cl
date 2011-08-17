@@ -7,7 +7,6 @@ typedef signed char sc;
 __inline signed char vp8_filter_mask(sc, sc, uc, uc, uc, uc, uc, uc, uc, uc);
 __inline signed char vp8_simple_filter_mask(signed char, signed char, uc, uc, uc, uc);
 __inline signed char vp8_hevmask(signed char, uc, uc, uc, uc);
-__inline signed char vp8_signed_char_clamp(int);
 
 __inline void vp8_mbfilter(signed char mask,signed char hev,global uc *op2,
     global uc *op1,global uc *op0,global uc *oq0,global uc *oq1,global uc *oq2);
@@ -53,24 +52,25 @@ void vp8_filter(
     qs1 = (signed char) * oq1 ^ 0x80;
 
     /* add outer taps if we have high edge variance */
-    vp8_filter = vp8_signed_char_clamp(ps1 - qs1);
+    vp8_filter = clamp(ps1 - qs1, -128, 127);
+
     vp8_filter &= hev;
 
     /* inner taps */
-    vp8_filter = vp8_signed_char_clamp(vp8_filter + 3 * (qs0 - ps0));
+    vp8_filter = clamp(vp8_filter + 3 * (qs0 - ps0), -128, 127);
     vp8_filter &= mask;
 
     /* save bottom 3 bits so that we round one side +4 and the other +3
      * if it equals 4 we'll set to adjust by -1 to account for the fact
      * we'd round 3 the other way
      */
-    Filter1 = vp8_signed_char_clamp(vp8_filter + 4);
-    Filter2 = vp8_signed_char_clamp(vp8_filter + 3);
+    Filter1 = clamp(vp8_filter + 4, -128, 127);
+    Filter2 = clamp(vp8_filter + 3, -128, 127);
     Filter1 >>= 3;
     Filter2 >>= 3;
-    u = vp8_signed_char_clamp(qs0 - Filter1);
+    u = clamp(qs0 - Filter1, -128, 127);
     *oq0 = u ^ 0x80;
-    u = vp8_signed_char_clamp(ps0 + Filter2);
+    u = clamp(ps0 + Filter2, -128, 127);
     *op0 = u ^ 0x80;
     vp8_filter = Filter1;
 
@@ -79,9 +79,9 @@ void vp8_filter(
     vp8_filter >>= 1;
     vp8_filter &= ~hev;
 
-    u = vp8_signed_char_clamp(qs1 - vp8_filter);
+    u = clamp(qs1 - vp8_filter, -128, 127);
     *oq1 = u ^ 0x80;
-    u = vp8_signed_char_clamp(ps1 + vp8_filter);
+    u = clamp(ps1 + vp8_filter, -128, 127);
     *op1 = u ^ 0x80;
 }
 
@@ -401,65 +401,64 @@ __inline void vp8_mbfilter(
 )
 {
     signed char s, u;
-    signed char vp8_filter, Filter1, Filter2;
-    signed char ps2 = (signed char) * op2 ^ 0x80;
-    signed char ps1 = (signed char) * op1 ^ 0x80;
-    signed char ps0 = (signed char) * op0 ^ 0x80;
-    signed char qs0 = (signed char) * oq0 ^ 0x80;
-    signed char qs1 = (signed char) * oq1 ^ 0x80;
-    signed char qs2 = (signed char) * oq2 ^ 0x80;
+    signed char vp8_filter;
+
+    char2 filter;
+
+    char3 ps = { *op0, *op1, *op2 };
+    ps ^= 0x80;
+
+    char3 qs = { *oq0, *oq1, *oq2 };
+    qs ^= 0x80;
 
     /* add outer taps if we have high edge variance */
-    vp8_filter = vp8_signed_char_clamp(ps1 - qs1);
-    vp8_filter = vp8_signed_char_clamp(vp8_filter + 3 * (qs0 - ps0));
+    vp8_filter = clamp(ps.s1 - qs.s1, -128, 127);
+    vp8_filter = clamp(vp8_filter + 3 * (qs.s0 - ps.s0), -128, 127);
     vp8_filter &= mask;
 
-    Filter2 = vp8_filter;
-    Filter2 &= hev;
+    filter.s1 = vp8_filter;
+    filter.s1 &= hev;
+    filter.s0 = filter.s1;
+
+    //char2 rounding = { 4, 3 };
+    //filter += rounding;
+    //filter = clamp(filter, -128, 127);
+    //filter >>= 3;
 
     /* save bottom 3 bits so that we round one side +4 and the other +3 */
-    Filter1 = vp8_signed_char_clamp(Filter2 + 4);
-    Filter2 = vp8_signed_char_clamp(Filter2 + 3);
-    Filter1 >>= 3;
-    Filter2 >>= 3;
-    qs0 = vp8_signed_char_clamp(qs0 - Filter1);
-    ps0 = vp8_signed_char_clamp(ps0 + Filter2);
+    filter.s0 = clamp(filter.s0 + 4, -128, 127);
+    filter.s1 = clamp(filter.s1 + 3, -128, 127);
+    filter.s0 >>= 3;
+    filter.s1 >>= 3;
 
+    qs.s0 = clamp(qs.s0 - filter.s0, -128, 127);
+    ps.s0 = clamp(ps.s0 + filter.s1, -128, 127);
 
     /* only apply wider filter if not high edge variance */
     vp8_filter &= ~hev;
-    Filter2 = vp8_filter;
+    filter.s1 = vp8_filter;
 
     /* roughly 3/7th difference across boundary */
-    u = vp8_signed_char_clamp((63 + Filter2 * 27) >> 7);
-    s = vp8_signed_char_clamp(qs0 - u);
+    u = clamp((63 + filter.s1 * 27) >> 7, -128, 127);
+    s = clamp(qs.s0 - u, -128, 127);
     *oq0 = s ^ 0x80;
-    s = vp8_signed_char_clamp(ps0 + u);
+    s = clamp(ps.s0 + u, -128, 127);
     *op0 = s ^ 0x80;
 
     /* roughly 2/7th difference across boundary */
-    u = vp8_signed_char_clamp((63 + Filter2 * 18) >> 7);
-    s = vp8_signed_char_clamp(qs1 - u);
+    u = clamp((63 + filter.s1 * 18) >> 7, -128, 127);
+    s = clamp(qs.s1 - u, -128, 127);
     *oq1 = s ^ 0x80;
-    s = vp8_signed_char_clamp(ps1 + u);
+    s = clamp(ps.s1 + u, -128, 127);
     *op1 = s ^ 0x80;
 
     /* roughly 1/7th difference across boundary */
-    u = vp8_signed_char_clamp((63 + Filter2 * 9) >> 7);
-    s = vp8_signed_char_clamp(qs2 - u);
+    u = clamp((63 + filter.s1 * 9) >> 7, -128, 127);
+    s = clamp(qs.s2 - u, -128, 127);
     *oq2 = s ^ 0x80;
-    s = vp8_signed_char_clamp(ps2 + u);
+    s = clamp(ps.s2 + u, -128, 127);
     *op2 = s ^ 0x80;
 }
-
-
-__inline signed char vp8_signed_char_clamp(int t)
-{
-    t = (t < -128 ? -128 : t);
-    t = (t > 127 ? 127 : t);
-    return (signed char) t;
-}
-
 
 /* is there high variance internal edge ( 11111111 yes, 00000000 no) */
 __inline signed char vp8_hevmask(signed char thresh, uc p1, uc p0, uc q0, uc q1)
@@ -525,18 +524,18 @@ void vp8_simple_filter(
     signed char q1 = (signed char) * oq1 ^ 0x80;
     signed char u;
 
-    vp8_filter = vp8_signed_char_clamp(p1 - q1);
-    vp8_filter = vp8_signed_char_clamp(vp8_filter + 3 * (q0 - p0));
+    vp8_filter = clamp(p1 - q1, -128, 127);
+    vp8_filter = clamp(vp8_filter + 3 * (q0 - p0), -128, 127);
     vp8_filter &= mask;
 
     /* save bottom 3 bits so that we round one side +4 and the other +3 */
-    Filter1 = vp8_signed_char_clamp(vp8_filter + 4);
+    Filter1 = clamp(vp8_filter + 4, -128, 127);
     Filter1 >>= 3;
-    u = vp8_signed_char_clamp(q0 - Filter1);
+    u = clamp(q0 - Filter1, -128, 127);
     *oq0  = u ^ 0x80;
 
-    Filter2 = vp8_signed_char_clamp(vp8_filter + 3);
+    Filter2 = clamp(vp8_filter + 3, -128, 127);
     Filter2 >>= 3;
-    u = vp8_signed_char_clamp(p0 + Filter2);
+    u = clamp(p0 + Filter2, -128, 127);
     *op0 = u ^ 0x80;
 }
