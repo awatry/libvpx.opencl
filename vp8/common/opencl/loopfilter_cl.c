@@ -30,6 +30,19 @@ extern void vp8_loop_filter_frame
     int default_filt_lvl
 );
 
+typedef struct VP8_LOOP_MEM{
+    cl_int num_blocks;
+    cl_int num_planes;
+    cl_mem offsets_mem;
+    cl_mem pitches_mem;
+    cl_mem dc_diffs_mem;
+    cl_mem rows_mem;
+    cl_mem cols_mem;
+    cl_mem threads_mem;
+} VP8_LOOP_MEM;
+
+VP8_LOOP_MEM loop_mem;
+
 prototype_loopfilter_cl(vp8_loop_filter_horizontal_edge_cl);
 prototype_loopfilter_cl(vp8_loop_filter_vertical_edge_cl);
 prototype_loopfilter_cl(vp8_mbloop_filter_horizontal_edge_cl);
@@ -41,54 +54,58 @@ prototype_loopfilter_cl(vp8_loop_filter_simple_vertical_edge_cl);
 void vp8_loop_filter_mbh_cl(MACROBLOCKD *x, cl_mem buf_base, int y_off, int u_off, int v_off,
                             int y_stride, int uv_stride, cl_mem lfi_mem, int filter_level)
 {
-#if 0
-    int sizes[] = { 16, 8 };
-
-    vp8_mbloop_filter_horizontal_edge_cl(x, buf_base, 1, &y_off, &y_stride, lfi_mem, filter_level, CL_TRUE, &sizes[0]);
-    vp8_mbloop_filter_horizontal_edge_cl(x, buf_base, 1, &u_off, &uv_stride, lfi_mem, filter_level, CL_TRUE, &sizes[1]);
-    vp8_mbloop_filter_horizontal_edge_cl(x, buf_base, 1, &v_off, &uv_stride, lfi_mem, filter_level, CL_TRUE, &sizes[1]);
-#else
+    int err;
     int offsets[3] = {y_off, u_off, v_off};
     int strides[3] = {y_stride, uv_stride, uv_stride};
     int sizes[3] = {16, 8, 8};
-    vp8_mbloop_filter_horizontal_edge_cl(x, buf_base, 3, offsets, strides, lfi_mem, filter_level, CL_TRUE, sizes);
-#endif
+    
+    VP8_CL_SET_BUF(x->cl_commands, loop_mem.offsets_mem, loop_mem.num_planes * sizeof(cl_int), offsets,,);
+    VP8_CL_SET_BUF(x->cl_commands, loop_mem.pitches_mem, loop_mem.num_planes * sizeof(cl_int), strides,,);
+    VP8_CL_SET_BUF(x->cl_commands, loop_mem.threads_mem, loop_mem.num_planes * sizeof(cl_int), sizes,,);
+    vp8_mbloop_filter_horizontal_edge_cl(x, buf_base, 3, loop_mem.offsets_mem, loop_mem.pitches_mem, lfi_mem, filter_level, CL_TRUE, loop_mem.threads_mem, 16);
 }
 
 void vp8_loop_filter_mbhs_cl(MACROBLOCKD *x, cl_mem buf_base, int y_off, int u_off, int v_off,
                             int y_stride, int uv_stride, cl_mem lfi_mem, int filter_level)
 {
+    int err;
     int sizes[] = { 16, 8 };
     (void) uv_stride;
-    
-    vp8_loop_filter_simple_horizontal_edge_cl(x, buf_base, 1, &y_off, &y_stride, lfi_mem, filter_level, CL_TRUE, &sizes[0]);
+
+    VP8_CL_SET_BUF(x->cl_commands, loop_mem.offsets_mem, sizeof(cl_int), &y_off,,);
+    VP8_CL_SET_BUF(x->cl_commands, loop_mem.pitches_mem, sizeof(cl_int), &y_stride,,);
+    VP8_CL_SET_BUF(x->cl_commands, loop_mem.threads_mem, sizeof(cl_int), &sizes[0],,);
+
+    vp8_loop_filter_simple_horizontal_edge_cl(x, buf_base, 1, loop_mem.offsets_mem, loop_mem.pitches_mem, lfi_mem, filter_level, CL_TRUE, loop_mem.threads_mem, 16);
 }
 
 /* Vertical MB Filtering */
 void vp8_loop_filter_mbv_cl(MACROBLOCKD *x, cl_mem buf_base, int y_off, int u_off, int v_off,
                            int y_stride, int uv_stride, cl_mem lfi_mem, int filter_level)
 {
-#if 0
-    int sizes[] = { 16, 8 };
-
-    vp8_mbloop_filter_vertical_edge_cl(x, buf_base, 1, &y_off, &y_stride, lfi_mem, filter_level, CL_TRUE, &sizes[0]);
-    vp8_mbloop_filter_vertical_edge_cl(x, buf_base, 1, &u_off, &uv_stride, lfi_mem, filter_level, CL_TRUE, &sizes[1]);
-    vp8_mbloop_filter_vertical_edge_cl(x, buf_base, 1, &v_off, &uv_stride, lfi_mem, filter_level, CL_TRUE, &sizes[1]);
-#else
+    int err;
     int offsets[3] = {y_off, u_off, v_off};
     int strides[3] = {y_stride, uv_stride, uv_stride};
     int sizes[3] = {16, 8, 8};
-    vp8_mbloop_filter_vertical_edge_cl(x, buf_base, 3, offsets, strides, lfi_mem, filter_level, CL_TRUE, sizes);
-#endif
+
+    VP8_CL_SET_BUF(x->cl_commands, loop_mem.offsets_mem, loop_mem.num_planes * sizeof(cl_int), offsets,,);
+    VP8_CL_SET_BUF(x->cl_commands, loop_mem.pitches_mem, loop_mem.num_planes * sizeof(cl_int), strides,,);
+    VP8_CL_SET_BUF(x->cl_commands, loop_mem.threads_mem, loop_mem.num_planes * sizeof(cl_int), sizes,,);
+    vp8_mbloop_filter_vertical_edge_cl(x, buf_base, 3, loop_mem.offsets_mem, loop_mem.pitches_mem, lfi_mem, filter_level, CL_TRUE, loop_mem.threads_mem, 16);
 }
 
 void vp8_loop_filter_mbvs_cl(MACROBLOCKD *x, cl_mem buf_base, int y_off, int u_off, int v_off,
                             int y_stride, int uv_stride, cl_mem lfi_mem, int filter_level)
 {
+    int err;
     int sizes[] = { 16, 8 };
     (void) uv_stride;
 
-    vp8_loop_filter_simple_vertical_edge_cl(x, buf_base, 1, &y_off, &y_stride, lfi_mem, filter_level, CL_TRUE, &sizes[0]);
+    VP8_CL_SET_BUF(x->cl_commands, loop_mem.offsets_mem, sizeof(cl_int), &y_off,,);
+    VP8_CL_SET_BUF(x->cl_commands, loop_mem.pitches_mem, sizeof(cl_int), &y_stride,,);
+    VP8_CL_SET_BUF(x->cl_commands, loop_mem.threads_mem, sizeof(cl_int), &sizes[0],,);
+
+    vp8_loop_filter_simple_vertical_edge_cl(x, buf_base, 1, loop_mem.offsets_mem, loop_mem.pitches_mem, lfi_mem, filter_level, CL_TRUE, loop_mem.threads_mem, 16);
 }
 
 /* Horizontal B Filtering */
@@ -96,86 +113,107 @@ void vp8_loop_filter_bh_cl(MACROBLOCKD *x, cl_mem buf_base, int y_off, int u_off
                           int y_stride, int uv_stride, cl_mem lfi_mem, int filter_level)
 {
 
+    int err;
     int off;
     int sizes[] = { 16, 8 };
 
-#if 0
-    int offsets[2] = {u_off + 4*uv_stride, v_off + 4*uv_stride};
-    int strides[2] = {uv_stride, uv_stride};
-    int size[2] = {8, 8};
-    vp8_loop_filter_horizontal_edge_cl(x, buf_base, 2, offsets, strides, lfi_mem, filter_level, CL_FALSE, size);
-    off = y_off + 4*y_stride;
-    vp8_loop_filter_horizontal_edge_cl(x, buf_base, 1, &off, &y_stride, lfi_mem, filter_level, CL_FALSE, &sizes[0]);
-#else
     int offsets[3] = {y_off + 4*y_stride, u_off + 4*uv_stride, v_off + 4*uv_stride};
     int strides[3] = {y_stride, uv_stride, uv_stride};
     int size[3] = {16, 8, 8};
-    vp8_loop_filter_horizontal_edge_cl(x, buf_base, 3, offsets, strides, lfi_mem, filter_level, CL_FALSE, size);
-#endif
+
+    VP8_CL_SET_BUF(x->cl_commands, loop_mem.offsets_mem, loop_mem.num_planes * sizeof(cl_int), offsets,,);
+    VP8_CL_SET_BUF(x->cl_commands, loop_mem.pitches_mem, loop_mem.num_planes * sizeof(cl_int), strides,,);
+    VP8_CL_SET_BUF(x->cl_commands, loop_mem.threads_mem, loop_mem.num_planes * sizeof(cl_int), size,,);
+    vp8_loop_filter_horizontal_edge_cl(x, buf_base, 3, loop_mem.offsets_mem, loop_mem.pitches_mem, lfi_mem, filter_level, CL_FALSE, loop_mem.threads_mem, 16);
+
+    VP8_CL_SET_BUF(x->cl_commands, loop_mem.pitches_mem, sizeof(cl_int), &y_stride,,);
+    VP8_CL_SET_BUF(x->cl_commands, loop_mem.threads_mem, sizeof(cl_int), &sizes[0],,);
 
     off = y_off + 8*y_stride;
-    vp8_loop_filter_horizontal_edge_cl(x, buf_base, 1, &off, &y_stride, lfi_mem, filter_level, CL_FALSE, &sizes[0]);
+    VP8_CL_SET_BUF(x->cl_commands, loop_mem.offsets_mem, sizeof(cl_int), &off,,);
+    vp8_loop_filter_horizontal_edge_cl(x, buf_base, 1, loop_mem.offsets_mem, loop_mem.pitches_mem, lfi_mem, filter_level, CL_FALSE, loop_mem.threads_mem, 16);
+
     off = y_off + 12 * y_stride;
-    vp8_loop_filter_horizontal_edge_cl(x, buf_base, 1, &off, &y_stride, lfi_mem, filter_level, CL_FALSE, &sizes[0]);
+    VP8_CL_SET_BUF(x->cl_commands, loop_mem.offsets_mem, sizeof(cl_int), &off,,);
+    vp8_loop_filter_horizontal_edge_cl(x, buf_base, 1, loop_mem.offsets_mem, loop_mem.pitches_mem, lfi_mem, filter_level, CL_FALSE, loop_mem.threads_mem, 16);
 
 }
 
 void vp8_loop_filter_bhs_cl(MACROBLOCKD *x, cl_mem buf_base, int y_off, int u_off, int v_off,
                            int y_stride, int uv_stride, cl_mem lfi_mem, int filter_level)
 {
+    int err;
     int sizes[] = { 16, 8 };
     int off;
     (void) uv_stride;
 
+    VP8_CL_SET_BUF(x->cl_commands, loop_mem.pitches_mem, sizeof(cl_int), &y_stride,,);
+    VP8_CL_SET_BUF(x->cl_commands, loop_mem.threads_mem, sizeof(cl_int), &sizes[0],,);
+
     off = y_off + 4 * y_stride;
-    vp8_loop_filter_simple_horizontal_edge_cl(x, buf_base, 1, &off, &y_stride, lfi_mem, filter_level, CL_FALSE, &sizes[0]);
+    VP8_CL_SET_BUF(x->cl_commands, loop_mem.offsets_mem, sizeof(cl_int), &off,,);
+    vp8_loop_filter_simple_horizontal_edge_cl(x, buf_base, 1, loop_mem.offsets_mem, loop_mem.pitches_mem, lfi_mem, filter_level, CL_FALSE, loop_mem.threads_mem, 16);
+
     off = y_off + 8 * y_stride;
-    vp8_loop_filter_simple_horizontal_edge_cl(x, buf_base, 1, &off, &y_stride, lfi_mem, filter_level, CL_FALSE, &sizes[0]);
+    VP8_CL_SET_BUF(x->cl_commands, loop_mem.offsets_mem, sizeof(cl_int), &off,,);
+    vp8_loop_filter_simple_horizontal_edge_cl(x, buf_base, 1, loop_mem.offsets_mem, loop_mem.pitches_mem, lfi_mem, filter_level, CL_FALSE, loop_mem.threads_mem, 16);
+
     off = y_off + 12 * y_stride;
-    vp8_loop_filter_simple_horizontal_edge_cl(x, buf_base, 1, &off, &y_stride, lfi_mem, filter_level, CL_FALSE, &sizes[0]);
+    VP8_CL_SET_BUF(x->cl_commands, loop_mem.offsets_mem, sizeof(cl_int), &off,,);
+    vp8_loop_filter_simple_horizontal_edge_cl(x, buf_base, 1, loop_mem.offsets_mem, loop_mem.pitches_mem, lfi_mem, filter_level, CL_FALSE, loop_mem.threads_mem, 16);
 }
 
 /* Vertical B Filtering */
 void vp8_loop_filter_bv_cl(MACROBLOCKD *x, cl_mem buf_base, int y_off, int u_off, int v_off,
                           int y_stride, int uv_stride, cl_mem lfi_mem, int filter_level)
 {
+    int err;
     int sizes[] = { 16, 8 };
     int off;
 
-#if 0
-    off = y_off + 4;
-    vp8_loop_filter_vertical_edge_cl(x, buf_base, 1, &off, &y_stride, lfi_mem, filter_level, CL_FALSE, &sizes[0]);
-    off = u_off + 4;
-    vp8_loop_filter_vertical_edge_cl(x, buf_base, 1, &off, &uv_stride, lfi_mem, filter_level, CL_FALSE, &sizes[1]);
-    off = v_off + 4;
-    vp8_loop_filter_vertical_edge_cl(x, buf_base, 1, &off, &uv_stride, lfi_mem, filter_level, CL_FALSE, &sizes[1]);
-#else
     int offsets[3] = {y_off + 4, u_off + 4, v_off + 4};
     int strides[3] = {y_stride, uv_stride, uv_stride};
     int size[3] = {16, 8, 8};
-    vp8_loop_filter_vertical_edge_cl(x, buf_base, 3, offsets, strides, lfi_mem, filter_level, CL_FALSE, size);
-#endif
+    
+    VP8_CL_SET_BUF(x->cl_commands, loop_mem.offsets_mem, loop_mem.num_planes * sizeof(cl_int), offsets,,);
+    VP8_CL_SET_BUF(x->cl_commands, loop_mem.pitches_mem, loop_mem.num_planes * sizeof(cl_int), strides,,);
+    VP8_CL_SET_BUF(x->cl_commands, loop_mem.threads_mem, loop_mem.num_planes * sizeof(cl_int), size,,);
+    vp8_loop_filter_vertical_edge_cl(x, buf_base, 3, loop_mem.offsets_mem, loop_mem.pitches_mem, lfi_mem, filter_level, CL_FALSE, loop_mem.threads_mem, 16);
+
+    VP8_CL_SET_BUF(x->cl_commands, loop_mem.pitches_mem, sizeof(cl_int), &y_stride,,);
+    VP8_CL_SET_BUF(x->cl_commands, loop_mem.threads_mem, sizeof(cl_int), &sizes[0],,);
 
     off = y_off + 8;
-    vp8_loop_filter_vertical_edge_cl(x, buf_base, 1, &off, &y_stride, lfi_mem, filter_level, CL_FALSE, &sizes[0]);
-    off = y_off + 12;
-    vp8_loop_filter_vertical_edge_cl(x, buf_base, 1, &off, &y_stride, lfi_mem, filter_level, CL_FALSE, &sizes[0]);
+    VP8_CL_SET_BUF(x->cl_commands, loop_mem.offsets_mem, sizeof(cl_int), &off,,);
+    vp8_loop_filter_vertical_edge_cl(x, buf_base, 1, loop_mem.offsets_mem, loop_mem.pitches_mem, lfi_mem, filter_level, CL_FALSE, loop_mem.threads_mem, 16);
 
+    off = y_off + 12;
+    VP8_CL_SET_BUF(x->cl_commands, loop_mem.offsets_mem, sizeof(cl_int), &off,,);
+    vp8_loop_filter_vertical_edge_cl(x, buf_base, 1, loop_mem.offsets_mem, loop_mem.pitches_mem, lfi_mem, filter_level, CL_FALSE, loop_mem.threads_mem, 16);
+    
 }
 
 void vp8_loop_filter_bvs_cl(MACROBLOCKD *x, cl_mem buf_base, int y_off, int u_off, int v_off,
                            int y_stride, int uv_stride, cl_mem lfi_mem, int filter_level)
 {
+    int err;
     int sizes[] = { 16, 8 };
     int off = y_off + 4;
     (void) uv_stride;
 
+    VP8_CL_SET_BUF(x->cl_commands, loop_mem.pitches_mem, sizeof(cl_int), &y_stride,,);
+    VP8_CL_SET_BUF(x->cl_commands, loop_mem.threads_mem, sizeof(cl_int), &sizes[0],,);
+    
+    VP8_CL_SET_BUF(x->cl_commands, loop_mem.offsets_mem, sizeof(cl_int), &off,,);
+    vp8_loop_filter_simple_vertical_edge_cl(x, buf_base, 1, loop_mem.offsets_mem, loop_mem.pitches_mem, lfi_mem, filter_level, CL_FALSE, loop_mem.threads_mem, 16);
 
-    vp8_loop_filter_simple_vertical_edge_cl(x, buf_base, 1, &off, &y_stride, lfi_mem, filter_level, CL_FALSE, &sizes[0]);
     off = y_off + 8;
-    vp8_loop_filter_simple_vertical_edge_cl(x, buf_base, 1, &off, &y_stride, lfi_mem, filter_level, CL_FALSE, &sizes[0]);
+    VP8_CL_SET_BUF(x->cl_commands, loop_mem.offsets_mem, sizeof(cl_int), &off,,);
+    vp8_loop_filter_simple_vertical_edge_cl(x, buf_base, 1, loop_mem.offsets_mem, loop_mem.pitches_mem, lfi_mem, filter_level, CL_FALSE, loop_mem.threads_mem, 16);
+
     off = y_off + 12;
-    vp8_loop_filter_simple_vertical_edge_cl(x, buf_base, 1, &off, &y_stride, lfi_mem, filter_level, CL_FALSE, &sizes[0]);
+    VP8_CL_SET_BUF(x->cl_commands, loop_mem.offsets_mem, sizeof(cl_int), &off,,);
+    vp8_loop_filter_simple_vertical_edge_cl(x, buf_base, 1, loop_mem.offsets_mem, loop_mem.pitches_mem, lfi_mem, filter_level, CL_FALSE, loop_mem.threads_mem, 16);
 }
 
 void vp8_init_loop_filter_cl(VP8_COMMON *cm)
@@ -320,6 +358,76 @@ void vp8_adjust_mb_lf_value_cl(MACROBLOCKD *mbd, int *filter_level)
     }
 }
 
+int cl_free_loop_mem(){
+    int err = 0;
+    if (loop_mem.dc_diffs_mem != NULL) err |= clReleaseMemObject(loop_mem.dc_diffs_mem);
+    if (loop_mem.offsets_mem != NULL) err |= clReleaseMemObject(loop_mem.offsets_mem);
+    if (loop_mem.pitches_mem != NULL) err |= clReleaseMemObject(loop_mem.pitches_mem);
+    if (loop_mem.threads_mem != NULL) err |= clReleaseMemObject(loop_mem.threads_mem);
+    if (loop_mem.rows_mem != NULL) err |= clReleaseMemObject(loop_mem.rows_mem);
+    if (loop_mem.cols_mem != NULL) err |= clReleaseMemObject(loop_mem.cols_mem);
+    loop_mem.dc_diffs_mem = NULL;
+    loop_mem.offsets_mem = NULL;
+    loop_mem.pitches_mem = NULL;
+    loop_mem.threads_mem = NULL;
+    loop_mem.rows_mem = NULL;
+    loop_mem.cols_mem = NULL;
+
+    loop_mem.num_blocks = 0;
+    loop_mem.num_planes = 0;
+
+    return err;
+}
+
+int cl_grow_loop_mem(int num_blocks, int num_planes){
+
+    int err;
+    int num_iter = num_blocks * num_planes;
+
+    //Don't reallocate if the memory is already large enough
+    if (num_iter < loop_mem.num_blocks*loop_mem.num_planes)
+        return CL_SUCCESS;
+
+    //free all first.
+    cl_free_loop_mem();
+
+    //Now re-allocate the memory in the right size
+    loop_mem.dc_diffs_mem = clCreateBuffer(cl_data.context, CL_MEM_READ_WRITE, sizeof(cl_int)*num_iter, NULL, &err);
+    if (err != CL_SUCCESS){
+        printf("Error creating loop filter buffer\n");
+        return err;
+    }
+    loop_mem.offsets_mem = clCreateBuffer(cl_data.context, CL_MEM_READ_WRITE, sizeof(cl_int)*num_iter, NULL, &err);
+    if (err != CL_SUCCESS){
+        printf("Error creating loop filter buffer\n");
+        return err;
+    }
+    loop_mem.pitches_mem = clCreateBuffer(cl_data.context, CL_MEM_READ_WRITE, sizeof(cl_int)*num_iter, NULL, &err);
+    if (err != CL_SUCCESS){
+        printf("Error creating loop filter buffer\n");
+        return err;
+    }
+    loop_mem.threads_mem = clCreateBuffer(cl_data.context, CL_MEM_READ_WRITE, sizeof(cl_int)*num_iter, NULL, &err);
+    if (err != CL_SUCCESS){
+        printf("Error creating loop filter buffer\n");
+        return err;
+    }
+    loop_mem.rows_mem = clCreateBuffer(cl_data.context, CL_MEM_READ_WRITE, sizeof(cl_int)*num_iter, NULL, &err);
+    if (err != CL_SUCCESS){
+        printf("Error creating loop filter buffer\n");
+        return err;
+    }
+    loop_mem.cols_mem = clCreateBuffer(cl_data.context, CL_MEM_READ_WRITE, sizeof(cl_int)*num_iter, NULL, &err);
+    if (err != CL_SUCCESS){
+        printf("Error creating loop filter buffer\n");
+        return err;
+    }
+
+    loop_mem.num_blocks = num_blocks;
+    loop_mem.num_planes = num_planes;
+
+    return CL_SUCCESS;
+}
 
 //Start of externally callable functions.
 
@@ -339,6 +447,15 @@ int cl_init_loop_filter() {
     VP8_CL_CREATE_KERNEL(cl_data,loop_filter_program,vp8_loop_filter_simple_horizontal_edge_kernel,"vp8_loop_filter_simple_horizontal_edge_kernel");
     VP8_CL_CREATE_KERNEL(cl_data,loop_filter_program,vp8_loop_filter_simple_vertical_edge_kernel,"vp8_loop_filter_simple_vertical_edge_kernel");
 
+    loop_mem.num_blocks = 0;
+    loop_mem.num_planes = 0;
+    loop_mem.dc_diffs_mem = NULL;
+    loop_mem.offsets_mem = NULL;
+    loop_mem.pitches_mem = NULL;
+    loop_mem.threads_mem = NULL;
+    loop_mem.rows_mem = NULL;
+    loop_mem.cols_mem = NULL;
+
     return CL_SUCCESS;
 }
 
@@ -353,6 +470,8 @@ void cl_destroy_loop_filter(){
     VP8_CL_RELEASE_KERNEL(cl_data.vp8_mbloop_filter_vertical_edge_kernel);
     VP8_CL_RELEASE_KERNEL(cl_data.vp8_loop_filter_simple_horizontal_edge_kernel);
     VP8_CL_RELEASE_KERNEL(cl_data.vp8_loop_filter_simple_vertical_edge_kernel);
+
+    cl_free_loop_mem();
 
     cl_data.loop_filter_program = NULL;
 }
@@ -395,8 +514,10 @@ int vp8_loop_filter_level(MACROBLOCKD *mbd, int baseline_filter_level[] ){
 void vp8_loop_filter_macroblock_cl(int mb_row, int mb_col, int dc_diff, int y_off, int u_off, int v_off, int filter_level, VP8_COMMON *cm,
         MACROBLOCKD *mbd,  cl_mem lfi_mem, YV12_BUFFER_CONFIG *post)
 {
-
+    int err, ret;
     LOOPFILTERTYPE filter_type = cm->filter_type;
+
+    cl_grow_loop_mem(1, 3);
 
     if (filter_type == NORMAL_LOOPFILTER){
         if (filter_level){

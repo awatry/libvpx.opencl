@@ -27,27 +27,18 @@ static void vp8_loop_filter_cl_run(
     cl_kernel kernel,
     cl_mem buf_mem,
     int num_planes,
-    int offsets[],
-    int *pitches,
+    int num_blocks,
+    cl_mem offsets_mem,
+    cl_mem pitches_mem,
     cl_mem lfi_mem,
     int filter_level,
     int use_mbflim,
-    int *thread_counts
+    cl_mem threads_mem,
+    int max_threads
 ){
 
-    size_t global[3] = {thread_counts[0], num_planes, 1};
-    int err, i;
-
-    cl_mem offsets_mem, pitches_mem, threads_mem;
-
-    for ( i = 0 ; i < num_planes; i++){
-        if (thread_counts[i] > global[0])
-            global[0] = thread_counts[i];
-    }
-
-    VP8_CL_CREATE_BUF(cq, offsets_mem, , sizeof(cl_int)*num_planes, offsets,, );
-    VP8_CL_CREATE_BUF(cq, pitches_mem, , sizeof(cl_int)*num_planes, pitches,, );
-    VP8_CL_CREATE_BUF(cq, threads_mem, , sizeof(cl_int)*num_planes, thread_counts,, );
+    size_t global[3] = {max_threads, num_planes, num_blocks};
+    int err;
 
     err = 0;
     err = clSetKernelArg(kernel, 0, sizeof (cl_mem), &buf_mem);
@@ -69,11 +60,6 @@ static void vp8_loop_filter_cl_run(
     );
 
     VP8_CL_FINISH(cq);
-    clReleaseMemObject(offsets_mem);
-    clReleaseMemObject(pitches_mem);
-    clReleaseMemObject(threads_mem);
-    //VP8_CL_FINISH(cq);
-
 }
 
 void vp8_loop_filter_horizontal_edge_cl
@@ -81,17 +67,18 @@ void vp8_loop_filter_horizontal_edge_cl
     MACROBLOCKD *x,
     cl_mem s_base,
     int num_planes,
-    int s_off[],
-    int p[], /* pitch */
+    cl_mem offsets_mem,
+    cl_mem pitches_mem, /* pitch */
     cl_mem lfi_mem,
     int filter_level,
     int use_mbflim,
-    int count[]
+    cl_mem threads_mem,
+    int max_threads
 )
 {
     vp8_loop_filter_cl_run(x->cl_commands,
-        cl_data.vp8_loop_filter_horizontal_edge_kernel, s_base, num_planes, s_off,
-        p, lfi_mem, filter_level, use_mbflim, count
+        cl_data.vp8_loop_filter_horizontal_edge_kernel, s_base, num_planes, 1, offsets_mem,
+        pitches_mem, lfi_mem, filter_level, use_mbflim, threads_mem, max_threads
     );
 }
 
@@ -100,17 +87,18 @@ void vp8_loop_filter_vertical_edge_cl
     MACROBLOCKD *x,
     cl_mem s_base,
     int num_planes,
-    int s_off[],
-    int p[],
+    cl_mem offsets_mem,
+    cl_mem pitches_mem,
     cl_mem lfi_mem,
     int filter_level,
     int use_mbflim,
-    int count[]
+    cl_mem threads_mem,
+    int max_threads
 )
 {
     vp8_loop_filter_cl_run(x->cl_commands,
-        cl_data.vp8_loop_filter_vertical_edge_kernel, s_base, num_planes, s_off,
-        p, lfi_mem, filter_level, use_mbflim, count
+        cl_data.vp8_loop_filter_vertical_edge_kernel, s_base, num_planes, 1, offsets_mem,
+        pitches_mem, lfi_mem, filter_level, use_mbflim, threads_mem, max_threads
     );
 }
 
@@ -119,17 +107,18 @@ void vp8_mbloop_filter_horizontal_edge_cl
     MACROBLOCKD *x,
     cl_mem s_base,
     int num_planes,
-    int s_off[],
-    int p[],
+    cl_mem offsets_mem,
+    cl_mem pitches_mem,
     cl_mem lfi_mem,
     int filter_level,
     int use_mbflim,
-    int count[]
+    cl_mem threads_mem,
+    int max_threads
 )
 {
     vp8_loop_filter_cl_run(x->cl_commands,
-        cl_data.vp8_mbloop_filter_horizontal_edge_kernel, s_base, num_planes, s_off,
-        p, lfi_mem, filter_level, use_mbflim, count
+        cl_data.vp8_mbloop_filter_horizontal_edge_kernel, s_base, num_planes, 1, offsets_mem,
+        pitches_mem, lfi_mem, filter_level, use_mbflim, threads_mem, max_threads
     );
 }
 
@@ -139,17 +128,18 @@ void vp8_mbloop_filter_vertical_edge_cl
     MACROBLOCKD *x,
     cl_mem s_base,
     int num_planes,
-    int s_off[],
-    int p[],
+    cl_mem offsets_mem,
+    cl_mem pitches_mem,
     cl_mem lfi_mem,
     int filter_level,
     int use_mbflim,
-    int count[]
+    cl_mem threads_mem,
+    int max_threads
 )
 {
     vp8_loop_filter_cl_run(x->cl_commands,
-        cl_data.vp8_mbloop_filter_vertical_edge_kernel, s_base, num_planes, s_off,
-        p, lfi_mem, filter_level, use_mbflim, count
+        cl_data.vp8_mbloop_filter_vertical_edge_kernel, s_base, num_planes, 1, offsets_mem,
+        pitches_mem, lfi_mem, filter_level, use_mbflim, threads_mem, max_threads
     );
 }
 
@@ -158,17 +148,18 @@ void vp8_loop_filter_simple_horizontal_edge_cl
     MACROBLOCKD *x,
     cl_mem s_base,
     int num_planes,
-    int s_off[],
-    int p[],
+    cl_mem offsets_mem,
+    cl_mem pitches_mem,
     cl_mem lfi_mem,
     int filter_level,
     int use_mbflim,
-    int count[]
+    cl_mem threads_mem,
+    int max_threads
 )
 {
     vp8_loop_filter_cl_run(x->cl_commands,
-        cl_data.vp8_loop_filter_simple_horizontal_edge_kernel, s_base, num_planes, s_off,
-        p, lfi_mem, filter_level, use_mbflim, count
+        cl_data.vp8_loop_filter_simple_horizontal_edge_kernel, s_base, num_planes, 1, offsets_mem,
+        pitches_mem, lfi_mem, filter_level, use_mbflim, threads_mem, max_threads
     );
 }
 
@@ -177,16 +168,17 @@ void vp8_loop_filter_simple_vertical_edge_cl
     MACROBLOCKD *x,
     cl_mem s_base,
     int num_planes,
-    int s_off[],
-    int p[],
+    cl_mem offsets_mem,
+    cl_mem pitches_mem,
     cl_mem lfi_mem,
     int filter_level,
     int use_mbflim,
-    int count[]
+    cl_mem threads_mem,
+    int max_threads
 )
 {
     vp8_loop_filter_cl_run(x->cl_commands,
-        cl_data.vp8_loop_filter_simple_vertical_edge_kernel, s_base, num_planes, s_off,
-        p, lfi_mem, filter_level, use_mbflim, count
+        cl_data.vp8_loop_filter_simple_vertical_edge_kernel, s_base, num_planes, 1, offsets_mem,
+        pitches_mem, lfi_mem, filter_level, use_mbflim, threads_mem, max_threads
     );
 }
