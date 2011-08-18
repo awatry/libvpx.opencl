@@ -35,11 +35,12 @@ typedef struct VP8_LOOP_MEM{
     cl_int num_planes;
     cl_mem offsets_mem;
     cl_mem pitches_mem;
+    cl_mem threads_yuv_mem;
+    cl_mem threads_y_mem;
+    cl_mem filter_levels_mem;
     cl_mem dc_diffs_mem;
     cl_mem rows_mem;
     cl_mem cols_mem;
-    cl_mem threads_yuv_mem;
-    cl_mem threads_y_mem;
 } VP8_LOOP_MEM;
 
 VP8_LOOP_MEM loop_mem;
@@ -240,6 +241,7 @@ int cl_free_loop_mem(){
     if (loop_mem.threads_yuv_mem != NULL) err |= clReleaseMemObject(loop_mem.threads_yuv_mem);
     if (loop_mem.rows_mem != NULL) err |= clReleaseMemObject(loop_mem.rows_mem);
     if (loop_mem.cols_mem != NULL) err |= clReleaseMemObject(loop_mem.cols_mem);
+    if (loop_mem.filter_levels_mem != NULL) err |= clReleaseMemObject(loop_mem.filter_levels_mem);
     loop_mem.dc_diffs_mem = NULL;
     loop_mem.offsets_mem = NULL;
     loop_mem.pitches_mem = NULL;
@@ -247,6 +249,7 @@ int cl_free_loop_mem(){
     loop_mem.threads_yuv_mem = NULL;
     loop_mem.rows_mem = NULL;
     loop_mem.cols_mem = NULL;
+    loop_mem.filter_levels_mem = NULL;
 
     loop_mem.num_blocks = 0;
     loop_mem.num_planes = 0;
@@ -327,6 +330,11 @@ int cl_grow_loop_mem(MACROBLOCKD *mbd, YV12_BUFFER_CONFIG *post, int num_blocks)
         printf("Error creating loop filter buffer\n");
         return err;
     }
+    loop_mem.filter_levels_mem = clCreateBuffer(cl_data.context, CL_MEM_READ_WRITE, sizeof(cl_int)*num_blocks, NULL, &err);
+    if (err != CL_SUCCESS){
+        printf("Error creating loop filter buffer\n");
+        return err;
+    }
 
     loop_mem.num_blocks = num_blocks;
     loop_mem.num_planes = num_planes;
@@ -361,6 +369,7 @@ int cl_init_loop_filter() {
     loop_mem.threads_yuv_mem = NULL;
     loop_mem.rows_mem = NULL;
     loop_mem.cols_mem = NULL;
+    loop_mem.filter_levels_mem = NULL;
 
     return CL_SUCCESS;
 }
@@ -430,20 +439,27 @@ void vp8_loop_filter_macroblocks_cl(int num_blocks, int mb_rows[], int mb_cols[]
     }
 
     //Set the rows, cols, and dc_diffs buffers
-    //printf("loop_mem.dc_diffs_mem = %p, dc_diffs = %p\n", loop_mem.dc_diffs_mem, dc_diffs);
     VP8_CL_SET_BUF(mbd->cl_commands, loop_mem.dc_diffs_mem, sizeof(cl_int)*num_blocks, dc_diffs,,)
     VP8_CL_SET_BUF(mbd->cl_commands, loop_mem.cols_mem, sizeof(cl_int)*num_blocks, mb_cols,,)
     VP8_CL_SET_BUF(mbd->cl_commands, loop_mem.rows_mem, sizeof(cl_int)*num_blocks, mb_rows,,)
+    VP8_CL_SET_BUF(mbd->cl_commands, loop_mem.filter_levels_mem, sizeof(cl_int)*num_blocks, filter_levels,,)
 
     for (i = 0; i < num_blocks; i++){
         int mb_row, mb_col, dc_diff, y_off, u_off, v_off, filter_level;
+
+        //printf("Temporarily setting 1 block loop_mem buffers\n");
+        VP8_CL_SET_BUF(mbd->cl_commands, loop_mem.dc_diffs_mem, sizeof(cl_int), &dc_diffs[i],,)
+        VP8_CL_SET_BUF(mbd->cl_commands, loop_mem.cols_mem, sizeof(cl_int), &mb_cols[i],,)
+        VP8_CL_SET_BUF(mbd->cl_commands, loop_mem.rows_mem, sizeof(cl_int), &mb_rows[i],,)
+        VP8_CL_SET_BUF(mbd->cl_commands, loop_mem.filter_levels_mem, sizeof(cl_int), &filter_levels[i],,)
+
         mb_row = mb_rows[i];
         mb_col = mb_cols[i];
         dc_diff = dc_diffs[i];
+        filter_level = filter_levels[i];
         y_off = y_offsets[i];
         u_off = u_offsets[i];
         v_off = v_offsets[i];
-        filter_level = filter_levels[i];
 
         if (filter_type == NORMAL_LOOPFILTER){
             if (filter_level){
