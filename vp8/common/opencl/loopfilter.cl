@@ -108,7 +108,7 @@ kernel void vp8_loop_filter_horizontal_edge_kernel
                 int filter_level = filter_levels[block];
                 if (filter_level){
                     int p = pitches[plane];
-                    int s_off = offsets[block*get_global_size(2)+plane];
+                    int s_off = offsets[block*get_global_size(1)+plane];
                     int  hev = 0; /* high edge variance */
                     signed char mask = 0;
                     size_t i = get_global_id(0);
@@ -168,8 +168,7 @@ kernel void vp8_loop_filter_vertical_edge_kernel
                 int filter_level = filter_levels[block];
                 if (filter_level){
                     int p = pitches[plane];
-                    int s_off = offsets[block*get_global_size(2)+plane];
-
+                    int s_off = offsets[block*get_global_size(1)+plane];
                     int  hev = 0; /* high edge variance */
                     signed char mask = 0;
                     size_t i= get_global_id(0);
@@ -228,7 +227,7 @@ kernel void vp8_mbloop_filter_horizontal_edge_kernel
                 int filter_level = filter_levels[block];
                 if (filter_level){
                     int p = pitches[plane];
-                    int s_off = offsets[block*get_global_size(2)+plane];
+                    int s_off = offsets[block*get_global_size(1)+plane];
 
                     global uc *s = s_base+s_off;
 
@@ -290,7 +289,7 @@ kernel void vp8_mbloop_filter_vertical_edge_kernel
                 int filter_level = filter_levels[block];
                 if (filter_level){
                     int p = pitches[plane];
-                    int s_off = offsets[block*get_global_size(2)+plane];
+                    int s_off = offsets[block*get_global_size(1)+plane];
 
                     global uc *s = s_base + s_off;
 
@@ -350,7 +349,7 @@ kernel void vp8_loop_filter_simple_horizontal_edge_kernel
                 int filter_level = filter_levels[block];
                 if (filter_level){
                     int p = pitches[plane];
-                    int s_off = offsets[block*get_global_size(2)+plane];
+                    int s_off = offsets[block*get_global_size(1)+plane];
 
                     signed char mask = 0;
                     size_t i= get_global_id(0);
@@ -400,7 +399,7 @@ kernel void vp8_loop_filter_simple_vertical_edge_kernel
                 int filter_level = filter_levels[block];
                 if (filter_level){
                     int p = pitches[plane];
-                    int s_off = offsets[block*get_global_size(2)+plane];
+                    int s_off = offsets[block*get_global_size(1)+plane];
 
                     signed char mask = 0;
                     size_t i= get_global_id(0);
