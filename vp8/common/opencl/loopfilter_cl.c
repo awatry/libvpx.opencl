@@ -73,7 +73,6 @@ void vp8_loop_filter_mbhs_cl(MACROBLOCKD *x, cl_mem buf_base, int num_blocks, in
                             int y_stride, int uv_stride, cl_mem lfi_mem, int filter_level, int apply_filter)
 {
     int err;
-    (void) uv_stride;
 
     int offsets[num_blocks], block;
     for( block = 0; block < num_blocks; block++){
@@ -105,7 +104,6 @@ void vp8_loop_filter_mbvs_cl(MACROBLOCKD *x, cl_mem buf_base, int num_blocks, in
                             int y_stride, int uv_stride, cl_mem lfi_mem, int filter_level, int apply_filter)
 {
     int err;
-    (void) uv_stride;
 
     int offsets[num_blocks], block;
     for( block = 0; block < num_blocks; block++){
@@ -152,7 +150,6 @@ void vp8_loop_filter_bhs_cl(MACROBLOCKD *x, cl_mem buf_base, int num_blocks, int
 {
     int err;
     int block;
-    (void) uv_stride;
 
     int offsets[num_blocks];
     for( block = 0; block < num_blocks; block++){
@@ -209,7 +206,6 @@ void vp8_loop_filter_bvs_cl(MACROBLOCKD *x, cl_mem buf_base, int num_blocks, int
                            int y_stride, int uv_stride, cl_mem lfi_mem, int filter_level, int apply_filter)
 {
     int err;
-    (void) uv_stride;
 
     int block;
     int offsets[num_blocks];
