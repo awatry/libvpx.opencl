@@ -94,46 +94,50 @@ kernel void vp8_loop_filter_horizontal_edge_kernel
     global loop_filter_info *lfi,
     int filter_level,
     int use_mbflim,
-    global int *threads
+    global int *threads,
+    int apply_filter
 )
 {
-    size_t plane = get_global_id(1);
-#ifdef cl_amd_printf
-    //printf("num_dimensions = %d\tmax_plane = %d\tplane = %d\t thread = %d\n", get_work_dim(), get_global_size(1), plane, get_global_id(0));
-#endif
-    if (plane < get_global_size(1)){
-        int p = pitches[plane];
-        int s_off = offsets[plane];
-        int  hev = 0; /* high edge variance */
-        signed char mask = 0;
-        size_t i = get_global_id(0);
+    if (apply_filter > 0){
+        size_t plane = get_global_id(1);
 
-        global signed char *limit, *flimit, *thresh;
-        global loop_filter_info *lf_info;
+        if (plane < get_global_size(1)){
+            size_t block = get_global_id(2);
+            if (block < get_global_size(2)){
+                int p = pitches[plane];
+                int s_off = offsets[block*get_global_size(2)+plane];
+                int  hev = 0; /* high edge variance */
+                signed char mask = 0;
+                size_t i = get_global_id(0);
 
-        if (i < threads[plane]){
-            lf_info = &lfi[filter_level];
-            if (use_mbflim == 0){
-                flimit = lf_info->flim;
-            } else {
-                flimit = lf_info->mbflim;
+                global signed char *limit, *flimit, *thresh;
+                global loop_filter_info *lf_info;
+
+                if (i < threads[plane]){
+                    lf_info = &lfi[filter_level];
+                    if (use_mbflim == 0){
+                        flimit = lf_info->flim;
+                    } else {
+                        flimit = lf_info->mbflim;
+                    }
+
+                    limit = lf_info->lim;
+                    thresh = lf_info->thr;
+
+                    s_off += i;
+
+                    mask = vp8_filter_mask(limit[i], flimit[i], s_base[s_off - 4*p],
+                            s_base[s_off - 3*p], s_base[s_off - 2*p], s_base[s_off - p],
+                            s_base[s_off], s_base[s_off + p], s_base[s_off + 2*p],
+                            s_base[s_off + 3*p]);
+
+                    hev = vp8_hevmask(thresh[i], s_base[s_off - 2*p], s_base[s_off - p],
+                            s_base[s_off], s_base[s_off+p]);
+
+                    vp8_filter(mask, hev, s_base, s_off - 2 * p, s_off - p, s_off,
+                            s_off + p);
+                }
             }
-
-            limit = lf_info->lim;
-            thresh = lf_info->thr;
-
-            s_off += i;
-
-            mask = vp8_filter_mask(limit[i], flimit[i], s_base[s_off - 4*p],
-                    s_base[s_off - 3*p], s_base[s_off - 2*p], s_base[s_off - p],
-                    s_base[s_off], s_base[s_off + p], s_base[s_off + 2*p],
-                    s_base[s_off + 3*p]);
-
-            hev = vp8_hevmask(thresh[i], s_base[s_off - 2*p], s_base[s_off - p],
-                    s_base[s_off], s_base[s_off+p]);
-
-            vp8_filter(mask, hev, s_base, s_off - 2 * p, s_off - p, s_off,
-                    s_off + p);
         }
     }
 }
@@ -147,46 +151,50 @@ kernel void vp8_loop_filter_vertical_edge_kernel
     global loop_filter_info *lfi,
     int filter_level,
     int use_mbflim,
-    global int *threads
+    global int *threads,
+    int apply_filter
 )
 {
-    size_t plane = get_global_id(1);
-#ifdef cl_amd_printf
-    //printf("num_dimensions = %d\tmax_plane = %d\tplane = %d\t thread = %d\n", get_work_dim(), get_global_size(1), plane, get_global_id(0));
-#endif
-    if (plane < get_global_size(1)){
-        int p = pitches[plane];
-        int s_off = offsets[plane];
+    if (apply_filter > 0){
+        size_t plane = get_global_id(1);
 
-        int  hev = 0; /* high edge variance */
-        signed char mask = 0;
-        size_t i= get_global_id(0);
+        if (plane < get_global_size(1)){
+            size_t block = get_global_id(2);
+            if (block < get_global_size(2)){
+                int p = pitches[plane];
+                int s_off = offsets[block*get_global_size(2)+plane];
 
-        global signed char *limit, *flimit, *thresh;
-        global loop_filter_info *lf_info;
+                int  hev = 0; /* high edge variance */
+                signed char mask = 0;
+                size_t i= get_global_id(0);
 
-        if (i < threads[plane]){
-            lf_info = &lfi[filter_level];
-            if (use_mbflim == 0){
-                flimit = lf_info->flim;
-            } else {
-                flimit = lf_info->mbflim;
+                global signed char *limit, *flimit, *thresh;
+                global loop_filter_info *lf_info;
+
+                if (i < threads[plane]){
+                    lf_info = &lfi[filter_level];
+                    if (use_mbflim == 0){
+                        flimit = lf_info->flim;
+                    } else {
+                        flimit = lf_info->mbflim;
+                    }
+
+                    limit = lf_info->lim;
+                    thresh = lf_info->thr;
+
+                    s_off += p * i;
+                    mask = vp8_filter_mask(limit[i], flimit[i],
+                            s_base[s_off-4], s_base[s_off-3], s_base[s_off-2],
+                            s_base[s_off-1], s_base[s_off], s_base[s_off+1],
+                            s_base[s_off+2], s_base[s_off+3]);
+
+                    hev = vp8_hevmask(thresh[i], s_base[s_off-2], s_base[s_off-1],
+                            s_base[s_off], s_base[s_off+1]);
+
+                    vp8_filter(mask, hev, s_base, s_off - 2, s_off - 1, s_off, s_off + 1);
+
+                }
             }
-
-            limit = lf_info->lim;
-            thresh = lf_info->thr;
-
-            s_off += p * i;
-            mask = vp8_filter_mask(limit[i], flimit[i],
-                    s_base[s_off-4], s_base[s_off-3], s_base[s_off-2],
-                    s_base[s_off-1], s_base[s_off], s_base[s_off+1],
-                    s_base[s_off+2], s_base[s_off+3]);
-
-            hev = vp8_hevmask(thresh[i], s_base[s_off-2], s_base[s_off-1],
-                    s_base[s_off], s_base[s_off+1]);
-
-            vp8_filter(mask, hev, s_base, s_off - 2, s_off - 1, s_off, s_off + 1);
-
         }
     }
 }
@@ -200,48 +208,52 @@ kernel void vp8_mbloop_filter_horizontal_edge_kernel
     global loop_filter_info *lfi,
     int filter_level,
     int use_mbflim,
-    global int *threads
+    global int *threads,
+    int apply_filter
 )
 {
-    size_t plane = get_global_id(1);
-#ifdef cl_amd_printf
-    //printf("num_dimensions = %d\tmax_plane = %d\tplane = %d\tthread = %d\n", get_work_dim(), get_global_size(1), plane, get_global_id(0));
-#endif
-    if (plane < get_global_size(1)){
-        int p = pitches[plane];
-        int s_off = offsets[plane];
+    if (apply_filter > 0){
+        size_t plane = get_global_id(1);
 
-        global uc *s = s_base+s_off;
+        if (plane < get_global_size(1)){
+            size_t block = get_global_id(2);
+            if (block < get_global_size(2)){
+                int p = pitches[plane];
+                int s_off = offsets[block*get_global_size(2)+plane];
 
-        signed char hev = 0; /* high edge variance */
-        signed char mask = 0;
-        size_t i= get_global_id(0);
+                global uc *s = s_base+s_off;
 
-        global signed char *limit, *flimit, *thresh;
-        global loop_filter_info *lf_info;
+                signed char hev = 0; /* high edge variance */
+                signed char mask = 0;
+                size_t i= get_global_id(0);
 
-        if (i < threads[plane]){
-            lf_info = &lfi[filter_level];
-            if (use_mbflim == 0){
-                flimit = lf_info->flim;
-            } else {
-                flimit = lf_info->mbflim;
+                global signed char *limit, *flimit, *thresh;
+                global loop_filter_info *lf_info;
+
+                if (i < threads[plane]){
+                    lf_info = &lfi[filter_level];
+                    if (use_mbflim == 0){
+                        flimit = lf_info->flim;
+                    } else {
+                        flimit = lf_info->mbflim;
+                    }
+
+                    limit = lf_info->lim;
+                    thresh = lf_info->thr;
+
+
+                    s += i;
+
+                    mask = vp8_filter_mask(limit[i], flimit[i],
+                                           s[-4*p], s[-3*p], s[-2*p], s[-1*p],
+                                           s[0*p], s[1*p], s[2*p], s[3*p]);
+
+                    hev = vp8_hevmask(thresh[i], s[-2*p], s[-1*p], s[0*p], s[1*p]);
+
+                    vp8_mbfilter(mask, hev, s - 3 * p, s - 2 * p, s - 1 * p, s, s + 1 * p, s + 2 * p);
+
+                }
             }
-
-            limit = lf_info->lim;
-            thresh = lf_info->thr;
-
-
-            s += i;
-
-            mask = vp8_filter_mask(limit[i], flimit[i],
-                                   s[-4*p], s[-3*p], s[-2*p], s[-1*p],
-                                   s[0*p], s[1*p], s[2*p], s[3*p]);
-
-            hev = vp8_hevmask(thresh[i], s[-2*p], s[-1*p], s[0*p], s[1*p]);
-
-            vp8_mbfilter(mask, hev, s - 3 * p, s - 2 * p, s - 1 * p, s, s + 1 * p, s + 2 * p);
-
         }
     }
 }
@@ -255,46 +267,51 @@ kernel void vp8_mbloop_filter_vertical_edge_kernel
     global loop_filter_info *lfi,
     int filter_level,
     int use_mbflim,
-    global int *threads
+    global int *threads,
+    int apply_filter
 )
 {
-    size_t plane = get_global_id(1);
-#ifdef cl_amd_printf
-    //printf("num_dimensions = %d\tmax_plane = %d\tplane = %d\t thread = %d\n", get_work_dim(), get_global_size(1), plane, get_global_id(0));
-#endif
-    if (plane < get_global_size(1)){
-        int p = pitches[plane];
-        int s_off = offsets[plane];
 
-        global uc *s = s_base + s_off;
+    if (apply_filter > 0){
+        size_t plane = get_global_id(1);
 
-        signed char hev = 0; /* high edge variance */
-        signed char mask = 0;
-        size_t i= get_global_id(0);
+        if (plane < get_global_size(1)){
+            size_t block = get_global_id(2);
+            if (block < get_global_size(2)){
+                int p = pitches[plane];
+                int s_off = offsets[block*get_global_size(2)+plane];
 
-        global signed char *limit, *flimit, *thresh;
-        global loop_filter_info *lf_info;
+                global uc *s = s_base + s_off;
 
-        if (i < threads[plane]){
-            lf_info = &lfi[filter_level];
-            if (use_mbflim == 0){
-                flimit = lf_info->flim;
-            } else {
-                flimit = lf_info->mbflim;
+                signed char hev = 0; /* high edge variance */
+                signed char mask = 0;
+                size_t i= get_global_id(0);
+
+                global signed char *limit, *flimit, *thresh;
+                global loop_filter_info *lf_info;
+
+                if (i < threads[plane]){
+                    lf_info = &lfi[filter_level];
+                    if (use_mbflim == 0){
+                        flimit = lf_info->flim;
+                    } else {
+                        flimit = lf_info->mbflim;
+                    }
+
+                    limit = lf_info->lim;
+                    thresh = lf_info->thr;
+
+                    s += p * i;
+
+                    mask = vp8_filter_mask(limit[i], flimit[i],
+                                           s[-4], s[-3], s[-2], s[-1], s[0], s[1], s[2], s[3]);
+
+                    hev = vp8_hevmask(thresh[i], s[-2], s[-1], s[0], s[1]);
+
+                    vp8_mbfilter(mask, hev, s - 3, s - 2, s - 1, s, s + 1, s + 2);
+
+                }
             }
-
-            limit = lf_info->lim;
-            thresh = lf_info->thr;
-
-            s += p * i;
-
-            mask = vp8_filter_mask(limit[i], flimit[i],
-                                   s[-4], s[-3], s[-2], s[-1], s[0], s[1], s[2], s[3]);
-
-            hev = vp8_hevmask(thresh[i], s[-2], s[-1], s[0], s[1]);
-
-            vp8_mbfilter(mask, hev, s - 3, s - 2, s - 1, s, s + 1, s + 2);
-
         }
     }
 }
@@ -308,36 +325,41 @@ kernel void vp8_loop_filter_simple_horizontal_edge_kernel
     global loop_filter_info *lfi,
     int filter_level,
     int use_mbflim,
-    global int *threads
+    global int *threads,
+    int apply_filter
 )
 {
-    size_t plane = get_global_id(1);
-#ifdef cl_amd_printf
-    //printf("num_dimensions = %d\tmax_plane = %d\tplane = %d\t thread = %d\n", get_work_dim(), get_global_size(1), plane, get_global_id(0));
-#endif
-    if (plane < get_global_size(1)){
-        int p = pitches[plane];
-        int s_off = offsets[plane];
 
-        signed char mask = 0;
-        size_t i= get_global_id(0);
+    if (apply_filter > 0){
+        size_t plane = get_global_id(1);
 
-        global signed char *limit, *flimit;
-        global loop_filter_info *lf_info;
+        if (plane < get_global_size(1)){
+            size_t block = get_global_id(2);
+            if (block < get_global_size(2)){
+                int p = pitches[plane];
+                int s_off = offsets[block*get_global_size(2)+plane];
 
-        if (i < threads[plane]){
-            lf_info = &lfi[filter_level];
-            if (use_mbflim == 0){
-                flimit = lf_info->flim;
-            } else {
-                flimit = lf_info->mbflim;
+                signed char mask = 0;
+                size_t i= get_global_id(0);
+
+                global signed char *limit, *flimit;
+                global loop_filter_info *lf_info;
+
+                if (i < threads[plane]){
+                    lf_info = &lfi[filter_level];
+                    if (use_mbflim == 0){
+                        flimit = lf_info->flim;
+                    } else {
+                        flimit = lf_info->mbflim;
+                    }
+
+                    limit = lf_info->lim;
+
+                    s_off += i;
+                    mask = vp8_simple_filter_mask(limit[i], flimit[i], s_base[s_off-2*p], s_base[s_off-p], s_base[s_off], s_base[s_off+p]);
+                    vp8_simple_filter(mask, s_base, s_off - 2 * p, s_off - 1 * p, s_off, s_off + 1 * p);
+                }
             }
-
-            limit = lf_info->lim;
-
-            s_off += i;
-            mask = vp8_simple_filter_mask(limit[i], flimit[i], s_base[s_off-2*p], s_base[s_off-p], s_base[s_off], s_base[s_off+p]);
-            vp8_simple_filter(mask, s_base, s_off - 2 * p, s_off - 1 * p, s_off, s_off + 1 * p);
         }
     }
 }
@@ -346,41 +368,45 @@ kernel void vp8_loop_filter_simple_horizontal_edge_kernel
 kernel void vp8_loop_filter_simple_vertical_edge_kernel
 (
     global unsigned char *s_base,
-    global int *offsets,
-    global int *pitches,
-    global loop_filter_info *lfi,
-    int filter_level,
-    int use_mbflim,
-    global int *threads
+    global int *offsets, /* Y or YUV offsets for EACH block being processed*/
+    global int *pitches, /* 1 or 3 values for Y or YUV pitches*/
+    global loop_filter_info *lfi, /* Single struct for the frame */
+    int filter_level, /* Filter level for each block being processed */
+    int use_mbflim, /* Use lfi->flim or lfi->mbflim, need once per kernel call */
+    global int *threads, /* Thread counts per plane */
+    int apply_filter /* Should the filter be applied (per block) */
 )
 {
-    size_t plane = get_global_id(1);
-#ifdef cl_amd_printf
-    //printf("num_dimensions = %d\tmax_plane = %d\tplane = %d\t thread = %d\n", get_work_dim(), get_global_size(1), plane, get_global_id(0));
-#endif
-    if (plane < get_global_size(1)){
-        int p = pitches[plane];
-        int s_off = offsets[plane];
+    if (apply_filter > 0){
+        size_t plane = get_global_id(1);
 
-        signed char mask = 0;
-        size_t i= get_global_id(0);
+        if (plane < get_global_size(1)){
+            size_t block = get_global_id(2);
+            if (block < get_global_size(2)){
+                int p = pitches[plane];
+                int s_off = offsets[block*get_global_size(2)+plane];
 
-        global signed char *limit, *flimit;
-        global loop_filter_info *lf_info;
+                signed char mask = 0;
+                size_t i= get_global_id(0);
 
-        if (i < threads[plane]){
-            lf_info = &lfi[filter_level];
-            if (use_mbflim == 0){
-                flimit = lf_info->flim;
-            } else {
-                flimit = lf_info->mbflim;
+                global signed char *limit, *flimit;
+                global loop_filter_info *lf_info;
+
+                if (i < threads[plane]){
+                    lf_info = &lfi[filter_level];
+                    if (use_mbflim == 0){
+                        flimit = lf_info->flim;
+                    } else {
+                        flimit = lf_info->mbflim;
+                    }
+
+                    limit = lf_info->lim;
+
+                    s_off += p * i;
+                    mask = vp8_simple_filter_mask(limit[i], flimit[i], s_base[s_off-2], s_base[s_off-1], s_base[s_off], s_base[s_off+1]);
+                    vp8_simple_filter(mask, s_base, s_off - 2, s_off - 1, s_off, s_off + 1);
+                }
             }
-
-            limit = lf_info->lim;
-
-            s_off += p * i;
-            mask = vp8_simple_filter_mask(limit[i], flimit[i], s_base[s_off-2], s_base[s_off-1], s_base[s_off], s_base[s_off+1]);
-            vp8_simple_filter(mask, s_base, s_off - 2, s_off - 1, s_off, s_off + 1);
         }
     }
 }

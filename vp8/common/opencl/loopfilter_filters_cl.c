@@ -34,7 +34,8 @@ static void vp8_loop_filter_cl_run(
     int filter_level,
     int use_mbflim,
     cl_mem threads_mem,
-    int max_threads
+    int max_threads,
+    int apply_filter
 ){
 
     size_t global[3] = {max_threads, num_planes, num_blocks};
@@ -48,6 +49,7 @@ static void vp8_loop_filter_cl_run(
     err |= clSetKernelArg(kernel, 4, sizeof (cl_int), &filter_level);
     err |= clSetKernelArg(kernel, 5, sizeof (cl_int), &use_mbflim);
     err |= clSetKernelArg(kernel, 6, sizeof (cl_mem), &threads_mem);
+    err |= clSetKernelArg(kernel, 7, sizeof (cl_int), &apply_filter);
     VP8_CL_CHECK_SUCCESS( cq, err != CL_SUCCESS,
         "Error: Failed to set kernel arguments!\n",,
     );
@@ -65,18 +67,20 @@ void vp8_loop_filter_horizontal_edge_cl
     MACROBLOCKD *x,
     cl_mem s_base,
     int num_planes,
+    int num_blocks,
     cl_mem offsets_mem,
     cl_mem pitches_mem, /* pitch */
     cl_mem lfi_mem,
     int filter_level,
     int use_mbflim,
     cl_mem threads_mem,
-    int max_threads
+    int max_threads,
+    int apply_filter
 )
 {
     vp8_loop_filter_cl_run(x->cl_commands,
-        cl_data.vp8_loop_filter_horizontal_edge_kernel, s_base, num_planes, 1, offsets_mem,
-        pitches_mem, lfi_mem, filter_level, use_mbflim, threads_mem, max_threads
+        cl_data.vp8_loop_filter_horizontal_edge_kernel, s_base, num_planes, num_blocks, offsets_mem,
+        pitches_mem, lfi_mem, filter_level, use_mbflim, threads_mem, max_threads, apply_filter
     );
 }
 
@@ -85,18 +89,20 @@ void vp8_loop_filter_vertical_edge_cl
     MACROBLOCKD *x,
     cl_mem s_base,
     int num_planes,
+    int num_blocks,
     cl_mem offsets_mem,
     cl_mem pitches_mem,
     cl_mem lfi_mem,
     int filter_level,
     int use_mbflim,
     cl_mem threads_mem,
-    int max_threads
+    int max_threads,
+    int apply_filter
 )
 {
     vp8_loop_filter_cl_run(x->cl_commands,
-        cl_data.vp8_loop_filter_vertical_edge_kernel, s_base, num_planes, 1, offsets_mem,
-        pitches_mem, lfi_mem, filter_level, use_mbflim, threads_mem, max_threads
+        cl_data.vp8_loop_filter_vertical_edge_kernel, s_base, num_planes, num_blocks, offsets_mem,
+        pitches_mem, lfi_mem, filter_level, use_mbflim, threads_mem, max_threads, apply_filter
     );
 }
 
@@ -105,18 +111,20 @@ void vp8_mbloop_filter_horizontal_edge_cl
     MACROBLOCKD *x,
     cl_mem s_base,
     int num_planes,
+    int num_blocks,
     cl_mem offsets_mem,
     cl_mem pitches_mem,
     cl_mem lfi_mem,
     int filter_level,
     int use_mbflim,
     cl_mem threads_mem,
-    int max_threads
+    int max_threads,
+    int apply_filter
 )
 {
     vp8_loop_filter_cl_run(x->cl_commands,
-        cl_data.vp8_mbloop_filter_horizontal_edge_kernel, s_base, num_planes, 1, offsets_mem,
-        pitches_mem, lfi_mem, filter_level, use_mbflim, threads_mem, max_threads
+        cl_data.vp8_mbloop_filter_horizontal_edge_kernel, s_base, num_planes, num_blocks, offsets_mem,
+        pitches_mem, lfi_mem, filter_level, use_mbflim, threads_mem, max_threads, apply_filter
     );
 }
 
@@ -126,18 +134,20 @@ void vp8_mbloop_filter_vertical_edge_cl
     MACROBLOCKD *x,
     cl_mem s_base,
     int num_planes,
+    int num_blocks,
     cl_mem offsets_mem,
     cl_mem pitches_mem,
     cl_mem lfi_mem,
     int filter_level,
     int use_mbflim,
     cl_mem threads_mem,
-    int max_threads
+    int max_threads,
+    int apply_filter
 )
 {
     vp8_loop_filter_cl_run(x->cl_commands,
-        cl_data.vp8_mbloop_filter_vertical_edge_kernel, s_base, num_planes, 1, offsets_mem,
-        pitches_mem, lfi_mem, filter_level, use_mbflim, threads_mem, max_threads
+        cl_data.vp8_mbloop_filter_vertical_edge_kernel, s_base, num_planes, num_blocks, offsets_mem,
+        pitches_mem, lfi_mem, filter_level, use_mbflim, threads_mem, max_threads, apply_filter
     );
 }
 
@@ -146,18 +156,20 @@ void vp8_loop_filter_simple_horizontal_edge_cl
     MACROBLOCKD *x,
     cl_mem s_base,
     int num_planes,
+    int num_blocks,
     cl_mem offsets_mem,
     cl_mem pitches_mem,
     cl_mem lfi_mem,
     int filter_level,
     int use_mbflim,
     cl_mem threads_mem,
-    int max_threads
+    int max_threads,
+    int apply_filter
 )
 {
     vp8_loop_filter_cl_run(x->cl_commands,
-        cl_data.vp8_loop_filter_simple_horizontal_edge_kernel, s_base, num_planes, 1, offsets_mem,
-        pitches_mem, lfi_mem, filter_level, use_mbflim, threads_mem, max_threads
+        cl_data.vp8_loop_filter_simple_horizontal_edge_kernel, s_base, num_planes, num_blocks, offsets_mem,
+        pitches_mem, lfi_mem, filter_level, use_mbflim, threads_mem, max_threads, apply_filter
     );
 }
 
@@ -166,17 +178,19 @@ void vp8_loop_filter_simple_vertical_edge_cl
     MACROBLOCKD *x,
     cl_mem s_base,
     int num_planes,
+    int num_blocks,
     cl_mem offsets_mem,
     cl_mem pitches_mem,
     cl_mem lfi_mem,
     int filter_level,
     int use_mbflim,
     cl_mem threads_mem,
-    int max_threads
+    int max_threads,
+    int apply_filter
 )
 {
     vp8_loop_filter_cl_run(x->cl_commands,
-        cl_data.vp8_loop_filter_simple_vertical_edge_kernel, s_base, num_planes, 1, offsets_mem,
-        pitches_mem, lfi_mem, filter_level, use_mbflim, threads_mem, max_threads
+        cl_data.vp8_loop_filter_simple_vertical_edge_kernel, s_base, num_planes, num_blocks, offsets_mem,
+        pitches_mem, lfi_mem, filter_level, use_mbflim, threads_mem, max_threads, apply_filter
     );
 }
