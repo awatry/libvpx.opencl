@@ -20,9 +20,9 @@
 
 #define prototype_loopfilter_cl(sym) \
     void sym(MACROBLOCKD*, cl_mem src_base, int num_planes, int num_blocks, cl_mem offsets_mem,  \
-             cl_mem pitches_mem, cl_mem lfi_mem, int filter_level, \
+             cl_mem pitches_mem, cl_mem lfi_mem, cl_mem filter_level_mem, \
              cl_bool use_mbflim, cl_mem threads_mem, int max_threads, \
-             int apply_filter)
+             cl_mem apply_filter_mem)
 
 #define prototype_loopfilter_block_cl(sym) \
     void sym(MACROBLOCKD*, unsigned char *y, unsigned char *u, unsigned char *v,\
