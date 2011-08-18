@@ -547,7 +547,7 @@ void vp8_loop_filter_frame_cl
         vp8_frame_init_loop_filter(lfi, frame_type);
 
     VP8_CL_CREATE_BUF(mbd->cl_commands, lfi_mem, , sizeof(loop_filter_info)*(MAX_LOOP_FILTER+1), cm->lf_info,, );
-    cl_grow_loop_mem(mbd, post, 1);
+    cl_grow_loop_mem(mbd, post, 30); //Default to allocating enough for 480p
     
     VP8_CL_SET_BUF(mbd->cl_commands, post->buffer_mem, post->buffer_size, post->buffer_alloc,
             vp8_loop_filter_frame(cm,mbd,default_filt_lvl),);
