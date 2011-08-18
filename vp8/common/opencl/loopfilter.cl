@@ -448,10 +448,10 @@ __inline void vp8_mbfilter(
     char2 filter;
 
     char3 ps = { *op0, *op1, *op2 };
-    ps ^= 0x80;
+    ps ^= (char3){0x80, 0x80, 0x80};
 
     char3 qs = { *oq0, *oq1, *oq2 };
-    qs ^= 0x80;
+    qs ^= (char3){0x80, 0x80, 0x80};
 
     /* add outer taps if we have high edge variance */
     vp8_filter = clamp(ps.s1 - qs.s1, -128, 127);
