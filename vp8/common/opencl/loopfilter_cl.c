@@ -445,18 +445,11 @@ void vp8_loop_filter_macroblocks_cl(int num_blocks, int mb_rows[], int mb_cols[]
     VP8_CL_SET_BUF(mbd->cl_commands, loop_mem.filter_levels_mem, sizeof(cl_int)*num_blocks, filter_levels,,)
 
     for (i = 0; i < num_blocks; i++){
-        int mb_row, mb_col, dc_diff, filter_level;
-
         //printf("Temporarily setting 1 block loop_mem buffers\n");
         VP8_CL_SET_BUF(mbd->cl_commands, loop_mem.dc_diffs_mem, sizeof(cl_int), &dc_diffs[i],,)
         VP8_CL_SET_BUF(mbd->cl_commands, loop_mem.cols_mem, sizeof(cl_int), &mb_cols[i],,)
         VP8_CL_SET_BUF(mbd->cl_commands, loop_mem.rows_mem, sizeof(cl_int), &mb_rows[i],,)
         VP8_CL_SET_BUF(mbd->cl_commands, loop_mem.filter_levels_mem, sizeof(cl_int), &filter_levels[i],,)
-
-        mb_row = mb_rows[i];
-        mb_col = mb_cols[i];
-        dc_diff = dc_diffs[i];
-        filter_level = filter_levels[i];
 
         if (filter_type == NORMAL_LOOPFILTER){
                     vp8_loop_filter_mbv_cl(mbd, post->buffer_mem, 1, y_offsets, u_offsets, v_offsets, post->y_stride, post->uv_stride, lfi_mem, loop_mem.filter_levels_mem, loop_mem.cols_mem );
