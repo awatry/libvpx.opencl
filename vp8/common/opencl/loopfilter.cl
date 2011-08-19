@@ -451,16 +451,16 @@ __inline void vp8_mbfilter(
 )
 {
     signed char s;
-    int3 s3, u3;
+    int4 s4, u4;
     signed char vp8_filter;
 
     char2 filter;
 
-    char3 ps = { *op0, *op1, *op2 };
-    ps ^= (char3){0x80, 0x80, 0x80};
+    char4 ps = { *op0, *op1, *op2, 0 };
+    ps ^= (char4){0x80, 0x80, 0x80, 0x80};
 
-    char3 qs = { *oq0, *oq1, *oq2 };
-    qs ^= (char3){0x80, 0x80, 0x80};
+    char4 qs = { *oq0, *oq1, *oq2, 0 };
+    qs ^= (char4){0x80, 0x80, 0x80, 0x80};
 
     /* add outer taps if we have high edge variance */
     vp8_filter = vp8_char_clamp(ps.s1 - qs.s1);
@@ -485,30 +485,30 @@ __inline void vp8_mbfilter(
     vp8_filter &= ~hev;
     filter.s1 = vp8_filter;
 
-    u3 = (int3){filter.s1, filter.s1, filter.s1};
-    u3 *= (int3){27, 18, 9};
-    u3 += 63;
-    u3 >>= 7;
-    u3.s0 = vp8_char_clamp(u3.s0);
-    u3.s1 = vp8_char_clamp(u3.s1);
-    u3.s2 = vp8_char_clamp(u3.s2);
+    u4 = (int4){filter.s1, filter.s1, filter.s1, 0};
+    u4 *= (int4){27, 18, 9, 0};
+    u4 += 63;
+    u4 >>= 7;
+    u4.s0 = vp8_char_clamp(u4.s0);
+    u4.s1 = vp8_char_clamp(u4.s1);
+    u4.s2 = vp8_char_clamp(u4.s2);
 
     /* roughly 3/7th difference across boundary */
-    s = vp8_char_clamp(qs.s0 - u3.s0);
+    s = vp8_char_clamp(qs.s0 - u4.s0);
     *oq0 = s ^ 0x80;
-    s = vp8_char_clamp(ps.s0 + u3.s0);
+    s = vp8_char_clamp(ps.s0 + u4.s0);
     *op0 = s ^ 0x80;
 
     /* roughly 2/7th difference across boundary */
-    s = vp8_char_clamp(qs.s1 - u3.s1);
+    s = vp8_char_clamp(qs.s1 - u4.s1);
     *oq1 = s ^ 0x80;
-    s = vp8_char_clamp(ps.s1 + u3.s1);
+    s = vp8_char_clamp(ps.s1 + u4.s1);
     *op1 = s ^ 0x80;
 
     /* roughly 1/7th difference across boundary */
-    s = vp8_char_clamp(qs.s2 - u3.s2);
+    s = vp8_char_clamp(qs.s2 - u4.s2);
     *oq2 = s ^ 0x80;
-    s = vp8_char_clamp(ps.s2 + u3.s2);
+    s = vp8_char_clamp(ps.s2 + u4.s2);
     *op2 = s ^ 0x80;
 }
 
