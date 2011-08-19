@@ -99,10 +99,9 @@ kernel void vp8_loop_filter_horizontal_edge_kernel
 )
 {
     size_t plane = get_global_id(1);
+    size_t block = get_global_id(2);
 
     if (plane < get_global_size(1)){
-        size_t block = get_global_id(2);
-
         if (block < get_global_size(2)){
             if (apply_filters[block] > 0){
                 int filter_level = filter_levels[block];
@@ -160,9 +159,9 @@ kernel void vp8_loop_filter_vertical_edge_kernel
 )
 {
     size_t plane = get_global_id(1);
+    size_t block = get_global_id(2);
 
     if (plane < get_global_size(1)){
-        size_t block = get_global_id(2);
         if (block < get_global_size(2)){
             if (apply_filters[block] > 0){
                 int filter_level = filter_levels[block];
@@ -219,9 +218,9 @@ kernel void vp8_mbloop_filter_horizontal_edge_kernel
 )
 {
     size_t plane = get_global_id(1);
+    size_t block = get_global_id(2);
 
     if (plane < get_global_size(1)){
-        size_t block = get_global_id(2);
         if (block < get_global_size(2)){
             if (apply_filters[block] > 0){
                 int filter_level = filter_levels[block];
@@ -281,9 +280,9 @@ kernel void vp8_mbloop_filter_vertical_edge_kernel
 )
 {
     size_t plane = get_global_id(1);
+    size_t block = get_global_id(2);
 
     if (plane < get_global_size(1)){
-        size_t block = get_global_id(2);
         if (block < get_global_size(2)){
             if (apply_filters[block] > 0){
                 int filter_level = filter_levels[block];
@@ -341,9 +340,9 @@ kernel void vp8_loop_filter_simple_horizontal_edge_kernel
 )
 {
     size_t plane = get_global_id(1);
+    size_t block = get_global_id(2);
 
     if (plane < get_global_size(1)){
-        size_t block = get_global_id(2);
         if (block < get_global_size(2)){
             if (apply_filters[block] > 0){
                 int filter_level = filter_levels[block];
@@ -391,9 +390,9 @@ kernel void vp8_loop_filter_simple_vertical_edge_kernel
 )
 {
     size_t plane = get_global_id(1);
+    size_t block = get_global_id(2);
 
     if (plane < get_global_size(1)){
-        size_t block = get_global_id(2);
         if (block < get_global_size(2)){
             if (apply_filters[block] > 0){
                 int filter_level = filter_levels[block];
@@ -443,6 +442,7 @@ __inline void vp8_mbfilter(
 )
 {
     signed char s, u;
+    int3 s3, u3;
     signed char vp8_filter;
 
     char2 filter;
@@ -462,17 +462,12 @@ __inline void vp8_mbfilter(
     filter.s1 &= hev;
     filter.s0 = filter.s1;
 
-    //char2 rounding = { 4, 3 };
-    //filter += rounding;
-    //filter = clamp(filter, -128, 127);
-    //filter >>= 3;
-
     /* save bottom 3 bits so that we round one side +4 and the other +3 */
-    filter.s0 = clamp(filter.s0 + 4, -128, 127);
-    filter.s1 = clamp(filter.s1 + 3, -128, 127);
+    filter += (char2){4,3};
+    filter = clamp(filter, -128, 127);
     filter.s0 >>= 3;
     filter.s1 >>= 3;
-
+    
     qs.s0 = clamp(qs.s0 - filter.s0, -128, 127);
     ps.s0 = clamp(ps.s0 + filter.s1, -128, 127);
 
@@ -480,25 +475,28 @@ __inline void vp8_mbfilter(
     vp8_filter &= ~hev;
     filter.s1 = vp8_filter;
 
+    u3 = (int3){filter.s1, filter.s1, filter.s1};
+    u3 *= (int3){27, 18, 9};
+    u3 += 63;
+    u3 >>= 7;
+    u3 = clamp(u3, -128, 127);
+
     /* roughly 3/7th difference across boundary */
-    u = clamp((63 + filter.s1 * 27) >> 7, -128, 127);
-    s = clamp(qs.s0 - u, -128, 127);
+    s = clamp(qs.s0 - u3.s0, -128, 127);
     *oq0 = s ^ 0x80;
-    s = clamp(ps.s0 + u, -128, 127);
+    s = clamp(ps.s0 + u3.s0, -128, 127);
     *op0 = s ^ 0x80;
 
     /* roughly 2/7th difference across boundary */
-    u = clamp((63 + filter.s1 * 18) >> 7, -128, 127);
-    s = clamp(qs.s1 - u, -128, 127);
+    s = clamp(qs.s1 - u3.s1, -128, 127);
     *oq1 = s ^ 0x80;
-    s = clamp(ps.s1 + u, -128, 127);
+    s = clamp(ps.s1 + u3.s1, -128, 127);
     *op1 = s ^ 0x80;
 
     /* roughly 1/7th difference across boundary */
-    u = clamp((63 + filter.s1 * 9) >> 7, -128, 127);
-    s = clamp(qs.s2 - u, -128, 127);
+    s = clamp(qs.s2 - u3.s2, -128, 127);
     *oq2 = s ^ 0x80;
-    s = clamp(ps.s2 + u, -128, 127);
+    s = clamp(ps.s2 + u3.s2, -128, 127);
     *op2 = s ^ 0x80;
 }
 
