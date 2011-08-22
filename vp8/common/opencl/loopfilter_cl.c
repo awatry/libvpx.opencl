@@ -18,7 +18,7 @@
 #include "vp8_opencl.h"
 #include "blockd_cl.h"
 
-const char *loopFilterCompileOptions = "-Ivp8/common/opencl";
+const char *loopFilterCompileOptions = "";
 const char *loop_filter_cl_file_name = "vp8/common/opencl/loopfilter.cl";
 
 typedef unsigned char uc;

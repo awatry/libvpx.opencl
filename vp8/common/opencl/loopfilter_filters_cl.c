@@ -8,17 +8,12 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-
 #include <stdlib.h>
-
 #include <stdio.h>
 
 #include "vpx_ports/config.h"
 #include "vp8_opencl.h"
 #include "blockd_cl.h"
-
-//#include "loopfilter_cl.h"
-//#include "../onyxc_int.h"
 
 typedef unsigned char uc;
 

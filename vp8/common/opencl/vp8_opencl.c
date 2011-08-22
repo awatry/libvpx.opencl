@@ -42,7 +42,7 @@ void cl_destroy(cl_command_queue cq, int new_status) {
 
     //Wait on any pending operations to complete... frees up all of our pointers
     if (cq != NULL)
-        clFinish(cq);
+        VP8_CL_FINISH(cq);
 
 #if ENABLE_CL_SUBPIXEL
     //Release the objects that we've allocated on the GPU
