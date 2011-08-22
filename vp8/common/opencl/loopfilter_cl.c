@@ -44,6 +44,7 @@ typedef struct VP8_LOOP_MEM{
 } VP8_LOOP_MEM;
 
 VP8_LOOP_MEM loop_mem;
+cl_mem lfi_mem = NULL;
 
 prototype_loopfilter_cl(vp8_loop_filter_horizontal_edge_cl);
 prototype_loopfilter_cl(vp8_loop_filter_vertical_edge_cl);
@@ -387,6 +388,11 @@ void cl_destroy_loop_filter(){
 
     cl_free_loop_mem();
 
+    if (lfi_mem != NULL){
+        clReleaseMemObject(lfi_mem);
+        lfi_mem = NULL;
+    }
+    
     cl_data.loop_filter_program = NULL;
 }
 
@@ -532,7 +538,6 @@ void vp8_loop_filter_frame_cl
     int baseline_filter_level[MAX_MB_SEGMENTS];
     int err, priority;
 
-    cl_mem lfi_mem;
     int pitches[3] = {post->y_stride, post->uv_stride, post->uv_stride};
 
     mbd->mode_info_context = cm->mi; /* Point at base of Mb MODE_INFO list */
@@ -546,9 +551,13 @@ void vp8_loop_filter_frame_cl
     else if (frame_type != cm->last_frame_type)
         vp8_frame_init_loop_filter(lfi, frame_type);
 
-    VP8_CL_CREATE_BUF(mbd->cl_commands, lfi_mem, , sizeof(loop_filter_info)*(MAX_LOOP_FILTER+1), cm->lf_info,, );
     cl_grow_loop_mem(mbd, post, 30); //Default to allocating enough for 480p
     
+    if (lfi_mem == NULL){
+        VP8_CL_CREATE_BUF(mbd->cl_commands, lfi_mem, , sizeof(loop_filter_info)*(MAX_LOOP_FILTER+1), cm->lf_info,, );
+    } else {
+        VP8_CL_SET_BUF(mbd->cl_commands, lfi_mem, sizeof(loop_filter_info)*(MAX_LOOP_FILTER+1), cm->lf_info,,);
+    }
     VP8_CL_SET_BUF(mbd->cl_commands, post->buffer_mem, post->buffer_size, post->buffer_alloc,
             vp8_loop_filter_frame(cm,mbd,default_filt_lvl),);
 
@@ -566,7 +575,5 @@ void vp8_loop_filter_frame_cl
         ,
     );
 
-    clReleaseMemObject(lfi_mem);
-    
     VP8_CL_FINISH(mbd->cl_commands);
 }
