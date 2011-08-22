@@ -38,6 +38,7 @@
 #if CONFIG_OPENCL
 #include "vp8/common/opencl/blockd_cl.h"
 #include "vp8/common/opencl/vp8_opencl.h"
+static cl_command_queue cl_commands = NULL;
 #endif
 
 extern void vp8_init_loop_filter(VP8_COMMON *cm);
@@ -120,6 +121,12 @@ void vp8dx_remove_decompressor(VP8D_PTR ptr)
     if (!pbi)
         return;
 
+#if CONFIG_OPENCL
+    if (cl_initialized == CL_SUCCESS){
+        clReleaseCommandQueue(cl_commands);
+    }
+#endif
+    
 #if CONFIG_MULTITHREAD
     if (pbi->b_multithreaded_rd)
         vp8mt_de_alloc_temp_buffers(pbi, pbi->common.mb_rows);
@@ -337,13 +344,16 @@ int vp8dx_receive_compressed_data(VP8D_PTR ptr, unsigned long size, const unsign
     pbi->mb.cl_commands = NULL;
     if (cl_initialized == CL_SUCCESS){
         int err;
-        //Create command queue for macroblock.
-        pbi->mb.cl_commands = clCreateCommandQueue(cl_data.context, cl_data.device_id, 0, &err);
-        if (!pbi->mb.cl_commands || err != CL_SUCCESS) {
-            printf("Error: Failed to create a command queue!\n");
-            cl_destroy(NULL, VP8_CL_TRIED_BUT_FAILED);
+        if (cl_commands == NULL){
+            //Create command queue for macroblock.
+            cl_commands = clCreateCommandQueue(cl_data.context, cl_data.device_id, 0, &err);
+            if (!cl_commands || err != CL_SUCCESS) {
+                printf("Error: Failed to create a command queue!\n");
+                cl_destroy(NULL, VP8_CL_TRIED_BUT_FAILED);
+            }
         }
-
+        
+        pbi->mb.cl_commands = cl_commands;
         pbi->mb.cl_diff_mem = NULL;
         pbi->mb.cl_predictor_mem = NULL;
         pbi->mb.cl_qcoeff_mem = NULL;
@@ -500,14 +510,12 @@ int vp8dx_receive_compressed_data(VP8D_PTR ptr, unsigned long size, const unsign
         vp8_yv12_extend_frame_borders_ptr(cm->frame_to_show);
     }
 
-#if CONFIG_OPENCL
+#if CONFIG_OPENCL && ENABLE_CL_SUBPIXEL
     if (cl_initialized == CL_SUCCESS){
         //Copy buffer_alloc to buffer_mem so YV12_BUFFER_CONFIG can be used as
         //a reference frame (e.g. YV12..buffer_mem contains same as buffer_alloc).
         vp8_cl_mb_prep(&pbi->mb, DST_BUF);
 
-        if (pbi->mb.cl_commands != NULL)
-            clReleaseCommandQueue(pbi->mb.cl_commands);
         pbi->mb.cl_commands = NULL;
     }
 #endif

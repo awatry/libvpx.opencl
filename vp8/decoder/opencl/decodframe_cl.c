@@ -320,12 +320,12 @@ void vp8_decode_frame_cl_finish(VP8D_COMP *pbi){
 #endif
 
         //Wait for stuff to finish, just in case
-        clFinish(pbi->mb.cl_commands);
+        VP8_CL_FINISH(pbi->mb.cl_commands);
 
 #if !ONE_CQ_PER_MB
-        clFinish(pbi->mb.block[0].cl_commands);
-        clFinish(pbi->mb.block[16].cl_commands);
-        clFinish(pbi->mb.block[20].cl_commands);
+        VP8_CL_FINISH(pbi->mb.block[0].cl_commands);
+        VP8_CL_FINISH(pbi->mb.block[16].cl_commands);
+        VP8_CL_FINISH(pbi->mb.block[20].cl_commands);
         clReleaseCommandQueue(pbi->mb.block[0].cl_commands);
         clReleaseCommandQueue(pbi->mb.block[16].cl_commands);
         clReleaseCommandQueue(pbi->mb.block[20].cl_commands);

@@ -971,7 +971,7 @@ int vp8_decode_frame(VP8D_COMP *pbi)
         }
     }
 
-#if CONFIG_OPENCL
+#if CONFIG_OPENCL && (ENABLE_CL_IDCT_DEQUANT || ENABLE_CL_SUBPIXEL)
     vp8_decode_frame_cl_finish(pbi);
 #endif
     

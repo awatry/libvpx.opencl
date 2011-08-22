@@ -139,7 +139,7 @@ void vp8_dequant_idct_add_cl(BLOCKD *b, unsigned char *dest_base, cl_mem dest_me
                 dest_base + dest_offset, pitch, stride),
         );
 
-        //CL Spec says this can be freed without clFinish first
+        //CL Spec says this can be freed without finish first
         clReleaseMemObject(dest_mem);
     }
 
