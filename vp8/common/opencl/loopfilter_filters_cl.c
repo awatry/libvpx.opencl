@@ -32,7 +32,7 @@ typedef struct VP8_LOOPFILTER_ARGS{
 static int first_run = 0;
 static VP8_LOOPFILTER_ARGS filter_args[6];
 
-#define VP8_CL_SET_LOOP_ARG(kernel, current, name, type, argnum) \
+#define VP8_CL_SET_LOOP_ARG(kernel, current, argnum, type, name) \
     if (current->name != name){ \
         err |= clSetKernelArg(kernel, argnum, sizeof (type), &name); \
         current->name = name; \
@@ -65,14 +65,14 @@ static void vp8_loop_filter_cl_run(
     }
     
     err = 0;
-    VP8_CL_SET_LOOP_ARG(kernel, current_args, buf_mem, cl_mem, 0)
-    VP8_CL_SET_LOOP_ARG(kernel, current_args, offsets_mem, cl_mem, 1)
-    VP8_CL_SET_LOOP_ARG(kernel, current_args, pitches_mem, cl_mem, 2)
-    VP8_CL_SET_LOOP_ARG(kernel, current_args, lfi_mem, cl_mem, 3)
-    VP8_CL_SET_LOOP_ARG(kernel, current_args, filter_level_mem, cl_mem, 4)
-    VP8_CL_SET_LOOP_ARG(kernel, current_args, use_mbflim, cl_int, 5)
-    VP8_CL_SET_LOOP_ARG(kernel, current_args, threads_mem, cl_mem, 6)
-    VP8_CL_SET_LOOP_ARG(kernel, current_args, apply_filter_mem, cl_mem, 7)
+    VP8_CL_SET_LOOP_ARG(kernel, current_args, 0, cl_mem, buf_mem)
+    VP8_CL_SET_LOOP_ARG(kernel, current_args, 1, cl_mem, offsets_mem)
+    VP8_CL_SET_LOOP_ARG(kernel, current_args, 2, cl_mem, pitches_mem)
+    VP8_CL_SET_LOOP_ARG(kernel, current_args, 3, cl_mem, lfi_mem)
+    VP8_CL_SET_LOOP_ARG(kernel, current_args, 4, cl_mem, filter_level_mem)
+    VP8_CL_SET_LOOP_ARG(kernel, current_args, 5, cl_int, use_mbflim)
+    VP8_CL_SET_LOOP_ARG(kernel, current_args, 6, cl_mem, threads_mem)
+    VP8_CL_SET_LOOP_ARG(kernel, current_args, 7, cl_mem, apply_filter_mem)
     VP8_CL_CHECK_SUCCESS( cq, err != CL_SUCCESS,
         "Error: Failed to set kernel arguments!\n",,
     );
