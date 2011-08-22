@@ -59,7 +59,7 @@ void vp8_loop_filter_mbh_cl(MACROBLOCKD *x, cl_mem buf_base, int num_blocks, int
     int err;
     int block;
 
-    int offsets[num_blocks][3];
+    cl_int offsets[num_blocks][3];
     for( block = 0; block < num_blocks; block++){
         offsets[block][0] = y_offsets[block];
         offsets[block][1] = u_offsets[block];
@@ -75,7 +75,7 @@ void vp8_loop_filter_mbhs_cl(MACROBLOCKD *x, cl_mem buf_base, int num_blocks, in
 {
     int err;
 
-    int offsets[num_blocks], block;
+    cl_int offsets[num_blocks], block;
     for( block = 0; block < num_blocks; block++){
         offsets[block] = y_offsets[block];
     }
@@ -90,7 +90,7 @@ void vp8_loop_filter_mbv_cl(MACROBLOCKD *x, cl_mem buf_base, int num_blocks, int
 {
     int err, block;
 
-    int offsets[num_blocks][3];
+    cl_int offsets[num_blocks][3];
     for( block = 0; block < num_blocks; block++){
         offsets[block][0] = y_offsets[block];
         offsets[block][1] = u_offsets[block];
@@ -106,7 +106,7 @@ void vp8_loop_filter_mbvs_cl(MACROBLOCKD *x, cl_mem buf_base, int num_blocks, in
 {
     int err;
 
-    int offsets[num_blocks], block;
+    cl_int offsets[num_blocks], block;
     for( block = 0; block < num_blocks; block++){
         offsets[block] = y_offsets[block];
     }
@@ -122,8 +122,8 @@ void vp8_loop_filter_bh_cl(MACROBLOCKD *x, cl_mem buf_base, int num_blocks, int 
 
     int err;
     
-    int yuv_offsets[num_blocks][3], block;
-    int offsets[num_blocks];
+    cl_int yuv_offsets[num_blocks][3], block;
+    cl_int offsets[num_blocks];
     for( block = 0; block < num_blocks; block++){
         yuv_offsets[block][0] = y_offsets[block] + 4*y_stride;
         yuv_offsets[block][1] = u_offsets[block] + 4*uv_stride;
@@ -152,7 +152,7 @@ void vp8_loop_filter_bhs_cl(MACROBLOCKD *x, cl_mem buf_base, int num_blocks, int
     int err;
     int block;
 
-    int offsets[num_blocks];
+    cl_int offsets[num_blocks];
     for( block = 0; block < num_blocks; block++){
         offsets[block] = y_offsets[block] + 4*y_stride;
     }
@@ -178,7 +178,7 @@ void vp8_loop_filter_bv_cl(MACROBLOCKD *x, cl_mem buf_base, int num_blocks, int 
 {
     int err;
 
-    int offsets[num_blocks];
+    cl_int offsets[num_blocks];
     int block, yuv_offsets[num_blocks][3];
     for( block = 0; block < num_blocks; block++){
         yuv_offsets[block][0] = y_offsets[block] + 4;
@@ -208,7 +208,7 @@ void vp8_loop_filter_bvs_cl(MACROBLOCKD *x, cl_mem buf_base, int num_blocks, int
     int err;
 
     int block;
-    int offsets[num_blocks];
+    cl_int offsets[num_blocks];
     for( block = 0; block < num_blocks; block++){
         offsets[block] = y_offsets[block] + 4;
     }
