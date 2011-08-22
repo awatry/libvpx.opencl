@@ -232,7 +232,7 @@ static void decode_macroblock(VP8D_COMP *pbi, MACROBLOCKD *xd)
      }
 #endif
 
-#if CONFIG_OPENCL
+#if CONFIG_OPENCL && (ENABLE_CL_IDCT_DEQUANT || ENABLE_CL_SUBPIXEL)
     //If OpenCL is enabled and initialized, use CL-specific decoder for remains
     //of MB decoding.
     if (cl_initialized == CL_SUCCESS){
