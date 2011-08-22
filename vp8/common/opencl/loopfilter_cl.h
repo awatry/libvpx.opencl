@@ -18,8 +18,20 @@
 #include "blockd_cl.h"
 #include "../loopfilter.h"
 
+typedef struct VP8_LOOPFILTER_ARGS{
+    cl_mem buf_mem;
+    cl_mem offsets_mem;
+    cl_mem pitches_mem;
+    cl_mem lfi_mem;
+    cl_mem filter_level_mem;
+    cl_int use_mbflim;
+    cl_mem threads_mem;
+    cl_mem apply_filter_mem;
+    cl_int cur_iter;
+} VP8_LOOPFILTER_ARGS;
+
 #define prototype_loopfilter_cl(sym) \
-    void sym(MACROBLOCKD*, cl_mem src_base, int num_planes, int num_blocks, cl_mem offsets_mem,  \
+    void sym(MACROBLOCKD*, cl_mem src_base, int cur_iter, int num_planes, int num_blocks, cl_mem offsets_mem,  \
              cl_mem pitches_mem, cl_mem lfi_mem, cl_mem filter_level_mem, \
              cl_bool use_mbflim, cl_mem threads_mem, int max_threads, \
              cl_mem apply_filter_mem)
