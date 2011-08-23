@@ -78,21 +78,21 @@ int cl_init_filter() {
 #if TWO_PASS_SIXTAP
     VP8_CL_CREATE_KERNEL(cl_data,filter_program,vp8_filter_block2d_first_pass_kernel,"vp8_filter_block2d_first_pass_kernel");
     VP8_CL_CREATE_KERNEL(cl_data,filter_program,vp8_filter_block2d_second_pass_kernel,"vp8_filter_block2d_second_pass_kernel");
-    VP8_CL_CALC_LOCAL_SIZE(vp8_filter_block2d_first_pass_kernel,vp8_filter_block2d_first_pass_kernel_size);
-    VP8_CL_CALC_LOCAL_SIZE(vp8_filter_block2d_second_pass_kernel,vp8_filter_block2d_second_pass_kernel_size);
+    VP8_CL_CALC_LOCAL_SIZE(cl_data.vp8_filter_block2d_first_pass_kernel,&cl_data.vp8_filter_block2d_first_pass_kernel_size);
+    VP8_CL_CALC_LOCAL_SIZE(cl_data.vp8_filter_block2d_second_pass_kernel,&cl_data.vp8_filter_block2d_second_pass_kernel_size);
 #else
     VP8_CL_CREATE_KERNEL(cl_data,filter_program,vp8_sixtap_predict_kernel,"vp8_sixtap_predict_kernel");
-    VP8_CL_CALC_LOCAL_SIZE(vp8_sixtap_predict_kernel,vp8_sixtap_predict_kernel_size);
+    VP8_CL_CALC_LOCAL_SIZE(cl_data.vp8_sixtap_predict_kernel,&cl_data.vp8_sixtap_predict_kernel_size);
     VP8_CL_CREATE_KERNEL(cl_data,filter_program,vp8_sixtap_predict8x8_kernel,"vp8_sixtap_predict8x8_kernel");
-    VP8_CL_CALC_LOCAL_SIZE(vp8_sixtap_predict8x8_kernel,vp8_sixtap_predict8x8_kernel_size);
+    VP8_CL_CALC_LOCAL_SIZE(cl_data.vp8_sixtap_predict8x8_kernel,&cl_data.vp8_sixtap_predict8x8_kernel_size);
     VP8_CL_CREATE_KERNEL(cl_data,filter_program,vp8_sixtap_predict8x4_kernel,"vp8_sixtap_predict8x4_kernel");
-    VP8_CL_CALC_LOCAL_SIZE(vp8_sixtap_predict8x4_kernel,vp8_sixtap_predict8x4_kernel_size);
+    VP8_CL_CALC_LOCAL_SIZE(cl_data.vp8_sixtap_predict8x4_kernel,&cl_data.vp8_sixtap_predict8x4_kernel_size);
     VP8_CL_CREATE_KERNEL(cl_data,filter_program,vp8_sixtap_predict16x16_kernel,"vp8_sixtap_predict16x16_kernel");
-    VP8_CL_CALC_LOCAL_SIZE(vp8_sixtap_predict16x16_kernel,vp8_sixtap_predict16x16_kernel_size);
+    VP8_CL_CALC_LOCAL_SIZE(cl_data.vp8_sixtap_predict16x16_kernel,&cl_data.vp8_sixtap_predict16x16_kernel_size);
 #endif
     
-    //VP8_CL_CALC_LOCAL_SIZE(vp8_filter_block2d_bil_first_pass_kernel,vp8_filter_block2d_bil_first_pass_kernel_size);
-    //VP8_CL_CALC_LOCAL_SIZE(vp8_filter_block2d_bil_second_pass_kernel,vp8_filter_block2d_bil_second_pass_kernel_size);
+    //VP8_CL_CALC_LOCAL_SIZE(cl_data.vp8_filter_block2d_bil_first_pass_kernel,&cl_data.vp8_filter_block2d_bil_first_pass_kernel_size);
+    //VP8_CL_CALC_LOCAL_SIZE(cl_data.vp8_filter_block2d_bil_second_pass_kernel,&cl_data.vp8_filter_block2d_bil_second_pass_kernel_size);
     VP8_CL_CREATE_KERNEL(cl_data,filter_program,vp8_filter_block2d_bil_first_pass_kernel,"vp8_filter_block2d_bil_first_pass_kernel");
     VP8_CL_CREATE_KERNEL(cl_data,filter_program,vp8_filter_block2d_bil_second_pass_kernel,"vp8_filter_block2d_bil_second_pass_kernel");
 
@@ -104,7 +104,7 @@ int cl_init_filter() {
 
 #if MEM_COPY_KERNEL
     VP8_CL_CREATE_KERNEL(cl_data,filter_program,vp8_memcpy_kernel,"vp8_memcpy_kernel");
-    VP8_CL_CALC_LOCAL_SIZE(vp8_memcpy_kernel,vp8_memcpy_kernel_size);
+    VP8_CL_CALC_LOCAL_SIZE(cl_data.vp8_memcpy_kernel,&cl_data.vp8_memcpy_kernel_size);
 #endif
 
 #if STATIC_MEM

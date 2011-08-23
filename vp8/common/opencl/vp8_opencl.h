@@ -96,11 +96,11 @@ extern const char *vpx_codec_lib_dir(void);
 
 //Gets the maximum work group size supported on the device for the kernel
 #define VP8_CL_CALC_LOCAL_SIZE(kernel, kernel_size) \
-    err = clGetKernelWorkGroupInfo( cl_data.kernel, \
+    err = clGetKernelWorkGroupInfo( kernel, \
   	cl_data.device_id, \
   	CL_KERNEL_WORK_GROUP_SIZE, \
   	sizeof(size_t), \
-  	&cl_data.kernel_size, \
+  	kernel_size, \
   	NULL);\
     VP8_CL_CHECK_SUCCESS(NULL, err != CL_SUCCESS, \
         "Error: Failed to calculate local size of kernel!\n", \
