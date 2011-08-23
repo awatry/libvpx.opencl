@@ -26,10 +26,7 @@ typedef struct VP8_LOOPFILTER_ARGS{
     cl_int use_mbflim;
     cl_mem threads_mem;
     cl_int cur_iter;
-    cl_mem filter_level_mem;
-    cl_mem apply_filter_mem;
-    
-    cl_mem filter_mem; //combination of dc_diffs, rows, cols, and filter_levels
+    cl_mem filters_mem; //combination of dc_diffs, rows, cols, and filter_levels
     cl_int filter_type;
 } VP8_LOOPFILTER_ARGS;
 

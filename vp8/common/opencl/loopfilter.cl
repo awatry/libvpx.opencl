@@ -101,10 +101,10 @@ kernel void vp8_loop_filter_horizontal_edge_kernel
     global int *offsets,
     global int *pitches, /* pitch */
     global loop_filter_info *lfi,
-    global int *filter_levels,
+    global int *filters,
     int use_mbflim,
     global int *threads,
-    global int *apply_filters,
+    int filter_type,
     int cur_iter
 )
 {
@@ -112,12 +112,13 @@ kernel void vp8_loop_filter_horizontal_edge_kernel
     size_t block = get_global_id(2);
 
     if (plane < get_global_size(1)){
-        if (block < get_global_size(2)){
-            if (apply_filters[block] > 0){
-                int filter_level = filter_levels[block];
+        size_t num_blocks = get_global_size(2);
+        if (block < num_blocks){
+            if (filters[num_blocks*filter_type + block] > 0){
+                int filter_level = filters[block];
                 if (filter_level){
                     int p = pitches[plane];
-                    int block_offset = cur_iter*get_global_size(2)*get_global_size(1) + block*get_global_size(1)+plane;
+                    int block_offset = cur_iter*num_blocks*get_global_size(1) + block*get_global_size(1)+plane;
                     int s_off = offsets[block_offset];
 
                     int  hev = 0; /* high edge variance */
@@ -164,10 +165,10 @@ kernel void vp8_loop_filter_vertical_edge_kernel
     global int *offsets,
     global int *pitches,
     global loop_filter_info *lfi,
-    global int *filter_levels,
+    global int *filters,
     int use_mbflim,
     global int *threads,
-    global int *apply_filters,
+    int filter_type,
     int cur_iter
 )
 {
@@ -175,12 +176,13 @@ kernel void vp8_loop_filter_vertical_edge_kernel
     size_t block = get_global_id(2);
 
     if (plane < get_global_size(1)){
-        if (block < get_global_size(2)){
-            if (apply_filters[block] > 0){
-                int filter_level = filter_levels[block];
+        size_t num_blocks = get_global_size(2);
+        if (block < num_blocks){
+            if (filters[num_blocks*filter_type + block] > 0){
+                int filter_level = filters[block];
                 if (filter_level){
                     int p = pitches[plane];
-                    int block_offset = cur_iter*get_global_size(2)*get_global_size(1) + block*get_global_size(1)+plane;
+                    int block_offset = cur_iter*num_blocks*get_global_size(1) + block*get_global_size(1)+plane;
                     int s_off = offsets[block_offset];
 
                     int  hev = 0; /* high edge variance */
@@ -226,10 +228,10 @@ kernel void vp8_mbloop_filter_horizontal_edge_kernel
     global int *offsets,
     global int *pitches,
     global loop_filter_info *lfi,
-    global int *filter_levels,
+    global int *filters,
     int use_mbflim,
     global int *threads,
-    global int *apply_filters,
+    int filter_type,
     int cur_iter
 )
 {
@@ -237,12 +239,13 @@ kernel void vp8_mbloop_filter_horizontal_edge_kernel
     size_t block = get_global_id(2);
 
     if (plane < get_global_size(1)){
-        if (block < get_global_size(2)){
-            if (apply_filters[block] > 0){
-                int filter_level = filter_levels[block];
+        size_t num_blocks = get_global_size(2);
+        if (block < num_blocks){
+            if (filters[num_blocks*filter_type + block] > 0){
+                int filter_level = filters[block];
                 if (filter_level){
                     int p = pitches[plane];
-                    int block_offset = cur_iter*get_global_size(2)*get_global_size(1) + block*get_global_size(1)+plane;
+                    int block_offset = cur_iter*num_blocks*get_global_size(1) + block*get_global_size(1)+plane;
                     int s_off = offsets[block_offset];
 
                     global uc *s = s_base+s_off;
@@ -290,10 +293,10 @@ kernel void vp8_mbloop_filter_vertical_edge_kernel
     global int *offsets,
     global int *pitches,
     global loop_filter_info *lfi,
-    global int *filter_levels,
+    global int *filters,
     int use_mbflim,
     global int *threads,
-    global int *apply_filters,
+    int filter_type,
     int cur_iter
 )
 {
@@ -301,12 +304,13 @@ kernel void vp8_mbloop_filter_vertical_edge_kernel
     size_t block = get_global_id(2);
 
     if (plane < get_global_size(1)){
-        if (block < get_global_size(2)){
-            if (apply_filters[block] > 0){
-                int filter_level = filter_levels[block];
+        size_t num_blocks = get_global_size(2);
+        if (block < num_blocks){
+            if (filters[num_blocks*filter_type + block] > 0){
+                int filter_level = filters[block];
                 if (filter_level){
                     int p = pitches[plane];
-                    int block_offset = cur_iter*get_global_size(2)*get_global_size(1) + block*get_global_size(1)+plane;
+                    int block_offset = cur_iter*num_blocks*get_global_size(1) + block*get_global_size(1)+plane;
                     int s_off = offsets[block_offset];
 
 
@@ -353,10 +357,10 @@ kernel void vp8_loop_filter_simple_horizontal_edge_kernel
     global int *offsets,
     global int *pitches,
     global loop_filter_info *lfi,
-    global int *filter_levels,
+    global int *filters,
     int use_mbflim,
     global int *threads,
-    global int *apply_filters,
+    int filter_type,
     int cur_iter
 )
 {
@@ -364,12 +368,13 @@ kernel void vp8_loop_filter_simple_horizontal_edge_kernel
     size_t block = get_global_id(2);
 
     if (plane < get_global_size(1)){
-        if (block < get_global_size(2)){
-            if (apply_filters[block] > 0){
-                int filter_level = filter_levels[block];
+        size_t num_blocks = get_global_size(2);
+        if (block < num_blocks){
+            if (filters[num_blocks*filter_type + block] > 0){
+                int filter_level = filters[block];
                 if (filter_level){
                     int p = pitches[plane];
-                    int block_offset = cur_iter*get_global_size(2)*get_global_size(1) + block*get_global_size(1)+plane;
+                    int block_offset = cur_iter*num_blocks*get_global_size(1) + block*get_global_size(1)+plane;
                     int s_off = offsets[block_offset];
 
 
@@ -406,10 +411,10 @@ kernel void vp8_loop_filter_simple_vertical_edge_kernel
     global int *offsets, /* Y or YUV offsets for EACH block being processed*/
     global int *pitches, /* 1 or 3 values for Y or YUV pitches*/
     global loop_filter_info *lfi, /* Single struct for the frame */
-    global int *filter_levels, /* Filter level for each block being processed */
+    global int *filters, /* Filters for each block being processed */
     int use_mbflim, /* Use lfi->flim or lfi->mbflim, need once per kernel call */
     global int *threads, /* Thread counts per plane */
-    global int *apply_filters, /* Should the filter be applied (per block) */
+    int filter_type, /* Should dc_diffs, rows, or cols be used?*/
     int cur_iter
 )
 {
@@ -417,12 +422,13 @@ kernel void vp8_loop_filter_simple_vertical_edge_kernel
     size_t block = get_global_id(2);
 
     if (plane < get_global_size(1)){
-        if (block < get_global_size(2)){
-            if (apply_filters[block] > 0){
-                int filter_level = filter_levels[block];
+        size_t num_blocks = get_global_size(2);
+        if (block < num_blocks){
+            if (filters[filter_type * num_blocks + block] > 0){
+                int filter_level = filters[block];
                 if (filter_level){
                     int p = pitches[plane];
-                    int block_offset = cur_iter*get_global_size(2)*get_global_size(1) + block*get_global_size(1)+plane;
+                    int block_offset = cur_iter*num_blocks*get_global_size(1) + block*get_global_size(1)+plane;
                     int s_off = offsets[block_offset];
 
                     signed char mask = 0;

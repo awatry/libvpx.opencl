@@ -353,7 +353,6 @@ void vp8_loop_filter_frame
     int mb_col;
 
     int baseline_filter_level[MAX_MB_SEGMENTS];
-    int filter_level;
     int alt_flt_enabled = mbd->segmentation_enabled;
 
     int i;

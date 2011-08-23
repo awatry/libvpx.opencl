@@ -15,6 +15,7 @@
 #include "../onyxc_int.h"
 
 #include "vpx_config.h"
+#include "vpx_mem/vpx_mem.h"
 #include "vp8_opencl.h"
 #include "blockd_cl.h"
 
@@ -36,10 +37,7 @@ typedef struct VP8_LOOP_MEM{
     cl_mem pitches_mem;
     cl_mem threads_yuv_mem;
     cl_mem threads_y_mem;
-    cl_mem filter_levels_mem;
-    cl_mem dc_diffs_mem;
-    cl_mem rows_mem;
-    cl_mem cols_mem;
+    cl_mem filters_mem;
 } VP8_LOOP_MEM;
 
 VP8_LOOP_MEM loop_mem;
@@ -54,13 +52,13 @@ prototype_loopfilter_cl(vp8_loop_filter_simple_vertical_edge_cl);
 
 /* Horizontal MB filtering */
 void vp8_loop_filter_mbh_cl(MACROBLOCKD *x, VP8_LOOPFILTER_ARGS *args, int num_blocks, int *y_offsets, int *u_offsets, int *v_offsets,
-                            int y_stride, int uv_stride, cl_mem apply_filter)
+                            int y_stride, int uv_stride, cl_int filter_type)
 {
     int err;
     int block;
     cl_int offsets[num_blocks][3];
     
-    args->apply_filter_mem = apply_filter;
+    args->filter_type= filter_type;
     args->use_mbflim = CL_TRUE;
     args->cur_iter = 0;
     args->threads_mem = loop_mem.threads_yuv_mem; 
@@ -76,12 +74,12 @@ void vp8_loop_filter_mbh_cl(MACROBLOCKD *x, VP8_LOOPFILTER_ARGS *args, int num_b
 }
 
 void vp8_loop_filter_mbhs_cl(MACROBLOCKD *x, VP8_LOOPFILTER_ARGS *args, int num_blocks, int *y_offsets, int *u_offsets, int *v_offsets,
-                            int y_stride, int uv_stride, cl_mem apply_filter)
+                            int y_stride, int uv_stride, cl_int filter_type)
 {
     int err;
     cl_int offsets[num_blocks], block;
 
-    args->apply_filter_mem = apply_filter;
+    args->filter_type= filter_type;
     args->use_mbflim = CL_TRUE;
     args->cur_iter = 0;
     args->threads_mem = loop_mem.threads_y_mem; 
@@ -96,12 +94,12 @@ void vp8_loop_filter_mbhs_cl(MACROBLOCKD *x, VP8_LOOPFILTER_ARGS *args, int num_
 
 /* Vertical MB Filtering */
 void vp8_loop_filter_mbv_cl(MACROBLOCKD *x, VP8_LOOPFILTER_ARGS *args, int num_blocks, int *y_offsets, int *u_offsets, int *v_offsets,
-                           int y_stride, int uv_stride, cl_mem apply_filter)
+                           int y_stride, int uv_stride, cl_int filter_type)
 {
     int err, block;
     cl_int offsets[num_blocks][3];
 
-    args->apply_filter_mem = apply_filter;
+    args->filter_type= filter_type;
     args->use_mbflim = CL_TRUE;
     args->cur_iter = 0;
     args->threads_mem = loop_mem.threads_yuv_mem; 
@@ -117,12 +115,12 @@ void vp8_loop_filter_mbv_cl(MACROBLOCKD *x, VP8_LOOPFILTER_ARGS *args, int num_b
 }
 
 void vp8_loop_filter_mbvs_cl(MACROBLOCKD *x, VP8_LOOPFILTER_ARGS *args, int num_blocks, int *y_offsets, int *u_offsets, int *v_offsets,
-                            int y_stride, int uv_stride, cl_mem apply_filter)
+                            int y_stride, int uv_stride, cl_int filter_type)
 {
     int err;
     cl_int offsets[num_blocks], block;
     
-    args->apply_filter_mem = apply_filter;
+    args->filter_type= filter_type;
     args->use_mbflim = CL_TRUE;
     args->cur_iter = 0;
     args->threads_mem = loop_mem.threads_y_mem;  
@@ -137,14 +135,14 @@ void vp8_loop_filter_mbvs_cl(MACROBLOCKD *x, VP8_LOOPFILTER_ARGS *args, int num_
 
 /* Horizontal B Filtering */
 void vp8_loop_filter_bh_cl(MACROBLOCKD *x, VP8_LOOPFILTER_ARGS *args, int num_blocks, int *y_offsets, int *u_offsets, int *v_offsets,
-                          int y_stride, int uv_stride, cl_mem apply_filter)
+                          int y_stride, int uv_stride, cl_int filter_type)
 {
 
     int err;
     cl_int offsets[num_blocks*5];
     int block;
     
-    args->apply_filter_mem = apply_filter;
+    args->filter_type= filter_type;
     args->use_mbflim = CL_FALSE;
     
     for( block = 0; block < num_blocks; block++){
@@ -172,13 +170,13 @@ void vp8_loop_filter_bh_cl(MACROBLOCKD *x, VP8_LOOPFILTER_ARGS *args, int num_bl
 }
 
 void vp8_loop_filter_bhs_cl(MACROBLOCKD *x, VP8_LOOPFILTER_ARGS *args, int num_blocks, int *y_offsets, int *u_offsets, int *v_offsets,
-                           int y_stride, int uv_stride, cl_mem apply_filter)
+                           int y_stride, int uv_stride, cl_int filter_type)
 {
     int err;
     int block;
     cl_int offsets[num_blocks*3];
 
-    args->apply_filter_mem = apply_filter;
+    args->filter_type= filter_type;
     args->use_mbflim = CL_FALSE;
     args->threads_mem = loop_mem.threads_y_mem; 
     
@@ -199,13 +197,13 @@ void vp8_loop_filter_bhs_cl(MACROBLOCKD *x, VP8_LOOPFILTER_ARGS *args, int num_b
 
 /* Vertical B Filtering */
 void vp8_loop_filter_bv_cl(MACROBLOCKD *x, VP8_LOOPFILTER_ARGS *args, int num_blocks, int *y_offsets, int *u_offsets, int *v_offsets,
-                          int y_stride, int uv_stride, cl_mem apply_filter)
+                          int y_stride, int uv_stride, cl_int filter_type)
 {
     int err;
     cl_int offsets[num_blocks*5];
     int block;
     
-    args->apply_filter_mem = apply_filter;
+    args->filter_type= filter_type;
     args->use_mbflim = CL_FALSE;
     
     for( block = 0; block < num_blocks; block++){
@@ -231,13 +229,13 @@ void vp8_loop_filter_bv_cl(MACROBLOCKD *x, VP8_LOOPFILTER_ARGS *args, int num_bl
 }    
 
 void vp8_loop_filter_bvs_cl(MACROBLOCKD *x, VP8_LOOPFILTER_ARGS *args, int num_blocks, int *y_offsets, int *u_offsets, int *v_offsets,
-                           int y_stride, int uv_stride, cl_mem apply_filter)
+                           int y_stride, int uv_stride, cl_int filter_type)
 {
     int err;
     int block;
     cl_int offsets[num_blocks*3];
 
-    args->apply_filter_mem = apply_filter;
+    args->filter_type= filter_type;
     args->use_mbflim = CL_FALSE;
     args->threads_mem = loop_mem.threads_y_mem;
     
@@ -260,22 +258,16 @@ void vp8_loop_filter_bvs_cl(MACROBLOCKD *x, VP8_LOOPFILTER_ARGS *args, int num_b
 int cl_free_loop_mem(){
     int err = 0;
 
-    if (loop_mem.dc_diffs_mem != NULL) err |= clReleaseMemObject(loop_mem.dc_diffs_mem);
     if (loop_mem.offsets_mem != NULL) err |= clReleaseMemObject(loop_mem.offsets_mem);
     if (loop_mem.pitches_mem != NULL) err |= clReleaseMemObject(loop_mem.pitches_mem);
     if (loop_mem.threads_y_mem != NULL) err |= clReleaseMemObject(loop_mem.threads_y_mem);
     if (loop_mem.threads_yuv_mem != NULL) err |= clReleaseMemObject(loop_mem.threads_yuv_mem);
-    if (loop_mem.rows_mem != NULL) err |= clReleaseMemObject(loop_mem.rows_mem);
-    if (loop_mem.cols_mem != NULL) err |= clReleaseMemObject(loop_mem.cols_mem);
-    if (loop_mem.filter_levels_mem != NULL) err |= clReleaseMemObject(loop_mem.filter_levels_mem);
-    loop_mem.dc_diffs_mem = NULL;
+    if (loop_mem.filters_mem != NULL) err |= clReleaseMemObject(loop_mem.filters_mem);
     loop_mem.offsets_mem = NULL;
     loop_mem.pitches_mem = NULL;
     loop_mem.threads_y_mem = NULL;
     loop_mem.threads_yuv_mem = NULL;
-    loop_mem.rows_mem = NULL;
-    loop_mem.cols_mem = NULL;
-    loop_mem.filter_levels_mem = NULL;
+    loop_mem.filters_mem = NULL;
 
     loop_mem.num_blocks = 0;
 
@@ -298,7 +290,6 @@ int cl_populate_loop_mem(MACROBLOCKD *mbd, YV12_BUFFER_CONFIG *post){
     pitches[1] = post->uv_stride;
     pitches[2] = post->uv_stride;
 
-
     VP8_CL_SET_BUF(mbd->cl_commands, loop_mem.threads_y_mem, sizeof(cl_int), threads_y, , err);
     VP8_CL_SET_BUF(mbd->cl_commands, loop_mem.threads_yuv_mem, sizeof(cl_int)*3, threads_yuv, , err);
     VP8_CL_SET_BUF(mbd->cl_commands, loop_mem.pitches_mem, sizeof(cl_int)*3, pitches, , err);
@@ -318,11 +309,6 @@ int cl_grow_loop_mem(MACROBLOCKD *mbd, YV12_BUFFER_CONFIG *post, int num_blocks)
     cl_free_loop_mem();
 
     //Now re-allocate the memory in the right size
-    loop_mem.dc_diffs_mem = clCreateBuffer(cl_data.context, CL_MEM_READ_WRITE, sizeof(cl_int)*num_blocks, NULL, &err);
-    if (err != CL_SUCCESS){
-        printf("Error creating loop filter buffer\n");
-        return err;
-    }
     loop_mem.offsets_mem = clCreateBuffer(cl_data.context, CL_MEM_READ_WRITE, sizeof(cl_int)*num_blocks*5, NULL, &err);
     if (err != CL_SUCCESS){
         printf("Error creating loop filter buffer\n");
@@ -343,17 +329,7 @@ int cl_grow_loop_mem(MACROBLOCKD *mbd, YV12_BUFFER_CONFIG *post, int num_blocks)
         printf("Error creating loop filter buffer\n");
         return err;
     }
-    loop_mem.rows_mem = clCreateBuffer(cl_data.context, CL_MEM_READ_WRITE, sizeof(cl_int)*num_blocks, NULL, &err);
-    if (err != CL_SUCCESS){
-        printf("Error creating loop filter buffer\n");
-        return err;
-    }
-    loop_mem.cols_mem = clCreateBuffer(cl_data.context, CL_MEM_READ_WRITE, sizeof(cl_int)*num_blocks, NULL, &err);
-    if (err != CL_SUCCESS){
-        printf("Error creating loop filter buffer\n");
-        return err;
-    }
-    loop_mem.filter_levels_mem = clCreateBuffer(cl_data.context, CL_MEM_READ_WRITE, sizeof(cl_int)*num_blocks, NULL, &err);
+    loop_mem.filters_mem = clCreateBuffer(cl_data.context, CL_MEM_READ_WRITE, sizeof(cl_int)*num_blocks*4, NULL, &err);
     if (err != CL_SUCCESS){
         printf("Error creating loop filter buffer\n");
         return err;
@@ -383,14 +359,11 @@ int cl_init_loop_filter() {
     VP8_CL_CREATE_KERNEL(cl_data,loop_filter_program,vp8_loop_filter_simple_vertical_edge_kernel,"vp8_loop_filter_simple_vertical_edge_kernel");
 
     loop_mem.num_blocks = 0;
-    loop_mem.dc_diffs_mem = NULL;
     loop_mem.offsets_mem = NULL;
     loop_mem.pitches_mem = NULL;
     loop_mem.threads_y_mem = NULL;
     loop_mem.threads_yuv_mem = NULL;
-    loop_mem.rows_mem = NULL;
-    loop_mem.cols_mem = NULL;
-    loop_mem.filter_levels_mem = NULL;
+    loop_mem.filters_mem = NULL;
 
     return CL_SUCCESS;
 }
@@ -460,31 +433,38 @@ void vp8_loop_filter_macroblocks_cl(int num_blocks, int mb_rows[], int mb_cols[]
     LOOPFILTERTYPE filter_type = cm->filter_type;
     int err;
     VP8_LOOPFILTER_ARGS args;
-
+    int filters[num_blocks*4];
+    
     cl_grow_loop_mem(mbd, post, num_blocks);
     
     args.buf_mem = post->buffer_mem;
-    args.filter_level_mem = loop_mem.filter_levels_mem;
     args.lfi_mem = lfi_mem;
     args.offsets_mem = loop_mem.offsets_mem;
     args.pitches_mem = loop_mem.pitches_mem;
+    args.filters_mem = loop_mem.filters_mem;
     
-    //Set the rows, cols, dc_diffs, and filter_levels buffers
-    VP8_CL_SET_BUF(mbd->cl_commands, loop_mem.dc_diffs_mem, sizeof(cl_int)*num_blocks, dc_diffs,,)
-    VP8_CL_SET_BUF(mbd->cl_commands, loop_mem.cols_mem, sizeof(cl_int)*num_blocks, mb_cols,,)
-    VP8_CL_SET_BUF(mbd->cl_commands, loop_mem.rows_mem, sizeof(cl_int)*num_blocks, mb_rows,,)
-    VP8_CL_SET_BUF(mbd->cl_commands, loop_mem.filter_levels_mem, sizeof(cl_int)*num_blocks, filter_levels,,)
-
+#define COLS_LOCATION 1
+#define DC_DIFFS_LOCATION 2
+#define ROWS_LOCATION 3
+    
+    vpx_memcpy(filters, filter_levels, num_blocks*sizeof(int));
+    vpx_memcpy(&filters[DC_DIFFS_LOCATION*num_blocks], dc_diffs, num_blocks*sizeof(int));
+    vpx_memcpy(&filters[COLS_LOCATION*num_blocks], mb_cols, num_blocks*sizeof(int));
+    vpx_memcpy(&filters[ROWS_LOCATION*num_blocks], mb_rows, num_blocks*sizeof(int));
+    
+    //Set the filters_mem buffer with the filter_levels, rows, cols, and dc_diffs
+    VP8_CL_SET_BUF(mbd->cl_commands, loop_mem.filters_mem, sizeof(cl_int)*num_blocks*4, filters,,)
+            
     if (filter_type == NORMAL_LOOPFILTER){
-        vp8_loop_filter_mbv_cl(mbd, &args, num_blocks, y_offsets, u_offsets, v_offsets, post->y_stride, post->uv_stride, loop_mem.cols_mem );
-        vp8_loop_filter_bv_cl(mbd, &args, num_blocks, y_offsets, u_offsets, v_offsets, post->y_stride, post->uv_stride, loop_mem.dc_diffs_mem );
-        vp8_loop_filter_mbh_cl(mbd, &args, num_blocks, y_offsets, u_offsets, v_offsets, post->y_stride, post->uv_stride, loop_mem.rows_mem );
-        vp8_loop_filter_bh_cl(mbd, &args, num_blocks, y_offsets, u_offsets, v_offsets, post->y_stride, post->uv_stride, loop_mem.dc_diffs_mem );
+        vp8_loop_filter_mbv_cl(mbd, &args, num_blocks, y_offsets, u_offsets, v_offsets, post->y_stride, post->uv_stride, COLS_LOCATION );
+        vp8_loop_filter_bv_cl(mbd, &args, num_blocks, y_offsets, u_offsets, v_offsets, post->y_stride, post->uv_stride, DC_DIFFS_LOCATION );
+        vp8_loop_filter_mbh_cl(mbd, &args, num_blocks, y_offsets, u_offsets, v_offsets, post->y_stride, post->uv_stride, ROWS_LOCATION );
+        vp8_loop_filter_bh_cl(mbd, &args, num_blocks, y_offsets, u_offsets, v_offsets, post->y_stride, post->uv_stride, DC_DIFFS_LOCATION );
     } else {
-        vp8_loop_filter_mbvs_cl(mbd, &args, num_blocks, y_offsets, u_offsets, v_offsets, post->y_stride, post->uv_stride, loop_mem.cols_mem );
-        vp8_loop_filter_bvs_cl(mbd, &args, num_blocks, y_offsets, u_offsets, v_offsets, post->y_stride, post->uv_stride, loop_mem.dc_diffs_mem );
-        vp8_loop_filter_mbhs_cl(mbd, &args, num_blocks, y_offsets, u_offsets, v_offsets, post->y_stride, post->uv_stride, loop_mem.rows_mem );
-        vp8_loop_filter_bhs_cl(mbd, &args, num_blocks, y_offsets, u_offsets, v_offsets, post->y_stride, post->uv_stride, loop_mem.dc_diffs_mem );
+        vp8_loop_filter_mbvs_cl(mbd, &args, num_blocks, y_offsets, u_offsets, v_offsets, post->y_stride, post->uv_stride, COLS_LOCATION );
+        vp8_loop_filter_bvs_cl(mbd, &args, num_blocks, y_offsets, u_offsets, v_offsets, post->y_stride, post->uv_stride, DC_DIFFS_LOCATION );
+        vp8_loop_filter_mbhs_cl(mbd, &args, num_blocks, y_offsets, u_offsets, v_offsets, post->y_stride, post->uv_stride, ROWS_LOCATION );
+        vp8_loop_filter_bhs_cl(mbd, &args, num_blocks, y_offsets, u_offsets, v_offsets, post->y_stride, post->uv_stride, DC_DIFFS_LOCATION );
     }
 
 }
@@ -508,7 +488,6 @@ void vp8_loop_filter_add_macroblock_cl(VP8_COMMON *cm, int mb_row, int mb_col,
      * Apply any context driven MB level adjustment
      */
     filter_levels[pos] = vp8_loop_filter_level(mbd, baseline_filter_level);
-
     row[pos] = mb_row;
     col[pos] = mb_col;
     dc_diffs[pos] = mbd->mode_info_context->mbmi.dc_diff;
@@ -524,6 +503,7 @@ void vp8_loop_filter_priority_cl(int priority, VP8_COMMON *cm, MACROBLOCKD *mbd,
     int y_offsets[max_size];
     int u_offsets[max_size];
     int v_offsets[max_size];
+    
     int filter_levels[max_size];
     int rows[max_size];
     int cols[max_size];
@@ -540,7 +520,7 @@ void vp8_loop_filter_priority_cl(int priority, VP8_COMMON *cm, MACROBLOCKD *mbd,
             mb_col = priority - 2 * mb_row;
         }
 
-        //Skip non-existant MBs
+        //Skip non-existent MBs
         if ((mb_col > -1 && (mb_col < mb_cols)) && (mb_row < cm->mb_rows)){
             vp8_loop_filter_add_macroblock_cl(cm, mb_row, mb_col,
                 mbd, post, rows, cols, dc_diffs, y_offsets, u_offsets, v_offsets,
@@ -548,7 +528,7 @@ void vp8_loop_filter_priority_cl(int priority, VP8_COMMON *cm, MACROBLOCKD *mbd,
             );
         }
     }
-
+    
     //Process all of the MBs in the current priority
     vp8_loop_filter_macroblocks_cl(current_pos, rows, cols, dc_diffs, y_offsets, u_offsets, v_offsets, filter_levels, cm, mbd, lfi_mem, post);
 }
