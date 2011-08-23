@@ -29,7 +29,7 @@ static VP8_LOOPFILTER_ARGS filter_args[6];
     }\
 
 
-static void vp8_loop_filter_cl_run(
+static int vp8_loop_filter_cl_run(
     cl_command_queue cq,
     cl_kernel kernel,
     VP8_LOOPFILTER_ARGS *args,
@@ -40,6 +40,7 @@ static void vp8_loop_filter_cl_run(
 ){
 
     size_t global[3] = {max_threads, num_planes, num_blocks};
+    size_t local_size;
     int err;
 
     if (first_run == 0){
@@ -54,19 +55,26 @@ static void vp8_loop_filter_cl_run(
     VP8_CL_SET_LOOP_ARG(kernel, current_args, args, 3, cl_mem, lfi_mem)
     VP8_CL_SET_LOOP_ARG(kernel, current_args, args, 4, cl_mem, filters_mem)
     VP8_CL_SET_LOOP_ARG(kernel, current_args, args, 5, cl_int, use_mbflim)
-    VP8_CL_SET_LOOP_ARG(kernel, current_args, args, 6, cl_mem, threads_mem)
-    VP8_CL_SET_LOOP_ARG(kernel, current_args, args, 7, cl_int, filter_type)
-    VP8_CL_SET_LOOP_ARG(kernel, current_args, args, 8, cl_int, cur_iter)
+    VP8_CL_SET_LOOP_ARG(kernel, current_args, args, 6, cl_int, filter_type)
+    VP8_CL_SET_LOOP_ARG(kernel, current_args, args, 7, cl_int, cur_iter)
     VP8_CL_CHECK_SUCCESS( cq, err != CL_SUCCESS,
-        "Error: Failed to set kernel arguments!\n",,
+        "Error: Failed to set kernel arguments!\n",,err
     );
 
+    VP8_CL_CALC_LOCAL_SIZE(kernel,&local_size);
+        
     /* Execute the kernel */
-    err = clEnqueueNDRangeKernel(cq, kernel, 3, NULL, global, NULL , 0, NULL, NULL);
+    if (local_size < (global[0]*global[1]*global[2]))
+        err = clEnqueueNDRangeKernel(cq, kernel, 3, NULL, global, NULL , 0, NULL, NULL);
+    else
+        err = clEnqueueNDRangeKernel(cq, kernel, 3, NULL, global, global , 0, NULL, NULL);
+    
     VP8_CL_CHECK_SUCCESS( cq, err != CL_SUCCESS,
         "Error: Failed to execute kernel!\n",
-        printf("err = %d\n",err);,
+        printf("err = %d\n",err);,err
     );
+        
+    return CL_SUCCESS;
 }
 
 void vp8_loop_filter_horizontal_edge_cl
