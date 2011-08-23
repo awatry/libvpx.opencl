@@ -20,6 +20,7 @@
 #include "blockd_cl.h"
 
 #define USE_MAPPED_BUFFER 1
+#define MAP_PITCHES 0
 
 const char *loopFilterCompileOptions = "";
 const char *loop_filter_cl_file_name = "vp8/common/opencl/loopfilter.cl";
@@ -529,8 +530,12 @@ void vp8_loop_filter_frame_cl
     int err, priority;
     loop_filter_info *lfi_ptr = NULL;
 
-    int pitches[3] = {post->y_stride, post->uv_stride, post->uv_stride};
-
+#if MAP_PITCHES
+    cl_int *pitches = NULL;
+#else
+    int pitches[3] = {post->y_stride, post->uv_stride, post->uv_stride};    
+#endif
+   
     mbd->mode_info_context = cm->mi; /* Point at base of Mb MODE_INFO list */
 
     /* Note the baseline filter values for each segment */
@@ -564,7 +569,15 @@ void vp8_loop_filter_frame_cl
     VP8_CL_SET_BUF(mbd->cl_commands, post->buffer_mem, post->buffer_size, post->buffer_alloc,
             vp8_loop_filter_frame(cm,mbd,default_filt_lvl),);
 
+#if MAP_PITCHES
+    VP8_CL_MAP_BUF(mbd->cl_commands, loop_mem.pitches_mem, pitches, sizeof(cl_int)*3,,)
+    pitches[0] = post->y_stride;
+    pitches[1] = post->uv_stride;
+    pitches[2] = post->uv_stride;
+    VP8_CL_UNMAP_BUF(mbd->cl_commands, loop_mem.pitches_mem, pitches);
+#else
     VP8_CL_SET_BUF(mbd->cl_commands, loop_mem.pitches_mem, sizeof(cl_int)*3, pitches, vp8_loop_filter_frame(cm,mbd,default_filt_lvl),);
+#endif
 
     //Maximum priority = 2*(Height-1) + Width in Macroblocks
     for (priority = 0; priority < 2 * (cm->mb_rows - 1) + cm->mb_cols ; priority++){
