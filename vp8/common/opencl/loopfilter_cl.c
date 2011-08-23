@@ -19,6 +19,8 @@
 #include "vp8_opencl.h"
 #include "blockd_cl.h"
 
+#define USE_MAPPED_BUFFER 1
+
 const char *loopFilterCompileOptions = "";
 const char *loop_filter_cl_file_name = "vp8/common/opencl/loopfilter.cl";
 
@@ -293,7 +295,11 @@ int cl_grow_loop_mem(MACROBLOCKD *mbd, YV12_BUFFER_CONFIG *post, int num_blocks)
         printf("Error creating loop filter buffer\n");
         return err;
     }
+#if USE_MAPPED_BUFFER
+    loop_mem.filters_mem = clCreateBuffer(cl_data.context, CL_MEM_READ_WRITE|CL_MEM_ALLOC_HOST_PTR, sizeof(cl_int)*num_blocks*4, NULL, &err);
+#else
     loop_mem.filters_mem = clCreateBuffer(cl_data.context, CL_MEM_READ_WRITE, sizeof(cl_int)*num_blocks*4, NULL, &err);
+#endif
     if (err != CL_SUCCESS){
         printf("Error creating loop filter buffer\n");
         return err;
@@ -395,7 +401,12 @@ void vp8_loop_filter_macroblocks_cl(int num_blocks, int mb_rows[], int mb_cols[]
     LOOPFILTERTYPE filter_type = cm->filter_type;
     int err;
     VP8_LOOPFILTER_ARGS args;
+
+#if USE_MAPPED_BUFFER
+    cl_int *filters = NULL;
+#else
     int filters[num_blocks*4];
+#endif
     
     cl_grow_loop_mem(mbd, post, num_blocks);
     
@@ -409,13 +420,21 @@ void vp8_loop_filter_macroblocks_cl(int num_blocks, int mb_rows[], int mb_cols[]
 #define DC_DIFFS_LOCATION 2
 #define ROWS_LOCATION 3
     
+#if USE_MAPPED_BUFFER
+    VP8_CL_MAP_BUF(mbd->cl_commands, loop_mem.filters_mem, filters, 4*num_blocks*sizeof(int),,);
+#endif
+    
     vpx_memcpy(filters, filter_levels, num_blocks*sizeof(int));
     vpx_memcpy(&filters[DC_DIFFS_LOCATION*num_blocks], dc_diffs, num_blocks*sizeof(int));
     vpx_memcpy(&filters[COLS_LOCATION*num_blocks], mb_cols, num_blocks*sizeof(int));
     vpx_memcpy(&filters[ROWS_LOCATION*num_blocks], mb_rows, num_blocks*sizeof(int));
-    
+
+#if USE_MAPPED_BUFFER
+    VP8_CL_UNMAP_BUF(mbd->cl_commands, loop_mem.filters_mem, filters, ,)
+#else    
     //Set the filters_mem buffer with the filter_levels, rows, cols, and dc_diffs
     VP8_CL_SET_BUF(mbd->cl_commands, loop_mem.filters_mem, sizeof(cl_int)*num_blocks*4, filters,,)
+#endif
             
     if (filter_type == NORMAL_LOOPFILTER){
         vp8_loop_filter_mbv_cl(mbd, &args, num_blocks, y_offsets, u_offsets, v_offsets, post->y_stride, post->uv_stride, COLS_LOCATION );
@@ -508,6 +527,7 @@ void vp8_loop_filter_frame_cl
 
     int baseline_filter_level[MAX_MB_SEGMENTS];
     int err, priority;
+    loop_filter_info *lfi_ptr = NULL;
 
     int pitches[3] = {post->y_stride, post->uv_stride, post->uv_stride};
 
@@ -524,11 +544,23 @@ void vp8_loop_filter_frame_cl
 
     cl_grow_loop_mem(mbd, post, 30); //Default to allocating enough for 480p
     
+#if USE_MAPPED_BUFFER
     if (lfi_mem == NULL){
-        VP8_CL_CREATE_BUF(mbd->cl_commands, lfi_mem, , sizeof(loop_filter_info)*(MAX_LOOP_FILTER+1), cm->lf_info,, );
+        VP8_CL_CREATE_MAPPED_BUF(mbd->cl_commands, lfi_mem, lfi_ptr, sizeof(loop_filter_info)*(MAX_LOOP_FILTER+1), , );
     } else {
-        VP8_CL_SET_BUF(mbd->cl_commands, lfi_mem, sizeof(loop_filter_info)*(MAX_LOOP_FILTER+1), cm->lf_info,,);
+        //map the buffer
+        VP8_CL_MAP_BUF(mbd->cl_commands, lfi_mem, lfi_ptr, sizeof(loop_filter_info)*(MAX_LOOP_FILTER+1),,);
     }
+    vpx_memcpy(lfi_ptr, cm->lf_info, sizeof(loop_filter_info)*(MAX_LOOP_FILTER+1));
+    VP8_CL_UNMAP_BUF(mbd->cl_commands, lfi_mem, lfi_ptr,,)
+#else
+     if (lfi_mem == NULL){
+        VP8_CL_CREATE_BUF(mbd->cl_commands, lfi_mem, , sizeof(loop_filter_info)*(MAX_LOOP_FILTER+1), cm->lf_info,, );
+     } else {
+        VP8_CL_SET_BUF(mbd->cl_commands, lfi_mem, sizeof(loop_filter_info)*(MAX_LOOP_FILTER+1), cm->lf_info,,);
+     }
+#endif
+            
     VP8_CL_SET_BUF(mbd->cl_commands, post->buffer_mem, post->buffer_size, post->buffer_alloc,
             vp8_loop_filter_frame(cm,mbd,default_filt_lvl),);
 

@@ -133,6 +133,36 @@ extern const char *vpx_codec_lib_dir(void);
         ); \
     } \
 
+//Allocates a cl_mem on the host using hopefully pinned memory, and then
+//creates a host-writable pointer to the mapped memory
+//Finally creates a cl_mem object which can be read/written by the device
+//Still need to unmap buffer after done writing to it.
+#define VP8_CL_CREATE_MAPPED_BUF(cq, pinnedBufRef, dataPtr, bufSize, altPath, retCode) \
+    \
+    pinnedBufRef =  clCreateBuffer(cl_data.context, CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR, bufSize, NULL, NULL); \
+    if (pinnedBufRef != NULL){ \
+        dataPtr = clEnqueueMapBuffer(cq,pinnedBufRef, CL_TRUE,CL_MAP_WRITE, 0, bufSize, 0,NULL, NULL, NULL); \
+    }\
+    VP8_CL_CHECK_SUCCESS(cq, !pinnedBufRef && !dataPtr, \
+        "Error: Failed to allocate mapped buffer. Using CPU path!\n", \
+        altPath, retCode\
+    ); \
+
+#define VP8_CL_UNMAP_BUF(cq, pinnedBufRef, dataPtr, altPath, retCode) \
+    err = clEnqueueUnmapMemObject(cq, pinnedBufRef, dataPtr, 0, NULL, NULL ); \
+    VP8_CL_CHECK_SUCCESS(cq, err != CL_SUCCESS, \
+        "Error: Failed to unmap buffer!\n", \
+        altPath, retCode\
+    );
+
+#define VP8_CL_MAP_BUF(cq, bufRef, bufPtr, bufSize, altPath, retCode) \
+    bufPtr = clEnqueueMapBuffer(cq, bufRef, CL_TRUE, CL_MAP_WRITE, 0, bufSize, 0, NULL, NULL, &err); \
+    VP8_CL_CHECK_SUCCESS(cq, err != CL_SUCCESS, \
+        "Error failed to map buffer\n", \
+        altPath, retCode\
+    );
+
+
 #define VP8_CL_CREATE_BUF(cq, bufRef, bufType, bufSize, dataPtr, altPath, retCode) \
     bufRef = clCreateBuffer(cl_data.context, CL_MEM_READ_WRITE, bufSize, NULL, NULL); \
     if (dataPtr != NULL && bufRef != NULL){ \
