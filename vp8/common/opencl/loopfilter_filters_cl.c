@@ -29,16 +29,6 @@ static VP8_LOOPFILTER_ARGS filter_args[6];
     }\
 
 
-    //cl_mem buf_mem;
-    //cl_mem offsets_mem;
-    //cl_mem pitches_mem;
-    //cl_mem lfi_mem;
-    //cl_mem filter_level_mem;
-    //cl_int use_mbflim;
-    //cl_mem threads_mem;
-    //cl_mem apply_filter_mem;
-    //cl_int cur_iter;
-
 static void vp8_loop_filter_cl_run(
     cl_command_queue cq,
     cl_kernel kernel,
@@ -82,99 +72,42 @@ static void vp8_loop_filter_cl_run(
 void vp8_loop_filter_horizontal_edge_cl
 (
     MACROBLOCKD *x,
-    cl_mem s_base,
-    cl_int cur_iter,
+    VP8_LOOPFILTER_ARGS *args,
     int num_planes,
     int num_blocks,
-    cl_mem offsets_mem,
-    cl_mem pitches_mem, /* pitch */
-    cl_mem lfi_mem,
-    cl_mem filter_level_mem,
-    int use_mbflim,
-    cl_mem threads_mem,
-    int max_threads,
-    cl_mem apply_filter_mem
+    int max_threads
 )
 {
-    VP8_LOOPFILTER_ARGS args;
-    args.buf_mem = s_base;
-    args.apply_filter_mem = apply_filter_mem;
-    args.cur_iter = cur_iter;
-    args.filter_level_mem = filter_level_mem;
-    args.lfi_mem = lfi_mem;
-    args.offsets_mem = offsets_mem;
-    args.pitches_mem = pitches_mem;
-    args.threads_mem = threads_mem;
-    args.use_mbflim = use_mbflim;
-    
     vp8_loop_filter_cl_run(x->cl_commands,
-        cl_data.vp8_loop_filter_horizontal_edge_kernel, &args, num_planes, num_blocks, max_threads, &filter_args[0]
+        cl_data.vp8_loop_filter_horizontal_edge_kernel, args, num_planes, num_blocks, max_threads, &filter_args[0]
     );
 }
 
 void vp8_loop_filter_vertical_edge_cl
 (
     MACROBLOCKD *x,
-    cl_mem s_base,
-    cl_int cur_iter,
+    VP8_LOOPFILTER_ARGS *args,
     int num_planes,
     int num_blocks,
-    cl_mem offsets_mem,
-    cl_mem pitches_mem,
-    cl_mem lfi_mem,
-    cl_mem filter_level_mem,
-    int use_mbflim,
-    cl_mem threads_mem,
-    int max_threads,
-    cl_mem apply_filter_mem
+    int max_threads
 )
 {
-    VP8_LOOPFILTER_ARGS args;
-    args.buf_mem = s_base;
-    args.apply_filter_mem = apply_filter_mem;
-    args.cur_iter = cur_iter;
-    args.filter_level_mem = filter_level_mem;
-    args.lfi_mem = lfi_mem;
-    args.offsets_mem = offsets_mem;
-    args.pitches_mem = pitches_mem;
-    args.threads_mem = threads_mem;
-    args.use_mbflim = use_mbflim;
-
     vp8_loop_filter_cl_run(x->cl_commands,
-        cl_data.vp8_loop_filter_vertical_edge_kernel, &args, num_planes, num_blocks, max_threads, &filter_args[1]
+        cl_data.vp8_loop_filter_vertical_edge_kernel, args, num_planes, num_blocks, max_threads, &filter_args[1]
     );
 }
 
 void vp8_mbloop_filter_horizontal_edge_cl
 (
     MACROBLOCKD *x,
-    cl_mem s_base,
-    cl_int cur_iter,
+    VP8_LOOPFILTER_ARGS *args,
     int num_planes,
     int num_blocks,
-    cl_mem offsets_mem,
-    cl_mem pitches_mem,
-    cl_mem lfi_mem,
-    cl_mem filter_level_mem,
-    int use_mbflim,
-    cl_mem threads_mem,
-    int max_threads,
-    cl_mem apply_filter_mem
+    int max_threads
 )
 {
-    VP8_LOOPFILTER_ARGS args;
-    args.buf_mem = s_base;
-    args.apply_filter_mem = apply_filter_mem;
-    args.cur_iter = cur_iter;
-    args.filter_level_mem = filter_level_mem;
-    args.lfi_mem = lfi_mem;
-    args.offsets_mem = offsets_mem;
-    args.pitches_mem = pitches_mem;
-    args.threads_mem = threads_mem;
-    args.use_mbflim = use_mbflim;
-
     vp8_loop_filter_cl_run(x->cl_commands,
-        cl_data.vp8_mbloop_filter_horizontal_edge_kernel, &args, num_planes, num_blocks, max_threads, &filter_args[2]
+        cl_data.vp8_mbloop_filter_horizontal_edge_kernel, args, num_planes, num_blocks, max_threads, &filter_args[2]
     );
 }
 
@@ -182,98 +115,41 @@ void vp8_mbloop_filter_horizontal_edge_cl
 void vp8_mbloop_filter_vertical_edge_cl
 (
     MACROBLOCKD *x,
-    cl_mem s_base,
-    cl_int cur_iter,
+    VP8_LOOPFILTER_ARGS *args,
     int num_planes,
     int num_blocks,
-    cl_mem offsets_mem,
-    cl_mem pitches_mem,
-    cl_mem lfi_mem,
-    cl_mem filter_level_mem,
-    int use_mbflim,
-    cl_mem threads_mem,
-    int max_threads,
-    cl_mem apply_filter_mem
+    int max_threads
 )
 {
-    VP8_LOOPFILTER_ARGS args;
-    args.buf_mem = s_base;
-    args.apply_filter_mem = apply_filter_mem;
-    args.cur_iter = cur_iter;
-    args.filter_level_mem = filter_level_mem;
-    args.lfi_mem = lfi_mem;
-    args.offsets_mem = offsets_mem;
-    args.pitches_mem = pitches_mem;
-    args.threads_mem = threads_mem;
-    args.use_mbflim = use_mbflim;
-
     vp8_loop_filter_cl_run(x->cl_commands,
-        cl_data.vp8_mbloop_filter_vertical_edge_kernel, &args, num_planes, num_blocks, max_threads, &filter_args[3]
+        cl_data.vp8_mbloop_filter_vertical_edge_kernel, args, num_planes, num_blocks, max_threads, &filter_args[3]
     );
 }
 
 void vp8_loop_filter_simple_horizontal_edge_cl
 (
     MACROBLOCKD *x,
-    cl_mem s_base,
-    cl_int cur_iter,
+    VP8_LOOPFILTER_ARGS *args,
     int num_planes,
     int num_blocks,
-    cl_mem offsets_mem,
-    cl_mem pitches_mem,
-    cl_mem lfi_mem,
-    cl_mem filter_level_mem,
-    int use_mbflim,
-    cl_mem threads_mem,
-    int max_threads,
-    cl_mem apply_filter_mem
+    int max_threads
 )
 {
-    VP8_LOOPFILTER_ARGS args;
-    args.buf_mem = s_base;
-    args.apply_filter_mem = apply_filter_mem;
-    args.cur_iter = cur_iter;
-    args.filter_level_mem = filter_level_mem;
-    args.lfi_mem = lfi_mem;
-    args.offsets_mem = offsets_mem;
-    args.pitches_mem = pitches_mem;
-    args.threads_mem = threads_mem;
-    args.use_mbflim = use_mbflim;
-
     vp8_loop_filter_cl_run(x->cl_commands,
-        cl_data.vp8_loop_filter_simple_horizontal_edge_kernel, &args, num_planes, num_blocks, max_threads, &filter_args[4]
+        cl_data.vp8_loop_filter_simple_horizontal_edge_kernel, args, num_planes, num_blocks, max_threads, &filter_args[4]
     );
 }
 
 void vp8_loop_filter_simple_vertical_edge_cl
 (
     MACROBLOCKD *x,
-    cl_mem s_base,
-    cl_int cur_iter,
+    VP8_LOOPFILTER_ARGS *args,
     int num_planes,
     int num_blocks,
-    cl_mem offsets_mem,
-    cl_mem pitches_mem,
-    cl_mem lfi_mem,
-    cl_mem filter_level_mem,
-    int use_mbflim,
-    cl_mem threads_mem,
-    int max_threads,
-    cl_mem apply_filter_mem
+    int max_threads
 )
 {
-    VP8_LOOPFILTER_ARGS args;
-    args.buf_mem = s_base;
-    args.apply_filter_mem = apply_filter_mem;
-    args.cur_iter = cur_iter;
-    args.filter_level_mem = filter_level_mem;
-    args.lfi_mem = lfi_mem;
-    args.offsets_mem = offsets_mem;
-    args.pitches_mem = pitches_mem;
-    args.threads_mem = threads_mem;
-    args.use_mbflim = use_mbflim;
-
     vp8_loop_filter_cl_run(x->cl_commands,
-        cl_data.vp8_loop_filter_simple_vertical_edge_kernel, &args, num_planes, num_blocks, max_threads, &filter_args[5]
+        cl_data.vp8_loop_filter_simple_vertical_edge_kernel, args, num_planes, num_blocks, max_threads, &filter_args[5]
     );
 }
