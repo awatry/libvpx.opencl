@@ -324,12 +324,18 @@ void vp8_loop_filter_build_offsets(MACROBLOCKD *mbd, int num_blocks,
     int y_stride = post->y_stride;
     int uv_stride = post->uv_stride;
     int blk,err;
+#if USE_MAPPED_BUFFERS
     cl_int *offsets = NULL;
+#else
+    cl_int offsets[num_blocks*16];
+#endif
     
     if (filter_type == NORMAL_LOOPFILTER){
+#if USE_MAPPED_BUFFERS
         //Map the offsets buffer
         VP8_CL_MAP_BUF(mbd->cl_commands, loop_mem.offsets_mem, offsets, sizeof(cl_int)*num_blocks*16,,)
-
+#endif
+                
         //populate it with the correct offsets for current filter type
         for (blk = 0; blk < num_blocks; blk++){
             int y_off, u_off, v_off;
@@ -363,9 +369,10 @@ void vp8_loop_filter_build_offsets(MACROBLOCKD *mbd, int num_blocks,
         }
     } else {
         //Simple filter
+#if USE_MAPPED_BUFFERS
         //Map the offsets buffer
         VP8_CL_MAP_BUF(mbd->cl_commands, loop_mem.offsets_mem, offsets, sizeof(cl_int)*num_blocks*8,,)
-
+#endif
         //populate it with the correct offsets for current filter type
         for (blk = 0; blk < num_blocks; blk++){
             int y_off = y_offsets[blk];
@@ -388,8 +395,12 @@ void vp8_loop_filter_build_offsets(MACROBLOCKD *mbd, int num_blocks,
         }
     }
     
+#if USE_MAPPED_BUFFERS
     //Unmap the offsets buffer
     VP8_CL_UNMAP_BUF(mbd->cl_commands, loop_mem.offsets_mem, offsets,,);
+#else
+    VP8_CL_SET_BUF(mbd->cl_commands, loop_mem.offsets_mem, sizeof(cl_int)*num_blocks*16, offsets,,)
+#endif
     
 }
 
