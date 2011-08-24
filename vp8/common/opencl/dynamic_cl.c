@@ -92,9 +92,9 @@ int load_cl(char *lib_name){
 //    CL_LOAD_FN("clEnqueueCopyImage", cl.enqueueCopyImage);
 //    CL_LOAD_FN("clEnqueueCopyImageToBuffer", cl.enqueueCopyImageToBuffer);
 //    CL_LOAD_FN("clEnqueueCopyBufferToImage", cl.enqueueCopyBufferToImage);
-//    CL_LOAD_FN("clEnqueueMapBuffer", cl.enqueueMapBuffer);
+    CL_LOAD_FN("clEnqueueMapBuffer", cl.enqueueMapBuffer);
 //    CL_LOAD_FN("clEnqueueMapImage", cl.enqueueMapImage);
-//    CL_LOAD_FN("clEnqueueUnmapMemObject", cl.enqueueUnmapMemObject);
+    CL_LOAD_FN("clEnqueueUnmapMemObject", cl.enqueueUnmapMemObject);
     CL_LOAD_FN("clEnqueueNDRangeKernel", cl.enqueueNDRAngeKernel);
 //    CL_LOAD_FN("clEnqueueTask", cl.enqueueTask);
 //    CL_LOAD_FN("clEnqueueNativeKernel", cl.enqueueNativeKernel);
