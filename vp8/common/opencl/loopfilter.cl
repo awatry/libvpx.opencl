@@ -113,6 +113,7 @@ kernel void vp8_loop_filter_horizontal_edge_kernel
     int cur_iter
 )
 {
+
     private size_t plane = get_global_id(1);
     private size_t block = get_global_id(2);
     local size_t num_planes;
@@ -472,8 +473,7 @@ __inline void vp8_mbfilter(
     global uc *oq2
 )
 {
-    signed char s;
-    int4 s4, u4;
+    signed char s, u;
     signed char vp8_filter;
 
     char2 filter;
@@ -494,12 +494,11 @@ __inline void vp8_mbfilter(
     filter.s0 = filter.s1;
 
     /* save bottom 3 bits so that we round one side +4 and the other +3 */
-    filter += (char2){4,3};
-    filter.s0 = clamp(filter.s0, -128, 127);
-    filter.s1 = clamp(filter.s1, -128, 127);
+    filter.s0 = clamp(filter.s0 + 4, -128, 127);
+    filter.s1 = clamp(filter.s1 + 3, -128, 127);
     filter.s0 >>= 3;
     filter.s1 >>= 3;
-    
+
     qs.s0 = clamp(qs.s0 - filter.s0, -128, 127);
     ps.s0 = clamp(ps.s0 + filter.s1, -128, 127);
 
@@ -507,30 +506,25 @@ __inline void vp8_mbfilter(
     vp8_filter &= ~hev;
     filter.s1 = vp8_filter;
 
-    u4 = (int4){filter.s1, filter.s1, filter.s1, 0};
-    u4 *= (int4){27, 18, 9, 0};
-    u4 += 63;
-    u4 >>= 7;
-    u4.s0 = clamp(u4.s0, -128, 127);
-    u4.s1 = clamp(u4.s1, -128, 127);
-    u4.s2 = clamp(u4.s2, -128, 127);
-
     /* roughly 3/7th difference across boundary */
-    s = clamp(qs.s0 - u4.s0, -128, 127);
+    u = clamp((63 + filter.s1 * 27) >> 7, -128, 127);
+    s = clamp(qs.s0 - u, -128, 127);
     *oq0 = s ^ 0x80;
-    s = clamp(ps.s0 + u4.s0, -128, 127);
+    s = clamp(ps.s0 + u, -128, 127);
     *op0 = s ^ 0x80;
 
     /* roughly 2/7th difference across boundary */
-    s = clamp(qs.s1 - u4.s1, -128, 127);
+    u = clamp((63 + filter.s1 * 18) >> 7, -128, 127);
+    s = clamp(qs.s1 - u, -128, 127);
     *oq1 = s ^ 0x80;
-    s = clamp(ps.s1 + u4.s1, -128, 127);
+    s = clamp(ps.s1 + u, -128, 127);
     *op1 = s ^ 0x80;
 
     /* roughly 1/7th difference across boundary */
-    s = clamp(qs.s2 - u4.s2, -128, 127);
+    u = clamp((63 + filter.s1 * 9) >> 7, -128, 127);
+    s = clamp(qs.s2 - u, -128, 127);
     *oq2 = s ^ 0x80;
-    s = clamp(ps.s2 + u4.s2, -128, 127);
+    s = clamp(ps.s2 + u, -128, 127);
     *op2 = s ^ 0x80;
 }
 
