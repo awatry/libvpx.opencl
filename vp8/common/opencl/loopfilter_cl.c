@@ -32,7 +32,7 @@
 const char *loopFilterCompileOptions = "";
 const char *loop_filter_cl_file_name = "vp8/common/opencl/loopfilter.cl";
 
-static frame_num = 0;
+static int frame_num = 0;
 
 typedef unsigned char uc;
 
