@@ -32,6 +32,8 @@
 const char *loopFilterCompileOptions = "";
 const char *loop_filter_cl_file_name = "vp8/common/opencl/loopfilter.cl";
 
+static frame_num = 0;
+
 typedef unsigned char uc;
 
 extern void vp8_loop_filter_frame
@@ -62,62 +64,18 @@ prototype_loopfilter_cl(vp8_loop_filter_simple_vertical_edge_cl);
 void vp8_loop_filter_mbh_cl(MACROBLOCKD *x, VP8_LOOPFILTER_ARGS *args, int num_blocks, int *y_offsets, int *u_offsets, int *v_offsets,
                             int y_stride, int uv_stride, cl_int filter_type)
 {
-    int err;
-    int block;
-    
-#if MAP_OFFSETS
-    cl_int *offsets;
-    VP8_CL_MAP_BUF(x->cl_commands, args->offsets_mem, offsets, 3*num_blocks*sizeof(cl_int),,)
-#else
-    cl_int offsets[num_blocks*3];
-#endif
-    
     args->filter_type= filter_type;
     args->use_mbflim = CL_TRUE;
-    args->cur_iter = 0;
-    
-    for( block = 0; block < num_blocks; block++){
-        offsets[block*3] = y_offsets[block];
-        offsets[block*3+1] = u_offsets[block];
-        offsets[block*3+2] = v_offsets[block];
-    }
-
-    
-#if MAP_OFFSETS
-    VP8_CL_UNMAP_BUF(x->cl_commands, args->offsets_mem, offsets,,)
-#else
-    VP8_CL_SET_BUF(x->cl_commands, args->offsets_mem, num_blocks * 3 * sizeof(cl_int), offsets,,);
-#endif
     vp8_mbloop_filter_horizontal_edge_cl(x, args, 3, num_blocks, 16);
 }
 
 void vp8_loop_filter_mbhs_cl(MACROBLOCKD *x, VP8_LOOPFILTER_ARGS *args, int num_blocks, int *y_offsets, int *u_offsets, int *v_offsets,
                             int y_stride, int uv_stride, cl_int filter_type)
 {
-    int err;
-    cl_int block;
-    
-#if MAP_OFFSETS
-    cl_int *offsets;
-    VP8_CL_MAP_BUF(x->cl_commands, args->offsets_mem, offsets, num_blocks*sizeof(cl_int),,)
-#else
-    cl_int offsets[num_blocks];
-#endif
-
     args->filter_type= filter_type;
     args->use_mbflim = CL_TRUE;
-    args->cur_iter = 0;
+    args->cur_iter = 4;
     
-    //vpx_memcpy(offsets, y_offsets, sizeof(cl_int)*num_blocks);
-    for( block = 0; block < num_blocks; block++){
-        offsets[block] = y_offsets[block];
-    }
-
-#if MAP_OFFSETS
-    VP8_CL_UNMAP_BUF(x->cl_commands, args->offsets_mem, offsets,,)
-#else
-    VP8_CL_SET_BUF(x->cl_commands, args->offsets_mem, num_blocks * sizeof(cl_int), offsets,,);
-#endif
     vp8_loop_filter_simple_horizontal_edge_cl(x, args, 1, num_blocks, 16);
 }
 
@@ -125,62 +83,19 @@ void vp8_loop_filter_mbhs_cl(MACROBLOCKD *x, VP8_LOOPFILTER_ARGS *args, int num_
 void vp8_loop_filter_mbv_cl(MACROBLOCKD *x, VP8_LOOPFILTER_ARGS *args, int num_blocks, int *y_offsets, int *u_offsets, int *v_offsets,
                            int y_stride, int uv_stride, cl_int filter_type)
 {
-    int err, block;
-
-#if MAP_OFFSETS
-    cl_int *offsets;
-    VP8_CL_MAP_BUF(x->cl_commands, args->offsets_mem, offsets, 3*num_blocks*sizeof(cl_int),,)
-#else
-    cl_int offsets[num_blocks*3];
-#endif
-
     args->filter_type= filter_type;
     args->use_mbflim = CL_TRUE;
     args->cur_iter = 0;
-    
-    for( block = 0; block < num_blocks; block++){
-        offsets[block*3] = y_offsets[block];
-        offsets[block*3+1] = u_offsets[block];
-        offsets[block*3+2] = v_offsets[block];
-    }
-    
-#if MAP_OFFSETS
-    VP8_CL_UNMAP_BUF(x->cl_commands, args->offsets_mem, offsets,,)
-#else
-    VP8_CL_SET_BUF(x->cl_commands, args->offsets_mem, num_blocks * 3 * sizeof(cl_int), offsets,,);
-#endif
-
     vp8_mbloop_filter_vertical_edge_cl(x, args, 3, num_blocks, 16);
 }
 
 void vp8_loop_filter_mbvs_cl(MACROBLOCKD *x, VP8_LOOPFILTER_ARGS *args, int num_blocks, int *y_offsets, int *u_offsets, int *v_offsets,
                             int y_stride, int uv_stride, cl_int filter_type)
 {
-    
-    int err;
-    cl_int block;
-
-#if MAP_OFFSETS
-    cl_int *offsets;
-    VP8_CL_MAP_BUF(x->cl_commands, args->offsets_mem, offsets, num_blocks*sizeof(cl_int),,)
-#else
-    cl_int offsets[num_blocks];
-#endif   
-    
     args->filter_type= filter_type;
     args->use_mbflim = CL_TRUE;
     args->cur_iter = 0;
     
-    for( block = 0; block < num_blocks; block++){
-        offsets[block] = y_offsets[block];
-    }
-    
-#if MAP_OFFSETS
-    VP8_CL_UNMAP_BUF(x->cl_commands, args->offsets_mem, offsets,,)
-#else
-    VP8_CL_SET_BUF(x->cl_commands, args->offsets_mem, num_blocks * sizeof(cl_int), offsets,,);
-#endif
-
     vp8_loop_filter_simple_vertical_edge_cl(x, args, 1, num_blocks, 16);
 }
 
@@ -188,33 +103,8 @@ void vp8_loop_filter_mbvs_cl(MACROBLOCKD *x, VP8_LOOPFILTER_ARGS *args, int num_
 void vp8_loop_filter_bh_cl(MACROBLOCKD *x, VP8_LOOPFILTER_ARGS *args, int num_blocks, int *y_offsets, int *u_offsets, int *v_offsets,
                           int y_stride, int uv_stride, cl_int filter_type)
 {
-
-    int err;
-    int block;
-    
-#if MAP_OFFSETS
-    cl_int *offsets;
-    VP8_CL_MAP_BUF(x->cl_commands, args->offsets_mem, offsets, 5*num_blocks*sizeof(cl_int),,)
-#else
-    cl_int offsets[num_blocks*5];
-#endif 
-    
     args->filter_type= filter_type;
     args->use_mbflim = CL_FALSE;
-    
-    for( block = 0; block < num_blocks; block++){
-        offsets[block*3    ] = y_offsets[block] + 4*y_stride;
-        offsets[block*3 + 1] = u_offsets[block] + 4*uv_stride;
-        offsets[block*3 + 2] = v_offsets[block] + 4*uv_stride;
-        offsets[num_blocks*3 + block ] = y_offsets[block] + 8*y_stride;
-        offsets[num_blocks*4 + block ] = y_offsets[block] + 12*y_stride;
-    }
-    
-#if MAP_OFFSETS
-    VP8_CL_UNMAP_BUF(x->cl_commands, args->offsets_mem, offsets,,)
-#else
-    VP8_CL_SET_BUF(x->cl_commands, args->offsets_mem, num_blocks * 5 * sizeof(cl_int), offsets,,);
-#endif
     
     args->cur_iter = 0;
     vp8_loop_filter_horizontal_edge_cl(x, args, 3, num_blocks, 16);
@@ -230,35 +120,14 @@ void vp8_loop_filter_bh_cl(MACROBLOCKD *x, VP8_LOOPFILTER_ARGS *args, int num_bl
 void vp8_loop_filter_bhs_cl(MACROBLOCKD *x, VP8_LOOPFILTER_ARGS *args, int num_blocks, int *y_offsets, int *u_offsets, int *v_offsets,
                            int y_stride, int uv_stride, cl_int filter_type)
 {
-    int err;
-    int block;
-
-#if MAP_OFFSETS
-    cl_int *offsets;
-    VP8_CL_MAP_BUF(x->cl_commands, args->offsets_mem, offsets, 3*num_blocks*sizeof(cl_int),,)
-#else
-    cl_int offsets[num_blocks*3];
-#endif 
-
     args->filter_type= filter_type;
     args->use_mbflim = CL_FALSE;
-    
-    for( block = 0; block < num_blocks; block++){
-        offsets[block]                 = y_offsets[block] + 4*y_stride;
-        offsets[num_blocks + block   ] = y_offsets[block] + 8*y_stride;
-        offsets[num_blocks*2 + block ] = y_offsets[block] + 12*y_stride;
-    }
-#if MAP_OFFSETS
-    VP8_CL_UNMAP_BUF(x->cl_commands, args->offsets_mem, offsets,,)
-#else
-    VP8_CL_SET_BUF(x->cl_commands, args->offsets_mem, num_blocks * 3 * sizeof(cl_int), offsets,,);
-#endif
 
-    args->cur_iter = 0;
+    args->cur_iter = 5;
     vp8_loop_filter_simple_horizontal_edge_cl(x, args, 1, num_blocks, 16);
-    args->cur_iter = 1;
+    args->cur_iter = 6;
     vp8_loop_filter_simple_horizontal_edge_cl(x, args, 1, num_blocks, 16);
-    args->cur_iter = 2;
+    args->cur_iter = 7;
     vp8_loop_filter_simple_horizontal_edge_cl(x, args, 1, num_blocks, 16);
 }
 
@@ -266,77 +135,32 @@ void vp8_loop_filter_bhs_cl(MACROBLOCKD *x, VP8_LOOPFILTER_ARGS *args, int num_b
 void vp8_loop_filter_bv_cl(MACROBLOCKD *x, VP8_LOOPFILTER_ARGS *args, int num_blocks, int *y_offsets, int *u_offsets, int *v_offsets,
                           int y_stride, int uv_stride, cl_int filter_type)
 {
-    int err;
-    int block;
-
-#if MAP_OFFSETS
-    cl_int *offsets;
-    VP8_CL_MAP_BUF(x->cl_commands, args->offsets_mem, offsets, 5*num_blocks*sizeof(cl_int),,)
-#else
-    cl_int offsets[num_blocks*5];
-#endif 
-    
     args->filter_type= filter_type;
     args->use_mbflim = CL_FALSE;
-    
-    for( block = 0; block < num_blocks; block++){
-        offsets[block*3    ] = y_offsets[block] + 4;
-        offsets[block*3 + 1] = u_offsets[block] + 4;
-        offsets[block*3 + 2] = v_offsets[block] + 4;
-        offsets[num_blocks*3 + block ] = y_offsets[block] + 8;
-        offsets[num_blocks*4 + block ] = y_offsets[block] + 12;
-    }
-
-#if MAP_OFFSETS
-    VP8_CL_UNMAP_BUF(x->cl_commands, args->offsets_mem, offsets,,)
-#else
-    VP8_CL_SET_BUF(x->cl_commands, args->offsets_mem, num_blocks*5*sizeof(cl_int), offsets,,);
-#endif    
 
     //Do YUV, and then two more Y iterations
-    args->cur_iter = 0;
+    args->cur_iter = 1;
     vp8_loop_filter_vertical_edge_cl(x, args, 3, num_blocks, 16);
     
-    args->cur_iter = 3;
+    args->cur_iter = 6;
     vp8_loop_filter_vertical_edge_cl(x, args, 1, num_blocks, 16);
     
-    args->cur_iter = 4;
+    args->cur_iter = 7;
     vp8_loop_filter_vertical_edge_cl(x, args, 1, num_blocks, 16);
 }    
 
 void vp8_loop_filter_bvs_cl(MACROBLOCKD *x, VP8_LOOPFILTER_ARGS *args, int num_blocks, int *y_offsets, int *u_offsets, int *v_offsets,
                            int y_stride, int uv_stride, cl_int filter_type)
 {
-    int err;
-    int block;
-    
-#if MAP_OFFSETS
-    cl_int *offsets;
-    VP8_CL_MAP_BUF(x->cl_commands, args->offsets_mem, offsets, 3*num_blocks*sizeof(cl_int),,)
-#else
-    cl_int offsets[num_blocks*3];
-#endif 
-    
     args->filter_type= filter_type;
     args->use_mbflim = CL_FALSE;
-    
-    for( block = 0; block < num_blocks; block++){
-        offsets[block]                 = y_offsets[block] + 4;
-        offsets[num_blocks + block   ] = y_offsets[block] + 8;
-        offsets[num_blocks*2 + block ] = y_offsets[block] + 12;
-    }
-#if MAP_OFFSETS
-    VP8_CL_UNMAP_BUF(x->cl_commands, args->offsets_mem, offsets,,)
-#else
-    VP8_CL_SET_BUF(x->cl_commands, args->offsets_mem, num_blocks*3*sizeof(cl_int), offsets,,);
-#endif
 
     //3 Y plane iterations
-    args->cur_iter = 0;
-    vp8_loop_filter_simple_vertical_edge_cl(x, args, 1, num_blocks, 16);
     args->cur_iter = 1;
     vp8_loop_filter_simple_vertical_edge_cl(x, args, 1, num_blocks, 16);
     args->cur_iter = 2;
+    vp8_loop_filter_simple_vertical_edge_cl(x, args, 1, num_blocks, 16);
+    args->cur_iter = 3;
     vp8_loop_filter_simple_vertical_edge_cl(x, args, 1, num_blocks, 16);
 }
 
@@ -358,14 +182,17 @@ int cl_free_loop_mem(){
 int cl_populate_loop_mem(MACROBLOCKD *mbd, YV12_BUFFER_CONFIG *post){
     int err;
 
+#if USE_MAPPED_BUFFERS
     cl_int *pitches = NULL;
     VP8_CL_MAP_BUF(mbd->cl_commands, loop_mem.pitches_mem, pitches, 3*sizeof(cl_int),,err)
-    
     pitches[0] = post->y_stride;
     pitches[1] = post->uv_stride;
     pitches[2] = post->uv_stride;
     VP8_CL_UNMAP_BUF(mbd->cl_commands, loop_mem.pitches_mem, pitches,,err)
-    
+#else
+    cl_int pitches[3] = {post->y_stride, post->uv_stride, post->uv_stride};
+    VP8_CL_SET_BUF(mbd->cl_commands, loop_mem.pitches_mem, 3*sizeof(cl_int), pitches,,);
+#endif
     return err;
 }
 
@@ -381,7 +208,7 @@ int cl_grow_loop_mem(MACROBLOCKD *mbd, YV12_BUFFER_CONFIG *post, int num_blocks)
     cl_free_loop_mem();
 
     //Now re-allocate the memory in the right size
-    loop_mem.offsets_mem = clCreateBuffer(cl_data.context, CL_MEM_READ_ONLY|CL_MEM_ALLOC_HOST_PTR, sizeof(cl_int)*num_blocks*5, NULL, &err);
+    loop_mem.offsets_mem = clCreateBuffer(cl_data.context, CL_MEM_READ_ONLY|CL_MEM_ALLOC_HOST_PTR, sizeof(cl_int)*num_blocks*16, NULL, &err);
     if (err != CL_SUCCESS){
         printf("Error creating loop filter buffer\n");
         return err;
@@ -489,6 +316,83 @@ int vp8_loop_filter_level(MACROBLOCKD *mbd, int baseline_filter_level[] ){
     return vp8_adjust_mb_lf_value(mbd, baseline_filter_level[Segment]);
 }
 
+void vp8_loop_filter_build_offsets(MACROBLOCKD *mbd, int num_blocks, 
+        int *y_offsets, int *u_offsets, int *v_offsets, YV12_BUFFER_CONFIG *post, 
+        LOOPFILTERTYPE filter_type
+)
+{
+    int y_stride = post->y_stride;
+    int uv_stride = post->uv_stride;
+    int blk,err;
+    cl_int *offsets = NULL;
+    
+    if (filter_type == NORMAL_LOOPFILTER){
+        //Map the offsets buffer
+        VP8_CL_MAP_BUF(mbd->cl_commands, loop_mem.offsets_mem, offsets, sizeof(cl_int)*num_blocks*16,,)
+
+        //populate it with the correct offsets for current filter type
+        for (blk = 0; blk < num_blocks; blk++){
+            int y_off, u_off, v_off;
+            y_off = y_offsets[blk];
+            u_off = u_offsets[blk];
+            v_off = v_offsets[blk];
+            
+            //MBV offsets
+            offsets[blk * 3 + 0] = y_off;
+            offsets[blk * 3 + 1] = u_off;
+            offsets[blk * 3 + 2] = v_off;
+
+            //BV Offsets
+            offsets[num_blocks * 3 + blk * 3 + 0] = y_off+4;
+            offsets[num_blocks * 3 + blk * 3 + 1] = u_off+4;
+            offsets[num_blocks * 3 + blk * 3 + 2] = v_off+4;
+            offsets[num_blocks * 6 + blk]         = y_off+8;
+            offsets[num_blocks * 7 + blk]         = y_off+12;
+
+            //MBH Offsets
+            offsets[num_blocks * 8 + blk * 3 + 0] = y_off;
+            offsets[num_blocks * 8 + blk * 3 + 1] = u_off;
+            offsets[num_blocks * 8 + blk * 3 + 2] = v_off;
+
+            //BH Offsets
+            offsets[num_blocks * 11 + blk * 3 + 0] = y_off+4*y_stride;
+            offsets[num_blocks * 11 + blk * 3 + 1] = u_off+4*uv_stride;
+            offsets[num_blocks * 11 + blk * 3 + 2] = v_off+4*uv_stride;
+            offsets[num_blocks * 14 + blk]         = y_off+8*y_stride;
+            offsets[num_blocks * 15 + blk]         = y_off+12*y_stride;
+        }
+    } else {
+        //Simple filter
+        //Map the offsets buffer
+        VP8_CL_MAP_BUF(mbd->cl_commands, loop_mem.offsets_mem, offsets, sizeof(cl_int)*num_blocks*8,,)
+
+        //populate it with the correct offsets for current filter type
+        for (blk = 0; blk < num_blocks; blk++){
+            int y_off = y_offsets[blk];
+
+            //MBVS offsets
+            offsets[blk] = y_off;
+
+            //BVS Offsets
+            offsets[num_blocks + blk]    = y_off+4;
+            offsets[num_blocks *2 + blk] = y_off+8;
+            offsets[num_blocks *3 + blk] = y_off+12;
+
+            //MBHS Offsets
+            offsets[num_blocks * 4 + blk] = y_off;
+
+            //BHS Offsets
+            offsets[num_blocks * 5 + blk] = y_off + 4 * y_stride;
+            offsets[num_blocks * 6 + blk] = y_off + 8 * y_stride;
+            offsets[num_blocks * 7 + blk] = y_off + 12 * y_stride;
+        }
+    }
+    
+    //Unmap the offsets buffer
+    VP8_CL_UNMAP_BUF(mbd->cl_commands, loop_mem.offsets_mem, offsets,,);
+    
+}
+
 void vp8_loop_filter_macroblocks_cl(int num_blocks, int mb_rows[], int mb_cols[],
     int dc_diffs[], int *y_offsets, int *u_offsets, int *v_offsets, int *filter_levels,
     VP8_COMMON *cm, MACROBLOCKD *mbd,  cl_mem lfi_mem, YV12_BUFFER_CONFIG *post
@@ -531,6 +435,9 @@ void vp8_loop_filter_macroblocks_cl(int num_blocks, int mb_rows[], int mb_cols[]
     //Set the filters_mem buffer with the filter_levels, rows, cols, and dc_diffs
     VP8_CL_SET_BUF(mbd->cl_commands, loop_mem.filters_mem, sizeof(cl_int)*num_blocks*4, filters,,)
 #endif
+
+    //Fill loop_mem.offsets_mem will all offsets for this priority level.
+    vp8_loop_filter_build_offsets(mbd, num_blocks, y_offsets, u_offsets, v_offsets, post, filter_type);
             
     if (filter_type == NORMAL_LOOPFILTER){
         vp8_loop_filter_mbv_cl(mbd, &args, num_blocks, y_offsets, u_offsets, v_offsets, post->y_stride, post->uv_stride, COLS_LOCATION );
@@ -633,10 +540,10 @@ void vp8_loop_filter_frame_cl
 #endif
    
     mbd->mode_info_context = cm->mi; /* Point at base of Mb MODE_INFO list */
-
+    
     /* Note the baseline filter values for each segment */
     vp8_loop_filter_set_baselines_cl(mbd, default_filt_lvl, baseline_filter_level);
-
+    
     /* Initialize the loop filter for this frame. */
     if ((cm->last_filter_type != cm->filter_type) || (cm->last_sharpness_level != cm->sharpness_level))
         vp8_init_loop_filter(cm);
@@ -661,7 +568,7 @@ void vp8_loop_filter_frame_cl
         VP8_CL_SET_BUF(mbd->cl_commands, lfi_mem, sizeof(loop_filter_info)*(MAX_LOOP_FILTER+1), cm->lf_info,,);
      }
 #endif
-            
+
 #if USE_MAPPED_BUFFERS
     VP8_CL_MAP_BUF(mbd->cl_commands, post->buffer_mem, buf, post->buffer_size, vp8_loop_filter_frame(cm,mbd,default_filt_lvl),);
     vpx_memcpy(buf, post->buffer_alloc, post->buffer_size);

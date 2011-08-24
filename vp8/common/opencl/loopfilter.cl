@@ -113,7 +113,6 @@ kernel void vp8_loop_filter_horizontal_edge_kernel
     int cur_iter
 )
 {
-
     private size_t plane = get_global_id(1);
     private size_t block = get_global_id(2);
     local size_t num_planes;
@@ -126,7 +125,7 @@ kernel void vp8_loop_filter_horizontal_edge_kernel
         int filter_level = filters[block];
         if (filter_level){
             int p = pitches[plane];
-            int block_offset = cur_iter*num_blocks*num_planes + block*num_planes+plane;
+            int block_offset = num_blocks*11 + cur_iter*num_blocks*num_planes + block*num_planes+plane;
             int s_off = offsets[block_offset];
 
             int  hev = 0; /* high edge variance */
@@ -251,7 +250,7 @@ kernel void vp8_mbloop_filter_horizontal_edge_kernel
         int filter_level = filters[block];
         if (filter_level){
             int p = pitches[plane];
-            int block_offset = cur_iter*num_blocks*num_planes + block*num_planes+plane;
+            int block_offset = 8*num_blocks + block*num_planes+plane;
             int s_off = offsets[block_offset];
 
             global uc *s = s_base+s_off;
@@ -317,7 +316,6 @@ kernel void vp8_mbloop_filter_vertical_edge_kernel
             int p = pitches[plane];
             int block_offset = cur_iter*num_blocks*num_planes + block*num_planes+plane;
             int s_off = offsets[block_offset];
-
 
             global uc *s = s_base + s_off;
 
