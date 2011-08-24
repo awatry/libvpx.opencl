@@ -82,6 +82,8 @@ vp8_yv12_alloc_frame_buffer(YV12_BUFFER_CONFIG *ybf, int width, int height, int 
          * Note : We never use these pixels anyway so this doesn't hurt.
          */
 
+        
+        
         ybf->buffer_alloc = (unsigned char *) duck_memalign(32,  ybf->frame_size + (ybf->y_stride * 2) + 32, 0);
 
         if (ybf->buffer_alloc == NULL)
@@ -92,7 +94,7 @@ vp8_yv12_alloc_frame_buffer(YV12_BUFFER_CONFIG *ybf, int width, int height, int 
 #if CONFIG_OPENCL
         ybf->buffer_mem = NULL;
         if (cl_initialized == CL_SUCCESS){
-            ybf->buffer_mem = clCreateBuffer(cl_data.context, CL_MEM_READ_WRITE, ybf->buffer_size, NULL, NULL);
+            ybf->buffer_mem = clCreateBuffer(cl_data.context, CL_MEM_READ_WRITE|CL_MEM_ALLOC_HOST_PTR, ybf->buffer_size, NULL, NULL);
             if (ybf->buffer_mem == NULL){
                 cl_destroy(NULL, VP8_CL_TRIED_BUT_FAILED);
             }

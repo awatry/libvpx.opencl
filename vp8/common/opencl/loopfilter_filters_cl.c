@@ -19,7 +19,7 @@
 
 typedef unsigned char uc;
 
-static int first_run = 0;
+static int first_run = 1;
 static VP8_LOOPFILTER_ARGS filter_args[6];
 
 #define VP8_CL_SET_LOOP_ARG(kernel, current, newargs, argnum, type, name) \
@@ -43,9 +43,9 @@ static int vp8_loop_filter_cl_run(
     size_t local_size;
     int err;
 
-    if (first_run == 0){
+    if (first_run){
         memset(filter_args, -1, sizeof(VP8_LOOPFILTER_ARGS)*6);
-        first_run = 1;
+        first_run = 0;
     }
     
     err = 0;
@@ -62,7 +62,7 @@ static int vp8_loop_filter_cl_run(
     );
 
     VP8_CL_CALC_LOCAL_SIZE(kernel,&local_size);
-        
+
     /* Execute the kernel */
     if (local_size < (global[0]*global[1]*global[2]))
         err = clEnqueueNDRangeKernel(cq, kernel, 3, NULL, global, NULL , 0, NULL, NULL);
