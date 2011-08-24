@@ -261,16 +261,6 @@ int cl_init_loop_filter() {
 
 void cl_destroy_loop_filter(){
 
-    if (cl_data.loop_filter_program)
-        clReleaseProgram(cl_data.loop_filter_program);
-
-    VP8_CL_RELEASE_KERNEL(cl_data.vp8_loop_filter_horizontal_edge_kernel);
-    VP8_CL_RELEASE_KERNEL(cl_data.vp8_loop_filter_vertical_edge_kernel);
-    VP8_CL_RELEASE_KERNEL(cl_data.vp8_mbloop_filter_horizontal_edge_kernel);
-    VP8_CL_RELEASE_KERNEL(cl_data.vp8_mbloop_filter_vertical_edge_kernel);
-    VP8_CL_RELEASE_KERNEL(cl_data.vp8_loop_filter_simple_horizontal_edge_kernel);
-    VP8_CL_RELEASE_KERNEL(cl_data.vp8_loop_filter_simple_vertical_edge_kernel);
-
     cl_free_loop_mem();
 
     if (lfi_mem != NULL){
@@ -278,6 +268,16 @@ void cl_destroy_loop_filter(){
         lfi_mem = NULL;
     }
     
+    VP8_CL_RELEASE_KERNEL(cl_data.vp8_loop_filter_horizontal_edge_kernel);
+    VP8_CL_RELEASE_KERNEL(cl_data.vp8_loop_filter_vertical_edge_kernel);
+    VP8_CL_RELEASE_KERNEL(cl_data.vp8_mbloop_filter_horizontal_edge_kernel);
+    VP8_CL_RELEASE_KERNEL(cl_data.vp8_mbloop_filter_vertical_edge_kernel);
+    VP8_CL_RELEASE_KERNEL(cl_data.vp8_loop_filter_simple_horizontal_edge_kernel);
+    VP8_CL_RELEASE_KERNEL(cl_data.vp8_loop_filter_simple_vertical_edge_kernel);
+
+    if (cl_data.loop_filter_program)
+        clReleaseProgram(cl_data.loop_filter_program);
+   
     cl_data.loop_filter_program = NULL;
 }
 
