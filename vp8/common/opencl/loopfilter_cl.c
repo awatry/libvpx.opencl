@@ -374,18 +374,18 @@ int cl_grow_loop_mem(MACROBLOCKD *mbd, YV12_BUFFER_CONFIG *post, int num_blocks)
     cl_free_loop_mem();
 
     //Now re-allocate the memory in the right size
-    loop_mem.offsets_mem = clCreateBuffer(cl_data.context, CL_MEM_READ_WRITE, sizeof(cl_int)*num_blocks*5, NULL, &err);
+    loop_mem.offsets_mem = clCreateBuffer(cl_data.context, CL_MEM_READ_ONLY|CL_MEM_ALLOC_HOST_PTR, sizeof(cl_int)*num_blocks*5, NULL, &err);
     if (err != CL_SUCCESS){
         printf("Error creating loop filter buffer\n");
         return err;
     }
-    loop_mem.pitches_mem = clCreateBuffer(cl_data.context, CL_MEM_READ_WRITE, sizeof(cl_int)*3, NULL, &err);
+    loop_mem.pitches_mem = clCreateBuffer(cl_data.context, CL_MEM_READ_ONLY|CL_MEM_ALLOC_HOST_PTR, sizeof(cl_int)*3, NULL, &err);
     if (err != CL_SUCCESS){
         printf("Error creating loop filter buffer\n");
         return err;
     }
 #if USE_MAPPED_BUFFER
-    loop_mem.filters_mem = clCreateBuffer(cl_data.context, CL_MEM_READ_WRITE|CL_MEM_ALLOC_HOST_PTR, sizeof(cl_int)*num_blocks*4, NULL, &err);
+    loop_mem.filters_mem = clCreateBuffer(cl_data.context, CL_MEM_READ_ONLY|CL_MEM_ALLOC_HOST_PTR, sizeof(cl_int)*num_blocks*4, NULL, &err);
 #else
     loop_mem.filters_mem = clCreateBuffer(cl_data.context, CL_MEM_READ_WRITE, sizeof(cl_int)*num_blocks*4, NULL, &err);
 #endif
