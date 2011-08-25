@@ -110,7 +110,8 @@ kernel void vp8_loop_filter_horizontal_edge_kernel
     global int *filters,
     int use_mbflim,
     int filter_type,
-    int cur_iter
+    int cur_iter,
+    int priority_offset
 )
 {
     private size_t plane = get_global_id(1);
@@ -126,7 +127,7 @@ kernel void vp8_loop_filter_horizontal_edge_kernel
         if (filter_level){
             int p = pitches[plane];
             int block_offset = num_blocks*11 + cur_iter*num_blocks*num_planes + block*num_planes+plane;
-            int s_off = offsets[block_offset];
+            int s_off = offsets[block_offset+priority_offset];
 
             int  hev = 0; /* high edge variance */
             signed char mask = 0;
@@ -173,7 +174,8 @@ kernel void vp8_loop_filter_vertical_edge_kernel
     global int *filters,
     int use_mbflim,
     int filter_type,
-    int cur_iter
+    int cur_iter,
+    int priority_offset
 )
 {
     private size_t plane = get_global_id(1);
@@ -189,7 +191,7 @@ kernel void vp8_loop_filter_vertical_edge_kernel
         if (filter_level){
             int p = pitches[plane];
             int block_offset = cur_iter*num_blocks*num_planes + block*num_planes+plane;
-            int s_off = offsets[block_offset];
+            int s_off = offsets[block_offset+priority_offset];
 
             int  hev = 0; /* high edge variance */
             signed char mask = 0;
@@ -235,7 +237,8 @@ kernel void vp8_mbloop_filter_horizontal_edge_kernel
     global int *filters,
     int use_mbflim,
     int filter_type,
-    int cur_iter
+    int cur_iter,
+    int priority_offset
 )
 {
     private size_t plane = get_global_id(1);
@@ -251,7 +254,7 @@ kernel void vp8_mbloop_filter_horizontal_edge_kernel
         if (filter_level){
             int p = pitches[plane];
             int block_offset = 8*num_blocks + block*num_planes+plane;
-            int s_off = offsets[block_offset];
+            int s_off = offsets[block_offset+priority_offset];
 
             global uc *s = s_base+s_off;
 
@@ -299,7 +302,8 @@ kernel void vp8_mbloop_filter_vertical_edge_kernel
     global int *filters,
     int use_mbflim,
     int filter_type,
-    int cur_iter
+    int cur_iter,
+    int priority_offset
 )
 {
     private size_t plane = get_global_id(1);
@@ -315,7 +319,7 @@ kernel void vp8_mbloop_filter_vertical_edge_kernel
         if (filter_level){
             int p = pitches[plane];
             int block_offset = cur_iter*num_blocks*num_planes + block*num_planes+plane;
-            int s_off = offsets[block_offset];
+            int s_off = offsets[block_offset+priority_offset];
 
             global uc *s = s_base + s_off;
 
@@ -361,7 +365,8 @@ kernel void vp8_loop_filter_simple_horizontal_edge_kernel
     global int *filters,
     int use_mbflim,
     int filter_type,
-    int cur_iter
+    int cur_iter,
+    int priority_offset
 )
 {
     private size_t plane = get_global_id(1);
@@ -377,7 +382,7 @@ kernel void vp8_loop_filter_simple_horizontal_edge_kernel
         if (filter_level){
             int p = pitches[plane];
             int block_offset = cur_iter*num_blocks*num_planes + block*num_planes+plane;
-            int s_off = offsets[block_offset];
+            int s_off = offsets[block_offset+priority_offset];
 
 
             signed char mask = 0;
@@ -414,7 +419,8 @@ kernel void vp8_loop_filter_simple_vertical_edge_kernel
     global int *filters, /* Filters for each block being processed */
     int use_mbflim, /* Use lfi->flim or lfi->mbflim, need once per kernel call */
     int filter_type, /* Should dc_diffs, rows, or cols be used?*/
-    int cur_iter
+    int cur_iter,
+    int priority_offset
 )
 {
     private size_t plane = get_global_id(1);
@@ -430,7 +436,7 @@ kernel void vp8_loop_filter_simple_vertical_edge_kernel
         if (filter_level){
             int p = pitches[plane];
             int block_offset = cur_iter*num_blocks*num_planes + block*num_planes+plane;
-            int s_off = offsets[block_offset];
+            int s_off = offsets[block_offset+priority_offset];
 
             signed char mask = 0;
             size_t i= get_global_id(0);

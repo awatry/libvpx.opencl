@@ -21,6 +21,7 @@
 typedef struct VP8_LOOPFILTER_ARGS{
     cl_mem buf_mem;
     cl_mem offsets_mem;
+    cl_int priority_offset;
     cl_mem pitches_mem;
     cl_mem lfi_mem;
     cl_int use_mbflim;

@@ -33,6 +33,14 @@ const char *loopFilterCompileOptions = "";
 const char *loop_filter_cl_file_name = "vp8/common/opencl/loopfilter.cl";
 
 static int frame_num = 0;
+static int prior_y_stride = 0;
+static int prior_uv_stride = 0;
+static LOOPFILTERTYPE prior_filter_type = 0;
+static int prior_mbrows = 0;
+static int prior_mbcols = 0;
+static int priority_offset;
+static cl_int *priority_offsets = NULL;
+static int recalculate_offsets = 1;
 
 typedef unsigned char uc;
 
@@ -196,7 +204,7 @@ int cl_populate_loop_mem(MACROBLOCKD *mbd, YV12_BUFFER_CONFIG *post){
     return err;
 }
 
-int cl_grow_loop_mem(MACROBLOCKD *mbd, YV12_BUFFER_CONFIG *post, int num_blocks){
+int cl_grow_loop_mem(MACROBLOCKD *mbd, YV12_BUFFER_CONFIG *post, int num_blocks, VP8_COMMON *cm){
 
     int err;
 
@@ -204,11 +212,13 @@ int cl_grow_loop_mem(MACROBLOCKD *mbd, YV12_BUFFER_CONFIG *post, int num_blocks)
     if (num_blocks <= loop_mem.num_blocks)
         return CL_SUCCESS;
 
+    recalculate_offsets = 1;
+    
     //free all first.
     cl_free_loop_mem();
 
     //Now re-allocate the memory in the right size
-    loop_mem.offsets_mem = clCreateBuffer(cl_data.context, CL_MEM_READ_ONLY|CL_MEM_ALLOC_HOST_PTR, sizeof(cl_int)*num_blocks*16, NULL, &err);
+    loop_mem.offsets_mem = clCreateBuffer(cl_data.context, CL_MEM_READ_ONLY|CL_MEM_ALLOC_HOST_PTR, sizeof(cl_int)*cm->MBs*16, NULL, &err);
     if (err != CL_SUCCESS){
         printf("Error creating loop filter buffer\n");
         return err;
@@ -267,6 +277,11 @@ void cl_destroy_loop_filter(){
         clReleaseMemObject(lfi_mem);
         lfi_mem = NULL;
     }
+   
+    if (priority_offsets != NULL){
+        free(priority_offsets);
+        priority_offsets = NULL;
+    }
     
     VP8_CL_RELEASE_KERNEL(cl_data.vp8_loop_filter_horizontal_edge_kernel);
     VP8_CL_RELEASE_KERNEL(cl_data.vp8_loop_filter_vertical_edge_kernel);
@@ -318,23 +333,19 @@ int vp8_loop_filter_level(MACROBLOCKD *mbd, int baseline_filter_level[] ){
 
 void vp8_loop_filter_build_offsets(MACROBLOCKD *mbd, int num_blocks, 
         int *y_offsets, int *u_offsets, int *v_offsets, YV12_BUFFER_CONFIG *post, 
-        LOOPFILTERTYPE filter_type
+        VP8_COMMON *cm, LOOPFILTERTYPE filter_type, int priority_level
 )
 {
     int y_stride = post->y_stride;
     int uv_stride = post->uv_stride;
     int blk,err;
-#if USE_MAPPED_BUFFERS
     cl_int *offsets = NULL;
-#else
-    cl_int offsets[num_blocks*16];
-#endif
+    
+    priority_offsets[priority_level] = priority_offset;
     
     if (filter_type == NORMAL_LOOPFILTER){
-#if USE_MAPPED_BUFFERS
         //Map the offsets buffer
-        VP8_CL_MAP_BUF(mbd->cl_commands, loop_mem.offsets_mem, offsets, sizeof(cl_int)*num_blocks*16,,)
-#endif
+        VP8_CL_MAP_BUF(mbd->cl_commands, loop_mem.offsets_mem, offsets, sizeof(cl_int)*cm->MBs*16,,)
                 
         //populate it with the correct offsets for current filter type
         for (blk = 0; blk < num_blocks; blk++){
@@ -344,69 +355,65 @@ void vp8_loop_filter_build_offsets(MACROBLOCKD *mbd, int num_blocks,
             v_off = v_offsets[blk];
             
             //MBV offsets
-            offsets[blk * 3 + 0] = y_off;
-            offsets[blk * 3 + 1] = u_off;
-            offsets[blk * 3 + 2] = v_off;
+            offsets[priority_offset + blk * 3 + 0] = y_off;
+            offsets[priority_offset + blk * 3 + 1] = u_off;
+            offsets[priority_offset + blk * 3 + 2] = v_off;
 
             //BV Offsets
-            offsets[num_blocks * 3 + blk * 3 + 0] = y_off+4;
-            offsets[num_blocks * 3 + blk * 3 + 1] = u_off+4;
-            offsets[num_blocks * 3 + blk * 3 + 2] = v_off+4;
-            offsets[num_blocks * 6 + blk]         = y_off+8;
-            offsets[num_blocks * 7 + blk]         = y_off+12;
+            offsets[priority_offset + num_blocks * 3 + blk * 3 + 0] = y_off+4;
+            offsets[priority_offset + num_blocks * 3 + blk * 3 + 1] = u_off+4;
+            offsets[priority_offset + num_blocks * 3 + blk * 3 + 2] = v_off+4;
+            offsets[priority_offset + num_blocks * 6 + blk]         = y_off+8;
+            offsets[priority_offset + num_blocks * 7 + blk]         = y_off+12;
 
             //MBH Offsets
-            offsets[num_blocks * 8 + blk * 3 + 0] = y_off;
-            offsets[num_blocks * 8 + blk * 3 + 1] = u_off;
-            offsets[num_blocks * 8 + blk * 3 + 2] = v_off;
+            offsets[priority_offset + num_blocks * 8 + blk * 3 + 0] = y_off;
+            offsets[priority_offset + num_blocks * 8 + blk * 3 + 1] = u_off;
+            offsets[priority_offset + num_blocks * 8 + blk * 3 + 2] = v_off;
 
             //BH Offsets
-            offsets[num_blocks * 11 + blk * 3 + 0] = y_off+4*y_stride;
-            offsets[num_blocks * 11 + blk * 3 + 1] = u_off+4*uv_stride;
-            offsets[num_blocks * 11 + blk * 3 + 2] = v_off+4*uv_stride;
-            offsets[num_blocks * 14 + blk]         = y_off+8*y_stride;
-            offsets[num_blocks * 15 + blk]         = y_off+12*y_stride;
+            offsets[priority_offset + num_blocks * 11 + blk * 3 + 0] = y_off+4*y_stride;
+            offsets[priority_offset + num_blocks * 11 + blk * 3 + 1] = u_off+4*uv_stride;
+            offsets[priority_offset + num_blocks * 11 + blk * 3 + 2] = v_off+4*uv_stride;
+            offsets[priority_offset + num_blocks * 14 + blk]         = y_off+8*y_stride;
+            offsets[priority_offset + num_blocks * 15 + blk]         = y_off+12*y_stride;
         }
+        priority_offset = priority_offset + num_blocks*16;
     } else {
         //Simple filter
-#if USE_MAPPED_BUFFERS
+
         //Map the offsets buffer
         VP8_CL_MAP_BUF(mbd->cl_commands, loop_mem.offsets_mem, offsets, sizeof(cl_int)*num_blocks*8,,)
-#endif
         //populate it with the correct offsets for current filter type
         for (blk = 0; blk < num_blocks; blk++){
             int y_off = y_offsets[blk];
 
             //MBVS offsets
-            offsets[blk] = y_off;
+            offsets[priority_offset + blk] = y_off;
 
             //BVS Offsets
-            offsets[num_blocks + blk]    = y_off+4;
-            offsets[num_blocks *2 + blk] = y_off+8;
-            offsets[num_blocks *3 + blk] = y_off+12;
+            offsets[priority_offset + num_blocks + blk]    = y_off+4;
+            offsets[priority_offset + num_blocks *2 + blk] = y_off+8;
+            offsets[priority_offset + num_blocks *3 + blk] = y_off+12;
 
             //MBHS Offsets
-            offsets[num_blocks * 4 + blk] = y_off;
+            offsets[priority_offset + num_blocks * 4 + blk] = y_off;
 
             //BHS Offsets
-            offsets[num_blocks * 5 + blk] = y_off + 4 * y_stride;
-            offsets[num_blocks * 6 + blk] = y_off + 8 * y_stride;
-            offsets[num_blocks * 7 + blk] = y_off + 12 * y_stride;
+            offsets[priority_offset + num_blocks * 5 + blk] = y_off + 4 * y_stride;
+            offsets[priority_offset + num_blocks * 6 + blk] = y_off + 8 * y_stride;
+            offsets[priority_offset + num_blocks * 7 + blk] = y_off + 12 * y_stride;
         }
+        priority_offset = priority_offset + num_blocks*8;
     }
     
-#if USE_MAPPED_BUFFERS
     //Unmap the offsets buffer
     VP8_CL_UNMAP_BUF(mbd->cl_commands, loop_mem.offsets_mem, offsets,,);
-#else
-    VP8_CL_SET_BUF(mbd->cl_commands, loop_mem.offsets_mem, sizeof(cl_int)*num_blocks*16, offsets,,)
-#endif
-    
 }
 
 void vp8_loop_filter_macroblocks_cl(int num_blocks, int mb_rows[], int mb_cols[],
     int dc_diffs[], int *y_offsets, int *u_offsets, int *v_offsets, int *filter_levels,
-    VP8_COMMON *cm, MACROBLOCKD *mbd,  cl_mem lfi_mem, YV12_BUFFER_CONFIG *post
+    VP8_COMMON *cm, MACROBLOCKD *mbd,  cl_mem lfi_mem, YV12_BUFFER_CONFIG *post, int priority_level
 )
 {
     LOOPFILTERTYPE filter_type = cm->filter_type;
@@ -419,14 +426,14 @@ void vp8_loop_filter_macroblocks_cl(int num_blocks, int mb_rows[], int mb_cols[]
     int filters[num_blocks*4];
 #endif
     
-    cl_grow_loop_mem(mbd, post, num_blocks);
+    cl_grow_loop_mem(mbd, post, num_blocks, cm);
     
     args.buf_mem = post->buffer_mem;
     args.lfi_mem = lfi_mem;
     args.offsets_mem = loop_mem.offsets_mem;
     args.pitches_mem = loop_mem.pitches_mem;
     args.filters_mem = loop_mem.filters_mem;
-    
+
 #define COLS_LOCATION 1
 #define DC_DIFFS_LOCATION 2
 #define ROWS_LOCATION 3
@@ -448,8 +455,11 @@ void vp8_loop_filter_macroblocks_cl(int num_blocks, int mb_rows[], int mb_cols[]
 #endif
 
     //Fill loop_mem.offsets_mem will all offsets for this priority level.
-    vp8_loop_filter_build_offsets(mbd, num_blocks, y_offsets, u_offsets, v_offsets, post, filter_type);
-            
+    if (recalculate_offsets == 1)
+        vp8_loop_filter_build_offsets(mbd, num_blocks, y_offsets, u_offsets, v_offsets, post, cm, filter_type, priority_level);
+
+    args.priority_offset = priority_offsets[priority_level];
+    
     if (filter_type == NORMAL_LOOPFILTER){
         vp8_loop_filter_mbv_cl(mbd, &args, num_blocks, y_offsets, u_offsets, v_offsets, post->y_stride, post->uv_stride, COLS_LOCATION );
         vp8_loop_filter_bv_cl(mbd, &args, num_blocks, y_offsets, u_offsets, v_offsets, post->y_stride, post->uv_stride, DC_DIFFS_LOCATION );
@@ -472,7 +482,7 @@ void vp8_loop_filter_add_macroblock_cl(VP8_COMMON *cm, int mb_row, int mb_col,
     int uv_offset = 8 * (mb_col + (mb_row*cm->mb_cols)) + mb_row * (post->uv_stride * 8 - post->uv_width);
 
     unsigned char *buf_base = post->buffer_alloc;
-    y_offsets[pos] = post->y_buffer - buf_base + y_offset;;
+    y_offsets[pos] = post->y_buffer - buf_base + y_offset;
     u_offsets[pos] = post->u_buffer - buf_base + uv_offset;
     v_offsets[pos] = post->v_buffer - buf_base + uv_offset;
 
@@ -525,7 +535,7 @@ void vp8_loop_filter_priority_cl(int priority, VP8_COMMON *cm, MACROBLOCKD *mbd,
     }
     
     //Process all of the MBs in the current priority
-    vp8_loop_filter_macroblocks_cl(current_pos, rows, cols, dc_diffs, y_offsets, u_offsets, v_offsets, filter_levels, cm, mbd, lfi_mem, post);
+    vp8_loop_filter_macroblocks_cl(current_pos, rows, cols, dc_diffs, y_offsets, u_offsets, v_offsets, filter_levels, cm, mbd, lfi_mem, post, priority);
 }
 
 void vp8_loop_filter_frame_cl
@@ -561,7 +571,8 @@ void vp8_loop_filter_frame_cl
     else if (frame_type != cm->last_frame_type)
         vp8_frame_init_loop_filter(lfi, frame_type);
 
-    cl_grow_loop_mem(mbd, post, 30); //Default to allocating enough for 480p
+    cl_grow_loop_mem(mbd, post, 30, cm); //Default to allocating enough for 480p
+    priority_offset = 0;
     
 #if USE_MAPPED_BUFFERS
     if (lfi_mem == NULL){
@@ -599,6 +610,38 @@ void vp8_loop_filter_frame_cl
     VP8_CL_SET_BUF(mbd->cl_commands, loop_mem.pitches_mem, sizeof(cl_int)*3, pitches, vp8_loop_filter_frame(cm,mbd,default_filt_lvl),);
 #endif
 
+    //Determine if offsets need to be recalculated
+    recalculate_offsets = 0;
+    if (frame_num++ == 0)
+        recalculate_offsets = 1;
+    else if (post->y_stride != prior_y_stride)
+        recalculate_offsets = 1;
+    else if (post->uv_stride != prior_uv_stride)
+        recalculate_offsets = 1;
+    else if (prior_filter_type != cm->filter_type)
+        recalculate_offsets = 1;
+    else if (prior_mbrows != cm->mb_rows)
+        recalculate_offsets = 1;
+    else if (prior_mbcols != cm->mb_cols)
+        recalculate_offsets = 1;
+    
+    if (recalculate_offsets == 1){
+        if (priority_offsets != NULL)
+            free(priority_offsets);
+
+        priority_offsets = malloc(sizeof(cl_int)*(2 * (cm->mb_rows - 1) + cm->mb_cols));
+        if (priority_offsets == NULL){
+            vp8_loop_filter_frame(cm,mbd,default_filt_lvl);
+            return;
+        }
+
+        prior_y_stride = post->y_stride;        
+        prior_uv_stride = post->uv_stride;
+        prior_filter_type = cm->filter_type;
+        prior_mbrows = cm->mb_rows;
+        prior_mbcols = cm->mb_cols;
+    }
+    
     //Maximum priority = 2*(Height-1) + Width in Macroblocks
     for (priority = 0; priority < 2 * (cm->mb_rows - 1) + cm->mb_cols ; priority++){
         vp8_loop_filter_priority_cl(priority, cm, mbd, lfi_mem, baseline_filter_level, post);

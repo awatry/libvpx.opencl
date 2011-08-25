@@ -48,6 +48,8 @@ static int vp8_loop_filter_cl_run(
         first_run = 0;
     }
     
+    //printf("priority_offset = %d\n", args->priority_offset);
+    
     err = 0;
     VP8_CL_SET_LOOP_ARG(kernel, current_args, args, 0, cl_mem, buf_mem)
     VP8_CL_SET_LOOP_ARG(kernel, current_args, args, 1, cl_mem, offsets_mem)
@@ -57,6 +59,7 @@ static int vp8_loop_filter_cl_run(
     VP8_CL_SET_LOOP_ARG(kernel, current_args, args, 5, cl_int, use_mbflim)
     VP8_CL_SET_LOOP_ARG(kernel, current_args, args, 6, cl_int, filter_type)
     VP8_CL_SET_LOOP_ARG(kernel, current_args, args, 7, cl_int, cur_iter)
+    VP8_CL_SET_LOOP_ARG(kernel, current_args, args, 8, cl_int, priority_offset)
     VP8_CL_CHECK_SUCCESS( cq, err != CL_SUCCESS,
         "Error: Failed to set kernel arguments!\n",,err
     );
