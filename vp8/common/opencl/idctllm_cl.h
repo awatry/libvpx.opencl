@@ -22,5 +22,5 @@ extern void vp8_short_inv_walsh4x4_c(short *input, short *output);
 extern void vp8_short_inv_walsh4x4_1_c(short *input, short *output);
 
 const char *idctCompileOptions = "-Ivp8/common/opencl";
-const char *idctllm_cl_file_name = "vp8/common/opencl/idctllm_cl.cl";
+const char *idctllm_cl_file_name = "vp8/common/opencl/idctllm_cl";
 

@@ -22,7 +22,7 @@
 #define SIXTAP_FILTER_LEN 6
 
 const char *filterCompileOptions = "-Ivp8/common/opencl -DVP8_FILTER_WEIGHT=128 -DVP8_FILTER_SHIFT=7 -DFILTER_OFFSET";
-const char *filter_cl_file_name = "vp8/common/opencl/filter_cl.cl";
+const char *filter_cl_file_name = "vp8/common/opencl/filter_cl";
 
 #define STATIC_MEM 1
 #if STATIC_MEM

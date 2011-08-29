@@ -120,7 +120,6 @@ kernel void vp8_loop_filter_horizontal_edge_kernel
     local size_t num_blocks;
     num_planes = get_global_size(1);
     num_blocks = get_global_size(2);
-    barrier(CLK_LOCAL_MEM_FENCE);
 
     if (filters[num_blocks*filter_type + block] > 0){
         int filter_level = filters[block];
@@ -184,7 +183,6 @@ kernel void vp8_loop_filter_vertical_edge_kernel
     local size_t num_blocks;
     num_planes = get_global_size(1);
     num_blocks = get_global_size(2);
-    barrier(CLK_LOCAL_MEM_FENCE);
     
     if (filters[num_blocks*filter_type + block] > 0){
         int filter_level = filters[block];
@@ -247,7 +245,6 @@ kernel void vp8_mbloop_filter_horizontal_edge_kernel
     local size_t num_blocks;
     num_planes = get_global_size(1);
     num_blocks = get_global_size(2);
-    barrier(CLK_LOCAL_MEM_FENCE);
 
     if (filters[num_blocks*filter_type + block] > 0){
         int filter_level = filters[block];
@@ -312,7 +309,6 @@ kernel void vp8_mbloop_filter_vertical_edge_kernel
     local size_t num_blocks;
     num_planes = get_global_size(1);
     num_blocks = get_global_size(2);
-    barrier(CLK_LOCAL_MEM_FENCE);
 
     if (filters[num_blocks*filter_type + block] > 0){
         int filter_level = filters[block];
@@ -375,7 +371,6 @@ kernel void vp8_loop_filter_simple_horizontal_edge_kernel
     local size_t num_blocks;
     num_planes = get_global_size(1);
     num_blocks = get_global_size(2);
-    barrier(CLK_LOCAL_MEM_FENCE);
 
     if (filters[num_blocks*filter_type + block] > 0){
         int filter_level = filters[block];
@@ -429,7 +424,6 @@ kernel void vp8_loop_filter_simple_vertical_edge_kernel
     local size_t num_blocks;
     num_planes = get_global_size(1);
     num_blocks = get_global_size(2);
-    barrier(CLK_LOCAL_MEM_FENCE);
 
     if (filters[filter_type * num_blocks + block] > 0){
         int filter_level = filters[block];

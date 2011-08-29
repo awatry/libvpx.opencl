@@ -42,7 +42,6 @@ extern "C" {
 
 #define ONE_CQ_PER_MB 1 //Value of 0 is racey... still experimental.
 
-extern char *cl_read_file(const char* file_name);
 extern int cl_common_init();
 extern void cl_destroy(cl_command_queue cq, int new_status);
 extern int cl_load_program(cl_program *prog_ref, const char *file_name, const char *opts);
@@ -223,12 +222,18 @@ typedef struct VP8_COMMON_CL {
 
     cl_program loop_filter_program;
     cl_kernel vp8_loop_filter_horizontal_edge_kernel;
+    size_t vp8_loop_filter_horizontal_edge_kernel_size;
     cl_kernel vp8_loop_filter_vertical_edge_kernel;
+    size_t vp8_loop_filter_vertical_edge_kernel_size;
     cl_kernel vp8_mbloop_filter_horizontal_edge_kernel;
+    size_t vp8_mbloop_filter_horizontal_edge_kernel_size;
     cl_kernel vp8_mbloop_filter_vertical_edge_kernel;
+    size_t vp8_mbloop_filter_vertical_edge_kernel_size;
     cl_kernel vp8_loop_filter_simple_horizontal_edge_kernel;
+    size_t vp8_loop_filter_simple_horizontal_edge_kernel_size;
     cl_kernel vp8_loop_filter_simple_vertical_edge_kernel;
-
+    size_t vp8_loop_filter_simple_vertical_edge_kernel_size;
+    
     cl_program dequant_program;
     cl_kernel vp8_dequant_dc_idct_add_kernel;
     cl_kernel vp8_dequant_idct_add_kernel;

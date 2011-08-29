@@ -30,7 +30,7 @@
 #endif
 
 const char *loopFilterCompileOptions = "";
-const char *loop_filter_cl_file_name = "vp8/common/opencl/loopfilter.cl";
+const char *loop_filter_cl_file_name = "vp8/common/opencl/loopfilter";
 
 static int frame_num = 0;
 static int prior_y_stride = 0;
@@ -260,6 +260,13 @@ int cl_init_loop_filter() {
     VP8_CL_CREATE_KERNEL(cl_data,loop_filter_program,vp8_mbloop_filter_vertical_edge_kernel,"vp8_mbloop_filter_vertical_edge_kernel");
     VP8_CL_CREATE_KERNEL(cl_data,loop_filter_program,vp8_loop_filter_simple_horizontal_edge_kernel,"vp8_loop_filter_simple_horizontal_edge_kernel");
     VP8_CL_CREATE_KERNEL(cl_data,loop_filter_program,vp8_loop_filter_simple_vertical_edge_kernel,"vp8_loop_filter_simple_vertical_edge_kernel");
+    
+    VP8_CL_CALC_LOCAL_SIZE(cl_data.vp8_loop_filter_horizontal_edge_kernel,&cl_data.vp8_loop_filter_horizontal_edge_kernel_size);
+    VP8_CL_CALC_LOCAL_SIZE(cl_data.vp8_loop_filter_vertical_edge_kernel,&cl_data.vp8_loop_filter_vertical_edge_kernel_size);
+    VP8_CL_CALC_LOCAL_SIZE(cl_data.vp8_loop_filter_simple_horizontal_edge_kernel,&cl_data.vp8_loop_filter_simple_horizontal_edge_kernel_size);
+    VP8_CL_CALC_LOCAL_SIZE(cl_data.vp8_loop_filter_simple_vertical_edge_kernel,&cl_data.vp8_loop_filter_simple_vertical_edge_kernel_size);
+    VP8_CL_CALC_LOCAL_SIZE(cl_data.vp8_mbloop_filter_horizontal_edge_kernel,&cl_data.vp8_mbloop_filter_horizontal_edge_kernel_size);
+    VP8_CL_CALC_LOCAL_SIZE(cl_data.vp8_mbloop_filter_vertical_edge_kernel,&cl_data.vp8_mbloop_filter_vertical_edge_kernel_size);
     
     loop_mem.num_blocks = 0;
     loop_mem.offsets_mem = NULL;
@@ -600,16 +607,6 @@ void vp8_loop_filter_frame_cl
             vp8_loop_filter_frame(cm,mbd,default_filt_lvl),);
 #endif
 
-#if MAP_PITCHES
-    VP8_CL_MAP_BUF(mbd->cl_commands, loop_mem.pitches_mem, pitches, sizeof(cl_int)*3,,)
-    pitches[0] = post->y_stride;
-    pitches[1] = post->uv_stride;
-    pitches[2] = post->uv_stride;
-    VP8_CL_UNMAP_BUF(mbd->cl_commands, loop_mem.pitches_mem, pitches,,);
-#else
-    VP8_CL_SET_BUF(mbd->cl_commands, loop_mem.pitches_mem, sizeof(cl_int)*3, pitches, vp8_loop_filter_frame(cm,mbd,default_filt_lvl),);
-#endif
-
     //Determine if offsets need to be recalculated
     recalculate_offsets = 0;
     if (frame_num++ == 0)
@@ -626,6 +623,16 @@ void vp8_loop_filter_frame_cl
         recalculate_offsets = 1;
     
     if (recalculate_offsets == 1){
+        #if MAP_PITCHES
+            VP8_CL_MAP_BUF(mbd->cl_commands, loop_mem.pitches_mem, pitches, sizeof(cl_int)*3,,)
+            pitches[0] = post->y_stride;
+            pitches[1] = post->uv_stride;
+            pitches[2] = post->uv_stride;
+            VP8_CL_UNMAP_BUF(mbd->cl_commands, loop_mem.pitches_mem, pitches,,);
+        #else
+            VP8_CL_SET_BUF(mbd->cl_commands, loop_mem.pitches_mem, sizeof(cl_int)*3, pitches, vp8_loop_filter_frame(cm,mbd,default_filt_lvl),);
+        #endif
+        
         if (priority_offsets != NULL)
             free(priority_offsets);
 

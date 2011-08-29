@@ -62,7 +62,7 @@ int load_cl(char *lib_name){
 //    CL_LOAD_FN("clReleaseSampler", cl.releaseSampler);
 //    CL_LOAD_FN("clGetSamplerInfo", cl.getSamplerInfo);
     CL_LOAD_FN("clCreateProgramWithSource", cl.createProgramWithSource);
-//    CL_LOAD_FN("clCreateProgramWithBinary", cl.createProgramWithBinary);
+    CL_LOAD_FN("clCreateProgramWithBinary", cl.createProgramWithBinary);
 //    CL_LOAD_FN("clRetainProgram", cl.retainProgram);
     CL_LOAD_FN("clReleaseProgram", cl.releaseProgram);
     CL_LOAD_FN("clBuildProgram", cl.buildProgram);

@@ -32,6 +32,7 @@ static VP8_LOOPFILTER_ARGS filter_args[6];
 static int vp8_loop_filter_cl_run(
     cl_command_queue cq,
     cl_kernel kernel,
+    size_t max_local_size,
     VP8_LOOPFILTER_ARGS *args,
     int num_planes,
     int num_blocks,
@@ -40,15 +41,13 @@ static int vp8_loop_filter_cl_run(
 ){
 
     size_t global[3] = {max_threads, num_planes, num_blocks};
-    size_t local_size;
+    size_t local[3] = {16, 1, 1};
     int err;
 
     if (first_run){
         memset(filter_args, -1, sizeof(VP8_LOOPFILTER_ARGS)*6);
         first_run = 0;
     }
-    
-    //printf("priority_offset = %d\n", args->priority_offset);
     
     err = 0;
     VP8_CL_SET_LOOP_ARG(kernel, current_args, args, 0, cl_mem, buf_mem)
@@ -64,13 +63,14 @@ static int vp8_loop_filter_cl_run(
         "Error: Failed to set kernel arguments!\n",,err
     );
 
-    VP8_CL_CALC_LOCAL_SIZE(kernel,&local_size);
-
     /* Execute the kernel */
-    if (local_size < (global[0]*global[1]*global[2]))
+    if (max_local_size < global[0]){
         err = clEnqueueNDRangeKernel(cq, kernel, 3, NULL, global, NULL , 0, NULL, NULL);
+    }
     else
-        err = clEnqueueNDRangeKernel(cq, kernel, 3, NULL, global, global , 0, NULL, NULL);
+    {
+        err = clEnqueueNDRangeKernel(cq, kernel, 3, NULL, global, local , 0, NULL, NULL);
+    }
     
     VP8_CL_CHECK_SUCCESS( cq, err != CL_SUCCESS,
         "Error: Failed to execute kernel!\n",
@@ -90,7 +90,9 @@ void vp8_loop_filter_horizontal_edge_cl
 )
 {
     vp8_loop_filter_cl_run(x->cl_commands,
-        cl_data.vp8_loop_filter_horizontal_edge_kernel, args, num_planes, num_blocks, max_threads, &filter_args[0]
+        cl_data.vp8_loop_filter_horizontal_edge_kernel, 
+        cl_data.vp8_loop_filter_horizontal_edge_kernel_size, 
+        args, num_planes, num_blocks, max_threads, &filter_args[0]
     );
 }
 
@@ -104,7 +106,9 @@ void vp8_loop_filter_vertical_edge_cl
 )
 {
     vp8_loop_filter_cl_run(x->cl_commands,
-        cl_data.vp8_loop_filter_vertical_edge_kernel, args, num_planes, num_blocks, max_threads, &filter_args[1]
+        cl_data.vp8_loop_filter_vertical_edge_kernel,
+        cl_data.vp8_loop_filter_vertical_edge_kernel_size,
+        args, num_planes, num_blocks, max_threads, &filter_args[1]
     );
 }
 
@@ -118,7 +122,9 @@ void vp8_mbloop_filter_horizontal_edge_cl
 )
 {
     vp8_loop_filter_cl_run(x->cl_commands,
-        cl_data.vp8_mbloop_filter_horizontal_edge_kernel, args, num_planes, num_blocks, max_threads, &filter_args[2]
+        cl_data.vp8_mbloop_filter_horizontal_edge_kernel,
+        cl_data.vp8_mbloop_filter_horizontal_edge_kernel_size,
+        args, num_planes, num_blocks, max_threads, &filter_args[2]
     );
 }
 
@@ -133,7 +139,9 @@ void vp8_mbloop_filter_vertical_edge_cl
 )
 {
     vp8_loop_filter_cl_run(x->cl_commands,
-        cl_data.vp8_mbloop_filter_vertical_edge_kernel, args, num_planes, num_blocks, max_threads, &filter_args[3]
+        cl_data.vp8_mbloop_filter_vertical_edge_kernel,
+        cl_data.vp8_mbloop_filter_vertical_edge_kernel_size,
+        args, num_planes, num_blocks, max_threads, &filter_args[3]
     );
 }
 
@@ -147,7 +155,9 @@ void vp8_loop_filter_simple_horizontal_edge_cl
 )
 {
     vp8_loop_filter_cl_run(x->cl_commands,
-        cl_data.vp8_loop_filter_simple_horizontal_edge_kernel, args, num_planes, num_blocks, max_threads, &filter_args[4]
+        cl_data.vp8_loop_filter_simple_horizontal_edge_kernel,
+        cl_data.vp8_loop_filter_simple_horizontal_edge_kernel_size,
+        args, num_planes, num_blocks, max_threads, &filter_args[4]
     );
 }
 
@@ -161,6 +171,8 @@ void vp8_loop_filter_simple_vertical_edge_cl
 )
 {
     vp8_loop_filter_cl_run(x->cl_commands,
-        cl_data.vp8_loop_filter_simple_vertical_edge_kernel, args, num_planes, num_blocks, max_threads, &filter_args[5]
+        cl_data.vp8_loop_filter_simple_vertical_edge_kernel,
+        cl_data.vp8_loop_filter_simple_vertical_edge_kernel_size,
+        args, num_planes, num_blocks, max_threads, &filter_args[5]
     );
 }

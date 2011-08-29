@@ -11,6 +11,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <sys/stat.h>
+
 #include "vp8_opencl.h"
 
 int cl_initialized = VP8_CL_NOT_INITIALIZED;
@@ -220,47 +222,70 @@ int cl_common_init() {
     return CL_SUCCESS;
 }
 
-char *cl_read_file(const char* file_name) {
+//Allocates and returns the full file path for the requested file
+char *cl_get_file_path(const char* file_name, char *ext){
+    char *fullpath;
+    FILE *f;
+    
+    fullpath = malloc(strlen(file_name) + strlen(ext) + 1);
+    if (fullpath == NULL){
+        return NULL;
+    }
+    
+    strcpy(fullpath, file_name);
+    strcat(fullpath, ext);
+    
+    f = fopen(fullpath, "rb");
+    if (f != NULL){
+        fclose(f);
+        return fullpath;
+    }
+    
+    free(fullpath);
+    
+    //Generate a file path for the CL sources using the library install dir
+    fullpath = malloc(strlen(vpx_codec_lib_dir()) + strlen(file_name) + strlen(ext) + 2);
+    if (fullpath == NULL) {
+       return NULL;
+    }
+    strcpy(fullpath, vpx_codec_lib_dir());
+    strcat(fullpath, "/"); //Will need to be changed for MSVS
+    strcat(fullpath, file_name);
+    strcat(fullpath, ext);
+
+    f = fopen(fullpath, "rb");
+    if (f == NULL) {
+        free(fullpath);
+        return NULL;
+    }
+
+    return fullpath;
+}
+
+char *cl_read_file(const char* file_name, int pad, size_t *size) {
     long pos;
     char *bytes;
     size_t amt_read;
     FILE *f;
 
-    f = fopen(file_name, "rb");
+    *size = 0;
     
+    if (file_name == NULL){
+        return NULL;
+    }
+
+    f = fopen(file_name, "rb");
     if (f == NULL) {
-        char *fullpath;
-        //printf("Couldn't find %s\n", file_name);
-
-        //Generate a file path for the CL sources using the library install dir
-        fullpath = malloc(strlen(vpx_codec_lib_dir()) + strlen(file_name) + 2);
-        if (fullpath == NULL) {
-           return NULL;
-        }
-        strcpy(fullpath, vpx_codec_lib_dir());
-        strcat(fullpath, "/"); //Will need to be changed for MSVS
-        strcat(fullpath, file_name);
-
-        //printf("Looking in %s\n", fullpath);
-
-        f = fopen(fullpath, "rb");
-        if (f == NULL) {
-            fprintf(stderr,"Couldn't find CL source at %s or %s\n", file_name, fullpath);
-            free(fullpath);
-            return NULL;
-        }
-
-        //printf("Found cl source at %s\n", fullpath);
-        free(fullpath);
-    } else {
-        //printf("Found cl source at %s\n", file_name);
+        printf("Error opening file %s\n", file_name);
+        return NULL;
     }
 
     fseek(f, 0, SEEK_END);
     pos = ftell(f);
     fseek(f, 0, SEEK_SET);
-    bytes = malloc(pos+1);
-
+    *size = pos + pad;
+    bytes = malloc(*size);
+    
     if (bytes == NULL) {
         fclose(f);
         return NULL;
@@ -273,12 +298,26 @@ char *cl_read_file(const char* file_name) {
         return NULL;
     }
 
-    bytes[pos] = '\0'; //null terminate the source string
+    if (pad > 0){
+        int i;
+        for (i = 0; i < pad; i++){
+                bytes[pos+i] = '\0'; //null terminate the source string
+        }
+    }
+    
     fclose(f);
-
 
     return bytes;
 }
+
+char *cl_read_source_file(const char* file_name, size_t *size) {
+    return cl_read_file(file_name, 1, size);
+}
+
+char *cl_read_binary_file(const char* file_name, size_t *size){
+    return cl_read_file(file_name, 0, size);
+}
+
 
 void show_build_log(cl_program *prog_ref){
     size_t len;
@@ -304,21 +343,117 @@ void show_build_log(cl_program *prog_ref){
     free(buffer);
 }
 
-int cl_load_program(cl_program *prog_ref, const char *file_name, const char *opts) {
-
+cl_int vp8_cl_save_binary(const char *file_name, const char *ext, cl_program *prog_ref, const char *prog_opts){
     int err;
-    char *kernel_src = cl_read_file(file_name);
+    char *binary;
+    size_t size;
+    FILE *out;
     
-    *prog_ref = NULL;
-    if (kernel_src != NULL) {
-        *prog_ref = clCreateProgramWithSource(cl_data.context, 1, (const char**)(&kernel_src), NULL, &err);
-        free(kernel_src);
-    } else {
-        cl_destroy(NULL, VP8_CL_TRIED_BUT_FAILED);
-        printf("Couldn't find OpenCL source files. \nUsing software path.\n");
+    char *bin_file = malloc(strlen(file_name)+strlen(ext)+1);
+    if (bin_file == NULL){
+        return VP8_CL_TRIED_BUT_FAILED;
+    }
+    strcpy(bin_file, file_name);
+    strcat(bin_file, ext);
+    
+    err = clBuildProgram(*prog_ref, 0, NULL, prog_opts, NULL, NULL);
+    clGetProgramInfo( *prog_ref, CL_PROGRAM_BINARY_SIZES, sizeof(size), &size, NULL );
+
+    binary = (char *)malloc(size);
+    if (binary == NULL){
+        free(bin_file);
+        printf("Couldn't allocate memory to save binary kernel\n");
         return VP8_CL_TRIED_BUT_FAILED;
     }
 
+    err = clGetProgramInfo( *prog_ref, CL_PROGRAM_BINARIES, sizeof(char**), &binary, NULL );
+    VP8_CL_CHECK_SUCCESS(NULL, err != CL_SUCCESS, "Couldn't get program info\n", , VP8_CL_TRIED_BUT_FAILED);
+    
+    out = fopen( bin_file, "wb" );
+    if (out != NULL){
+        fwrite( binary, sizeof(char), size, out );
+        fclose( out );
+    } else {
+        //printf("Couldn't save binary kernel\n");
+    }
+    
+    free(bin_file);
+    
+    return CL_SUCCESS;
+}
+
+int cl_use_binary_kernel(char *src_file, char *bin_file){
+    int ret;
+
+    struct stat src_stat;
+    struct stat bin_stat;
+    
+    ret = (bin_file != NULL);
+    if (bin_file == NULL){
+        return ret;
+    }
+    
+    //Stat the two files
+    if (stat(src_file, &src_stat) || stat(bin_file, &bin_stat)){
+        return ret;
+    }
+        
+    //Get the modified date for each, and make sure that binary is newer than src
+    ret = bin_stat.st_mtim.tv_sec > src_stat.st_mtim.tv_sec;
+    
+    return ret;
+}
+
+int cl_load_program(cl_program *prog_ref, const char *file_name, const char *opts) {
+
+    int err;
+    char *src_file = NULL;
+    char *bin_file = NULL;
+    char *kernel_src;
+    char *kernel_bin;
+    size_t size; //Size of loaded kernel src/bin file
+    
+    *prog_ref = NULL;
+
+    src_file = cl_get_file_path(file_name, ".cl");
+    bin_file = cl_get_file_path(file_name, ".bin");
+
+    if (cl_use_binary_kernel(src_file, bin_file)){
+        //Attempt to load binary kernel first
+        kernel_bin = NULL;
+        kernel_bin = cl_read_binary_file(bin_file, &size);
+        if (kernel_bin != NULL){
+            cl_int status;
+            *prog_ref = clCreateProgramWithBinary(cl_data.context, 1, &(cl_data.device_id), &size, (const unsigned char**)&kernel_bin, &status, &err);
+            if (status != CL_SUCCESS || err != CL_SUCCESS){
+                printf("Failed to load binary kernel %s\n", bin_file);
+                printf("status = %d, err = %d\n", status, err);
+            }
+            free(bin_file);      
+            free(kernel_bin);
+        }
+    }
+   
+    //Binary kernel failed, compile source instead
+    if (*prog_ref == NULL){
+        kernel_src = cl_read_source_file(src_file, &size);
+        free(src_file);
+
+        if (kernel_src != NULL) {
+            *prog_ref = clCreateProgramWithSource(cl_data.context, 1, (const char**)(&kernel_src), NULL, &err);
+            free(kernel_src);
+            
+            //Attempt to save program binary
+            vp8_cl_save_binary(file_name, ".bin", prog_ref, opts);
+            free(bin_file);
+        } else {
+            cl_destroy(NULL, VP8_CL_TRIED_BUT_FAILED);
+            free(bin_file);
+            printf("Couldn't find OpenCL source files. \nUsing software path.\n");
+            return VP8_CL_TRIED_BUT_FAILED;
+        }
+    }
+    
     if (*prog_ref == NULL) {
         printf("Error: Couldn't create program\n");
         return VP8_CL_TRIED_BUT_FAILED;

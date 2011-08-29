@@ -17,7 +17,7 @@
 #include "dequantize_cl.h"
 
 const char *dequantCompileOptions = "";
-const char *dequant_cl_file_name = "vp8/decoder/opencl/dequantize_cl.cl";
+const char *dequant_cl_file_name = "vp8/decoder/opencl/dequantize_cl";
 
 void cl_memset_short(short *s, int c, size_t n) {
     for (n /= sizeof(short); n > 0; --n)
