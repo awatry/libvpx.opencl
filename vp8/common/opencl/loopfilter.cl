@@ -4,9 +4,9 @@
 typedef unsigned char uc;
 typedef signed char sc;
 
-__inline signed char vp8_filter_mask(sc, sc, uc, uc, uc, uc, uc, uc, uc, uc);
+__inline signed char vp8_filter_mask(sc, sc, local uc*);
 __inline signed char vp8_simple_filter_mask(signed char, signed char, uc, uc, uc, uc);
-__inline signed char vp8_hevmask(signed char, uc, uc, uc, uc);
+__inline signed char vp8_hevmask(signed char, local uc*);
 
 __inline void vp8_mbfilter(signed char mask,signed char hev,global uc *op2,
     global uc *op1,global uc *op0,global uc *oq0,global uc *oq1,global uc *oq2);
@@ -36,8 +36,6 @@ typedef struct
     signed char thr[16];
     signed char mbflim[16];
 } loop_filter_info;
-
-
 
 
 void vp8_filter(
@@ -121,6 +119,8 @@ kernel void vp8_loop_filter_horizontal_edge_kernel
     num_planes = get_global_size(1);
     num_blocks = get_global_size(2);
 
+    local unsigned char s_data[16*8];
+    
     if (filters[num_blocks*filter_type + block] > 0){
         int filter_level = filters[block];
         if (filter_level){
@@ -128,9 +128,10 @@ kernel void vp8_loop_filter_horizontal_edge_kernel
             int block_offset = num_blocks*11 + cur_iter*num_blocks*num_planes + block*num_planes+plane;
             int s_off = offsets[block_offset+priority_offset];
 
+            size_t i = get_global_id(0);
+
             int  hev = 0; /* high edge variance */
             signed char mask = 0;
-            size_t i = get_global_id(0);
 
             global signed char *limit, *flimit, *thresh;
             global loop_filter_info *lf_info;
@@ -148,13 +149,18 @@ kernel void vp8_loop_filter_horizontal_edge_kernel
 
                 s_off += i;
 
-                mask = vp8_filter_mask(limit[i], flimit[i], s_base[s_off - 4*p],
-                        s_base[s_off - 3*p], s_base[s_off - 2*p], s_base[s_off - p],
-                        s_base[s_off], s_base[s_off + p], s_base[s_off + 2*p],
-                        s_base[s_off + 3*p]);
+                s_data[i*8] = s_base[s_off - 4*p];
+                s_data[i*8 + 1] = s_base[s_off - 3*p];
+                s_data[i*8 + 2] = s_base[s_off - 2*p];
+                s_data[i*8 + 3] = s_base[s_off - 1*p];
+                s_data[i*8 + 4] = s_base[s_off];
+                s_data[i*8 + 5] = s_base[s_off + p];
+                s_data[i*8 + 6] = s_base[s_off + 2*p];
+                s_data[i*8 + 7] = s_base[s_off + 3*p];
+                
+                mask = vp8_filter_mask(limit[i], flimit[i], &s_data[i*8]);
 
-                hev = vp8_hevmask(thresh[i], s_base[s_off - 2*p], s_base[s_off - p],
-                        s_base[s_off], s_base[s_off+p]);
+                hev = vp8_hevmask(thresh[i], &s_data[i*8+2]);
 
                 vp8_filter(mask, hev, s_base, s_off - 2 * p, s_off - p, s_off,
                         s_off + p);
@@ -183,7 +189,9 @@ kernel void vp8_loop_filter_vertical_edge_kernel
     local size_t num_blocks;
     num_planes = get_global_size(1);
     num_blocks = get_global_size(2);
-    
+
+    local unsigned char s_data[16*8];
+
     if (filters[num_blocks*filter_type + block] > 0){
         int filter_level = filters[block];
         if (filter_level){
@@ -193,7 +201,7 @@ kernel void vp8_loop_filter_vertical_edge_kernel
 
             int  hev = 0; /* high edge variance */
             signed char mask = 0;
-            size_t i= get_global_id(0);
+            size_t i = get_global_id(0);
 
             global signed char *limit, *flimit, *thresh;
             global loop_filter_info *lf_info;
@@ -210,13 +218,19 @@ kernel void vp8_loop_filter_vertical_edge_kernel
                 thresh = lf_info->thr;
 
                 s_off += p * i;
-                mask = vp8_filter_mask(limit[i], flimit[i],
-                        s_base[s_off-4], s_base[s_off-3], s_base[s_off-2],
-                        s_base[s_off-1], s_base[s_off], s_base[s_off+1],
-                        s_base[s_off+2], s_base[s_off+3]);
 
-                hev = vp8_hevmask(thresh[i], s_base[s_off-2], s_base[s_off-1],
-                        s_base[s_off], s_base[s_off+1]);
+                s_data[i*8] = s_base[s_off - 4];
+                s_data[i*8 + 1] = s_base[s_off - 3];
+                s_data[i*8 + 2] = s_base[s_off - 2];
+                s_data[i*8 + 3] = s_base[s_off - 1];
+                s_data[i*8 + 4] = s_base[s_off];
+                s_data[i*8 + 5] = s_base[s_off + 1];
+                s_data[i*8 + 6] = s_base[s_off + 2];
+                s_data[i*8 + 7] = s_base[s_off + 3];
+                
+                mask = vp8_filter_mask(limit[i], flimit[i], &s_data[i*8]);
+
+                hev = vp8_hevmask(thresh[i], &s_data[i*8+2]);
 
                 vp8_filter(mask, hev, s_base, s_off - 2, s_off - 1, s_off, s_off + 1);
 
@@ -246,14 +260,14 @@ kernel void vp8_mbloop_filter_horizontal_edge_kernel
     num_planes = get_global_size(1);
     num_blocks = get_global_size(2);
 
+    local unsigned char s_data[16*8];
+    
     if (filters[num_blocks*filter_type + block] > 0){
         int filter_level = filters[block];
         if (filter_level){
             int p = pitches[plane];
             int block_offset = 8*num_blocks + block*num_planes+plane;
             int s_off = offsets[block_offset+priority_offset];
-
-            global uc *s = s_base+s_off;
 
             signed char hev = 0; /* high edge variance */
             signed char mask = 0;
@@ -273,17 +287,24 @@ kernel void vp8_mbloop_filter_horizontal_edge_kernel
                 limit = lf_info->lim;
                 thresh = lf_info->thr;
 
+                s_off += i;
 
-                s += i;
+                s_data[i*8] = s_base[s_off - 4*p];
+                s_data[i*8 + 1] = s_base[s_off - 3*p];
+                s_data[i*8 + 2] = s_base[s_off - 2*p];
+                s_data[i*8 + 3] = s_base[s_off - 1*p];
+                s_data[i*8 + 4] = s_base[s_off];
+                s_data[i*8 + 5] = s_base[s_off + p];
+                s_data[i*8 + 6] = s_base[s_off + 2*p];
+                s_data[i*8 + 7] = s_base[s_off + 3*p];
+                
+                mask = vp8_filter_mask(limit[i], flimit[i], &s_data[i*8]);
 
-                mask = vp8_filter_mask(limit[i], flimit[i],
-                                       s[-4*p], s[-3*p], s[-2*p], s[-1*p],
-                                       s[0*p], s[1*p], s[2*p], s[3*p]);
+                hev = vp8_hevmask(thresh[i], &s_data[i*8+2]);
 
-                hev = vp8_hevmask(thresh[i], s[-2*p], s[-1*p], s[0*p], s[1*p]);
-
-                vp8_mbfilter(mask, hev, s - 3 * p, s - 2 * p, s - 1 * p, s, s + 1 * p, s + 2 * p);
-
+                vp8_mbfilter(mask, hev, s_base+s_off - 3 * p, s_base+s_off - 2 * p, 
+                        s_base+s_off - 1 * p, s_base+s_off, 
+                        s_base+s_off + 1 * p, s_base+s_off + 2 * p);
             }
         }
     }
@@ -310,14 +331,14 @@ kernel void vp8_mbloop_filter_vertical_edge_kernel
     num_planes = get_global_size(1);
     num_blocks = get_global_size(2);
 
+    local unsigned char s_data[16*8];
+
     if (filters[num_blocks*filter_type + block] > 0){
         int filter_level = filters[block];
         if (filter_level){
             int p = pitches[plane];
             int block_offset = cur_iter*num_blocks*num_planes + block*num_planes+plane;
             int s_off = offsets[block_offset+priority_offset];
-
-            global uc *s = s_base + s_off;
 
             signed char hev = 0; /* high edge variance */
             signed char mask = 0;
@@ -337,14 +358,23 @@ kernel void vp8_mbloop_filter_vertical_edge_kernel
                 limit = lf_info->lim;
                 thresh = lf_info->thr;
 
-                s += p * i;
+                s_off += p * i;
 
-                mask = vp8_filter_mask(limit[i], flimit[i],
-                                       s[-4], s[-3], s[-2], s[-1], s[0], s[1], s[2], s[3]);
-
-                hev = vp8_hevmask(thresh[i], s[-2], s[-1], s[0], s[1]);
-
-                vp8_mbfilter(mask, hev, s - 3, s - 2, s - 1, s, s + 1, s + 2);
+                s_data[i*8] = s_base[s_off - 4];
+                s_data[i*8 + 1] = s_base[s_off - 3];
+                s_data[i*8 + 2] = s_base[s_off - 2];
+                s_data[i*8 + 3] = s_base[s_off - 1];
+                s_data[i*8 + 4] = s_base[s_off];
+                s_data[i*8 + 5] = s_base[s_off + 1];
+                s_data[i*8 + 6] = s_base[s_off + 2];
+                s_data[i*8 + 7] = s_base[s_off + 3];
+                
+                mask = vp8_filter_mask(limit[i], flimit[i], &s_data[i*8]);
+                
+                hev = vp8_hevmask(thresh[i], &s_data[i*8+2]);
+                
+                vp8_mbfilter(mask, hev, s_base+s_off - 3, s_base+s_off - 2, 
+                        s_base+s_off - 1, s_base+s_off, s_base+s_off + 1, s_base+s_off + 2);
 
             }
         }
@@ -371,6 +401,8 @@ kernel void vp8_loop_filter_simple_horizontal_edge_kernel
     local size_t num_blocks;
     num_planes = get_global_size(1);
     num_blocks = get_global_size(2);
+
+    local unsigned char s_data[16*8];
 
     if (filters[num_blocks*filter_type + block] > 0){
         int filter_level = filters[block];
@@ -424,6 +456,8 @@ kernel void vp8_loop_filter_simple_vertical_edge_kernel
     local size_t num_blocks;
     num_planes = get_global_size(1);
     num_blocks = get_global_size(2);
+
+    local unsigned char s_data[16*8];
 
     if (filters[filter_type * num_blocks + block] > 0){
         int filter_level = filters[block];
@@ -527,29 +561,27 @@ __inline void vp8_mbfilter(
 }
 
 /* is there high variance internal edge ( 11111111 yes, 00000000 no) */
-__inline signed char vp8_hevmask(signed char thresh, uc p1, uc p0, uc q0, uc q1)
+__inline signed char vp8_hevmask(signed char thresh, local uc pq[])
 {
     signed char hev = 0;
-    hev  |= (abs(p1 - p0) > thresh) * -1;
-    hev  |= (abs(q1 - q0) > thresh) * -1;
+    hev  |= (abs(pq[0] - pq[1]) > thresh) * -1;
+    hev  |= (abs(pq[3] - pq[2]) > thresh) * -1;
     return hev;
 }
 
 
 /* should we apply any filter at all ( 11111111 yes, 00000000 no) */
-__inline signed char vp8_filter_mask(
-    signed char limit,
-    signed char flimit,
-     uc p3, uc p2, uc p1, uc p0, uc q0, uc q1, uc q2, uc q3)
+__inline signed char vp8_filter_mask( signed char limit, signed char flimit,
+        local uc *pq)
 {
     signed char mask = 0;
-    mask |= (abs(p3 - p2) > limit) * -1;
-    mask |= (abs(p2 - p1) > limit) * -1;
-    mask |= (abs(p1 - p0) > limit) * -1;
-    mask |= (abs(q1 - q0) > limit) * -1;
-    mask |= (abs(q2 - q1) > limit) * -1;
-    mask |= (abs(q3 - q2) > limit) * -1;
-    mask |= (abs(p0 - q0) * 2 + abs(p1 - q1) / 2  > flimit * 2 + limit) * -1;
+    mask |= (abs(pq[0] - pq[1]) > limit) * -1;
+    mask |= (abs(pq[1] - pq[2]) > limit) * -1;
+    mask |= (abs(pq[2] - pq[3]) > limit) * -1;
+    mask |= (abs(pq[5] - pq[4]) > limit) * -1;
+    mask |= (abs(pq[6] - pq[5]) > limit) * -1;
+    mask |= (abs(pq[7] - pq[6]) > limit) * -1;
+    mask |= (abs(pq[3] - pq[4]) * 2 + abs(pq[2] - pq[5]) / 2  > flimit * 2 + limit) * -1;
     mask = ~mask;
     return mask;
 }

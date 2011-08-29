@@ -457,7 +457,7 @@ void vp8_loop_filter_macroblocks_cl(int num_blocks, int mb_rows[], int mb_cols[]
     VP8_CL_SET_BUF(mbd->cl_commands, loop_mem.filters_mem, sizeof(cl_int)*num_blocks*4, filters,,)
 #endif
 
-    //Fill loop_mem.offsets_mem will all offsets for this priority level.
+    //Fill loop_mem.offsets_mem with all offsets for this priority level.
     if (recalculate_offsets == 1)
         vp8_loop_filter_build_offsets(mbd, num_blocks, y_offsets, u_offsets, v_offsets, post, cm, filter_type, priority_level);
 

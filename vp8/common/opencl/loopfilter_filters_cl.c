@@ -64,13 +64,15 @@ static int vp8_loop_filter_cl_run(
     );
 
     /* Execute the kernel */
+/*
     if (max_local_size < global[0]){
         err = clEnqueueNDRangeKernel(cq, kernel, 3, NULL, global, NULL , 0, NULL, NULL);
     }
     else
     {
+*/
         err = clEnqueueNDRangeKernel(cq, kernel, 3, NULL, global, local , 0, NULL, NULL);
-    }
+    //}
     
     VP8_CL_CHECK_SUCCESS( cq, err != CL_SUCCESS,
         "Error: Failed to execute kernel!\n",
