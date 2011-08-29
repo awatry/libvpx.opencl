@@ -204,10 +204,14 @@ int cl_populate_loop_mem(MACROBLOCKD *mbd, YV12_BUFFER_CONFIG *post){
     return err;
 }
 
-int cl_grow_loop_mem(MACROBLOCKD *mbd, YV12_BUFFER_CONFIG *post, int num_blocks, VP8_COMMON *cm){
+int cl_grow_loop_mem(MACROBLOCKD *mbd, YV12_BUFFER_CONFIG *post, VP8_COMMON *cm){
 
     int err;
 
+    int num_blocks = cm->mb_cols / 2 + cm->mb_cols % 2;
+    if (num_blocks > cm->mb_rows)
+        num_blocks = cm->mb_rows;
+    
     //Don't reallocate if the memory is already large enough
     if (num_blocks <= loop_mem.num_blocks)
         return CL_SUCCESS;
@@ -231,7 +235,7 @@ int cl_grow_loop_mem(MACROBLOCKD *mbd, YV12_BUFFER_CONFIG *post, int num_blocks,
 #if USE_MAPPED_BUFFERS
     loop_mem.filters_mem = clCreateBuffer(cl_data.context, CL_MEM_READ_ONLY|CL_MEM_ALLOC_HOST_PTR, sizeof(cl_int)*num_blocks*4, NULL, &err);
 #else
-    loop_mem.filters_mem = clCreateBuffer(cl_data.context, CL_MEM_READ_WRITE, sizeof(cl_int)*num_blocks*4, NULL, &err);
+    loop_mem.filters_mem = clCreateBuffer(cl_data.context, CL_MEM_READ_WRITE, sizeof(cl_int)*cm->MBs*4, NULL, &err);
 #endif
     if (err != CL_SUCCESS){
         printf("Error creating loop filter buffer\n");
@@ -433,8 +437,6 @@ void vp8_loop_filter_macroblocks_cl(int num_blocks, int mb_rows[], int mb_cols[]
     int filters[num_blocks*4];
 #endif
     
-    cl_grow_loop_mem(mbd, post, num_blocks, cm);
-    
     args.buf_mem = post->buffer_mem;
     args.lfi_mem = lfi_mem;
     args.offsets_mem = loop_mem.offsets_mem;
@@ -448,7 +450,7 @@ void vp8_loop_filter_macroblocks_cl(int num_blocks, int mb_rows[], int mb_cols[]
 #if USE_MAPPED_BUFFERS
     VP8_CL_MAP_BUF(mbd->cl_commands, loop_mem.filters_mem, filters, 4*num_blocks*sizeof(int),,);
 #endif
-    
+
     vpx_memcpy(filters, filter_levels, num_blocks*sizeof(int));
     vpx_memcpy(&filters[DC_DIFFS_LOCATION*num_blocks], dc_diffs, num_blocks*sizeof(int));
     vpx_memcpy(&filters[COLS_LOCATION*num_blocks], mb_cols, num_blocks*sizeof(int));
@@ -561,12 +563,6 @@ void vp8_loop_filter_frame_cl
     loop_filter_info *lfi_ptr = NULL;
     unsigned char *buf = NULL;
 
-#if MAP_PITCHES
-    cl_int *pitches = NULL;
-#else
-    int pitches[3] = {post->y_stride, post->uv_stride, post->uv_stride};    
-#endif
-   
     mbd->mode_info_context = cm->mi; /* Point at base of Mb MODE_INFO list */
     
     /* Note the baseline filter values for each segment */
@@ -578,7 +574,7 @@ void vp8_loop_filter_frame_cl
     else if (frame_type != cm->last_frame_type)
         vp8_frame_init_loop_filter(lfi, frame_type);
 
-    cl_grow_loop_mem(mbd, post, 30, cm); //Default to allocating enough for 480p
+    cl_grow_loop_mem(mbd, post, cm);
     priority_offset = 0;
     
 #if USE_MAPPED_BUFFERS
@@ -623,15 +619,7 @@ void vp8_loop_filter_frame_cl
         recalculate_offsets = 1;
     
     if (recalculate_offsets == 1){
-        #if MAP_PITCHES
-            VP8_CL_MAP_BUF(mbd->cl_commands, loop_mem.pitches_mem, pitches, sizeof(cl_int)*3,,)
-            pitches[0] = post->y_stride;
-            pitches[1] = post->uv_stride;
-            pitches[2] = post->uv_stride;
-            VP8_CL_UNMAP_BUF(mbd->cl_commands, loop_mem.pitches_mem, pitches,,);
-        #else
-            VP8_CL_SET_BUF(mbd->cl_commands, loop_mem.pitches_mem, sizeof(cl_int)*3, pitches, vp8_loop_filter_frame(cm,mbd,default_filt_lvl),);
-        #endif
+        cl_populate_loop_mem(mbd, post); //populate pitches_mem
         
         if (priority_offsets != NULL)
             free(priority_offsets);
