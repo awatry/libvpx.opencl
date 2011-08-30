@@ -69,16 +69,14 @@ prototype_loopfilter_cl(vp8_loop_filter_simple_horizontal_edge_cl);
 prototype_loopfilter_cl(vp8_loop_filter_simple_vertical_edge_cl);
 
 /* Horizontal MB filtering */
-void vp8_loop_filter_mbh_cl(MACROBLOCKD *x, VP8_LOOPFILTER_ARGS *args, int num_blocks, int *y_offsets, int *u_offsets, int *v_offsets,
-                            int y_stride, int uv_stride, cl_int filter_type)
+void vp8_loop_filter_mbh_cl(MACROBLOCKD *x, VP8_LOOPFILTER_ARGS *args, int num_blocks, cl_int filter_type)
 {
     args->filter_type= filter_type;
     args->use_mbflim = CL_TRUE;
     vp8_mbloop_filter_horizontal_edge_cl(x, args, 3, num_blocks, 16);
 }
 
-void vp8_loop_filter_mbhs_cl(MACROBLOCKD *x, VP8_LOOPFILTER_ARGS *args, int num_blocks, int *y_offsets, int *u_offsets, int *v_offsets,
-                            int y_stride, int uv_stride, cl_int filter_type)
+void vp8_loop_filter_mbhs_cl(MACROBLOCKD *x, VP8_LOOPFILTER_ARGS *args, int num_blocks, cl_int filter_type)
 {
     args->filter_type= filter_type;
     args->use_mbflim = CL_TRUE;
@@ -88,8 +86,7 @@ void vp8_loop_filter_mbhs_cl(MACROBLOCKD *x, VP8_LOOPFILTER_ARGS *args, int num_
 }
 
 /* Vertical MB Filtering */
-void vp8_loop_filter_mbv_cl(MACROBLOCKD *x, VP8_LOOPFILTER_ARGS *args, int num_blocks, int *y_offsets, int *u_offsets, int *v_offsets,
-                           int y_stride, int uv_stride, cl_int filter_type)
+void vp8_loop_filter_mbv_cl(MACROBLOCKD *x, VP8_LOOPFILTER_ARGS *args, int num_blocks, cl_int filter_type)
 {
     args->filter_type= filter_type;
     args->use_mbflim = CL_TRUE;
@@ -97,8 +94,7 @@ void vp8_loop_filter_mbv_cl(MACROBLOCKD *x, VP8_LOOPFILTER_ARGS *args, int num_b
     vp8_mbloop_filter_vertical_edge_cl(x, args, 3, num_blocks, 16);
 }
 
-void vp8_loop_filter_mbvs_cl(MACROBLOCKD *x, VP8_LOOPFILTER_ARGS *args, int num_blocks, int *y_offsets, int *u_offsets, int *v_offsets,
-                            int y_stride, int uv_stride, cl_int filter_type)
+void vp8_loop_filter_mbvs_cl(MACROBLOCKD *x, VP8_LOOPFILTER_ARGS *args, int num_blocks, cl_int filter_type)
 {
     args->filter_type= filter_type;
     args->use_mbflim = CL_TRUE;
@@ -108,8 +104,7 @@ void vp8_loop_filter_mbvs_cl(MACROBLOCKD *x, VP8_LOOPFILTER_ARGS *args, int num_
 }
 
 /* Horizontal B Filtering */
-void vp8_loop_filter_bh_cl(MACROBLOCKD *x, VP8_LOOPFILTER_ARGS *args, int num_blocks, int *y_offsets, int *u_offsets, int *v_offsets,
-                          int y_stride, int uv_stride, cl_int filter_type)
+void vp8_loop_filter_bh_cl(MACROBLOCKD *x, VP8_LOOPFILTER_ARGS *args, int num_blocks, cl_int filter_type)
 {
     args->filter_type= filter_type;
 
@@ -117,8 +112,7 @@ void vp8_loop_filter_bh_cl(MACROBLOCKD *x, VP8_LOOPFILTER_ARGS *args, int num_bl
     vp8_loop_filter_horizontal_edge_cl(x, args, 3, num_blocks, 16);
 }
 
-void vp8_loop_filter_bhs_cl(MACROBLOCKD *x, VP8_LOOPFILTER_ARGS *args, int num_blocks, int *y_offsets, int *u_offsets, int *v_offsets,
-                           int y_stride, int uv_stride, cl_int filter_type)
+void vp8_loop_filter_bhs_cl(MACROBLOCKD *x, VP8_LOOPFILTER_ARGS *args, int num_blocks, cl_int filter_type)
 {
     args->filter_type= filter_type;
     args->use_mbflim = CL_FALSE;
@@ -132,8 +126,7 @@ void vp8_loop_filter_bhs_cl(MACROBLOCKD *x, VP8_LOOPFILTER_ARGS *args, int num_b
 }
 
 /* Vertical B Filtering */
-void vp8_loop_filter_bv_cl(MACROBLOCKD *x, VP8_LOOPFILTER_ARGS *args, int num_blocks, int *y_offsets, int *u_offsets, int *v_offsets,
-                          int y_stride, int uv_stride, cl_int filter_type)
+void vp8_loop_filter_bv_cl(MACROBLOCKD *x, VP8_LOOPFILTER_ARGS *args, int num_blocks, cl_int filter_type)
 {
     args->filter_type= filter_type;
 
@@ -141,8 +134,7 @@ void vp8_loop_filter_bv_cl(MACROBLOCKD *x, VP8_LOOPFILTER_ARGS *args, int num_bl
     vp8_loop_filter_vertical_edge_cl(x, args, 3, num_blocks, 16);
 }
 
-void vp8_loop_filter_bvs_cl(MACROBLOCKD *x, VP8_LOOPFILTER_ARGS *args, int num_blocks, int *y_offsets, int *u_offsets, int *v_offsets,
-                           int y_stride, int uv_stride, cl_int filter_type)
+void vp8_loop_filter_bvs_cl(MACROBLOCKD *x, VP8_LOOPFILTER_ARGS *args, int num_blocks, cl_int filter_type)
 {
     args->filter_type= filter_type;
     args->use_mbflim = CL_FALSE;
@@ -448,15 +440,15 @@ void vp8_loop_filter_macroblocks_cl(int num_blocks, int mb_rows[], int mb_cols[]
     args->priority_offset = priority_offsets[priority_level];
     
     if (filter_type == NORMAL_LOOPFILTER){
-        vp8_loop_filter_mbv_cl(mbd, args, num_blocks, y_offsets, u_offsets, v_offsets, post->y_stride, post->uv_stride, COLS_LOCATION );
-        vp8_loop_filter_bv_cl(mbd, args, num_blocks, y_offsets, u_offsets, v_offsets, post->y_stride, post->uv_stride, DC_DIFFS_LOCATION );
-        vp8_loop_filter_mbh_cl(mbd, args, num_blocks, y_offsets, u_offsets, v_offsets, post->y_stride, post->uv_stride, ROWS_LOCATION );
-        vp8_loop_filter_bh_cl(mbd, args, num_blocks, y_offsets, u_offsets, v_offsets, post->y_stride, post->uv_stride, DC_DIFFS_LOCATION );
+        vp8_loop_filter_mbv_cl(mbd, args, num_blocks, COLS_LOCATION );
+        vp8_loop_filter_bv_cl(mbd, args, num_blocks, DC_DIFFS_LOCATION );
+        vp8_loop_filter_mbh_cl(mbd, args, num_blocks, ROWS_LOCATION );
+        vp8_loop_filter_bh_cl(mbd, args, num_blocks, DC_DIFFS_LOCATION );
     } else {
-        vp8_loop_filter_mbvs_cl(mbd, args, num_blocks, y_offsets, u_offsets, v_offsets, post->y_stride, post->uv_stride, COLS_LOCATION );
-        vp8_loop_filter_bvs_cl(mbd, args, num_blocks, y_offsets, u_offsets, v_offsets, post->y_stride, post->uv_stride, DC_DIFFS_LOCATION );
-        vp8_loop_filter_mbhs_cl(mbd, args, num_blocks, y_offsets, u_offsets, v_offsets, post->y_stride, post->uv_stride, ROWS_LOCATION );
-        vp8_loop_filter_bhs_cl(mbd, args, num_blocks, y_offsets, u_offsets, v_offsets, post->y_stride, post->uv_stride, DC_DIFFS_LOCATION );
+        vp8_loop_filter_mbvs_cl(mbd, args, num_blocks, COLS_LOCATION );
+        vp8_loop_filter_bvs_cl(mbd, args, num_blocks, DC_DIFFS_LOCATION );
+        vp8_loop_filter_mbhs_cl(mbd, args, num_blocks, ROWS_LOCATION );
+        vp8_loop_filter_bhs_cl(mbd, args, num_blocks, DC_DIFFS_LOCATION );
     }
 
 }
