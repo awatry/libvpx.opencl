@@ -20,7 +20,8 @@
 typedef unsigned char uc;
 
 static int first_run = 1;
-static VP8_LOOPFILTER_ARGS filter_args[6];
+#define NUM_KERNELS 7
+static VP8_LOOPFILTER_ARGS filter_args[NUM_KERNELS];
 
 #define VP8_CL_SET_LOOP_ARG(kernel, current, newargs, argnum, type, name) \
     if (current->name != newargs->name){ \
@@ -45,7 +46,7 @@ static int vp8_loop_filter_cl_run(
     int err;
 
     if (first_run){
-        memset(filter_args, -1, sizeof(VP8_LOOPFILTER_ARGS)*6);
+        memset(filter_args, -1, sizeof(VP8_LOOPFILTER_ARGS)*NUM_KERNELS);
         first_run = 0;
     }
     
@@ -95,6 +96,23 @@ void vp8_loop_filter_horizontal_edge_cl
         cl_data.vp8_loop_filter_horizontal_edge_kernel, 
         cl_data.vp8_loop_filter_horizontal_edge_kernel_size, 
         args, num_planes, num_blocks, max_threads, &filter_args[0]
+    );
+}
+
+//Filters both Macroblock and Block edges
+void vp8_loop_filter_horizontal_edges_cl
+(
+    MACROBLOCKD *x,
+    VP8_LOOPFILTER_ARGS *args,
+    int num_planes,
+    int num_blocks,
+    int max_threads
+)
+{
+    vp8_loop_filter_cl_run(x->cl_commands,
+        cl_data.vp8_loop_filter_horizontal_edges_kernel, 
+        cl_data.vp8_loop_filter_horizontal_edges_kernel_size, 
+        args, num_planes, num_blocks, max_threads, &filter_args[6]
     );
 }
 

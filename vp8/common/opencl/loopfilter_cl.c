@@ -29,7 +29,11 @@
 #define MAP_OFFSETS 1
 #endif
 
-const char *loopFilterCompileOptions = "";
+
+#define COLS_LOCATION 1
+#define DC_DIFFS_LOCATION 2
+#define ROWS_LOCATION 3
+const char *loopFilterCompileOptions = "-DCOLS_LOCATION=1 -DDC_DIFFS_LOCATION=2 -DROWS_LOCATION=3";
 const char *loop_filter_cl_file_name = "vp8/common/opencl/loopfilter";
 
 static int frame_num = 0;
@@ -61,6 +65,7 @@ typedef struct VP8_LOOP_MEM{
 VP8_LOOP_MEM loop_mem;
 cl_mem lfi_mem = NULL;
 
+prototype_loopfilter_cl(vp8_loop_filter_horizontal_edges_cl);
 prototype_loopfilter_cl(vp8_loop_filter_horizontal_edge_cl);
 prototype_loopfilter_cl(vp8_loop_filter_vertical_edge_cl);
 prototype_loopfilter_cl(vp8_mbloop_filter_horizontal_edge_cl);
@@ -68,11 +73,15 @@ prototype_loopfilter_cl(vp8_mbloop_filter_vertical_edge_cl);
 prototype_loopfilter_cl(vp8_loop_filter_simple_horizontal_edge_cl);
 prototype_loopfilter_cl(vp8_loop_filter_simple_vertical_edge_cl);
 
+void vp8_loop_filter_h_cl(MACROBLOCKD *x, VP8_LOOPFILTER_ARGS *args, int num_blocks, cl_int filter_type)
+{
+    vp8_loop_filter_horizontal_edges_cl(x, args, 3, num_blocks, 16);
+}
+
+        
 /* Horizontal MB filtering */
 void vp8_loop_filter_mbh_cl(MACROBLOCKD *x, VP8_LOOPFILTER_ARGS *args, int num_blocks, cl_int filter_type)
 {
-    args->filter_type= filter_type;
-    args->use_mbflim = CL_TRUE;
     vp8_mbloop_filter_horizontal_edge_cl(x, args, 3, num_blocks, 16);
 }
 
@@ -106,8 +115,6 @@ void vp8_loop_filter_mbvs_cl(MACROBLOCKD *x, VP8_LOOPFILTER_ARGS *args, int num_
 /* Horizontal B Filtering */
 void vp8_loop_filter_bh_cl(MACROBLOCKD *x, VP8_LOOPFILTER_ARGS *args, int num_blocks, cl_int filter_type)
 {
-    args->filter_type= filter_type;
-
     //Do YUV, and then two more Y iterations. All iterations done in 1 kernel launch
     vp8_loop_filter_horizontal_edge_cl(x, args, 3, num_blocks, 16);
 }
@@ -234,6 +241,7 @@ int cl_init_loop_filter() {
         return VP8_CL_TRIED_BUT_FAILED;
 
     // Create the compute kernels in the program we wish to run
+    VP8_CL_CREATE_KERNEL(cl_data,loop_filter_program,vp8_loop_filter_horizontal_edges_kernel,"vp8_loop_filter_horizontal_edges_kernel");
     VP8_CL_CREATE_KERNEL(cl_data,loop_filter_program,vp8_loop_filter_horizontal_edge_kernel,"vp8_loop_filter_horizontal_edge_kernel");
     VP8_CL_CREATE_KERNEL(cl_data,loop_filter_program,vp8_loop_filter_vertical_edge_kernel,"vp8_loop_filter_vertical_edge_kernel");
     VP8_CL_CREATE_KERNEL(cl_data,loop_filter_program,vp8_mbloop_filter_horizontal_edge_kernel,"vp8_mbloop_filter_horizontal_edge_kernel");
@@ -241,6 +249,7 @@ int cl_init_loop_filter() {
     VP8_CL_CREATE_KERNEL(cl_data,loop_filter_program,vp8_loop_filter_simple_horizontal_edge_kernel,"vp8_loop_filter_simple_horizontal_edge_kernel");
     VP8_CL_CREATE_KERNEL(cl_data,loop_filter_program,vp8_loop_filter_simple_vertical_edge_kernel,"vp8_loop_filter_simple_vertical_edge_kernel");
     
+    VP8_CL_CALC_LOCAL_SIZE(cl_data.vp8_loop_filter_horizontal_edges_kernel,&cl_data.vp8_loop_filter_horizontal_edges_kernel_size);
     VP8_CL_CALC_LOCAL_SIZE(cl_data.vp8_loop_filter_horizontal_edge_kernel,&cl_data.vp8_loop_filter_horizontal_edge_kernel_size);
     VP8_CL_CALC_LOCAL_SIZE(cl_data.vp8_loop_filter_vertical_edge_kernel,&cl_data.vp8_loop_filter_vertical_edge_kernel_size);
     VP8_CL_CALC_LOCAL_SIZE(cl_data.vp8_loop_filter_simple_horizontal_edge_kernel,&cl_data.vp8_loop_filter_simple_horizontal_edge_kernel_size);
@@ -270,6 +279,7 @@ void cl_destroy_loop_filter(){
         priority_offsets = NULL;
     }
     
+    VP8_CL_RELEASE_KERNEL(cl_data.vp8_loop_filter_horizontal_edges_kernel);
     VP8_CL_RELEASE_KERNEL(cl_data.vp8_loop_filter_horizontal_edge_kernel);
     VP8_CL_RELEASE_KERNEL(cl_data.vp8_loop_filter_vertical_edge_kernel);
     VP8_CL_RELEASE_KERNEL(cl_data.vp8_mbloop_filter_horizontal_edge_kernel);
@@ -413,10 +423,6 @@ void vp8_loop_filter_macroblocks_cl(int num_blocks, int mb_rows[], int mb_cols[]
     int filters[num_blocks*4];
 #endif
 
-#define COLS_LOCATION 1
-#define DC_DIFFS_LOCATION 2
-#define ROWS_LOCATION 3
-
 #if USE_MAPPED_BUFFERS
     VP8_CL_MAP_BUF(mbd->cl_commands, loop_mem.filters_mem, filters, 4*num_blocks*sizeof(int),,);
 #endif
@@ -442,6 +448,7 @@ void vp8_loop_filter_macroblocks_cl(int num_blocks, int mb_rows[], int mb_cols[]
     if (filter_type == NORMAL_LOOPFILTER){
         vp8_loop_filter_mbv_cl(mbd, args, num_blocks, COLS_LOCATION );
         vp8_loop_filter_bv_cl(mbd, args, num_blocks, DC_DIFFS_LOCATION );
+        //vp8_loop_filter_h_cl(mbd, args, num_blocks, ROWS_LOCATION );
         vp8_loop_filter_mbh_cl(mbd, args, num_blocks, ROWS_LOCATION );
         vp8_loop_filter_bh_cl(mbd, args, num_blocks, DC_DIFFS_LOCATION );
     } else {
