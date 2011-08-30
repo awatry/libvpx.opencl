@@ -8,8 +8,7 @@ __inline signed char vp8_filter_mask(sc, sc, local uc*);
 __inline signed char vp8_simple_filter_mask(signed char, signed char, uc, uc, uc, uc);
 __inline signed char vp8_hevmask(signed char, local uc*);
 
-__inline void vp8_mbfilter(signed char mask,signed char hev,global uc *op2,
-    global uc *op1,global uc *op0,global uc *oq0,global uc *oq1,global uc *oq2);
+__inline void vp8_mbfilter(signed char mask,signed char hev,local uc*);
 
 void vp8_simple_filter(signed char mask,global uc *base, int op1_off,int op0_off,int oq0_off,int oq1_off);
 
@@ -41,18 +40,14 @@ typedef struct
 void vp8_filter(
     signed char mask,
     signed char hev,
-    global uc *base,
-    int op1_off,
-    int op0_off,
-    int oq0_off,
-    int oq1_off
+    local uc *base
 )
 {
 
-    global uc *op1 = &base[op1_off];
-    global uc *op0 = &base[op0_off];
-    global uc *oq0 = &base[oq0_off];
-    global uc *oq1 = &base[oq1_off];
+    local uc *op1 = &base[0];
+    local uc *op0 = &base[1];
+    local uc *oq0 = &base[2];
+    local uc *oq1 = &base[3];
 
     signed char ps0, qs0;
     signed char ps1, qs1;
@@ -148,22 +143,31 @@ kernel void vp8_loop_filter_horizontal_edge_kernel
                 thresh = lf_info->thr;
 
                 s_off += i;
-
-                s_data[i*8] = s_base[s_off - 4*p];
-                s_data[i*8 + 1] = s_base[s_off - 3*p];
-                s_data[i*8 + 2] = s_base[s_off - 2*p];
-                s_data[i*8 + 3] = s_base[s_off - 1*p];
-                s_data[i*8 + 4] = s_base[s_off];
-                s_data[i*8 + 5] = s_base[s_off + p];
-                s_data[i*8 + 6] = s_base[s_off + 2*p];
-                s_data[i*8 + 7] = s_base[s_off + 3*p];
+                s_data += i*8;
                 
-                mask = vp8_filter_mask(limit[i], flimit[i], &s_data[i*8]);
+                s_data[0] = s_base[s_off - 4*p];
+                s_data[1] = s_base[s_off - 3*p];
+                s_data[2] = s_base[s_off - 2*p];
+                s_data[3] = s_base[s_off - 1*p];
+                s_data[4] = s_base[s_off];
+                s_data[5] = s_base[s_off + p];
+                s_data[6] = s_base[s_off + 2*p];
+                s_data[7] = s_base[s_off + 3*p];
+                
+                mask = vp8_filter_mask(limit[i], flimit[i], s_data);
 
-                hev = vp8_hevmask(thresh[i], &s_data[i*8+2]);
+                hev = vp8_hevmask(thresh[i], &s_data[2]);
 
-                vp8_filter(mask, hev, s_base, s_off - 2 * p, s_off - p, s_off,
-                        s_off + p);
+                //vp8_filter(mask, hev, s_base, s_off - 2 * p, s_off - p, s_off,
+                //        s_off + p);
+                
+                vp8_filter(mask, hev, s_data+2);
+
+                s_base[s_off - 2*p] = s_data[2];
+                s_base[s_off - p  ] = s_data[3];
+                s_base[s_off      ] = s_data[4];
+                s_base[s_off + p  ] = s_data[5];
+                
             }
         }
     }
@@ -218,22 +222,28 @@ kernel void vp8_loop_filter_vertical_edge_kernel
                 thresh = lf_info->thr;
 
                 s_off += p * i;
-
-                s_data[i*8] = s_base[s_off - 4];
-                s_data[i*8 + 1] = s_base[s_off - 3];
-                s_data[i*8 + 2] = s_base[s_off - 2];
-                s_data[i*8 + 3] = s_base[s_off - 1];
-                s_data[i*8 + 4] = s_base[s_off];
-                s_data[i*8 + 5] = s_base[s_off + 1];
-                s_data[i*8 + 6] = s_base[s_off + 2];
-                s_data[i*8 + 7] = s_base[s_off + 3];
+                s_data += i*8;
                 
-                mask = vp8_filter_mask(limit[i], flimit[i], &s_data[i*8]);
+                s_data[0] = s_base[s_off - 4];
+                s_data[1] = s_base[s_off - 3];
+                s_data[2] = s_base[s_off - 2];
+                s_data[3] = s_base[s_off - 1];
+                s_data[4] = s_base[s_off];
+                s_data[5] = s_base[s_off + 1];
+                s_data[6] = s_base[s_off + 2];
+                s_data[7] = s_base[s_off + 3];
+                
+                mask = vp8_filter_mask(limit[i], flimit[i], s_data);
 
-                hev = vp8_hevmask(thresh[i], &s_data[i*8+2]);
+                hev = vp8_hevmask(thresh[i], &s_data[2]);
 
-                vp8_filter(mask, hev, s_base, s_off - 2, s_off - 1, s_off, s_off + 1);
+                vp8_filter(mask, hev, s_data+2);
 
+                s_base[s_off - 2] = s_data[2];
+                s_base[s_off - 1] = s_data[3];
+                s_base[s_off    ] = s_data[4];
+                s_base[s_off + 1] = s_data[5];
+                
             }
         }
     }
@@ -288,23 +298,30 @@ kernel void vp8_mbloop_filter_horizontal_edge_kernel
                 thresh = lf_info->thr;
 
                 s_off += i;
-
-                s_data[i*8] = s_base[s_off - 4*p];
-                s_data[i*8 + 1] = s_base[s_off - 3*p];
-                s_data[i*8 + 2] = s_base[s_off - 2*p];
-                s_data[i*8 + 3] = s_base[s_off - 1*p];
-                s_data[i*8 + 4] = s_base[s_off];
-                s_data[i*8 + 5] = s_base[s_off + p];
-                s_data[i*8 + 6] = s_base[s_off + 2*p];
-                s_data[i*8 + 7] = s_base[s_off + 3*p];
+                s_data += i*8;
                 
-                mask = vp8_filter_mask(limit[i], flimit[i], &s_data[i*8]);
+                s_data[0] = s_base[s_off - 4*p];
+                s_data[1] = s_base[s_off - 3*p];
+                s_data[2] = s_base[s_off - 2*p];
+                s_data[3] = s_base[s_off - 1*p];
+                s_data[4] = s_base[s_off];
+                s_data[5] = s_base[s_off + p];
+                s_data[6] = s_base[s_off + 2*p];
+                s_data[7] = s_base[s_off + 3*p];
+                
+                mask = vp8_filter_mask(limit[i], flimit[i], s_data);
 
-                hev = vp8_hevmask(thresh[i], &s_data[i*8+2]);
+                hev = vp8_hevmask(thresh[i], &s_data[2]);
 
-                vp8_mbfilter(mask, hev, s_base+s_off - 3 * p, s_base+s_off - 2 * p, 
-                        s_base+s_off - 1 * p, s_base+s_off, 
-                        s_base+s_off + 1 * p, s_base+s_off + 2 * p);
+                vp8_mbfilter(mask, hev, s_data + 1);
+
+                s_base[s_off - 3*p] = s_data[1];
+                s_base[s_off - 2*p] = s_data[2];
+                s_base[s_off - 1*p] = s_data[3];
+                s_base[s_off      ] = s_data[4];
+                s_base[s_off + p  ] = s_data[5];
+                s_base[s_off + 2*p] = s_data[6];
+                
             }
         }
     }
@@ -359,23 +376,31 @@ kernel void vp8_mbloop_filter_vertical_edge_kernel
                 thresh = lf_info->thr;
 
                 s_off += p * i;
+                s_data += i*8;
+                
+                s_data[0] = s_base[s_off - 4];
+                s_data[1] = s_base[s_off - 3];
+                s_data[2] = s_base[s_off - 2];
+                s_data[3] = s_base[s_off - 1];
+                s_data[4] = s_base[s_off];
+                s_data[5] = s_base[s_off + 1];
+                s_data[6] = s_base[s_off + 2];
+                s_data[7] = s_base[s_off + 3];
+                
+                
+                
+                mask = vp8_filter_mask(limit[i], flimit[i], s_data);
+                
+                hev = vp8_hevmask(thresh[i], &s_data[2]);
+                
+                vp8_mbfilter(mask, hev, s_data + 1);
 
-                s_data[i*8] = s_base[s_off - 4];
-                s_data[i*8 + 1] = s_base[s_off - 3];
-                s_data[i*8 + 2] = s_base[s_off - 2];
-                s_data[i*8 + 3] = s_base[s_off - 1];
-                s_data[i*8 + 4] = s_base[s_off];
-                s_data[i*8 + 5] = s_base[s_off + 1];
-                s_data[i*8 + 6] = s_base[s_off + 2];
-                s_data[i*8 + 7] = s_base[s_off + 3];
-                
-                mask = vp8_filter_mask(limit[i], flimit[i], &s_data[i*8]);
-                
-                hev = vp8_hevmask(thresh[i], &s_data[i*8+2]);
-                
-                vp8_mbfilter(mask, hev, s_base+s_off - 3, s_base+s_off - 2, 
-                        s_base+s_off - 1, s_base+s_off, s_base+s_off + 1, s_base+s_off + 2);
-
+                s_base[s_off - 3] = s_data[1];
+                s_base[s_off - 2] = s_data[2];
+                s_base[s_off - 1] = s_data[3];
+                s_base[s_off    ] = s_data[4];
+                s_base[s_off + 1] = s_data[5];
+                s_base[s_off + 2] = s_data[6];
             }
         }
     }
@@ -497,17 +522,19 @@ kernel void vp8_loop_filter_simple_vertical_edge_kernel
 __inline void vp8_mbfilter(
     signed char mask,
     signed char hev,
-    global uc *op2,
-    global uc *op1,
-    global uc *op0,
-    global uc *oq0,
-    global uc *oq1,
-    global uc *oq2
+    local uc *base
 )
 {
     signed char s, u;
     signed char vp8_filter;
 
+    local uc *op2 = base;
+    local uc *op1 = base + 1;
+    local uc *op0 = base + 2;
+    local uc *oq0 = base + 3;
+    local uc *oq1 = base + 4;
+    local uc *oq2 = base + 5;
+    
     char2 filter;
 
     char4 ps = { *op0, *op1, *op2, 0 };
