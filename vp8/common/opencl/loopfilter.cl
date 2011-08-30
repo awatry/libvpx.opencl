@@ -93,30 +93,29 @@ void vp8_filter(
     *op1 = u ^ 0x80;
 }
 
-
-kernel void vp8_loop_filter_horizontal_edge_kernel
-(
+void vp8_loop_filter_horizontal_edge_worker(
     global unsigned char *s_base,
     global int *offsets,
     global int *pitches, /* pitch */
     global loop_filter_info *lfi,
     global int *filters,
-    int use_mbflim,
     int filter_type,
     int cur_iter,
-    int priority_offset
-)
-{
-    private size_t plane = get_global_id(1);
-    private size_t block = get_global_id(2);
-    local size_t num_planes;
-    local size_t num_blocks;
-    num_planes = get_global_size(1);
+    int priority_offset,
+    local unsigned char *s_data
+){
+    size_t plane = get_global_id(1);
+    size_t block = get_global_id(2);
+    size_t num_planes;
+    size_t num_blocks;
+    num_planes = 3;
     num_blocks = get_global_size(2);
 
-    local unsigned char s_data[16*8];
+    if ((cur_iter == 0 || plane == 0) && filters[num_blocks*filter_type + block] > 0){
+        if (cur_iter > 0){
+            num_planes = 1;
+        }
     
-    if (filters[num_blocks*filter_type + block] > 0){
         int filter_level = filters[block];
         if (filter_level){
             int p = pitches[plane];
@@ -133,12 +132,7 @@ kernel void vp8_loop_filter_horizontal_edge_kernel
 
             if (i < threads[plane]){
                 lf_info = &lfi[filter_level];
-                if (use_mbflim == 0){
-                    flimit = lf_info->flim;
-                } else {
-                    flimit = lf_info->mbflim;
-                }
-
+                flimit = lf_info->flim;
                 limit = lf_info->lim;
                 thresh = lf_info->thr;
 
@@ -173,30 +167,54 @@ kernel void vp8_loop_filter_horizontal_edge_kernel
     }
 }
 
-
-kernel void vp8_loop_filter_vertical_edge_kernel
+kernel void vp8_loop_filter_horizontal_edge_kernel
 (
     global unsigned char *s_base,
     global int *offsets,
-    global int *pitches,
+    global int *pitches, /* pitch */
     global loop_filter_info *lfi,
     global int *filters,
-    int use_mbflim,
+    int use_mbflim, //unused for normal filters
     int filter_type,
     int cur_iter,
     int priority_offset
 )
 {
-    private size_t plane = get_global_id(1);
-    private size_t block = get_global_id(2);
-    local size_t num_planes;
-    local size_t num_blocks;
-    num_planes = get_global_size(1);
+    local unsigned char s_data[16*8];
+    
+    //YUV planes, then 2 more passes of Y plane
+    vp8_loop_filter_horizontal_edge_worker( s_base, offsets, pitches, lfi, filters,
+            filter_type, 0, priority_offset, s_data);
+    vp8_loop_filter_horizontal_edge_worker( s_base, offsets, pitches, lfi, filters,
+            filter_type, 3, priority_offset, s_data);
+    vp8_loop_filter_horizontal_edge_worker( s_base, offsets, pitches, lfi, filters,
+            filter_type, 4, priority_offset, s_data);
+}
+
+
+void vp8_loop_filter_vertical_edge_worker(
+    global unsigned char *s_base,
+    global int *offsets,
+    global int *pitches,
+    global loop_filter_info *lfi,
+    global int *filters,
+    int filter_type,
+    int cur_iter,
+    int priority_offset,
+    local unsigned char *s_data
+){
+    size_t plane = get_global_id(1);
+    size_t block = get_global_id(2);
+    size_t num_planes;
+    size_t num_blocks;
+    num_planes = 3;
     num_blocks = get_global_size(2);
 
-    local unsigned char s_data[16*8];
-
-    if (filters[num_blocks*filter_type + block] > 0){
+    if ((cur_iter ==1 || plane == 0) && filters[num_blocks*filter_type + block] > 0){
+        if (cur_iter > 1){
+            num_planes = 1;
+        }
+        
         int filter_level = filters[block];
         if (filter_level){
             int p = pitches[plane];
@@ -212,11 +230,7 @@ kernel void vp8_loop_filter_vertical_edge_kernel
 
             if (i < threads[plane]){
                 lf_info = &lfi[filter_level];
-                if (use_mbflim == 0){
-                    flimit = lf_info->flim;
-                } else {
-                    flimit = lf_info->mbflim;
-                }
+                flimit = lf_info->flim;
 
                 limit = lf_info->lim;
                 thresh = lf_info->thr;
@@ -249,6 +263,29 @@ kernel void vp8_loop_filter_vertical_edge_kernel
     }
 }
 
+kernel void vp8_loop_filter_vertical_edge_kernel
+(
+    global unsigned char *s_base,
+    global int *offsets,
+    global int *pitches,
+    global loop_filter_info *lfi,
+    global int *filters,
+    int use_mbflim, //unused for normal filters
+    int filter_type,
+    int cur_iter, //unused
+    int priority_offset
+)
+{
+    local unsigned char s_data[16*8];
+
+    //YUV planes, then 2 more passes of Y plane
+    vp8_loop_filter_vertical_edge_worker(s_base, offsets, pitches, lfi, filters,
+            filter_type, 1, priority_offset, s_data);
+    vp8_loop_filter_vertical_edge_worker(s_base, offsets, pitches, lfi, filters,
+            filter_type, 6, priority_offset, s_data);
+    vp8_loop_filter_vertical_edge_worker(s_base, offsets, pitches, lfi, filters,
+            filter_type, 7, priority_offset, s_data);
+}
 
 kernel void vp8_mbloop_filter_horizontal_edge_kernel
 (

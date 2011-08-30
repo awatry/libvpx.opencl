@@ -112,17 +112,9 @@ void vp8_loop_filter_bh_cl(MACROBLOCKD *x, VP8_LOOPFILTER_ARGS *args, int num_bl
                           int y_stride, int uv_stride, cl_int filter_type)
 {
     args->filter_type= filter_type;
-    args->use_mbflim = CL_FALSE;
-    
-    args->cur_iter = 0;
-    vp8_loop_filter_horizontal_edge_cl(x, args, 3, num_blocks, 16);
-    
-    args->cur_iter = 3;
-    vp8_loop_filter_horizontal_edge_cl(x, args, 1, num_blocks, 16);
-    
-    args->cur_iter = 4;
-    vp8_loop_filter_horizontal_edge_cl(x, args, 1, num_blocks, 16);
 
+    //Do YUV, and then two more Y iterations. All iterations done in 1 kernel launch
+    vp8_loop_filter_horizontal_edge_cl(x, args, 3, num_blocks, 16);
 }
 
 void vp8_loop_filter_bhs_cl(MACROBLOCKD *x, VP8_LOOPFILTER_ARGS *args, int num_blocks, int *y_offsets, int *u_offsets, int *v_offsets,
@@ -144,18 +136,10 @@ void vp8_loop_filter_bv_cl(MACROBLOCKD *x, VP8_LOOPFILTER_ARGS *args, int num_bl
                           int y_stride, int uv_stride, cl_int filter_type)
 {
     args->filter_type= filter_type;
-    args->use_mbflim = CL_FALSE;
 
-    //Do YUV, and then two more Y iterations
-    args->cur_iter = 1;
+    //Do YUV, and then two more Y iterations. All iterations done in 1 kernel launch
     vp8_loop_filter_vertical_edge_cl(x, args, 3, num_blocks, 16);
-    
-    args->cur_iter = 6;
-    vp8_loop_filter_vertical_edge_cl(x, args, 1, num_blocks, 16);
-    
-    args->cur_iter = 7;
-    vp8_loop_filter_vertical_edge_cl(x, args, 1, num_blocks, 16);
-}    
+}
 
 void vp8_loop_filter_bvs_cl(MACROBLOCKD *x, VP8_LOOPFILTER_ARGS *args, int num_blocks, int *y_offsets, int *u_offsets, int *v_offsets,
                            int y_stride, int uv_stride, cl_int filter_type)
@@ -440,7 +424,7 @@ void vp8_loop_filter_macroblocks_cl(int num_blocks, int mb_rows[], int mb_cols[]
 #define COLS_LOCATION 1
 #define DC_DIFFS_LOCATION 2
 #define ROWS_LOCATION 3
-    
+
 #if USE_MAPPED_BUFFERS
     VP8_CL_MAP_BUF(mbd->cl_commands, loop_mem.filters_mem, filters, 4*num_blocks*sizeof(int),,);
 #endif
