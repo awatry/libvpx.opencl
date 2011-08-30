@@ -985,7 +985,7 @@ process_common_toolchain() {
                     enable dlopen
                 else
                     add_extralibs -lOpenCL
-                    #add_extralibs -I${CL_TOP}/inc -L${CL_TOP}lib/${CL_MACH} -ldl -lsnusamsung_opencl -lrt
+                    #add_extralibs -I${CL_TOP}/inc -L${CL_TOP}/lib/${CL_MACH} -ldl -lsnusamsung_opencl -lrt
                 fi
                 ;;
         esac
