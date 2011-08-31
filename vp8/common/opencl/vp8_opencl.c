@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#define _POSIX_C_SOURCE 1
 #include <sys/stat.h>
 
 #include "vp8_opencl.h"
@@ -399,7 +400,11 @@ int cl_use_binary_kernel(char *src_file, char *bin_file){
     }
         
     //Get the modified date for each, and make sure that binary is newer than src
+#ifdef __APPLE__
+    ret = bin_stat.st_mtime > src_stat.st_mtime;
+#else
     ret = bin_stat.st_mtim.tv_sec > src_stat.st_mtim.tv_sec;
+#endif
     
     return ret;
 }
