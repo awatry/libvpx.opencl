@@ -11,7 +11,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#define _POSIX_C_SOURCE 1
 #include <sys/stat.h>
 
 #include "vp8_opencl.h"

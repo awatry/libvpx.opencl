@@ -32,7 +32,7 @@ typedef struct VP8_LOOPFILTER_ARGS{
 
 #define prototype_loopfilter_cl(sym) \
     void sym(MACROBLOCKD *x, VP8_LOOPFILTER_ARGS *args, \
-                int num_planes, int num_blocks, int max_threads)\
+                int num_planes, int num_blocks)\
 
 #define prototype_loopfilter_block_cl(sym) \
     void sym(MACROBLOCKD*, unsigned char *y, unsigned char *u, unsigned char *v,\

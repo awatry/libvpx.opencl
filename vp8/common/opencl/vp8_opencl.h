@@ -230,14 +230,6 @@ typedef struct VP8_COMMON_CL {
     cl_kernel vp8_loop_filter_vertical_edges_kernel;
     size_t vp8_loop_filter_vertical_edges_kernel_size;
     
-    cl_kernel vp8_loop_filter_horizontal_edge_kernel;
-    size_t vp8_loop_filter_horizontal_edge_kernel_size;
-    cl_kernel vp8_loop_filter_vertical_edge_kernel;
-    size_t vp8_loop_filter_vertical_edge_kernel_size;
-    cl_kernel vp8_mbloop_filter_horizontal_edge_kernel;
-    size_t vp8_mbloop_filter_horizontal_edge_kernel_size;
-    cl_kernel vp8_mbloop_filter_vertical_edge_kernel;
-    size_t vp8_mbloop_filter_vertical_edge_kernel_size;
     cl_kernel vp8_loop_filter_simple_horizontal_edge_kernel;
     size_t vp8_loop_filter_simple_horizontal_edge_kernel_size;
     cl_kernel vp8_loop_filter_simple_vertical_edge_kernel;
