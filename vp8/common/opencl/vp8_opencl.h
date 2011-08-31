@@ -221,8 +221,15 @@ typedef struct VP8_COMMON_CL {
     cl_kernel vp8_short_idct4x4llm_kernel;
 
     cl_program loop_filter_program;
+
+    cl_kernel vp8_loop_filter_all_edges_kernel;
+    size_t vp8_loop_filter_all_edges_kernel_size;
+
     cl_kernel vp8_loop_filter_horizontal_edges_kernel;
     size_t vp8_loop_filter_horizontal_edges_kernel_size;
+    cl_kernel vp8_loop_filter_vertical_edges_kernel;
+    size_t vp8_loop_filter_vertical_edges_kernel_size;
+    
     cl_kernel vp8_loop_filter_horizontal_edge_kernel;
     size_t vp8_loop_filter_horizontal_edge_kernel_size;
     cl_kernel vp8_loop_filter_vertical_edge_kernel;
