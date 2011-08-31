@@ -42,7 +42,7 @@ static int vp8_loop_filter_cl_run(
 ){
 
     size_t global[3] = {max_threads, num_planes, num_blocks};
-    size_t local[3] = {16, 1, 1};
+    size_t local[3] = {16, num_planes, 1};
     int err;
 
     if (first_run){

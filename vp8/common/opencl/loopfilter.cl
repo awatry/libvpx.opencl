@@ -137,7 +137,7 @@ void vp8_loop_filter_horizontal_edge_worker(
                 thresh = lf_info->thr;
 
                 s_off += i;
-                s_data += i*8;
+                s_data += plane*128+i*8;
                 
                 s_data[0] = s_base[s_off - 4*p];
                 s_data[1] = s_base[s_off - 3*p];
@@ -180,7 +180,7 @@ kernel void vp8_loop_filter_horizontal_edge_kernel
     int priority_offset
 )
 {
-    local unsigned char s_data[16*8];
+    local unsigned char s_data[16*8*3];
     
     //YUV planes, then 2 more passes of Y plane
     vp8_loop_filter_horizontal_edge_worker( s_base, offsets, pitches, lfi, filters,
@@ -236,7 +236,7 @@ void vp8_loop_filter_vertical_edge_worker(
                 thresh = lf_info->thr;
 
                 s_off += p * i;
-                s_data += i*8;
+                s_data += plane*128+i*8;
                 
                 s_data[0] = s_base[s_off - 4];
                 s_data[1] = s_base[s_off - 3];
@@ -276,7 +276,7 @@ kernel void vp8_loop_filter_vertical_edge_kernel
     int priority_offset
 )
 {
-    local unsigned char s_data[16*8];
+    local unsigned char s_data[16*8*3];
 
     //YUV planes, then 2 more passes of Y plane
     vp8_loop_filter_vertical_edge_worker(s_base, offsets, pitches, lfi, filters,
@@ -325,7 +325,7 @@ void vp8_mbloop_filter_horizontal_edge_worker(
                 thresh = lf_info->thr;
 
                 s_off += i;
-                s_data += i*8;
+                s_data += plane*128+i*8;
                 
                 s_data[0] = s_base[s_off - 4*p];
                 s_data[1] = s_base[s_off - 3*p];
@@ -367,7 +367,7 @@ kernel void vp8_mbloop_filter_horizontal_edge_kernel
     int priority_offset
 )
 {
-    local unsigned char s_data[16*8];
+    local unsigned char s_data[16*8*3];
     
     vp8_mbloop_filter_horizontal_edge_worker(s_base, offsets, pitches, lfi, 
             filters, priority_offset, s_data);
@@ -384,7 +384,7 @@ kernel void vp8_loop_filter_horizontal_edges_kernel(
     int cur_iter,
     int priority_offset
 ){
-    local unsigned char s_data[16*8];
+    local unsigned char s_data[16*8*3];
     
     vp8_mbloop_filter_horizontal_edge_worker(s_base, offsets, pitches, lfi, 
             filters,  priority_offset, s_data);
@@ -437,7 +437,7 @@ void vp8_mbloop_filter_vertical_edge_worker(
                 thresh = lf_info->thr;
 
                 s_off += p * i;
-                s_data += i*8;
+                s_data += plane*128+i*8;
                 
                 s_data[0] = s_base[s_off - 4];
                 s_data[1] = s_base[s_off - 3];
@@ -478,7 +478,7 @@ kernel void vp8_mbloop_filter_vertical_edge_kernel
     int priority_offset
 )
 {
-    local unsigned char s_data[16*8];
+    local unsigned char s_data[16*8*3];
 
     vp8_mbloop_filter_vertical_edge_worker(s_base, offsets, pitches, lfi, filters,
             COLS_LOCATION, priority_offset, s_data);
@@ -495,7 +495,7 @@ kernel void vp8_loop_filter_all_edges_kernel(
     int cur_iter,
     int priority_offset
 ){
-    local unsigned char s_data[16*8];
+    local unsigned char s_data[16*8*3];
     
     vp8_mbloop_filter_vertical_edge_worker(s_base, offsets, pitches, lfi, filters,
             COLS_LOCATION, priority_offset, s_data);
@@ -534,7 +534,7 @@ kernel void vp8_loop_filter_vertical_edges_kernel(
     int cur_iter,
     int priority_offset
 ){
-    local unsigned char s_data[16*8];
+    local unsigned char s_data[16*8*3];
     
     vp8_mbloop_filter_vertical_edge_worker(s_base, offsets, pitches, lfi, filters,
             COLS_LOCATION, priority_offset, s_data);
@@ -569,7 +569,7 @@ kernel void vp8_loop_filter_simple_horizontal_edge_kernel
     num_planes = get_global_size(1);
     num_blocks = get_global_size(2);
 
-    local unsigned char s_data[16*8];
+    local unsigned char s_data[16*8*3];
 
     if (filters[num_blocks*filter_type + block] > 0){
         int filter_level = filters[block];
@@ -624,7 +624,7 @@ kernel void vp8_loop_filter_simple_vertical_edge_kernel
     num_planes = get_global_size(1);
     num_blocks = get_global_size(2);
 
-    local unsigned char s_data[16*8];
+    local unsigned char s_data[16*8*3];
 
     if (filters[filter_type * num_blocks + block] > 0){
         int filter_level = filters[block];
