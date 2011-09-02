@@ -42,8 +42,10 @@ static int prior_uv_stride = 0;
 static LOOPFILTERTYPE prior_filter_type = 0;
 static int prior_mbrows = 0;
 static int prior_mbcols = 0;
-static int priority_offset;
+static int priority_offset = 0;
 static cl_int *priority_offsets = NULL;
+static int filter_offset = 0;
+static cl_int *filter_offsets = NULL;
 static int recalculate_offsets = 1;
 
 typedef unsigned char uc;
@@ -252,6 +254,10 @@ void cl_destroy_loop_filter(){
         free(priority_offsets);
         priority_offsets = NULL;
     }
+    if (filter_offsets != NULL){
+        free(filter_offsets);
+        filter_offsets = NULL;
+    }
     
     VP8_CL_RELEASE_KERNEL(cl_data.vp8_loop_filter_all_edges_kernel);
     VP8_CL_RELEASE_KERNEL(cl_data.vp8_loop_filter_horizontal_edges_kernel);
@@ -298,6 +304,24 @@ int vp8_loop_filter_level(MACROBLOCKD *mbd, int baseline_filter_level[] ){
     int Segment = (mbd->segmentation_enabled) ? mbd->mode_info_context->mbmi.segment_id : 0;
 
     return vp8_adjust_mb_lf_value(mbd, baseline_filter_level[Segment]);
+}
+
+/* Generate the list of filtering values per priority level*/
+void vp8_loop_filter_build_filter_offsets(cl_int *filters, int num_blocks, 
+        cl_int *filter_levels, cl_int *dc_diffs, cl_int *mb_rows, cl_int *mb_cols, int priority_level
+)
+{
+
+    filter_offsets[priority_level] = filter_offset;
+    
+    filters += filter_offset;
+    vpx_memcpy(filters, filter_levels, num_blocks*sizeof(int));
+    vpx_memcpy(&filters[DC_DIFFS_LOCATION*num_blocks], dc_diffs, num_blocks*sizeof(int));
+    vpx_memcpy(&filters[COLS_LOCATION*num_blocks], mb_cols, num_blocks*sizeof(int));
+    vpx_memcpy(&filters[ROWS_LOCATION*num_blocks], mb_rows, num_blocks*sizeof(int));
+
+    //filter_offset += 4*num_blocks;
+    
 }
 
 void vp8_loop_filter_build_offsets(MACROBLOCKD *mbd, int num_blocks, 
@@ -380,6 +404,7 @@ void vp8_loop_filter_build_offsets(MACROBLOCKD *mbd, int num_blocks,
     VP8_CL_UNMAP_BUF(mbd->cl_commands, loop_mem.offsets_mem, offsets,,);
 }
 
+/* Filter all Macroblocks in a given priority level */
 void vp8_loop_filter_macroblocks_cl(int num_blocks, int mb_rows[], int mb_cols[],
     int dc_diffs[], int *y_offsets, int *u_offsets, int *v_offsets, int *filter_levels,
     VP8_COMMON *cm, MACROBLOCKD *mbd,  cl_mem lfi_mem, YV12_BUFFER_CONFIG *post,
@@ -389,33 +414,20 @@ void vp8_loop_filter_macroblocks_cl(int num_blocks, int mb_rows[], int mb_cols[]
     LOOPFILTERTYPE filter_type = cm->filter_type;
     int err;
 
-#if USE_MAPPED_BUFFERS
-    cl_int *filters = NULL;
-#else
-    int filters[num_blocks*4];
-#endif
-
-#if USE_MAPPED_BUFFERS
+    cl_int *filters;
     VP8_CL_MAP_BUF(mbd->cl_commands, loop_mem.filters_mem, filters, 4*num_blocks*sizeof(int),,);
-#endif
-
-    vpx_memcpy(filters, filter_levels, num_blocks*sizeof(int));
-    vpx_memcpy(&filters[DC_DIFFS_LOCATION*num_blocks], dc_diffs, num_blocks*sizeof(int));
-    vpx_memcpy(&filters[COLS_LOCATION*num_blocks], mb_cols, num_blocks*sizeof(int));
-    vpx_memcpy(&filters[ROWS_LOCATION*num_blocks], mb_rows, num_blocks*sizeof(int));
-
-#if USE_MAPPED_BUFFERS
+    
+    vp8_loop_filter_build_filter_offsets(filters, num_blocks, 
+        filter_levels, dc_diffs, mb_rows, mb_cols, priority_level);
+    
     VP8_CL_UNMAP_BUF(mbd->cl_commands, loop_mem.filters_mem, filters, ,)
-#else    
-    //Set the filters_mem buffer with the filter_levels, rows, cols, and dc_diffs
-    VP8_CL_SET_BUF(mbd->cl_commands, loop_mem.filters_mem, sizeof(cl_int)*num_blocks*4, filters,,)
-#endif
 
     //Fill loop_mem.offsets_mem with all offsets for this priority level.
     if (recalculate_offsets == 1)
         vp8_loop_filter_build_offsets(mbd, num_blocks, y_offsets, u_offsets, v_offsets, post, cm, filter_type, priority_level);
 
     args->priority_offset = priority_offsets[priority_level];
+    args->filter_offset = filter_offsets[priority_level];
     
     if (filter_type == NORMAL_LOOPFILTER){
         vp8_loop_filter_cl(mbd, args, num_blocks);
@@ -431,8 +443,8 @@ void vp8_loop_filter_macroblocks_cl(int num_blocks, int mb_rows[], int mb_cols[]
 }
 
 void vp8_loop_filter_add_macroblock_cl(VP8_COMMON *cm, int mb_row, int mb_col,
-        MACROBLOCKD *mbd, YV12_BUFFER_CONFIG *post, int row[], int col[], int dc_diffs[], int y_offsets[], int u_offsets[], int v_offsets[],
-        int filter_levels[], int baseline_filter_level[], int pos)
+        MACROBLOCKD *mbd, YV12_BUFFER_CONFIG *post, cl_int row[], cl_int col[], cl_int dc_diffs[], int y_offsets[], int u_offsets[], int v_offsets[],
+        cl_int filter_levels[], int baseline_filter_level[], int pos)
 {
     int y_offset = 16 * (mb_col + (mb_row*cm->mb_cols)) + mb_row * (post->y_stride * 16 - post->y_width);
     int uv_offset = 8 * (mb_col + (mb_row*cm->mb_cols)) + mb_row * (post->uv_stride * 8 - post->uv_width);
@@ -465,10 +477,10 @@ void vp8_loop_filter_priority_cl(int priority, VP8_COMMON *cm, MACROBLOCKD *mbd,
     int u_offsets[max_size];
     int v_offsets[max_size];
     
-    int filter_levels[max_size];
-    int rows[max_size];
-    int cols[max_size];
-    int dc_diffs[max_size];
+    cl_int filter_levels[max_size];
+    cl_int rows[max_size];
+    cl_int cols[max_size];
+    cl_int dc_diffs[max_size];
 
     //Calculate offsets/filter_levels/dc_diffs for all MBs in current priority
     for (mb_row = 0; mb_row <= priority && mb_row < cm->mb_rows; mb_row++){
@@ -575,10 +587,21 @@ void vp8_loop_filter_frame_cl
 
         priority_offsets = malloc(sizeof(cl_int)*(2 * (cm->mb_rows - 1) + cm->mb_cols));
         if (priority_offsets == NULL){
+            cl_destroy(mbd->cl_commands, VP8_CL_TRIED_BUT_FAILED);
             vp8_loop_filter_frame(cm,mbd,default_filt_lvl);
             return;
         }
 
+        if (filter_offsets != NULL)
+            free(filter_offsets);
+        
+        filter_offsets = malloc( sizeof(cl_int)*( 2 * (cm->mb_rows-1) + cm->mb_cols) );
+        if (filter_offsets == NULL){
+            cl_destroy(mbd->cl_commands, VP8_CL_TRIED_BUT_FAILED);
+            vp8_loop_filter_frame(cm,mbd, default_filt_lvl);
+            return;
+        }
+        
         prior_y_stride = post->y_stride;        
         prior_uv_stride = post->uv_stride;
         prior_filter_type = cm->filter_type;
