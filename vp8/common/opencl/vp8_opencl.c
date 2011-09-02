@@ -429,11 +429,25 @@ int cl_load_program(cl_program *prog_ref, const char *file_name, const char *opt
         if (kernel_bin != NULL){
             cl_int status;
             *prog_ref = clCreateProgramWithBinary(cl_data.context, 1, &(cl_data.device_id), &size, (const unsigned char**)&kernel_bin, &status, &err);
-            if (status != CL_SUCCESS || err != CL_SUCCESS){
-                printf("Failed to load binary kernel %s\n", bin_file);
-                printf("status = %d, err = %d\n", status, err);
+            if (status == CL_SUCCESS && err == CL_SUCCESS){
+                err = clBuildProgram(*prog_ref, 0, NULL, opts, NULL, NULL);
+                if (err != CL_SUCCESS || *prog_ref == NULL){
+                    //This block gets executed if binary was for wrong device type
+                    clReleaseProgram(*prog_ref);
+                    *prog_ref = NULL;
+                } else {
+                    //Binary loaded successfully. Free bin_file.
+                    free(bin_file);
+                }
+            } else {
+                if (*prog_ref != NULL){
+                    //The loaded binary was not a valid program at all...
+                    //This might mean it was from a different platform?
+                    //printf("Failed to create program from binary\n");
+                    clReleaseProgram(*prog_ref);
+                    *prog_ref = NULL;
+                }
             }
-            free(bin_file);      
             free(kernel_bin);
         }
     }
