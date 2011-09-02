@@ -33,7 +33,7 @@
 #define COLS_LOCATION 1
 #define DC_DIFFS_LOCATION 2
 #define ROWS_LOCATION 3
-const char *loopFilterCompileOptions = "-DCOLS_LOCATION=1 -DDC_DIFFS_LOCATION=2 -DROWS_LOCATION=3";
+const char *loopFilterCompileOptions = "-D COLS_LOCATION=1 -D DC_DIFFS_LOCATION=2 -D ROWS_LOCATION=3";
 const char *loop_filter_cl_file_name = "vp8/common/opencl/loopfilter";
 
 static int frame_num = 0;
