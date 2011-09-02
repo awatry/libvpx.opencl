@@ -331,14 +331,26 @@ void show_build_log(cl_program *prog_ref){
     buffer = (char*) malloc(len);
     if (buffer == NULL) {
         printf("Error: Couldn't allocate compile output buffer memory\n");
+        return;
     }
 
     err = clGetProgramBuildInfo(*prog_ref, cl_data.device_id, CL_PROGRAM_BUILD_LOG, len, buffer, NULL);
     if (err != CL_SUCCESS) {
         printf("Error: Could not get CL build log\n");
-
     } else {
-        printf("Compile output: %s\n", buffer);
+        int err = clGetProgramBuildInfo(*prog_ref, cl_data.device_id, CL_PROGRAM_BUILD_OPTIONS, 0, NULL, &len);
+        if (err == CL_SUCCESS){
+                char *opts = malloc(len);            
+                if (opts != NULL){
+                    err = clGetProgramBuildInfo(*prog_ref, cl_data.device_id, CL_PROGRAM_BUILD_OPTIONS, len, opts, NULL);
+                    if (err == CL_SUCCESS){
+                        printf("Program build options:\n%s\n", opts);
+                    }
+                    free(opts);                    
+                }
+        }
+        
+        printf("Compile output:\n%s\n", buffer);
     }
     free(buffer);
 }
