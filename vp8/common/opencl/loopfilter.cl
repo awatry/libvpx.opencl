@@ -14,6 +14,10 @@ void vp8_simple_filter(signed char mask,global uc *base, int op1_off,int op0_off
 
 constant int threads[3] = {16, 8, 8};
 
+#ifndef __CL_VERSION_1_0__
+#define __CL_VERSION_1_0__ 100
+#endif 
+
 #if __OPENCL_VERSION__ == __CL_VERSION_1_0__
 #define clamp(x,y,z) vp8_char_clamp(x)
 #endif
