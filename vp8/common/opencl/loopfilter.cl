@@ -443,7 +443,7 @@ kernel void vp8_loop_filter_all_edges_kernel(
     vp8_loop_filter_vertical_edge_worker(s_base, offsets, pitches, lfi, filters,
             DC_DIFFS_LOCATION, 7, priority_offset, s_data);
 
-    //barrier(CLK_GLOBAL_MEM_FENCE);
+    barrier(CLK_GLOBAL_MEM_FENCE);
     
     vp8_mbloop_filter_horizontal_edge_worker(s_base, offsets, pitches, lfi, 
             filters,  priority_offset, s_data);
