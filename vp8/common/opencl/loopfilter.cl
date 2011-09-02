@@ -274,7 +274,7 @@ void vp8_mbloop_filter_horizontal_edge_worker(
 
                 s_off += i;
                 s_data += plane*128+i*8;
-                
+
                 s_data[0] = s_base[s_off - 4*p];
                 s_data[1] = s_base[s_off - 3*p];
                 s_data[2] = s_base[s_off - 2*p];
@@ -366,8 +366,6 @@ void vp8_mbloop_filter_vertical_edge_worker(
                 s_off += p * i;
                 s_data += plane*128+i*8;
                 
-#if 1
-                prefetch(&s_base[s_off-4], 8);
                 s_data[0] = s_base[s_off - 4];
                 s_data[1] = s_base[s_off - 3];
                 s_data[2] = s_base[s_off - 2];
@@ -376,7 +374,6 @@ void vp8_mbloop_filter_vertical_edge_worker(
                 s_data[5] = s_base[s_off + 1];
                 s_data[6] = s_base[s_off + 2];
                 s_data[7] = s_base[s_off + 3];
-#endif
                 
                 mask = vp8_filter_mask(limit[i], flimit[i], s_data);
                 
@@ -408,19 +405,7 @@ kernel void vp8_loop_filter_all_edges_kernel(
 ){
     local unsigned char s_data[16*8*3];
     
-#if 0
-    event_t e;
-    for(int plane = 0; plane < 3; plane++){
-        int p = pitches[plane];
-        int block_offset = get_global_id(2)*3+plane;
-        int s_off = offsets[block_offset+priority_offset];
-        for (int thread = 0; thread < 16; thread++){
-            e = async_work_group_strided_copy(s_data+plane*128+thread*8, &s_base[s_off+p*thread-4], 8, 1, e);
-        }
-    }
-    wait_group_events(1, &e);
-#else
-#if 1
+    //Prefetch vertical edge source pixels into global cache
     for(int plane = 0; plane < 3; plane++){
         int p = pitches[plane];
         int block_offset = get_global_id(2)*3+plane;
@@ -429,8 +414,6 @@ kernel void vp8_loop_filter_all_edges_kernel(
             prefetch(&s_base[s_off+p*thread-4], 8);
         }
     }
-#endif
-#endif
     
     vp8_mbloop_filter_vertical_edge_worker(s_base, offsets, pitches, lfi, filters,
             COLS_LOCATION, priority_offset, s_data);
@@ -444,6 +427,18 @@ kernel void vp8_loop_filter_all_edges_kernel(
             DC_DIFFS_LOCATION, 7, priority_offset, s_data);
 
     barrier(CLK_GLOBAL_MEM_FENCE);
+    
+    //Prefetch horizontal source pixels
+#if 0
+    for(int plane = 0; plane < 3; plane++){
+        int p = pitches[plane];
+        int block_offset = get_global_id(2)*3+plane;
+        int s_off = offsets[block_offset+priority_offset];
+        for (int thread = 0; thread < 16; thread++){
+            prefetch(&s_base[s_off+thread-4*p], 8*p);
+        }
+    }
+#endif
     
     vp8_mbloop_filter_horizontal_edge_worker(s_base, offsets, pitches, lfi, 
             filters,  priority_offset, s_data);
