@@ -158,7 +158,7 @@ extern const char *vpx_codec_lib_dir(void);
     bufPtr = clEnqueueMapBuffer(cq, bufRef, CL_TRUE, CL_MAP_WRITE, 0, bufSize, 0, NULL, NULL, &err); \
     VP8_CL_CHECK_SUCCESS(cq, err != CL_SUCCESS, \
         "Error failed to map buffer\n", \
-        altPath, retCode\
+        printf("Err = %d\n", err), retCode\
     );
 
 
