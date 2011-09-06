@@ -173,9 +173,11 @@ extern const char *vpx_codec_lib_dir(void);
     ); \
 
 #define VP8_CL_RELEASE_KERNEL(kernel) \
-    if (kernel) \
-        clReleaseKernel(kernel); \
-    kernel = NULL;
+    {\
+        if (kernel != NULL) \
+            clReleaseKernel(kernel); \
+        kernel = NULL;\
+    }
 
 typedef struct VP8_COMMON_CL {
     cl_device_id device_id; // compute device id

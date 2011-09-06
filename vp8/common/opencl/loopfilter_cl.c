@@ -220,16 +220,20 @@ int cl_init_loop_filter() {
 
     // Create the compute kernels in the program we wish to run
     VP8_CL_CREATE_KERNEL(cl_data,loop_filter_program,vp8_loop_filter_all_edges_kernel,"vp8_loop_filter_all_edges_kernel");
-    VP8_CL_CREATE_KERNEL(cl_data,loop_filter_program,vp8_loop_filter_horizontal_edges_kernel,"vp8_loop_filter_horizontal_edges_kernel");
-    VP8_CL_CREATE_KERNEL(cl_data,loop_filter_program,vp8_loop_filter_vertical_edges_kernel,"vp8_loop_filter_vertical_edges_kernel");
+    VP8_CL_CALC_LOCAL_SIZE(cl_data.vp8_loop_filter_all_edges_kernel,&cl_data.vp8_loop_filter_all_edges_kernel_size);
+
+    if (cl_data.vp8_loop_filter_all_edges_kernel_size < 16){
+        VP8_CL_CREATE_KERNEL(cl_data,loop_filter_program,vp8_loop_filter_horizontal_edges_kernel,"vp8_loop_filter_horizontal_edges_kernel");
+        VP8_CL_CREATE_KERNEL(cl_data,loop_filter_program,vp8_loop_filter_vertical_edges_kernel,"vp8_loop_filter_vertical_edges_kernel");
+        VP8_CL_CALC_LOCAL_SIZE(cl_data.vp8_loop_filter_horizontal_edges_kernel,&cl_data.vp8_loop_filter_horizontal_edges_kernel_size);
+        VP8_CL_CALC_LOCAL_SIZE(cl_data.vp8_loop_filter_vertical_edges_kernel,&cl_data.vp8_loop_filter_vertical_edges_kernel_size);
+    } else {
+        cl_data.vp8_loop_filter_horizontal_edges_kernel = NULL;
+        cl_data.vp8_loop_filter_vertical_edges_kernel = NULL;
+    }
 
     VP8_CL_CREATE_KERNEL(cl_data,loop_filter_program,vp8_loop_filter_simple_horizontal_edge_kernel,"vp8_loop_filter_simple_horizontal_edge_kernel");
     VP8_CL_CREATE_KERNEL(cl_data,loop_filter_program,vp8_loop_filter_simple_vertical_edge_kernel,"vp8_loop_filter_simple_vertical_edge_kernel");
-    
-    VP8_CL_CALC_LOCAL_SIZE(cl_data.vp8_loop_filter_all_edges_kernel,&cl_data.vp8_loop_filter_all_edges_kernel_size);
-    VP8_CL_CALC_LOCAL_SIZE(cl_data.vp8_loop_filter_horizontal_edges_kernel,&cl_data.vp8_loop_filter_horizontal_edges_kernel_size);
-    VP8_CL_CALC_LOCAL_SIZE(cl_data.vp8_loop_filter_vertical_edges_kernel,&cl_data.vp8_loop_filter_vertical_edges_kernel_size);
-    
     VP8_CL_CALC_LOCAL_SIZE(cl_data.vp8_loop_filter_simple_horizontal_edge_kernel,&cl_data.vp8_loop_filter_simple_horizontal_edge_kernel_size);
     VP8_CL_CALC_LOCAL_SIZE(cl_data.vp8_loop_filter_simple_vertical_edge_kernel,&cl_data.vp8_loop_filter_simple_vertical_edge_kernel_size);
     
@@ -340,6 +344,8 @@ void vp8_loop_filter_build_offsets(MACROBLOCKD *mbd, int num_blocks,
         //Map the offsets buffer
         VP8_CL_MAP_BUF(mbd->cl_commands, loop_mem.offsets_mem, offsets, sizeof(cl_int)*cm->MBs*16,,)
                 
+        offsets += priority_offset;
+                
         //populate it with the correct offsets for current filter type
         for (blk = 0; blk < num_blocks; blk++){
             int y_off, u_off, v_off;
@@ -348,55 +354,59 @@ void vp8_loop_filter_build_offsets(MACROBLOCKD *mbd, int num_blocks,
             v_off = v_offsets[blk];
             
             //MBV offsets
-            offsets[priority_offset + blk * 3 + 0] = y_off;
-            offsets[priority_offset + blk * 3 + 1] = u_off;
-            offsets[priority_offset + blk * 3 + 2] = v_off;
+            offsets[blk * 3 + 0] = y_off;
+            offsets[blk * 3 + 1] = u_off;
+            offsets[blk * 3 + 2] = v_off;
 
             //BV Offsets
-            offsets[priority_offset + num_blocks * 3 + blk * 3 + 0] = y_off+4;
-            offsets[priority_offset + num_blocks * 3 + blk * 3 + 1] = u_off+4;
-            offsets[priority_offset + num_blocks * 3 + blk * 3 + 2] = v_off+4;
-            offsets[priority_offset + num_blocks * 6 + blk]         = y_off+8;
-            offsets[priority_offset + num_blocks * 7 + blk]         = y_off+12;
+            offsets[num_blocks * 3 + blk * 3 + 0] = y_off+4;
+            offsets[num_blocks * 3 + blk * 3 + 1] = u_off+4;
+            offsets[num_blocks * 3 + blk * 3 + 2] = v_off+4;
+            offsets[num_blocks * 6 + blk]         = y_off+8;
+            offsets[num_blocks * 7 + blk]         = y_off+12;
 
             //MBH Offsets
-            offsets[priority_offset + num_blocks * 8 + blk * 3 + 0] = y_off;
-            offsets[priority_offset + num_blocks * 8 + blk * 3 + 1] = u_off;
-            offsets[priority_offset + num_blocks * 8 + blk * 3 + 2] = v_off;
+            offsets[num_blocks * 8 + blk * 3 + 0] = y_off;
+            offsets[num_blocks * 8 + blk * 3 + 1] = u_off;
+            offsets[num_blocks * 8 + blk * 3 + 2] = v_off;
 
             //BH Offsets
-            offsets[priority_offset + num_blocks * 11 + blk * 3 + 0] = y_off+4*y_stride;
-            offsets[priority_offset + num_blocks * 11 + blk * 3 + 1] = u_off+4*uv_stride;
-            offsets[priority_offset + num_blocks * 11 + blk * 3 + 2] = v_off+4*uv_stride;
-            offsets[priority_offset + num_blocks * 14 + blk]         = y_off+8*y_stride;
-            offsets[priority_offset + num_blocks * 15 + blk]         = y_off+12*y_stride;
+            offsets[num_blocks * 11 + blk * 3 + 0] = y_off+4*y_stride;
+            offsets[num_blocks * 11 + blk * 3 + 1] = u_off+4*uv_stride;
+            offsets[num_blocks * 11 + blk * 3 + 2] = v_off+4*uv_stride;
+            offsets[num_blocks * 14 + blk]         = y_off+8*y_stride;
+            offsets[num_blocks * 15 + blk]         = y_off+12*y_stride;
         }
+        offsets -= priority_offset;
         priority_offset = priority_offset + num_blocks*16;
     } else {
         //Simple filter
 
         //Map the offsets buffer
         VP8_CL_MAP_BUF(mbd->cl_commands, loop_mem.offsets_mem, offsets, sizeof(cl_int)*num_blocks*8,,)
+        offsets += priority_offset;
+        
         //populate it with the correct offsets for current filter type
         for (blk = 0; blk < num_blocks; blk++){
             int y_off = y_offsets[blk];
 
             //MBVS offsets
-            offsets[priority_offset + blk] = y_off;
+            offsets[blk] = y_off;
 
             //BVS Offsets
-            offsets[priority_offset + num_blocks + blk]    = y_off+4;
-            offsets[priority_offset + num_blocks *2 + blk] = y_off+8;
-            offsets[priority_offset + num_blocks *3 + blk] = y_off+12;
+            offsets[num_blocks + blk]    = y_off+4;
+            offsets[num_blocks *2 + blk] = y_off+8;
+            offsets[num_blocks *3 + blk] = y_off+12;
 
             //MBHS Offsets
-            offsets[priority_offset + num_blocks * 4 + blk] = y_off;
+            offsets[num_blocks * 4 + blk] = y_off;
 
             //BHS Offsets
-            offsets[priority_offset + num_blocks * 5 + blk] = y_off + 4 * y_stride;
-            offsets[priority_offset + num_blocks * 6 + blk] = y_off + 8 * y_stride;
-            offsets[priority_offset + num_blocks * 7 + blk] = y_off + 12 * y_stride;
+            offsets[num_blocks * 5 + blk] = y_off + 4 * y_stride;
+            offsets[num_blocks * 6 + blk] = y_off + 8 * y_stride;
+            offsets[num_blocks * 7 + blk] = y_off + 12 * y_stride;
         }
+        offsets -= priority_offset;
         priority_offset = priority_offset + num_blocks*8;
     }
     

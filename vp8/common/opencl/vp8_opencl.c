@@ -472,35 +472,34 @@ int cl_load_program(cl_program *prog_ref, const char *file_name, const char *opt
         if (kernel_src != NULL) {
             *prog_ref = clCreateProgramWithSource(cl_data.context, 1, (const char**)(&kernel_src), NULL, &err);
             free(kernel_src);
+
+            if (err != CL_SUCCESS) {
+                printf("Error creating program: %d\n", err);
+            }
             
             //Attempt to save program binary
-            vp8_cl_save_binary(file_name, ".bin", prog_ref, opts);
-            free(bin_file);
+            if (*prog_ref != NULL){
+                vp8_cl_save_binary(file_name, ".bin", prog_ref, opts);
+                free(bin_file);
+                
+                /* Build the program executable */
+                err = clBuildProgram(*prog_ref, 0, NULL, opts, NULL, NULL);
+                if (err != CL_SUCCESS) {
+                    printf("Error: Failed to build program executable for %s!\n", file_name);
+                    show_build_log(prog_ref);
+                    return VP8_CL_TRIED_BUT_FAILED;
+                }
+            } else {
+                printf("Error: Couldn't create program\n");
+                free(bin_file);
+                return VP8_CL_TRIED_BUT_FAILED;
+            }
         } else {
             cl_destroy(NULL, VP8_CL_TRIED_BUT_FAILED);
             free(bin_file);
             printf("Couldn't find OpenCL source files. \nUsing software path.\n");
             return VP8_CL_TRIED_BUT_FAILED;
         }
-    }
-    
-    if (*prog_ref == NULL) {
-        printf("Error: Couldn't create program\n");
-        return VP8_CL_TRIED_BUT_FAILED;
-    }
-
-    if (err != CL_SUCCESS) {
-        printf("Error creating program: %d\n", err);
-    }
-
-    /* Build the program executable */
-    err = clBuildProgram(*prog_ref, 0, NULL, opts, NULL, NULL);
-    if (err != CL_SUCCESS) {
-        printf("Error: Failed to build program executable for %s!\n", file_name);
-
-        show_build_log(prog_ref);
-
-        return VP8_CL_TRIED_BUT_FAILED;
     }
 
     return CL_SUCCESS;
