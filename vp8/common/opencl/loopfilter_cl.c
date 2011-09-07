@@ -38,12 +38,17 @@
 const char *loopFilterCompileOptions = "-D COLS_LOCATION=1 -D DC_DIFFS_LOCATION=2 -D ROWS_LOCATION=3";
 const char *loop_filter_cl_file_name = "vp8/common/opencl/loopfilter";
 
+typedef struct VP8_LOOP_SETTINGS{
+    int y_stride;
+    int uv_stride;
+    LOOPFILTERTYPE filter_type;
+    int mbrows;
+    int mbcols;
+} VP8_LOOP_SETTINGS;
+
+static VP8_LOOP_SETTINGS prior_settings;
+
 static int frame_num = 0;
-static int prior_y_stride = 0;
-static int prior_uv_stride = 0;
-static LOOPFILTERTYPE prior_filter_type = 0;
-static int prior_mbrows = 0;
-static int prior_mbcols = 0;
 static int block_offset = 0;
 static cl_int *block_offsets = NULL;
 static int *priority_num_blocks = NULL;
@@ -536,7 +541,8 @@ void vp8_loop_filter_frame_cl
     YV12_BUFFER_CONFIG *post = cm->frame_to_show;
     loop_filter_info *lfi = cm->lf_info;
     FRAME_TYPE frame_type = cm->frame_type;
-
+    VP8_LOOP_SETTINGS current_settings;
+    
     int baseline_filter_level[MAX_MB_SEGMENTS];
     int err, priority;
     loop_filter_info *lfi_ptr = NULL;
@@ -594,20 +600,19 @@ void vp8_loop_filter_frame_cl
             vp8_loop_filter_frame(cm,mbd,default_filt_lvl),);
 #endif
 
+    current_settings.filter_type = cm->filter_type;
+    current_settings.y_stride = post->y_stride;
+    current_settings.uv_stride = post->uv_stride;
+    current_settings.mbcols = cm->mb_cols;
+    current_settings.mbrows = cm->mb_rows;
+    
     //Determine if offsets need to be recalculated
     recalculate_offsets = 0;
     if (frame_num++ == 0)
         recalculate_offsets = 1;
-    else if (post->y_stride != prior_y_stride)
+    else if (memcmp(&current_settings, &prior_settings, sizeof(VP8_LOOP_SETTINGS))){
         recalculate_offsets = 1;
-    else if (post->uv_stride != prior_uv_stride)
-        recalculate_offsets = 1;
-    else if (prior_filter_type != cm->filter_type)
-        recalculate_offsets = 1;
-    else if (prior_mbrows != cm->mb_rows)
-        recalculate_offsets = 1;
-    else if (prior_mbcols != cm->mb_cols)
-        recalculate_offsets = 1;
+    }
     
     if (recalculate_offsets == 1){
         if (cm->MBs <= loop_mem.num_blocks)
@@ -635,11 +640,8 @@ void vp8_loop_filter_frame_cl
             return;
         }
         
-        prior_y_stride = post->y_stride;        
-        prior_uv_stride = post->uv_stride;
-        prior_filter_type = cm->filter_type;
-        prior_mbrows = cm->mb_rows;
-        prior_mbcols = cm->mb_cols;
+        //Copy the current frame's settings for later re-use
+        memcpy(&prior_settings, &current_settings, sizeof(VP8_LOOP_SETTINGS));
         
         //map offsets_mem
         offsets_size = sizeof(cl_int)*cm->MBs*8;
