@@ -22,10 +22,12 @@
 #if NVIDIA
 #define USE_MAPPED_BUFFERS 0
 #define MAP_PITCHES 0
+#define MAP_FILTERS 0
 #define MAP_OFFSETS 0
 #else
 #define USE_MAPPED_BUFFERS 1
 #define MAP_PITCHES 1
+#define MAP_FILTERS 1
 #define MAP_OFFSETS 1
 #endif
 
@@ -508,8 +510,15 @@ void vp8_loop_filter_offsets_copy(VP8_COMMON *cm, MACROBLOCKD *mbd,
     
     cl_int *filters;
 
+#if MAP_FILTERS
     //Always copy the dc_diffs, rows, cols, and filter_offsets values
     VP8_CL_MAP_BUF(mbd->cl_commands, loop_mem.filters_mem, filters, 4*cm->MBs*sizeof(cl_int),,);
+#else
+    filters = malloc(4*cm->MBs*sizeof(cl_int));
+    if (filters == NULL){
+        cl_destroy(mbd->cl_commands, VP8_CL_TRIED_BUT_FAILED);
+    }
+#endif
     
     for (level = 0; level < levels; level++){
         if (level > 0){
@@ -522,8 +531,12 @@ void vp8_loop_filter_offsets_copy(VP8_COMMON *cm, MACROBLOCKD *mbd,
                 filter_levels, dc_diffs, rows, cols);
     }
     
-    
+#if MAP_FILTERS
     VP8_CL_UNMAP_BUF(mbd->cl_commands, loop_mem.filters_mem, filters, ,)
+#else
+    VP8_CL_SET_BUF(mbd->cl_commands, loop_mem.filters_mem, 4*cm->MBs*sizeof(cl_int), filters, vp8_loop_filter_frame(cm,mbd,cm->filter_level),)
+    free(filters);
+#endif
 }
 
 void vp8_loop_filter_frame_cl
@@ -543,6 +556,7 @@ void vp8_loop_filter_frame_cl
     unsigned char *buf = NULL;
 
     cl_int *offsets;
+    size_t offsets_size;
     cl_int y_offsets[cm->MBs];
     cl_int u_offsets[cm->MBs];
     cl_int v_offsets[cm->MBs];
@@ -650,11 +664,20 @@ void vp8_loop_filter_frame_cl
         prior_mbcols = cm->mb_cols;
         
         //map offsets_mem
-        if (cm->filter_type == NORMAL_LOOPFILTER){
-            VP8_CL_MAP_BUF(mbd->cl_commands, loop_mem.offsets_mem, offsets, sizeof(cl_int)*cm->MBs*16,,)
-        } else {
-            VP8_CL_MAP_BUF(mbd->cl_commands, loop_mem.offsets_mem, offsets, sizeof(cl_int)*cm->MBs*8,,)
+        offsets_size = sizeof(cl_int)*cm->MBs*8;
+        if (cm->filter_type == NORMAL_LOOPFILTER)
+            offsets_size *= 2;
+        
+#if MAP_OFFSETS
+        VP8_CL_MAP_BUF(mbd->cl_commands, loop_mem.offsets_mem, offsets, offsets_size,,)
+#else
+        offsets = malloc(offsets_size);
+        if (offsets == NULL){
+            cl_destroy(mbd->cl_commands, VP8_CL_TRIED_BUT_FAILED);
+            vp8_loop_filter_frame(cm, mbd, default_filt_lvl);
+            return;
         }
+#endif
     }
     
     args.buf_mem = post->buffer_mem;
@@ -673,7 +696,12 @@ void vp8_loop_filter_frame_cl
         );
     }
     if (recalculate_offsets == 1){
+#if MAP_OFFSETS
         VP8_CL_UNMAP_BUF(mbd->cl_commands, loop_mem.offsets_mem, offsets,,);
+#else
+        VP8_CL_SET_BUF(mbd->cl_commands, loop_mem.offsets_mem, offsets_size, offsets, vp8_loop_filter_frame(cm, mbd, default_filt_lvl), )
+        free(offsets);
+#endif
     }
     
     //Copy any needed buffer contents to the CL device
