@@ -311,8 +311,11 @@ kernel void vp8_loop_filter_horizontal_edges_kernel(
     int use_mbflim, //unused for normal filters
     int filter_type,
     int cur_iter,
-    int block_offset
+    int priority_level,
+    global int *block_offsets,
+    global int *priority_num_blocks
 ){
+    int block_offset = 0;
     local unsigned char s_data[16*8*3];
     
     int filter_offset = 4*block_offset;
@@ -407,8 +410,12 @@ kernel void vp8_loop_filter_all_edges_kernel(
     int use_mbflim,
     int filter_type,
     int cur_iter,
-    int block_offset
+    int priority_level,
+    global int *block_offsets,
+    global int *priority_num_blocks
 ){
+    
+    int block_offset = block_offsets[priority_level];
     local unsigned char s_data[16*8*3];
     int filter_offset = 4*block_offset;
     int priority_offset = 16*block_offset;
@@ -418,8 +425,8 @@ kernel void vp8_loop_filter_all_edges_kernel(
     //Prefetch vertical edge source pixels into global cache
     for(int plane = 0; plane < 3; plane++){
         int p = pitches[plane];
-        int block_offset = get_global_id(2)*3+plane;
-        int s_off = offsets[block_offset+priority_offset];
+        int offset = get_global_id(2)*3+plane;
+        int s_off = offsets[offset+priority_offset];
         for (int thread = 0; thread < 16; thread++){
             prefetch(&s_base[s_off+p*thread-4], 8);
         }
@@ -442,8 +449,8 @@ kernel void vp8_loop_filter_all_edges_kernel(
 #if 0
     for(int plane = 0; plane < 3; plane++){
         int p = pitches[plane];
-        int block_offset = get_global_id(2)*3+plane;
-        int s_off = offsets[block_offset+priority_offset];
+        int offset = get_global_id(2)*3+plane;
+        int s_off = offsets[offset+priority_offset];
         for (int thread = 0; thread < 16; thread++){
             prefetch(&s_base[s_off+thread-4*p], 8*p);
         }
@@ -472,8 +479,11 @@ kernel void vp8_loop_filter_vertical_edges_kernel(
     int use_mbflim,
     int filter_type,
     int cur_iter,
-    int block_offset
+    int priority_level,
+    global int *block_offsets,
+    global int *priority_num_blocks
 ){
+    int block_offset = 0;
     local unsigned char s_data[16*8*3];
     int filter_offset = 4*block_offset;
     int priority_offset = 16*block_offset;
@@ -503,9 +513,12 @@ kernel void vp8_loop_filter_simple_horizontal_edge_kernel
     int use_mbflim,
     int filter_type,
     int cur_iter,
-    int block_offset
+    int priority_level,
+    global int *block_offsets,
+    global int *priority_num_blocks
 )
 {
+    int block_offset = 0;
     int filter_offset = 4*block_offset;
     int priority_offset = 8*block_offset;
     private size_t plane = get_global_id(1);
@@ -562,9 +575,12 @@ kernel void vp8_loop_filter_simple_vertical_edge_kernel
     int use_mbflim, /* Use lfi->flim or lfi->mbflim, need once per kernel call */
     int filter_type, /* Should dc_diffs, rows, or cols be used?*/
     int cur_iter,
-    int block_offset
+    int priority_level,
+    global int *block_offsets,
+    global int *priority_num_blocks
 )
 {
+    int block_offset = 0;
     int filter_offset = 4*block_offset;
     int priority_offset = 8*block_offset;
     private size_t plane = get_global_id(1);
@@ -608,7 +624,6 @@ kernel void vp8_loop_filter_simple_vertical_edge_kernel
         }
     }
 }
-
 
 
 //Inline and non-kernel functions follow.

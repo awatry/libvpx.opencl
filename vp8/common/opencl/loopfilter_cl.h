@@ -19,7 +19,9 @@
 #include "../loopfilter.h"
 
 typedef struct VP8_LOOPFILTER_ARGS{
-    cl_int block_offset;
+    cl_int priority_level;
+    cl_mem block_offsets_mem;
+    cl_mem priority_num_blocks_mem;
     cl_mem buf_mem;
     cl_mem offsets_mem;
     cl_mem pitches_mem;
