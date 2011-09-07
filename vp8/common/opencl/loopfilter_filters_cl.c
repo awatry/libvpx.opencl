@@ -75,8 +75,7 @@ static int vp8_loop_filter_cl_run(
     VP8_CL_SET_LOOP_ARG(kernel, current_args, args, 5, cl_int, use_mbflim)
     VP8_CL_SET_LOOP_ARG(kernel, current_args, args, 6, cl_int, filter_type)
     VP8_CL_SET_LOOP_ARG(kernel, current_args, args, 7, cl_int, cur_iter)
-    VP8_CL_SET_LOOP_ARG(kernel, current_args, args, 8, cl_int, priority_offset)
-    VP8_CL_SET_LOOP_ARG(kernel, current_args, args, 9, cl_int, filter_offset)
+    VP8_CL_SET_LOOP_ARG(kernel, current_args, args, 8, cl_int, block_offset)
     VP8_CL_CHECK_SUCCESS( cq, err != CL_SUCCESS,
         "Error: Failed to set kernel arguments!\n",,err
     );

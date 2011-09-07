@@ -103,7 +103,6 @@ void vp8_loop_filter_horizontal_edge_worker(
     global int *filters,
     int filter_type,
     int cur_iter,
-    int priority_offset,
     local unsigned char *s_data
 ){
     size_t plane = get_global_id(1);
@@ -123,7 +122,7 @@ void vp8_loop_filter_horizontal_edge_worker(
             if (filter_level){
                 int p = pitches[plane];
                 int block_offset = num_blocks*11 + cur_iter*num_blocks*num_planes + block*num_planes+plane;
-                int s_off = offsets[block_offset+priority_offset];
+                int s_off = offsets[block_offset];
 
                 size_t i = get_global_id(0);
 
@@ -176,7 +175,6 @@ void vp8_loop_filter_vertical_edge_worker(
     global int *filters,
     int filter_type,
     int cur_iter,
-    int priority_offset,
     local unsigned char *s_data
 ){
     size_t plane = get_global_id(1);
@@ -195,7 +193,7 @@ void vp8_loop_filter_vertical_edge_worker(
         if (filter_level){
             int p = pitches[plane];
             int block_offset = cur_iter*num_blocks*num_planes + block*num_planes+plane;
-            int s_off = offsets[block_offset+priority_offset];
+            int s_off = offsets[block_offset];
 
             int  hev = 0; /* high edge variance */
             signed char mask = 0;
@@ -245,7 +243,6 @@ void vp8_mbloop_filter_horizontal_edge_worker(
     global int *pitches,
     global loop_filter_info *lfi,
     global int *filters,
-    int priority_offset,
     local unsigned char *s_data
 ){
     size_t plane = get_global_id(1);
@@ -260,7 +257,7 @@ void vp8_mbloop_filter_horizontal_edge_worker(
         if (filter_level){
             int p = pitches[plane];
             int block_offset = 8*num_blocks + block*num_planes+plane;
-            int s_off = offsets[block_offset+priority_offset];
+            int s_off = offsets[block_offset];
 
             signed char hev = 0; /* high edge variance */
             signed char mask = 0;
@@ -314,23 +311,25 @@ kernel void vp8_loop_filter_horizontal_edges_kernel(
     int use_mbflim, //unused for normal filters
     int filter_type,
     int cur_iter,
-    int priority_offset,
-    int filter_offset
+    int block_offset
 ){
     local unsigned char s_data[16*8*3];
     
+    int filter_offset = 4*block_offset;
+    int priority_offset = 16*block_offset;
+    
     global int *filters = &filters_in[filter_offset];
 
-    vp8_mbloop_filter_horizontal_edge_worker(s_base, offsets, pitches, lfi, 
-            filters,  priority_offset, s_data);
+    vp8_mbloop_filter_horizontal_edge_worker(s_base, &offsets[priority_offset], pitches, lfi, 
+            filters, s_data);
     
     //YUV planes, then 2 more passes of Y plane
-    vp8_loop_filter_horizontal_edge_worker(s_base, offsets, pitches, lfi, filters,
-            DC_DIFFS_LOCATION, 0, priority_offset, s_data);
-    vp8_loop_filter_horizontal_edge_worker(s_base, offsets, pitches, lfi, filters,
-            DC_DIFFS_LOCATION, 3, priority_offset, s_data);
-    vp8_loop_filter_horizontal_edge_worker(s_base, offsets, pitches, lfi, filters,
-            DC_DIFFS_LOCATION, 4, priority_offset, s_data);
+    vp8_loop_filter_horizontal_edge_worker(s_base, &offsets[priority_offset], pitches, lfi, filters,
+            DC_DIFFS_LOCATION, 0, s_data);
+    vp8_loop_filter_horizontal_edge_worker(s_base, &offsets[priority_offset], pitches, lfi, filters,
+            DC_DIFFS_LOCATION, 3, s_data);
+    vp8_loop_filter_horizontal_edge_worker(s_base, &offsets[priority_offset], pitches, lfi, filters,
+            DC_DIFFS_LOCATION, 4, s_data);
 }
 
 void vp8_mbloop_filter_vertical_edge_worker(
@@ -340,7 +339,6 @@ void vp8_mbloop_filter_vertical_edge_worker(
     global loop_filter_info *lfi,
     global int *filters,
     int filter_type,
-    int priority_offset,
     local unsigned char *s_data
 ){
     size_t plane = get_global_id(1);
@@ -355,7 +353,7 @@ void vp8_mbloop_filter_vertical_edge_worker(
         if (filter_level){
             int p = pitches[plane];
             int block_offset = block*num_planes+plane;
-            int s_off = offsets[block_offset+priority_offset];
+            int s_off = offsets[block_offset];
 
             signed char hev = 0; /* high edge variance */
             signed char mask = 0;
@@ -409,10 +407,11 @@ kernel void vp8_loop_filter_all_edges_kernel(
     int use_mbflim,
     int filter_type,
     int cur_iter,
-    int priority_offset,
-    int filter_offset
+    int block_offset
 ){
     local unsigned char s_data[16*8*3];
+    int filter_offset = 4*block_offset;
+    int priority_offset = 16*block_offset;
     
     global int *filters = &filters_in[filter_offset];
 
@@ -426,16 +425,16 @@ kernel void vp8_loop_filter_all_edges_kernel(
         }
     }
 
-    vp8_mbloop_filter_vertical_edge_worker(s_base, offsets, pitches, lfi, filters,
-            COLS_LOCATION, priority_offset, s_data);
+    vp8_mbloop_filter_vertical_edge_worker(s_base, &offsets[priority_offset], pitches, lfi, filters,
+            COLS_LOCATION, s_data);
     
     //YUV planes, then 2 more passes of Y plane
-    vp8_loop_filter_vertical_edge_worker(s_base, offsets, pitches, lfi, filters,
-            DC_DIFFS_LOCATION, 1, priority_offset, s_data);
-    vp8_loop_filter_vertical_edge_worker(s_base, offsets, pitches, lfi, filters,
-            DC_DIFFS_LOCATION, 6, priority_offset, s_data);
-    vp8_loop_filter_vertical_edge_worker(s_base, offsets, pitches, lfi, filters,
-            DC_DIFFS_LOCATION, 7, priority_offset, s_data);
+    vp8_loop_filter_vertical_edge_worker(s_base, &offsets[priority_offset], pitches, lfi, filters,
+            DC_DIFFS_LOCATION, 1, s_data);
+    vp8_loop_filter_vertical_edge_worker(s_base, &offsets[priority_offset], pitches, lfi, filters,
+            DC_DIFFS_LOCATION, 6, s_data);
+    vp8_loop_filter_vertical_edge_worker(s_base, &offsets[priority_offset], pitches, lfi, filters,
+            DC_DIFFS_LOCATION, 7, s_data);
 
     barrier(CLK_GLOBAL_MEM_FENCE);
     
@@ -451,16 +450,16 @@ kernel void vp8_loop_filter_all_edges_kernel(
     }
 #endif
     
-    vp8_mbloop_filter_horizontal_edge_worker(s_base, offsets, pitches, lfi, 
-            filters,  priority_offset, s_data);
+    vp8_mbloop_filter_horizontal_edge_worker(s_base, &offsets[priority_offset], pitches, lfi, 
+            filters, s_data);
     
     //YUV planes, then 2 more passes of Y plane
-    vp8_loop_filter_horizontal_edge_worker(s_base, offsets, pitches, lfi, filters,
-            DC_DIFFS_LOCATION, 0, priority_offset, s_data);
-    vp8_loop_filter_horizontal_edge_worker(s_base, offsets, pitches, lfi, filters,
-            DC_DIFFS_LOCATION, 3, priority_offset, s_data);
-    vp8_loop_filter_horizontal_edge_worker(s_base, offsets, pitches, lfi, filters,
-            DC_DIFFS_LOCATION, 4, priority_offset, s_data);
+    vp8_loop_filter_horizontal_edge_worker(s_base, &offsets[priority_offset], pitches, lfi, filters,
+            DC_DIFFS_LOCATION, 0, s_data);
+    vp8_loop_filter_horizontal_edge_worker(s_base, &offsets[priority_offset], pitches, lfi, filters,
+            DC_DIFFS_LOCATION, 3, s_data);
+    vp8_loop_filter_horizontal_edge_worker(s_base, &offsets[priority_offset], pitches, lfi, filters,
+            DC_DIFFS_LOCATION, 4, s_data);
     
 }
 
@@ -473,23 +472,24 @@ kernel void vp8_loop_filter_vertical_edges_kernel(
     int use_mbflim,
     int filter_type,
     int cur_iter,
-    int priority_offset,
-    int filter_offset
+    int block_offset
 ){
     local unsigned char s_data[16*8*3];
+    int filter_offset = 4*block_offset;
+    int priority_offset = 16*block_offset;
     
     global int *filters = &filters_in[filter_offset];
 
-    vp8_mbloop_filter_vertical_edge_worker(s_base, offsets, pitches, lfi, filters,
-            COLS_LOCATION, priority_offset, s_data);
+    vp8_mbloop_filter_vertical_edge_worker(s_base, &offsets[priority_offset], pitches, lfi, filters,
+            COLS_LOCATION, s_data);
     
     //YUV planes, then 2 more passes of Y plane
-    vp8_loop_filter_vertical_edge_worker(s_base, offsets, pitches, lfi, filters,
-            DC_DIFFS_LOCATION, 1, priority_offset, s_data);
-    vp8_loop_filter_vertical_edge_worker(s_base, offsets, pitches, lfi, filters,
-            DC_DIFFS_LOCATION, 6, priority_offset, s_data);
-    vp8_loop_filter_vertical_edge_worker(s_base, offsets, pitches, lfi, filters,
-            DC_DIFFS_LOCATION, 7, priority_offset, s_data);
+    vp8_loop_filter_vertical_edge_worker(s_base, &offsets[priority_offset], pitches, lfi, filters,
+            DC_DIFFS_LOCATION, 1, s_data);
+    vp8_loop_filter_vertical_edge_worker(s_base, &offsets[priority_offset], pitches, lfi, filters,
+            DC_DIFFS_LOCATION, 6, s_data);
+    vp8_loop_filter_vertical_edge_worker(s_base, &offsets[priority_offset], pitches, lfi, filters,
+            DC_DIFFS_LOCATION, 7, s_data);
     
 }
 
@@ -503,10 +503,11 @@ kernel void vp8_loop_filter_simple_horizontal_edge_kernel
     int use_mbflim,
     int filter_type,
     int cur_iter,
-    int priority_offset,
-    int filter_offset
+    int block_offset
 )
 {
+    int filter_offset = 4*block_offset;
+    int priority_offset = 8*block_offset;
     private size_t plane = get_global_id(1);
     private size_t block = get_global_id(2);
     local size_t num_planes;
@@ -561,10 +562,11 @@ kernel void vp8_loop_filter_simple_vertical_edge_kernel
     int use_mbflim, /* Use lfi->flim or lfi->mbflim, need once per kernel call */
     int filter_type, /* Should dc_diffs, rows, or cols be used?*/
     int cur_iter,
-    int priority_offset,
-    int filter_offset
+    int block_offset
 )
 {
+    int filter_offset = 4*block_offset;
+    int priority_offset = 8*block_offset;
     private size_t plane = get_global_id(1);
     private size_t block = get_global_id(2);
     local size_t num_planes;
