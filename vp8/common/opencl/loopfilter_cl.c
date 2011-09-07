@@ -172,9 +172,7 @@ int cl_grow_loop_mem(MACROBLOCKD *mbd, YV12_BUFFER_CONFIG *post, VP8_COMMON *cm)
 
     int err;
 
-    int num_blocks = cm->mb_cols / 2 + cm->mb_cols % 2;
-    if (num_blocks > cm->mb_rows)
-        num_blocks = cm->mb_rows;
+    int num_blocks = cm->MBs;
     
     //Don't reallocate if the memory is already large enough
     if (num_blocks <= loop_mem.num_blocks)
@@ -579,7 +577,6 @@ void vp8_loop_filter_frame_cl
     else if (frame_type != cm->last_frame_type)
         vp8_frame_init_loop_filter(lfi, frame_type);
 
-    cl_grow_loop_mem(mbd, post, cm);
     priority_offset = 0;
     filter_offset = 0;
     
@@ -625,7 +622,10 @@ void vp8_loop_filter_frame_cl
         recalculate_offsets = 1;
     
     if (recalculate_offsets == 1){
-        cl_populate_loop_mem(mbd, post); //populate pitches_mem
+        if (cm->MBs <= loop_mem.num_blocks)
+            cl_populate_loop_mem(mbd, post); //populate pitches_mem
+        else
+            cl_grow_loop_mem(mbd, post, cm);
         
         if (priority_offsets != NULL)
             free(priority_offsets);
