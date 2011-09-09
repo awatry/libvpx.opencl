@@ -52,16 +52,15 @@ uchar4 vp8_filter(
     uchar4 base
 )
 {
-    char4 pq = convert_char4(base);
+    char4 pq = convert_char4(base) ^ 0x80;
 
     char vp8_filter;
     char2 Filter;
     char4 u;
 
-    pq ^= (char4)0x80;
-
     /* add outer taps if we have high edge variance */
-    vp8_filter = clamp(pq.s0 - pq.s3, -128, 127) & hev;
+    vp8_filter = sub_sat(pq.s0, pq.s3);
+    vp8_filter &= hev;
 
     /* inner taps */
     vp8_filter = clamp(vp8_filter + 3 * (pq.s2 - pq.s1), -128, 127);
@@ -71,25 +70,24 @@ uchar4 vp8_filter(
      * if it equals 4 we'll set to adjust by -1 to account for the fact
      * we'd round 3 the other way
      */
-    Filter = (char2)vp8_filter + (char2){4,3};
+    Filter = add_sat((char2)vp8_filter, (char2){4,3});
     Filter.s0 >>= 3;
     Filter.s1 >>= 3;
     
-    vp8_filter = Filter.s0;
-
     /* outer tap adjustments */
-    vp8_filter += 1;
+    vp8_filter = Filter.s0 + 1;
     vp8_filter >>= 1;
     vp8_filter &= ~hev;
 
+    //u.s01 = add_sat(pq.s01, (char2){vp8_filter, Filter.s1});
+    //u.s23 = sub_sat(pq.s23, (char2){Filter.s0, vp8_filter});
     u.s0 = clamp(pq.s0 + vp8_filter, -128, 127);
     u.s1 = clamp(pq.s1 + Filter.s1, -128, 127);
     u.s2 = clamp(pq.s2 - Filter.s0, -128, 127);
     u.s3 = clamp(pq.s3 - vp8_filter, -128, 127);
 
-    pq = u ^ (char4)0x80;
-    
-    return convert_uchar4(pq);
+    return convert_uchar4(u ^ 0x80);
+
 }
 
 // Filters horizontal edges of inner blocks in a Macroblock
@@ -706,6 +704,17 @@ __inline signed char vp8_filter_mask( signed char limit, signed char flimit,
 {
     signed char mask = 0;
 
+#if 1
+    mask |= (abs(pq.s0 - pq.s1) > limit) * -1;
+    mask |= (abs(pq.s1 - pq.s2) > limit) * -1;
+    mask |= (abs(pq.s2 - pq.s3) > limit) * -1;
+    mask |= (abs(pq.s5 - pq.s4) > limit) * -1;
+    mask |= (abs(pq.s6 - pq.s5) > limit) * -1;
+    mask |= (abs(pq.s7 - pq.s6) > limit) * -1;
+    mask |= (abs(pq.s3 - pq.s4) * 2 + abs(pq.s2 - pq.s5) / 2  > flimit * 2 + limit) * -1;
+    mask = ~mask;
+    return mask;
+#else
     //Only apply the filter if the difference is LESS than 'limit'
     mask |= (abs(pq.s0 - pq.s1) > limit);
     mask |= (abs(pq.s1 - pq.s2) > limit);
@@ -716,6 +725,7 @@ __inline signed char vp8_filter_mask( signed char limit, signed char flimit,
     mask |= (abs(pq.s3 - pq.s4) * 2 + abs(pq.s2 - pq.s5) / 2  > flimit * 2 + limit);
     
     return (mask != 0 ? 0 : -1);
+#endif
     
 }
 
