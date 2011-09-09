@@ -309,7 +309,7 @@ kernel void vp8_loop_filter_horizontal_edges_kernel(
     global int *block_offsets,
     global int *priority_num_blocks
 ){
-    int block_offset = 0;
+    int block_offset = block_offsets[priority_level];
     local unsigned char s_data[16*8*3];
     
     int filter_offset = 4*block_offset;
@@ -479,7 +479,7 @@ kernel void vp8_loop_filter_vertical_edges_kernel(
     global int *block_offsets,
     global int *priority_num_blocks
 ){
-    int block_offset = 0;
+    int block_offset = block_offsets[priority_level];
     local unsigned char s_data[16*8*3];
     int filter_offset = 4*block_offset;
     int priority_offset = 16*block_offset;
@@ -514,7 +514,7 @@ kernel void vp8_loop_filter_simple_horizontal_edge_kernel
     global int *priority_num_blocks
 )
 {
-    int block_offset = 0;
+    int block_offset = block_offsets[priority_level];
     int filter_offset = 4*block_offset;
     int priority_offset = 8*block_offset;
     private size_t plane = get_global_id(1);
@@ -574,7 +574,7 @@ kernel void vp8_loop_filter_simple_vertical_edge_kernel
     global int *priority_num_blocks
 )
 {
-    int block_offset = 0;
+    int block_offset = block_offsets[priority_level];
     int filter_offset = 4*block_offset;
     int priority_offset = 8*block_offset;
     private size_t plane = get_global_id(1);
