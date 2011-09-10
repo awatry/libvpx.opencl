@@ -499,7 +499,7 @@ kernel void vp8_loop_filter_vertical_edges_kernel(
     
 }
 
-kernel void vp8_loop_filter_simple_horizontal_edge_kernel
+void vp8_loop_filter_simple_horizontal_edge_worker
 (
     global unsigned char *s_base,
     global int *offsets,
@@ -512,17 +512,14 @@ kernel void vp8_loop_filter_simple_horizontal_edge_kernel
     int priority_level,
     global int *block_offsets,
     global int *priority_num_blocks
-)
-{
+){
     int block_offset = block_offsets[priority_level];
     int filter_offset = 4*block_offset;
     int priority_offset = 8*block_offset;
     private size_t plane = get_global_id(1);
     private size_t block = get_global_id(2);
-    local size_t num_planes;
-    local size_t num_blocks;
-    num_planes = get_global_size(1);
-    num_blocks = get_global_size(2);
+    size_t num_planes = get_global_size(1);
+    size_t num_blocks = get_global_size(2);
 
     global int *filters = &filters_in[filter_offset];
 
@@ -558,9 +555,28 @@ kernel void vp8_loop_filter_simple_horizontal_edge_kernel
     }
 }
 
-
-kernel void vp8_loop_filter_simple_vertical_edge_kernel
+kernel void vp8_loop_filter_simple_horizontal_edge_kernel
 (
+    global unsigned char *s_base,
+    global int *offsets,
+    global int *pitches,
+    global loop_filter_info *lfi,
+    global int *filters_in,
+    int use_mbflim,
+    int filter_type,
+    int cur_iter,
+    int priority_level,
+    global int *block_offsets,
+    global int *priority_num_blocks
+)
+{
+    vp8_loop_filter_simple_horizontal_edge_worker(s_base, offsets, pitches, lfi,
+            filters_in, use_mbflim, filter_type, cur_iter, priority_level,
+            block_offsets, priority_num_blocks
+    );
+}
+
+void vp8_loop_filter_simple_vertical_edge_worker(
     global unsigned char *s_base,
     global int *offsets, /* Y or YUV offsets for EACH block being processed*/
     global int *pitches, /* 1 or 3 values for Y or YUV pitches*/
@@ -572,17 +588,14 @@ kernel void vp8_loop_filter_simple_vertical_edge_kernel
     int priority_level,
     global int *block_offsets,
     global int *priority_num_blocks
-)
-{
+){
     int block_offset = block_offsets[priority_level];
     int filter_offset = 4*block_offset;
     int priority_offset = 8*block_offset;
-    private size_t plane = get_global_id(1);
+    private size_t plane = 0;
     private size_t block = get_global_id(2);
-    local size_t num_planes;
-    local size_t num_blocks;
-    num_planes = get_global_size(1);
-    num_blocks = get_global_size(2);
+    size_t num_planes = 1;
+    size_t num_blocks = get_global_size(2);
 
     global int *filters = &filters_in[filter_offset];
 
@@ -590,7 +603,7 @@ kernel void vp8_loop_filter_simple_vertical_edge_kernel
         int filter_level = filters[block];
         if (filter_level){
             int p = pitches[plane];
-            int block_offset = cur_iter*num_blocks*num_planes + block*num_planes+plane;
+            int block_offset = cur_iter*num_blocks + block;
             int s_off = offsets[block_offset+priority_offset];
 
             signed char mask = 0;
@@ -617,6 +630,148 @@ kernel void vp8_loop_filter_simple_vertical_edge_kernel
     }
 }
 
+kernel void vp8_loop_filter_simple_vertical_edge_kernel
+(
+    global unsigned char *s_base,
+    global int *offsets, /* Y or YUV offsets for EACH block being processed*/
+    global int *pitches, /* 1 or 3 values for Y or YUV pitches*/
+    global loop_filter_info *lfi, /* Single struct for the frame */
+    global int *filters_in, /* Filters for each block being processed */
+    int use_mbflim, /* Use lfi->flim or lfi->mbflim, need once per kernel call */
+    int filter_type, /* Should dc_diffs, rows, or cols be used?*/
+    int cur_iter,
+    int priority_level,
+    global int *block_offsets,
+    global int *priority_num_blocks
+)
+{
+    vp8_loop_filter_simple_vertical_edge_worker(s_base, offsets, pitches,
+            lfi, filters_in, use_mbflim, filter_type, cur_iter, priority_level,
+            block_offsets, priority_num_blocks
+    );
+}
+
+
+kernel void vp8_loop_filter_simple_vertical_edges_kernel
+(
+    global unsigned char *s_base,
+    global int *offsets, /* Y or YUV offsets for EACH block being processed*/
+    global int *pitches, /* 1 or 3 values for Y or YUV pitches*/
+    global loop_filter_info *lfi, /* Single struct for the frame */
+    global int *filters_in, /* Filters for each block being processed */
+    int use_mbflim, /* Use lfi->flim or lfi->mbflim, need once per kernel call */
+    int filter_type, /* Should dc_diffs, rows, or cols be used?*/
+    int cur_iter,
+    int priority_level,
+    global int *block_offsets,
+    global int *priority_num_blocks
+){    
+    vp8_loop_filter_simple_vertical_edge_worker(s_base, offsets, pitches,
+            lfi, filters_in, 1, COLS_LOCATION, 0, priority_level,
+            block_offsets, priority_num_blocks
+    );
+
+    //3 Y plane iterations
+    vp8_loop_filter_simple_vertical_edge_worker(s_base, offsets, pitches,
+            lfi, filters_in, 0, DC_DIFFS_LOCATION, 1, priority_level,
+            block_offsets, priority_num_blocks
+    );
+    vp8_loop_filter_simple_vertical_edge_worker(s_base, offsets, pitches,
+            lfi, filters_in, 0, DC_DIFFS_LOCATION, 2, priority_level,
+            block_offsets, priority_num_blocks
+    );
+    vp8_loop_filter_simple_vertical_edge_worker(s_base, offsets, pitches,
+            lfi, filters_in, 0, DC_DIFFS_LOCATION, 3, priority_level,
+            block_offsets, priority_num_blocks
+    );
+}
+
+kernel void vp8_loop_filter_simple_horizontal_edges_kernel
+(
+    global unsigned char *s_base,
+    global int *offsets,
+    global int *pitches,
+    global loop_filter_info *lfi,
+    global int *filters_in,
+    int use_mbflim,
+    int filter_type,
+    int cur_iter,
+    int priority_level,
+    global int *block_offsets,
+    global int *priority_num_blocks
+){
+    vp8_loop_filter_simple_horizontal_edge_worker(s_base, offsets, pitches, lfi,
+            filters_in, 1, ROWS_LOCATION, 4, priority_level,
+            block_offsets, priority_num_blocks
+    );
+    vp8_loop_filter_simple_horizontal_edge_worker(s_base, offsets, pitches, lfi,
+            filters_in, 0, DC_DIFFS_LOCATION, 5, priority_level,
+            block_offsets, priority_num_blocks
+    );
+    vp8_loop_filter_simple_horizontal_edge_worker(s_base, offsets, pitches, lfi,
+            filters_in, 0, DC_DIFFS_LOCATION, 6, priority_level,
+            block_offsets, priority_num_blocks
+    );
+    vp8_loop_filter_simple_horizontal_edge_worker(s_base, offsets, pitches, lfi,
+            filters_in, 0, DC_DIFFS_LOCATION, 7, priority_level,
+            block_offsets, priority_num_blocks
+    );
+}
+
+kernel void vp8_loop_filter_simple_all_edges_kernel
+(
+    global unsigned char *s_base,
+    global int *offsets,
+    global int *pitches,
+    global loop_filter_info *lfi,
+    global int *filters_in,
+    int use_mbflim,
+    int filter_type,
+    int cur_iter,
+    int priority_level,
+    global int *block_offsets,
+    global int *priority_num_blocks
+)
+{
+
+    vp8_loop_filter_simple_vertical_edge_worker(s_base, offsets, pitches,
+            lfi, filters_in, 1, COLS_LOCATION, 0, priority_level,
+            block_offsets, priority_num_blocks
+    );
+
+    //3 Y plane iterations
+    vp8_loop_filter_simple_vertical_edge_worker(s_base, offsets, pitches,
+            lfi, filters_in, 0, DC_DIFFS_LOCATION, 1, priority_level,
+            block_offsets, priority_num_blocks
+    );
+    vp8_loop_filter_simple_vertical_edge_worker(s_base, offsets, pitches,
+            lfi, filters_in, 0, DC_DIFFS_LOCATION, 2, priority_level,
+            block_offsets, priority_num_blocks
+    );
+    vp8_loop_filter_simple_vertical_edge_worker(s_base, offsets, pitches,
+            lfi, filters_in, 0, DC_DIFFS_LOCATION, 3, priority_level,
+            block_offsets, priority_num_blocks
+    );
+    
+    barrier(CLK_GLOBAL_MEM_FENCE);
+    
+    vp8_loop_filter_simple_horizontal_edge_worker(s_base, offsets, pitches, lfi,
+            filters_in, 1, ROWS_LOCATION, 4, priority_level,
+            block_offsets, priority_num_blocks
+    );
+    vp8_loop_filter_simple_horizontal_edge_worker(s_base, offsets, pitches, lfi,
+            filters_in, 0, DC_DIFFS_LOCATION, 5, priority_level,
+            block_offsets, priority_num_blocks
+    );
+    vp8_loop_filter_simple_horizontal_edge_worker(s_base, offsets, pitches, lfi,
+            filters_in, 0, DC_DIFFS_LOCATION, 6, priority_level,
+            block_offsets, priority_num_blocks
+    );
+    vp8_loop_filter_simple_horizontal_edge_worker(s_base, offsets, pitches, lfi,
+            filters_in, 0, DC_DIFFS_LOCATION, 7, priority_level,
+            block_offsets, priority_num_blocks
+    );
+}
 
 //Inline and non-kernel functions follow.
 

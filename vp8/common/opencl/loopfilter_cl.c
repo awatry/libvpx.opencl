@@ -76,70 +76,7 @@ VP8_LOOP_MEM loop_mem;
 cl_mem lfi_mem = NULL;
 
 prototype_loopfilter_cl(vp8_loop_filter_all_edges_cl);
-prototype_loopfilter_cl(vp8_loop_filter_horizontal_edges_cl);
-prototype_loopfilter_cl(vp8_loop_filter_vertical_edges_cl);
-prototype_loopfilter_cl(vp8_loop_filter_simple_horizontal_edge_cl);
-prototype_loopfilter_cl(vp8_loop_filter_simple_vertical_edge_cl);
-
-void vp8_loop_filter_cl(MACROBLOCKD *x, VP8_LOOPFILTER_ARGS *args, int num_blocks)
-{
-    vp8_loop_filter_all_edges_cl(x, args, 3, num_blocks);
-}
-
-void vp8_loop_filter_h_cl(MACROBLOCKD *x, VP8_LOOPFILTER_ARGS *args, int num_blocks)
-{
-    vp8_loop_filter_horizontal_edges_cl(x, args, 3, num_blocks);
-}
-
-void vp8_loop_filter_v_cl(MACROBLOCKD *x, VP8_LOOPFILTER_ARGS *args, int num_blocks)
-{
-    vp8_loop_filter_vertical_edges_cl(x, args, 3, num_blocks);
-}
-
-void vp8_loop_filter_mbhs_cl(MACROBLOCKD *x, VP8_LOOPFILTER_ARGS *args, int num_blocks, cl_int filter_type)
-{
-    args->filter_type= filter_type;
-    args->use_mbflim = CL_TRUE;
-    args->cur_iter = 4;
-    
-    vp8_loop_filter_simple_horizontal_edge_cl(x, args, 1, num_blocks);
-}
-
-void vp8_loop_filter_mbvs_cl(MACROBLOCKD *x, VP8_LOOPFILTER_ARGS *args, int num_blocks, cl_int filter_type)
-{
-    args->filter_type= filter_type;
-    args->use_mbflim = CL_TRUE;
-    args->cur_iter = 0;
-    
-    vp8_loop_filter_simple_vertical_edge_cl(x, args, 1, num_blocks);
-}
-
-void vp8_loop_filter_bhs_cl(MACROBLOCKD *x, VP8_LOOPFILTER_ARGS *args, int num_blocks, cl_int filter_type)
-{
-    args->filter_type= filter_type;
-    args->use_mbflim = CL_FALSE;
-
-    args->cur_iter = 5;
-    vp8_loop_filter_simple_horizontal_edge_cl(x, args, 1, num_blocks);
-    args->cur_iter = 6;
-    vp8_loop_filter_simple_horizontal_edge_cl(x, args, 1, num_blocks);
-    args->cur_iter = 7;
-    vp8_loop_filter_simple_horizontal_edge_cl(x, args, 1, num_blocks);
-}
-
-void vp8_loop_filter_bvs_cl(MACROBLOCKD *x, VP8_LOOPFILTER_ARGS *args, int num_blocks, cl_int filter_type)
-{
-    args->filter_type= filter_type;
-    args->use_mbflim = CL_FALSE;
-
-    //3 Y plane iterations
-    args->cur_iter = 1;
-    vp8_loop_filter_simple_vertical_edge_cl(x, args, 1, num_blocks);
-    args->cur_iter = 2;
-    vp8_loop_filter_simple_vertical_edge_cl(x, args, 1, num_blocks);
-    args->cur_iter = 3;
-    vp8_loop_filter_simple_vertical_edge_cl(x, args, 1, num_blocks);
-}
+prototype_loopfilter_cl(vp8_loop_filter_simple_all_edges_cl);
 
 int cl_free_loop_mem(){
     int err = 0;
@@ -269,10 +206,18 @@ int cl_init_loop_filter() {
         cl_data.vp8_loop_filter_vertical_edges_kernel = NULL;
     }
 
-    VP8_CL_CREATE_KERNEL(cl_data,loop_filter_program,vp8_loop_filter_simple_horizontal_edge_kernel,"vp8_loop_filter_simple_horizontal_edge_kernel");
-    VP8_CL_CREATE_KERNEL(cl_data,loop_filter_program,vp8_loop_filter_simple_vertical_edge_kernel,"vp8_loop_filter_simple_vertical_edge_kernel");
-    VP8_CL_CALC_LOCAL_SIZE(cl_data.vp8_loop_filter_simple_horizontal_edge_kernel,&cl_data.vp8_loop_filter_simple_horizontal_edge_kernel_size);
-    VP8_CL_CALC_LOCAL_SIZE(cl_data.vp8_loop_filter_simple_vertical_edge_kernel,&cl_data.vp8_loop_filter_simple_vertical_edge_kernel_size);
+    VP8_CL_CREATE_KERNEL(cl_data,loop_filter_program,vp8_loop_filter_simple_all_edges_kernel,"vp8_loop_filter_simple_all_edges_kernel");
+    VP8_CL_CALC_LOCAL_SIZE(cl_data.vp8_loop_filter_simple_all_edges_kernel,&cl_data.vp8_loop_filter_simple_all_edges_kernel_size);
+    
+    if (cl_data.vp8_loop_filter_simple_all_edges_kernel_size < 16){
+        VP8_CL_CREATE_KERNEL(cl_data,loop_filter_program,vp8_loop_filter_simple_horizontal_edges_kernel,"vp8_loop_filter_simple_horizontal_edges_kernel");
+        VP8_CL_CREATE_KERNEL(cl_data,loop_filter_program,vp8_loop_filter_simple_vertical_edges_kernel,"vp8_loop_filter_simple_vertical_edges_kernel");
+        VP8_CL_CALC_LOCAL_SIZE(cl_data.vp8_loop_filter_simple_horizontal_edges_kernel,&cl_data.vp8_loop_filter_simple_horizontal_edges_kernel_size);
+        VP8_CL_CALC_LOCAL_SIZE(cl_data.vp8_loop_filter_simple_vertical_edges_kernel,&cl_data.vp8_loop_filter_simple_vertical_edges_kernel_size);
+    } else {
+        cl_data.vp8_loop_filter_simple_horizontal_edges_kernel = NULL;
+        cl_data.vp8_loop_filter_simple_vertical_edges_kernel = NULL;
+    }
     
     loop_mem.num_blocks = 0;
     loop_mem.offsets_mem = NULL;
@@ -298,8 +243,10 @@ void cl_destroy_loop_filter(){
     VP8_CL_RELEASE_KERNEL(cl_data.vp8_loop_filter_all_edges_kernel);
     VP8_CL_RELEASE_KERNEL(cl_data.vp8_loop_filter_horizontal_edges_kernel);
     VP8_CL_RELEASE_KERNEL(cl_data.vp8_loop_filter_vertical_edges_kernel);
-    VP8_CL_RELEASE_KERNEL(cl_data.vp8_loop_filter_simple_horizontal_edge_kernel);
-    VP8_CL_RELEASE_KERNEL(cl_data.vp8_loop_filter_simple_vertical_edge_kernel);
+
+    VP8_CL_RELEASE_KERNEL(cl_data.vp8_loop_filter_simple_all_edges_kernel);
+    VP8_CL_RELEASE_KERNEL(cl_data.vp8_loop_filter_simple_horizontal_edges_kernel);
+    VP8_CL_RELEASE_KERNEL(cl_data.vp8_loop_filter_simple_vertical_edges_kernel);
 
     if (cl_data.loop_filter_program)
         clReleaseProgram(cl_data.loop_filter_program);
@@ -440,12 +387,9 @@ void vp8_loop_filter_macroblocks_cl(
     args->priority_level = priority_level;
     
     if (filter_type == NORMAL_LOOPFILTER){
-        vp8_loop_filter_cl(mbd, args, num_blocks);
+        vp8_loop_filter_all_edges_cl(mbd, args, 3, num_blocks);
     } else {
-        vp8_loop_filter_mbvs_cl(mbd, args, num_blocks, COLS_LOCATION );
-        vp8_loop_filter_bvs_cl(mbd, args, num_blocks, DC_DIFFS_LOCATION );
-        vp8_loop_filter_mbhs_cl(mbd, args, num_blocks, ROWS_LOCATION );
-        vp8_loop_filter_bhs_cl(mbd, args, num_blocks, DC_DIFFS_LOCATION );
+        vp8_loop_filter_simple_all_edges_cl(mbd, args, 1, num_blocks);
     }
 
 }
