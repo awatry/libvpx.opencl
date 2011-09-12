@@ -20,8 +20,6 @@ constant int threads[3] = {16, 8, 8};
 
 #if __OPENCL_VERSION__ == __CL_VERSION_1_0__
 #define clamp(x,y,z) vp8_char_clamp(x)
-#endif
-
 char vp8_char_clamp(int in){
     if (in > 127)
         return 127;
@@ -30,6 +28,7 @@ char vp8_char_clamp(int in){
 
     return in;
 }
+#endif
 
 
 typedef struct
