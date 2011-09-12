@@ -253,19 +253,6 @@ void vp8_mbloop_filter_horizontal_edge_worker(
 
                 s_off += i;
                 
-#if 1
-                s_data += plane*128+i*8;
-
-                s_data[0] = s_base[s_off - 4*p];
-                s_data[1] = s_base[s_off - 3*p];
-                s_data[2] = s_base[s_off - 2*p];
-                s_data[3] = s_base[s_off - 1*p];
-                s_data[4] = s_base[s_off];
-                s_data[5] = s_base[s_off + p];
-                s_data[6] = s_base[s_off + 2*p];
-                s_data[7] = s_base[s_off + 3*p];
-                uchar8 data = vload8(0, s_data);
-#else
                 uchar8 data;
                 data.s0 = s_base[s_off-4*p];
                 data.s1 = s_base[s_off-3*p];
@@ -275,13 +262,11 @@ void vp8_mbloop_filter_horizontal_edge_worker(
                 data.s5 = s_base[s_off+p];
                 data.s6 = s_base[s_off+2*p];
                 data.s7 = s_base[s_off+3*p];
-#endif           
                 
                 mask = vp8_filter_mask(limit[i], flimit[i], data);
 
                 hev = vp8_hevmask(thresh[i], data.s2345);
                 
-                //TODO: change vp8_mbfilter to use uchar8 instead of local uchar*
                 data = vp8_mbfilter(mask, hev, data);
 
                 s_base[s_off - 3*p] = data.s1;
@@ -366,30 +351,16 @@ void vp8_mbloop_filter_vertical_edge_worker(
                 thresh = lf_info->thr;
 
                 s_off += p * i;
-                s_data += plane*128+i*8;
+
+                uchar8 data = vload8(0, &s_base[s_off-4]);
                 
-                s_data[0] = s_base[s_off - 4];
-                s_data[1] = s_base[s_off - 3];
-                s_data[2] = s_base[s_off - 2];
-                s_data[3] = s_base[s_off - 1];
-                s_data[4] = s_base[s_off];
-                s_data[5] = s_base[s_off + 1];
-                s_data[6] = s_base[s_off + 2];
-                s_data[7] = s_base[s_off + 3];
-                
-                uchar8 data = vload8(0, s_data);
                 mask = vp8_filter_mask(limit[i], flimit[i], data);
                 
                 hev = vp8_hevmask(thresh[i], data.s2345);
                 
                 data = vp8_mbfilter(mask, hev, data);
 
-                s_base[s_off - 3] = data.s1;
-                s_base[s_off - 2] = data.s2;
-                s_base[s_off - 1] = data.s3;
-                s_base[s_off    ] = data.s4;
-                s_base[s_off + 1] = data.s5;
-                s_base[s_off + 2] = data.s6;
+                vstore8(data, 0, &s_base[s_off-4]);
             }
         }
     }
@@ -742,7 +713,7 @@ __inline uchar8 vp8_mbfilter(
 
     //char8 pq = vload8(0, (local char *)base);
     char8 pq = convert_char8(base);
-    pq ^= (char8)0x80;
+    pq ^= (char8){0, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0};
     
     /* add outer taps if we have high edge variance */
     vp8_filter = clamp(pq.s2 - pq.s5, -128, 127);
