@@ -324,10 +324,8 @@ void vp8_mbloop_filter_vertical_edge_worker(
 ){
     size_t plane = get_global_id(1);
     size_t block = get_global_id(2);
-    size_t num_planes;
-    size_t num_blocks;
-    num_planes = get_global_size(1);
-    num_blocks = get_global_size(2);
+    size_t num_planes = 3;
+    size_t num_blocks = get_global_size(2);
 
     if (filters[num_blocks*filter_type + block] > 0){
         int filter_level = filters[block];
