@@ -78,12 +78,10 @@ uchar4 vp8_filter(
     vp8_filter >>= 1;
     vp8_filter &= ~hev;
 
-    //u.s01 = add_sat(pq.s01, (char2){vp8_filter, Filter.s1});
-    //u.s23 = sub_sat(pq.s23, (char2){Filter.s0, vp8_filter});
-    u.s0 = clamp(pq.s0 + vp8_filter, -128, 127);
-    u.s1 = clamp(pq.s1 + Filter.s1, -128, 127);
-    u.s2 = clamp(pq.s2 - Filter.s0, -128, 127);
-    u.s3 = clamp(pq.s3 - vp8_filter, -128, 127);
+    u.s0 = add_sat(pq.s0, vp8_filter);
+    u.s1 = add_sat(pq.s1, Filter.s1);
+    u.s2 = sub_sat(pq.s2, Filter.s0);
+    u.s3 = sub_sat(pq.s3, vp8_filter);
 
     return convert_uchar4(u ^ 0x80);
 
@@ -173,7 +171,7 @@ void vp8_loop_filter_vertical_edge_worker(
     size_t num_planes = 3;
     size_t num_blocks = get_global_size(2);
 
-    if ((cur_iter ==1 || plane == 0) && filters[num_blocks*filter_type + block] > 0){
+    if ((cur_iter == 1 || plane == 0) && filters[num_blocks*filter_type + block] > 0){
         if (cur_iter > 1){
             num_planes = 1;
         }
@@ -220,8 +218,7 @@ void vp8_mbloop_filter_horizontal_edge_worker(
     global int *offsets,
     global int *pitches,
     global loop_filter_info *lfi,
-    global int *filters,
-    local unsigned char *s_data
+    global int *filters
 ){
     size_t plane = get_global_id(1);
     size_t block = get_global_id(2);
@@ -286,8 +283,7 @@ void vp8_mbloop_filter_vertical_edge_worker(
     global int *pitches,
     global loop_filter_info *lfi,
     global int *filters,
-    int filter_type,
-    local unsigned char *s_data
+    int filter_type
 ){
     size_t plane = get_global_id(1);
     size_t block = get_global_id(2);
@@ -336,7 +332,7 @@ kernel void vp8_loop_filter_all_edges_kernel(
     global int *offsets,
     global int *pitches,
     global loop_filter_info *lfi,
-    global int *filters_in,
+    global int *filters,
     int use_mbflim,
     int filter_type,
     int cur_iter,
@@ -344,59 +340,44 @@ kernel void vp8_loop_filter_all_edges_kernel(
     global int *block_offsets,
     global int *priority_num_blocks
 ){
-    
-    int block_offset = block_offsets[priority_level];
-    local unsigned char s_data[16*8*3];
-    int filter_offset = 4*block_offset;
-    int priority_offset = 16*block_offset;
-    
-    global int *filters = &filters_in[filter_offset];
 
-    //Prefetch vertical edge source pixels into global cache
-    int num_blocks = get_global_size(2);
+    int block_offset = block_offsets[priority_level];
+
+    offsets = &offsets[16*block_offset];
+    filters = &filters[4*block_offset];
+
+    //Prefetch vertical edge source pixels into global cache (horizontal isn't worth it)
     for(int plane = 0; plane < 3; plane++){
         int p = pitches[plane];
         int offset = get_global_id(2)*3+plane;
-        int s_off = offsets[offset+priority_offset];
+        int s_off = offsets[offset];
         for (int thread = 0; thread < 16; thread++){
             prefetch(&s_base[s_off+p*thread-4], 8);
         }
     }
 
-    vp8_mbloop_filter_vertical_edge_worker(s_base, &offsets[priority_offset], pitches, lfi, filters,
-            COLS_LOCATION, s_data);
-    
+    vp8_mbloop_filter_vertical_edge_worker(s_base, offsets, pitches, lfi, filters,
+            COLS_LOCATION);
+
     //YUV planes, then 2 more passes of Y plane
-    vp8_loop_filter_vertical_edge_worker(s_base, &offsets[priority_offset], pitches, lfi, filters,
+    vp8_loop_filter_vertical_edge_worker(s_base, offsets, pitches, lfi, filters,
             DC_DIFFS_LOCATION, 1);
-    vp8_loop_filter_vertical_edge_worker(s_base, &offsets[priority_offset], pitches, lfi, filters,
+    vp8_loop_filter_vertical_edge_worker(s_base, offsets, pitches, lfi, filters,
             DC_DIFFS_LOCATION, 6);
-    vp8_loop_filter_vertical_edge_worker(s_base, &offsets[priority_offset], pitches, lfi, filters,
+    vp8_loop_filter_vertical_edge_worker(s_base, offsets, pitches, lfi, filters,
             DC_DIFFS_LOCATION, 7);
 
     barrier(CLK_GLOBAL_MEM_FENCE);
     
-    //Prefetch horizontal source pixels
-#if 0
-    for(int plane = 0; plane < 3; plane++){
-        int p = pitches[plane];
-        int offset = get_global_id(2)*3+plane;
-        int s_off = offsets[offset+priority_offset];
-        for (int thread = 0; thread < 16; thread++){
-            prefetch(&s_base[s_off+thread-4*p], 8*p);
-        }
-    }
-#endif
-    
-    vp8_mbloop_filter_horizontal_edge_worker(s_base, &offsets[priority_offset], pitches, lfi, 
-            filters, s_data);
+    vp8_mbloop_filter_horizontal_edge_worker(s_base, offsets, pitches, lfi, 
+            filters);
     
     //YUV planes, then 2 more passes of Y plane
-    vp8_loop_filter_horizontal_edge_worker(s_base, &offsets[priority_offset], pitches, lfi, filters,
+    vp8_loop_filter_horizontal_edge_worker(s_base, offsets, pitches, lfi, filters,
             DC_DIFFS_LOCATION, 0);
-    vp8_loop_filter_horizontal_edge_worker(s_base, &offsets[priority_offset], pitches, lfi, filters,
+    vp8_loop_filter_horizontal_edge_worker(s_base, offsets, pitches, lfi, filters,
             DC_DIFFS_LOCATION, 3);
-    vp8_loop_filter_horizontal_edge_worker(s_base, &offsets[priority_offset], pitches, lfi, filters,
+    vp8_loop_filter_horizontal_edge_worker(s_base, offsets, pitches, lfi, filters,
             DC_DIFFS_LOCATION, 4);
     
 }
@@ -406,7 +387,7 @@ kernel void vp8_loop_filter_horizontal_edges_kernel(
     global int *offsets,
     global int *pitches, /* pitch */
     global loop_filter_info *lfi,
-    global int *filters_in,
+    global int *filters,
     int use_mbflim, //unused for normal filters
     int filter_type,
     int cur_iter,
@@ -415,22 +396,19 @@ kernel void vp8_loop_filter_horizontal_edges_kernel(
     global int *priority_num_blocks
 ){
     int block_offset = block_offsets[priority_level];
-    local unsigned char s_data[16*8*3];
-    
-    int filter_offset = 4*block_offset;
-    int priority_offset = 16*block_offset;
-    
-    global int *filters = &filters_in[filter_offset];
 
-    vp8_mbloop_filter_horizontal_edge_worker(s_base, &offsets[priority_offset], pitches, lfi, 
-            filters, s_data);
+    filters = &filters[4*block_offset];
+    offsets = &offsets[16*block_offset];
+
+    vp8_mbloop_filter_horizontal_edge_worker(s_base, offsets, pitches, lfi, 
+            filters);
     
     //YUV planes, then 2 more passes of Y plane
-    vp8_loop_filter_horizontal_edge_worker(s_base, &offsets[priority_offset], pitches, lfi, filters,
+    vp8_loop_filter_horizontal_edge_worker(s_base, offsets, pitches, lfi, filters,
             DC_DIFFS_LOCATION, 0);
-    vp8_loop_filter_horizontal_edge_worker(s_base, &offsets[priority_offset], pitches, lfi, filters,
+    vp8_loop_filter_horizontal_edge_worker(s_base, offsets, pitches, lfi, filters,
             DC_DIFFS_LOCATION, 3);
-    vp8_loop_filter_horizontal_edge_worker(s_base, &offsets[priority_offset], pitches, lfi, filters,
+    vp8_loop_filter_horizontal_edge_worker(s_base, offsets, pitches, lfi, filters,
             DC_DIFFS_LOCATION, 4);
 }
 
@@ -439,7 +417,7 @@ kernel void vp8_loop_filter_vertical_edges_kernel(
     global int *offsets,
     global int *pitches,
     global loop_filter_info *lfi,
-    global int *filters_in,
+    global int *filters,
     int use_mbflim,
     int filter_type,
     int cur_iter,
@@ -448,21 +426,19 @@ kernel void vp8_loop_filter_vertical_edges_kernel(
     global int *priority_num_blocks
 ){
     int block_offset = block_offsets[priority_level];
-    local unsigned char s_data[16*8*3];
-    int filter_offset = 4*block_offset;
-    int priority_offset = 16*block_offset;
     
-    global int *filters = &filters_in[filter_offset];
+    filters = &filters[4*block_offset];
+    offsets = &offsets[16*block_offset];
 
-    vp8_mbloop_filter_vertical_edge_worker(s_base, &offsets[priority_offset], pitches, lfi, filters,
-            COLS_LOCATION, s_data);
+    vp8_mbloop_filter_vertical_edge_worker(s_base, offsets, pitches, lfi, filters,
+            COLS_LOCATION);
     
     //YUV planes, then 2 more passes of Y plane
-    vp8_loop_filter_vertical_edge_worker(s_base, &offsets[priority_offset], pitches, lfi, filters,
+    vp8_loop_filter_vertical_edge_worker(s_base, offsets, pitches, lfi, filters,
             DC_DIFFS_LOCATION, 1);
-    vp8_loop_filter_vertical_edge_worker(s_base, &offsets[priority_offset], pitches, lfi, filters,
+    vp8_loop_filter_vertical_edge_worker(s_base, offsets, pitches, lfi, filters,
             DC_DIFFS_LOCATION, 6);
-    vp8_loop_filter_vertical_edge_worker(s_base, &offsets[priority_offset], pitches, lfi, filters,
+    vp8_loop_filter_vertical_edge_worker(s_base, offsets, pitches, lfi, filters,
             DC_DIFFS_LOCATION, 7);
     
 }
@@ -704,57 +680,45 @@ __inline uchar8 vp8_mbfilter(
     uchar8 base
 )
 {
-    signed char s, u;
+    char4 s;
+    char4 u;
     signed char vp8_filter;
 
     char2 filter;
 
-    //char8 pq = vload8(0, (local char *)base);
     char8 pq = convert_char8(base);
     pq ^= (char8){0, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0};
     
     /* add outer taps if we have high edge variance */
-    vp8_filter = clamp(pq.s2 - pq.s5, -128, 127);
+    vp8_filter = sub_sat(pq.s2, pq.s5);
     vp8_filter = clamp(vp8_filter + 3 * (pq.s4 - pq.s3), -128, 127);
     vp8_filter &= mask;
 
-    filter.s1 = vp8_filter;
-    filter.s1 &= hev;
-    filter.s0 = filter.s1;
+    filter = (char2)vp8_filter;
+    filter &= hev;
 
     /* save bottom 3 bits so that we round one side +4 and the other +3 */
-    filter.s0 = clamp(filter.s0 + 4, -128, 127);
-    filter.s1 = clamp(filter.s1 + 3, -128, 127);
+    filter = add_sat(filter, (char2){4,3});
     filter.s0 >>= 3;
     filter.s1 >>= 3;
 
-    pq.s4 = clamp(pq.s4 - filter.s0, -128, 127);
-    pq.s3 = clamp(pq.s3 + filter.s1, -128, 127);
+    pq.s4 = sub_sat(pq.s4, filter.s0);
+    pq.s3 = add_sat(pq.s3, filter.s1);
 
     /* only apply wider filter if not high edge variance */
     vp8_filter &= ~hev;
     filter.s1 = vp8_filter;
 
-    /* roughly 3/7th difference across boundary */
-    u = clamp((63 + filter.s1 * 27) >> 7, -128, 127);
-    s = clamp(pq.s4 - u, -128, 127);
-    pq.s4 = s ^ 0x80;
-    s = clamp(pq.s3 + u, -128, 127);
-    pq.s3 = s ^ 0x80;
-
-    /* roughly 2/7th difference across boundary */
-    u = clamp((63 + filter.s1 * 18) >> 7, -128, 127);
-    s = clamp(pq.s5 - u, -128, 127);
-    pq.s5 = s ^ 0x80;
-    s = clamp(pq.s2 + u, -128, 127);
-    pq.s2 = s ^ 0x80;
-
-    /* roughly 1/7th difference across boundary */
-    u = clamp((63 + filter.s1 * 9) >> 7, -128, 127);
-    s = clamp(pq.s6 - u, -128, 127);
-    pq.s6 = s ^ 0x80;
-    s = clamp(pq.s1 + u, -128, 127);
-    pq.s1 = s ^ 0x80;
+    /* roughly 3/7th, 2/7th, and 1/7th difference across boundary */
+    u.s0 = clamp((63 + filter.s1 * 27) >> 7, -128, 127);
+    u.s1 = clamp((63 + filter.s1 * 18) >> 7, -128, 127);
+    u.s2 = clamp((63 + filter.s1 * 9) >> 7, -128, 127);
+    
+    s.s012 = sub_sat(pq.s456, u.s012);
+    pq.s456 = s.s012 ^ 0x80;
+    
+    s.s012 = add_sat(pq.s321, u.s012);
+    pq.s321 = s.s012 ^ 0x80;
     
     return convert_uchar8(pq);
 }
@@ -762,9 +726,9 @@ __inline uchar8 vp8_mbfilter(
 /* is there high variance internal edge ( 11111111 yes, 00000000 no) */
 __inline signed char vp8_hevmask(signed char thresh, uchar4 pq)
 {
-    signed char hev = 0;
-    hev  |= (abs(pq.s0 - pq.s1) > thresh) * -1;
-    hev  |= (abs(pq.s3 - pq.s2) > thresh) * -1;
+    signed char hev;
+    hev  = (abs_diff(pq.s0, pq.s1) > thresh) * -1;
+    hev  |= (abs_diff(pq.s3, pq.s2) > thresh) * -1;
     return hev;
 }
 
@@ -776,24 +740,23 @@ __inline signed char vp8_filter_mask( signed char limit, signed char flimit,
     signed char mask = 0;
 
 #if 1
-    mask |= (abs(pq.s0 - pq.s1) > limit) * -1;
-    mask |= (abs(pq.s1 - pq.s2) > limit) * -1;
-    mask |= (abs(pq.s2 - pq.s3) > limit) * -1;
-    mask |= (abs(pq.s5 - pq.s4) > limit) * -1;
-    mask |= (abs(pq.s6 - pq.s5) > limit) * -1;
-    mask |= (abs(pq.s7 - pq.s6) > limit) * -1;
-    mask |= (abs(pq.s3 - pq.s4) * 2 + abs(pq.s2 - pq.s5) / 2  > flimit * 2 + limit) * -1;
-    mask = ~mask;
-    return mask;
+    mask |= (abs_diff(pq.s0, pq.s1) > limit) * -1;
+    mask |= (abs_diff(pq.s1, pq.s2) > limit) * -1;
+    mask |= (abs_diff(pq.s2, pq.s3) > limit) * -1;
+    mask |= (abs_diff(pq.s5, pq.s4) > limit) * -1;
+    mask |= (abs_diff(pq.s6, pq.s5) > limit) * -1;
+    mask |= (abs_diff(pq.s7, pq.s6) > limit) * -1;
+    mask |= (abs_diff(pq.s3, pq.s4) * 2 + abs_diff(pq.s2, pq.s5) / 2  > flimit * 2 + limit) * -1;
+    return ~mask;
 #else
     //Only apply the filter if the difference is LESS than 'limit'
-    mask |= (abs(pq.s0 - pq.s1) > limit);
-    mask |= (abs(pq.s1 - pq.s2) > limit);
-    mask |= (abs(pq.s2 - pq.s3) > limit);
-    mask |= (abs(pq.s5 - pq.s4) > limit);
-    mask |= (abs(pq.s6 - pq.s5) > limit);
-    mask |= (abs(pq.s7 - pq.s6) > limit);
-    mask |= (abs(pq.s3 - pq.s4) * 2 + abs(pq.s2 - pq.s5) / 2  > flimit * 2 + limit);
+    mask |= (abs_diff(pq.s0, pq.s1) > limit);
+    mask |= (abs_diff(pq.s1, pq.s2) > limit);
+    mask |= (abs_diff(pq.s2, pq.s3) > limit);
+    mask |= (abs_diff(pq.s5, pq.s4) > limit);
+    mask |= (abs_diff(pq.s6, pq.s5) > limit);
+    mask |= (abs_diff(pq.s7, pq.s6) > limit);
+    mask |= (abs_diff(pq.s3, pq.s4) * 2 + abs_diff(pq.s2, pq.s5) / 2  > flimit * 2 + limit);
     
     return (mask != 0 ? 0 : -1);
 #endif
@@ -810,11 +773,11 @@ __inline signed char vp8_simple_filter_mask(
     uc q1
 )
 {
-    signed char mask = (abs(p0 - q0) * 2 + abs(p1 - q1) / 2  <= flimit * 2 + limit) * -1;
+    signed char mask = (abs_diff(p0, q0) * 2 + abs_diff(p1, q1) / 2  <= flimit * 2 + limit) * -1;
     return mask;
 }
 
-void vp8_simple_filter(
+__inline void vp8_simple_filter(
     signed char mask,
     global uc *base,
     int op1_off,
@@ -829,25 +792,26 @@ void vp8_simple_filter(
     global uc *oq0 = base + oq0_off;
     global uc *oq1 = base + oq1_off;
 
-    signed char vp8_filter, Filter1, Filter2;
-    signed char p1 = (signed char) * op1 ^ 0x80;
-    signed char p0 = (signed char) * op0 ^ 0x80;
-    signed char q0 = (signed char) * oq0 ^ 0x80;
-    signed char q1 = (signed char) * oq1 ^ 0x80;
+    signed char vp8_filter;
+    char2 filter;
+    
+    char4 pq = (char4){*op1, *op0, *oq0, *oq1};
+    pq ^= 0x80;
+
     signed char u;
 
-    vp8_filter = clamp(p1 - q1, -128, 127);
-    vp8_filter = clamp(vp8_filter + 3 * (q0 - p0), -128, 127);
+    vp8_filter = sub_sat(pq.s0, pq.s3);
+    vp8_filter = clamp(vp8_filter + 3 * (pq.s2 - pq.s1), -128, 127);
     vp8_filter &= mask;
 
     /* save bottom 3 bits so that we round one side +4 and the other +3 */
-    Filter1 = clamp(vp8_filter + 4, -128, 127);
-    Filter1 >>= 3;
-    u = clamp(q0 - Filter1, -128, 127);
+    filter = add_sat((char2)vp8_filter, (char2){4,3});
+    filter.s0 >>= 3;
+    filter.s1 >>= 3;
+
+    u = sub_sat(pq.s2, filter.s0);
     *oq0  = u ^ 0x80;
 
-    Filter2 = clamp(vp8_filter + 3, -128, 127);
-    Filter2 >>= 3;
-    u = clamp(p0 + Filter2, -128, 127);
+    u = add_sat(pq.s1, filter.s1);
     *op0 = u ^ 0x80;
 }
