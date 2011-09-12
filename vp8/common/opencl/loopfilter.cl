@@ -8,7 +8,7 @@ __inline signed char vp8_filter_mask(sc, sc, uchar8);
 __inline signed char vp8_simple_filter_mask(signed char, signed char, uc, uc, uc, uc);
 __inline signed char vp8_hevmask(signed char, uchar4);
 
-__inline void vp8_mbfilter(signed char mask,signed char hev,local uc*);
+__inline uchar8 vp8_mbfilter(signed char mask,signed char hev,local uc*);
 
 void vp8_simple_filter(signed char mask,global uc *base, int op1_off,int op0_off,int oq0_off,int oq1_off);
 
@@ -282,14 +282,14 @@ void vp8_mbloop_filter_horizontal_edge_worker(
                 hev = vp8_hevmask(thresh[i], data.s2345);
                 
                 //TODO: change vp8_mbfilter to use uchar8 instead of local uchar*
-                vp8_mbfilter(mask, hev, s_data);
+                data = vp8_mbfilter(mask, hev, s_data);
 
-                s_base[s_off - 3*p] = s_data[1];
-                s_base[s_off - 2*p] = s_data[2];
-                s_base[s_off - 1*p] = s_data[3];
-                s_base[s_off      ] = s_data[4];
-                s_base[s_off + p  ] = s_data[5];
-                s_base[s_off + 2*p] = s_data[6];
+                s_base[s_off - 3*p] = data.s1;
+                s_base[s_off - 2*p] = data.s2;
+                s_base[s_off - 1*p] = data.s3;
+                s_base[s_off      ] = data.s4;
+                s_base[s_off + p  ] = data.s5;
+                s_base[s_off + 2*p] = data.s6;
             }
         }
     }
@@ -382,14 +382,14 @@ void vp8_mbloop_filter_vertical_edge_worker(
                 
                 hev = vp8_hevmask(thresh[i], data.s2345);
                 
-                vp8_mbfilter(mask, hev, s_data);
+                data = vp8_mbfilter(mask, hev, s_data);
 
-                s_base[s_off - 3] = s_data[1];
-                s_base[s_off - 2] = s_data[2];
-                s_base[s_off - 1] = s_data[3];
-                s_base[s_off    ] = s_data[4];
-                s_base[s_off + 1] = s_data[5];
-                s_base[s_off + 2] = s_data[6];
+                s_base[s_off - 3] = data.s1;
+                s_base[s_off - 2] = data.s2;
+                s_base[s_off - 1] = data.s3;
+                s_base[s_off    ] = data.s4;
+                s_base[s_off + 1] = data.s5;
+                s_base[s_off + 2] = data.s6;
             }
         }
     }
@@ -729,7 +729,7 @@ kernel void vp8_loop_filter_simple_all_edges_kernel
 
 //Inline and non-kernel functions follow.
 
-__inline void vp8_mbfilter(
+__inline uchar8 vp8_mbfilter(
     signed char mask,
     signed char hev,
     local uc *base
@@ -786,7 +786,7 @@ __inline void vp8_mbfilter(
     s = clamp(pq.s1 + u, -128, 127);
     pq.s1 = s ^ 0x80;
     
-    vstore8(pq, 0, (local char*)base);
+    return convert_uchar8(pq);
 }
 
 /* is there high variance internal edge ( 11111111 yes, 00000000 no) */
