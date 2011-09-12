@@ -8,7 +8,7 @@ __inline signed char vp8_filter_mask(sc, sc, uchar8);
 __inline signed char vp8_simple_filter_mask(signed char, signed char, uc, uc, uc, uc);
 __inline signed char vp8_hevmask(signed char, uchar4);
 
-__inline uchar8 vp8_mbfilter(signed char mask,signed char hev,local uc*);
+__inline uchar8 vp8_mbfilter(signed char mask,signed char hev,uchar8);
 
 void vp8_simple_filter(signed char mask,global uc *base, int op1_off,int op0_off,int oq0_off,int oq1_off);
 
@@ -282,7 +282,7 @@ void vp8_mbloop_filter_horizontal_edge_worker(
                 hev = vp8_hevmask(thresh[i], data.s2345);
                 
                 //TODO: change vp8_mbfilter to use uchar8 instead of local uchar*
-                data = vp8_mbfilter(mask, hev, s_data);
+                data = vp8_mbfilter(mask, hev, data);
 
                 s_base[s_off - 3*p] = data.s1;
                 s_base[s_off - 2*p] = data.s2;
@@ -382,7 +382,7 @@ void vp8_mbloop_filter_vertical_edge_worker(
                 
                 hev = vp8_hevmask(thresh[i], data.s2345);
                 
-                data = vp8_mbfilter(mask, hev, s_data);
+                data = vp8_mbfilter(mask, hev, data);
 
                 s_base[s_off - 3] = data.s1;
                 s_base[s_off - 2] = data.s2;
@@ -732,7 +732,7 @@ kernel void vp8_loop_filter_simple_all_edges_kernel
 __inline uchar8 vp8_mbfilter(
     signed char mask,
     signed char hev,
-    local uc *base
+    uchar8 base
 )
 {
     signed char s, u;
@@ -740,7 +740,8 @@ __inline uchar8 vp8_mbfilter(
 
     char2 filter;
 
-    char8 pq = vload8(0, (local char *)base);
+    //char8 pq = vload8(0, (local char *)base);
+    char8 pq = convert_char8(base);
     pq ^= (char8)0x80;
     
     /* add outer taps if we have high edge variance */
