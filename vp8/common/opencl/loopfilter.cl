@@ -282,7 +282,7 @@ void vp8_mbloop_filter_horizontal_edge_worker(
                 hev = vp8_hevmask(thresh[i], data.s2345);
                 
                 //TODO: change vp8_mbfilter to use uchar8 instead of local uchar*
-                vp8_mbfilter(mask, hev, s_data + 1);
+                vp8_mbfilter(mask, hev, s_data);
 
                 s_base[s_off - 3*p] = s_data[1];
                 s_base[s_off - 2*p] = s_data[2];
@@ -382,7 +382,7 @@ void vp8_mbloop_filter_vertical_edge_worker(
                 
                 hev = vp8_hevmask(thresh[i], data.s2345);
                 
-                vp8_mbfilter(mask, hev, s_data + 1);
+                vp8_mbfilter(mask, hev, s_data);
 
                 s_base[s_off - 3] = s_data[1];
                 s_base[s_off - 2] = s_data[2];
@@ -738,16 +738,9 @@ __inline void vp8_mbfilter(
     signed char s, u;
     signed char vp8_filter;
 
-    local uc *op2 = base;
-    local uc *op1 = base + 1;
-    local uc *op0 = base + 2;
-    local uc *oq0 = base + 3;
-    local uc *oq1 = base + 4;
-    local uc *oq2 = base + 5;
-    
     char2 filter;
 
-    char8 pq = { 0, *op2, *op1, *op0, *oq0, *oq1, *oq2, 0 };
+    char8 pq = vload8(0, (local char *)base);
     pq ^= (char8)0x80;
     
     /* add outer taps if we have high edge variance */
@@ -775,23 +768,25 @@ __inline void vp8_mbfilter(
     /* roughly 3/7th difference across boundary */
     u = clamp((63 + filter.s1 * 27) >> 7, -128, 127);
     s = clamp(pq.s4 - u, -128, 127);
-    *oq0 = s ^ 0x80;
+    pq.s4 = s ^ 0x80;
     s = clamp(pq.s3 + u, -128, 127);
-    *op0 = s ^ 0x80;
+    pq.s3 = s ^ 0x80;
 
     /* roughly 2/7th difference across boundary */
     u = clamp((63 + filter.s1 * 18) >> 7, -128, 127);
     s = clamp(pq.s5 - u, -128, 127);
-    *oq1 = s ^ 0x80;
+    pq.s5 = s ^ 0x80;
     s = clamp(pq.s2 + u, -128, 127);
-    *op1 = s ^ 0x80;
+    pq.s2 = s ^ 0x80;
 
     /* roughly 1/7th difference across boundary */
     u = clamp((63 + filter.s1 * 9) >> 7, -128, 127);
     s = clamp(pq.s6 - u, -128, 127);
-    *oq2 = s ^ 0x80;
+    pq.s6 = s ^ 0x80;
     s = clamp(pq.s1 + u, -128, 127);
-    *op2 = s ^ 0x80;
+    pq.s1 = s ^ 0x80;
+    
+    vstore8(pq, 0, (local char*)base);
 }
 
 /* is there high variance internal edge ( 11111111 yes, 00000000 no) */
