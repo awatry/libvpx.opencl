@@ -971,13 +971,14 @@ process_common_toolchain() {
                 add_extralibs -framework OpenCL
                 ;;
             *-win32-gcc)
-                if check_header dlfcn.h; then
-                    add_extralibs -ldl 
-                    enable dlopen
-                else
+#                check_add_cflags -D_WIN32
+#                if check_header dlfcn.h; then
+#                    add_extralibs -ldl 
+#                    enable dlopen
+#                else
                     #This shouldn't be a hard-coded path in the long term
                     add_extralibs -L/cygdrive/c/Windows/System32 -lOpenCL
-                fi
+#                fi
                 ;;
             *)
                 if check_header dlfcn.h; then

@@ -23,10 +23,10 @@ void vp8_arch_opencl_common_init(VP8_COMMON *ctx)
 
 #if HAVE_DLOPEN
 
-#if WIN32 //Windows .dll has no lib prefix and no extension
-    	cl_loaded = load_cl("OpenCL");
+#if _WIN32 //Windows .dll has no lib prefix and no extension
+        cl_loaded = load_cl("OpenCL");
 #else   //But *nix needs full name
-    	cl_loaded = load_cl("libOpenCL.so");
+        cl_loaded = load_cl("libOpenCL.so");
 #endif
 
         if (cl_loaded == CL_SUCCESS)
