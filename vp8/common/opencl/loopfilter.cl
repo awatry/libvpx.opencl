@@ -747,15 +747,12 @@ __inline void vp8_mbfilter(
     
     char2 filter;
 
-    char4 ps = { *op0, *op1, *op2, 0 };
-    ps ^= (char4){0x80, 0x80, 0x80, 0x80};
-
-    char4 qs = { *oq0, *oq1, *oq2, 0 };
-    qs ^= (char4){0x80, 0x80, 0x80, 0x80};
-
+    char8 pq = { *op0, *op1, *op2, 0, *oq0, *oq1, *oq2, 0 };
+    pq ^= (char8)0x80;
+    
     /* add outer taps if we have high edge variance */
-    vp8_filter = clamp(ps.s1 - qs.s1, -128, 127);
-    vp8_filter = clamp(vp8_filter + 3 * (qs.s0 - ps.s0), -128, 127);
+    vp8_filter = clamp(pq.s1 - pq.s5, -128, 127);
+    vp8_filter = clamp(vp8_filter + 3 * (pq.s4 - pq.s0), -128, 127);
     vp8_filter &= mask;
 
     filter.s1 = vp8_filter;
@@ -768,8 +765,8 @@ __inline void vp8_mbfilter(
     filter.s0 >>= 3;
     filter.s1 >>= 3;
 
-    qs.s0 = clamp(qs.s0 - filter.s0, -128, 127);
-    ps.s0 = clamp(ps.s0 + filter.s1, -128, 127);
+    pq.s4 = clamp(pq.s4 - filter.s0, -128, 127);
+    pq.s0 = clamp(pq.s0 + filter.s1, -128, 127);
 
     /* only apply wider filter if not high edge variance */
     vp8_filter &= ~hev;
@@ -777,23 +774,23 @@ __inline void vp8_mbfilter(
 
     /* roughly 3/7th difference across boundary */
     u = clamp((63 + filter.s1 * 27) >> 7, -128, 127);
-    s = clamp(qs.s0 - u, -128, 127);
+    s = clamp(pq.s4 - u, -128, 127);
     *oq0 = s ^ 0x80;
-    s = clamp(ps.s0 + u, -128, 127);
+    s = clamp(pq.s0 + u, -128, 127);
     *op0 = s ^ 0x80;
 
     /* roughly 2/7th difference across boundary */
     u = clamp((63 + filter.s1 * 18) >> 7, -128, 127);
-    s = clamp(qs.s1 - u, -128, 127);
+    s = clamp(pq.s5 - u, -128, 127);
     *oq1 = s ^ 0x80;
-    s = clamp(ps.s1 + u, -128, 127);
+    s = clamp(pq.s1 + u, -128, 127);
     *op1 = s ^ 0x80;
 
     /* roughly 1/7th difference across boundary */
     u = clamp((63 + filter.s1 * 9) >> 7, -128, 127);
-    s = clamp(qs.s2 - u, -128, 127);
+    s = clamp(pq.s6 - u, -128, 127);
     *oq2 = s ^ 0x80;
-    s = clamp(ps.s2 + u, -128, 127);
+    s = clamp(pq.s2 + u, -128, 127);
     *op2 = s ^ 0x80;
 }
 
