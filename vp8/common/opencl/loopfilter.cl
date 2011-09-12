@@ -571,9 +571,7 @@ void vp8_loop_filter_simple_vertical_edge_worker(
     int block_offset = block_offsets[priority_level];
     int filter_offset = 4*block_offset;
     int priority_offset = 8*block_offset;
-    private size_t plane = 0;
     private size_t block = get_global_id(2);
-    size_t num_planes = 1;
     size_t num_blocks = get_global_size(2);
 
     global int *filters = &filters_in[filter_offset];
@@ -581,7 +579,7 @@ void vp8_loop_filter_simple_vertical_edge_worker(
     if (filters[filter_type * num_blocks + block] > 0){
         int filter_level = filters[block];
         if (filter_level){
-            int p = pitches[plane];
+            int p = pitches[0];
             int block_offset = cur_iter*num_blocks + block;
             int s_off = offsets[block_offset+priority_offset];
 
@@ -591,7 +589,7 @@ void vp8_loop_filter_simple_vertical_edge_worker(
             global signed char *limit, *flimit;
             global loop_filter_info *lf_info;
 
-            if (i < threads[plane]){
+            if (i < threads[0]){
                 lf_info = &lfi[filter_level];
                 if (use_mbflim == 0){
                     flimit = lf_info->flim;
