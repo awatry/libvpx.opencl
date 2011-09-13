@@ -1,4 +1,5 @@
 #pragma OPENCL EXTENSION cl_khr_byte_addressable_store : enable
+#pragma OPENCL EXTENSION cl_khr_global_int32_base_atomics : enable
 #pragma OPENCL EXTENSION cl_amd_printf : enable
 
 typedef unsigned char uc;
@@ -25,7 +26,6 @@ char vp8_char_clamp(int in){
 }
 #endif
 
-
 typedef struct
 {
     signed char lim[16];
@@ -43,6 +43,49 @@ typedef struct
 //OpenCL built-in functions (
 size_t get_global_id(unsigned int);
 size_t get_global_size(unsigned int);
+
+
+#define LOCK(a) atom_cmpxchg(a, 0, 1)
+#define UNLOCK(a) atom_xchg(a, 0)
+
+//Credit for this lock-based barrier goes to Matthew Scarpino at:
+//http://www.openclblog.com/2011/04/eureka.html
+void wait_on_siblings(int previous_blocks, int current_blocks, global int *locks)
+{
+
+    //Need priority level
+    //Number of blocks in this priority level
+    //Starting block offset in the priority level
+    //wait_on_siblings(block_offsets[priority_level],priority_num_blocks[priority_level], locks);
+    //Call wait_on_siblings for EVERY work group
+    //Only increment count for work groups that did work during this iteration
+    
+    global int *mutex = locks;
+    global int *count = locks+1;
+    
+    if(get_local_id(0) == 0 && get_local_id(1) == 0 && get_local_id(2) == 0) {
+        //printf("Group [%d, %d, %d] waiting\n", get_global_id(0), get_global_id(1), get_global_id(2));
+        if (get_global_id(2) < current_blocks){
+            /* Increment the count */
+            while(LOCK(mutex))
+                ;
+            *count += 1;
+            UNLOCK(mutex);
+        }
+
+        /* Wait for everyone else to increment the count */
+        int waiting = 1;
+        while(waiting) {
+            while(LOCK(mutex))
+                ;
+            if(*count == (previous_blocks + current_blocks)) {
+                waiting = 0;
+            }
+            UNLOCK(mutex);
+        }
+    }
+    barrier(CLK_GLOBAL_MEM_FENCE);
+}
 
 
 uchar4 vp8_filter(
@@ -329,52 +372,69 @@ void vp8_mbloop_filter_vertical_edge_worker(
 
 kernel void vp8_loop_filter_all_edges_kernel(
     global unsigned char *s_base,
-    global int *offsets,
+    global int *offsets_in,
     global int *pitches,
     global loop_filter_info *lfi,
-    global int *filters,
+    global int *filters_in,
     int priority_level,
+    int num_levels,
     global int *block_offsets,
-    global int *priority_num_blocks
+    global int *priority_num_blocks,
+    global int *locks
 ){
-    int block_offset = block_offsets[priority_level];
 
-    offsets = &offsets[16*block_offset];
-    filters = &filters[4*block_offset];
+    for (int i = 0; i < num_levels; i++){
+        int block_offset = block_offsets[priority_level];
 
-    //Prefetch vertical edge source pixels into global cache (horizontal isn't worth it)
-    for(int plane = 0; plane < 3; plane++){
-        int p = pitches[plane];
-        int offset = get_global_id(2)*3+plane;
-        int s_off = offsets[offset];
-        for (int thread = 0; thread < 16; thread++){
-            prefetch(&s_base[s_off+p*thread-4], 8);
+        global int *offsets = &offsets_in[16*block_offset];
+        global int *filters = &filters_in[4*block_offset];
+            
+        if (get_global_id(2) < priority_num_blocks[priority_level]){
+            if (get_global_id(0) == 0 && get_global_id(1) == 0)
+                printf("Priority level is now %d\n", priority_level);
+
+            //Prefetch vertical edge source pixels into global cache (horizontal isn't worth it)
+            for(int plane = 0; plane < 3; plane++){
+                int p = pitches[plane];
+                int offset = get_global_id(2)*3+plane;
+                int s_off = offsets[offset];
+                for (int thread = 0; thread < 16; thread++){
+                    prefetch(&s_base[s_off+p*thread-4], 8);
+                }
+            }
+
+            vp8_mbloop_filter_vertical_edge_worker(s_base, offsets, pitches, lfi, filters,
+                    COLS_LOCATION);
+
+            //YUV planes, then 2 more passes of Y plane
+            vp8_loop_filter_vertical_edge_worker(s_base, offsets, pitches, lfi, filters,
+                    DC_DIFFS_LOCATION, 1);
+            vp8_loop_filter_vertical_edge_worker(s_base, offsets, pitches, lfi, filters,
+                    DC_DIFFS_LOCATION, 6);
+            vp8_loop_filter_vertical_edge_worker(s_base, offsets, pitches, lfi, filters,
+                    DC_DIFFS_LOCATION, 7);
+
         }
+        
+        barrier(CLK_LOCAL_MEM_FENCE);
+        
+        if (get_global_id(2) < priority_num_blocks[priority_level]){
+
+            vp8_mbloop_filter_horizontal_edge_worker(s_base, offsets, pitches, lfi, 
+                    filters);
+
+            //YUV planes, then 2 more passes of Y plane
+            vp8_loop_filter_horizontal_edge_worker(s_base, offsets, pitches, lfi, filters,
+                    DC_DIFFS_LOCATION, 0);
+            vp8_loop_filter_horizontal_edge_worker(s_base, offsets, pitches, lfi, filters,
+                    DC_DIFFS_LOCATION, 3);
+            vp8_loop_filter_horizontal_edge_worker(s_base, offsets, pitches, lfi, filters,
+                    DC_DIFFS_LOCATION, 4);
+        }
+        
+        wait_on_siblings(block_offsets[priority_level], priority_num_blocks[priority_level], locks);
+        priority_level++;
     }
-
-    vp8_mbloop_filter_vertical_edge_worker(s_base, offsets, pitches, lfi, filters,
-            COLS_LOCATION);
-
-    //YUV planes, then 2 more passes of Y plane
-    vp8_loop_filter_vertical_edge_worker(s_base, offsets, pitches, lfi, filters,
-            DC_DIFFS_LOCATION, 1);
-    vp8_loop_filter_vertical_edge_worker(s_base, offsets, pitches, lfi, filters,
-            DC_DIFFS_LOCATION, 6);
-    vp8_loop_filter_vertical_edge_worker(s_base, offsets, pitches, lfi, filters,
-            DC_DIFFS_LOCATION, 7);
-
-    barrier(CLK_GLOBAL_MEM_FENCE);
-    
-    vp8_mbloop_filter_horizontal_edge_worker(s_base, offsets, pitches, lfi, 
-            filters);
-    
-    //YUV planes, then 2 more passes of Y plane
-    vp8_loop_filter_horizontal_edge_worker(s_base, offsets, pitches, lfi, filters,
-            DC_DIFFS_LOCATION, 0);
-    vp8_loop_filter_horizontal_edge_worker(s_base, offsets, pitches, lfi, filters,
-            DC_DIFFS_LOCATION, 3);
-    vp8_loop_filter_horizontal_edge_worker(s_base, offsets, pitches, lfi, filters,
-            DC_DIFFS_LOCATION, 4);
     
 }
 
@@ -385,8 +445,10 @@ kernel void vp8_loop_filter_horizontal_edges_kernel(
     global loop_filter_info *lfi,
     global int *filters,
     int priority_level,
+    int num_levels,
     global int *block_offsets,
-    global int *priority_num_blocks
+    global int *priority_num_blocks,
+    global int *locks
 ){
     int block_offset = block_offsets[priority_level];
 
@@ -412,8 +474,10 @@ kernel void vp8_loop_filter_vertical_edges_kernel(
     global loop_filter_info *lfi,
     global int *filters,
     int priority_level,
+    int num_levels,
     global int *block_offsets,
-    global int *priority_num_blocks
+    global int *priority_num_blocks,
+    global int *locks
 ){
     int block_offset = block_offsets[priority_level];
     
@@ -550,8 +614,10 @@ kernel void vp8_loop_filter_simple_vertical_edges_kernel
     global int *filters_in, /* Filters for each block being processed */
     int filter_type, /* Should dc_diffs, rows, or cols be used?*/
     int priority_level,
+    int num_levels,
     global int *block_offsets,
-    global int *priority_num_blocks
+    global int *priority_num_blocks,
+    global int *locks
 ){    
     vp8_loop_filter_simple_vertical_edge_worker(s_base, offsets, pitches,
             lfi, filters_in, 1, COLS_LOCATION, 0, priority_level,
@@ -581,8 +647,10 @@ kernel void vp8_loop_filter_simple_horizontal_edges_kernel
     global loop_filter_info *lfi,
     global int *filters_in,
     int priority_level,
+    int num_levels,
     global int *block_offsets,
-    global int *priority_num_blocks
+    global int *priority_num_blocks,
+    global int *locks
 ){
     vp8_loop_filter_simple_horizontal_edge_worker(s_base, offsets, pitches, lfi,
             filters_in, 1, ROWS_LOCATION, 4, priority_level,
@@ -610,48 +678,57 @@ kernel void vp8_loop_filter_simple_all_edges_kernel
     global loop_filter_info *lfi,
     global int *filters_in,
     int priority_level,
+    int num_levels,
     global int *block_offsets,
-    global int *priority_num_blocks
+    global int *priority_num_blocks,
+    global int *locks
 )
 {
 
-    vp8_loop_filter_simple_vertical_edge_worker(s_base, offsets, pitches,
-            lfi, filters_in, 1, COLS_LOCATION, 0, priority_level,
-            block_offsets, priority_num_blocks
-    );
+    for (int i = 0; i < num_levels; i++){
+        if (get_global_id(2) < priority_num_blocks[priority_level]){
+            vp8_loop_filter_simple_vertical_edge_worker(s_base, offsets, pitches,
+                    lfi, filters_in, 1, COLS_LOCATION, 0, priority_level,
+                    block_offsets, priority_num_blocks
+            );
 
-    //3 Y plane iterations
-    vp8_loop_filter_simple_vertical_edge_worker(s_base, offsets, pitches,
-            lfi, filters_in, 0, DC_DIFFS_LOCATION, 1, priority_level,
-            block_offsets, priority_num_blocks
-    );
-    vp8_loop_filter_simple_vertical_edge_worker(s_base, offsets, pitches,
-            lfi, filters_in, 0, DC_DIFFS_LOCATION, 2, priority_level,
-            block_offsets, priority_num_blocks
-    );
-    vp8_loop_filter_simple_vertical_edge_worker(s_base, offsets, pitches,
-            lfi, filters_in, 0, DC_DIFFS_LOCATION, 3, priority_level,
-            block_offsets, priority_num_blocks
-    );
-    
-    barrier(CLK_GLOBAL_MEM_FENCE);
-    
-    vp8_loop_filter_simple_horizontal_edge_worker(s_base, offsets, pitches, lfi,
-            filters_in, 1, ROWS_LOCATION, 4, priority_level,
-            block_offsets, priority_num_blocks
-    );
-    vp8_loop_filter_simple_horizontal_edge_worker(s_base, offsets, pitches, lfi,
-            filters_in, 0, DC_DIFFS_LOCATION, 5, priority_level,
-            block_offsets, priority_num_blocks
-    );
-    vp8_loop_filter_simple_horizontal_edge_worker(s_base, offsets, pitches, lfi,
-            filters_in, 0, DC_DIFFS_LOCATION, 6, priority_level,
-            block_offsets, priority_num_blocks
-    );
-    vp8_loop_filter_simple_horizontal_edge_worker(s_base, offsets, pitches, lfi,
-            filters_in, 0, DC_DIFFS_LOCATION, 7, priority_level,
-            block_offsets, priority_num_blocks
-    );
+            //3 Y plane iterations
+            vp8_loop_filter_simple_vertical_edge_worker(s_base, offsets, pitches,
+                    lfi, filters_in, 0, DC_DIFFS_LOCATION, 1, priority_level,
+                    block_offsets, priority_num_blocks
+            );
+            vp8_loop_filter_simple_vertical_edge_worker(s_base, offsets, pitches,
+                    lfi, filters_in, 0, DC_DIFFS_LOCATION, 2, priority_level,
+                    block_offsets, priority_num_blocks
+            );
+            vp8_loop_filter_simple_vertical_edge_worker(s_base, offsets, pitches,
+                    lfi, filters_in, 0, DC_DIFFS_LOCATION, 3, priority_level,
+                    block_offsets, priority_num_blocks
+            );
+
+            barrier(CLK_GLOBAL_MEM_FENCE);
+
+            vp8_loop_filter_simple_horizontal_edge_worker(s_base, offsets, pitches, lfi,
+                    filters_in, 1, ROWS_LOCATION, 4, priority_level,
+                    block_offsets, priority_num_blocks
+            );
+            vp8_loop_filter_simple_horizontal_edge_worker(s_base, offsets, pitches, lfi,
+                    filters_in, 0, DC_DIFFS_LOCATION, 5, priority_level,
+                    block_offsets, priority_num_blocks
+            );
+            vp8_loop_filter_simple_horizontal_edge_worker(s_base, offsets, pitches, lfi,
+                    filters_in, 0, DC_DIFFS_LOCATION, 6, priority_level,
+                    block_offsets, priority_num_blocks
+            );
+            vp8_loop_filter_simple_horizontal_edge_worker(s_base, offsets, pitches, lfi,
+                    filters_in, 0, DC_DIFFS_LOCATION, 7, priority_level,
+                    block_offsets, priority_num_blocks
+            );
+        }
+        
+        wait_on_siblings(block_offsets[priority_level], priority_num_blocks[priority_level], locks);
+        priority_level++;
+    }
 }
 
 //Inline and non-kernel functions follow.

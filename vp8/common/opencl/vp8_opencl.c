@@ -164,11 +164,12 @@ int cl_common_init() {
             //The kernels in VP8 require byte-addressable stores, which is an
             //extension. It's required in OpenCL 1.1, but not all devices
             //support it.
-            if (strstr(ext,"cl_khr_byte_addressable_store")){
+            if (strstr(ext,"cl_khr_byte_addressable_store") && strstr(ext, "cl_khr_global_int32_base_atomics")){
                 //We found a valid device, so use it. But if we find a GPU
                 //(maybe this is one), prefer that.
                 cl_data.device_id = devices[dev];
-
+                cl_data.device_type = device_type(devices[dev]);
+                
                 if ( device_type(devices[dev]) == CL_DEVICE_TYPE_GPU ){
                     //printf("Device %d is a GPU\n",dev);
                     break;

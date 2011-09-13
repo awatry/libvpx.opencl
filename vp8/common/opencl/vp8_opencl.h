@@ -181,6 +181,7 @@ extern const char *vpx_codec_lib_dir(void);
 
 typedef struct VP8_COMMON_CL {
     cl_device_id device_id; // compute device id
+    cl_device_type device_type; //CPU/GPU/other
     cl_context context; // compute context
     //cl_command_queue commands; // compute command queue
 

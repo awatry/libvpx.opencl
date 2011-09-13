@@ -81,8 +81,10 @@ static int vp8_loop_filter_cl_run(
     VP8_CL_SET_LOOP_ARG(kernel, current_args, args, 3, cl_mem, lfi_mem)
     VP8_CL_SET_LOOP_ARG(kernel, current_args, args, 4, cl_mem, filters_mem)
     VP8_CL_SET_LOOP_ARG(kernel, current_args, args, 5, cl_int, priority_level)
-    VP8_CL_SET_LOOP_ARG(kernel, current_args, args, 6, cl_mem, block_offsets_mem)
-    VP8_CL_SET_LOOP_ARG(kernel, current_args, args, 7, cl_mem, priority_num_blocks_mem);
+    VP8_CL_SET_LOOP_ARG(kernel, current_args, args, 6, cl_int, num_levels)
+    VP8_CL_SET_LOOP_ARG(kernel, current_args, args, 7, cl_mem, block_offsets_mem)
+    VP8_CL_SET_LOOP_ARG(kernel, current_args, args, 8, cl_mem, priority_num_blocks_mem);
+    VP8_CL_SET_LOOP_ARG(kernel, current_args, args, 9, cl_mem, lock_mem);
 
     VP8_CL_CHECK_SUCCESS( cq, err != CL_SUCCESS,
         "Error: Failed to set kernel arguments!\n",,err
@@ -110,10 +112,14 @@ void vp8_loop_filter_all_edges_cl
 {
     
     size_t local = cl_data.vp8_loop_filter_all_edges_kernel_size;
-    if (local < 16){
-        //Handle Vertical and Horizontal edges in 2 passes.
-        vp8_loop_filter_vertical_edges_cl(x, args, num_planes, num_blocks);
-        vp8_loop_filter_horizontal_edges_cl(x, args, num_planes, num_blocks);
+    if (local < 48){
+        int iter = 0;
+        for (iter=0; iter < args->num_levels; iter++){
+            //Handle Vertical and Horizontal edges in 2 passes.
+            vp8_loop_filter_vertical_edges_cl(x, args, num_planes, num_blocks);
+            vp8_loop_filter_horizontal_edges_cl(x, args, num_planes, num_blocks);
+            args->priority_level++;
+        }
         return;
     }
     
@@ -165,12 +171,15 @@ void vp8_loop_filter_simple_all_edges_cl
     int num_blocks
 )
 {
-    
+
     size_t local = cl_data.vp8_loop_filter_simple_all_edges_kernel_size;
-    if (local < 16){
-        //Handle Vertical and Horizontal edges in 2 passes.
-        vp8_loop_filter_simple_vertical_edges_cl(x, args, num_planes, num_blocks);
-        vp8_loop_filter_simple_horizontal_edges_cl(x, args, num_planes, num_blocks);
+    if (local < 48){
+        int iter = 0;
+        for (iter=0; iter < args->num_levels; iter++){        //Handle Vertical and Horizontal edges in 2 passes.
+            vp8_loop_filter_simple_vertical_edges_cl(x, args, num_planes, num_blocks);
+            vp8_loop_filter_simple_horizontal_edges_cl(x, args, num_planes, num_blocks);
+            args->priority_level++;
+        }
         return;
     }
     

@@ -52,6 +52,7 @@ static int frame_num = 0;
 static cl_int *block_offsets = NULL;
 static cl_int *priority_num_blocks = NULL;
 static int recalculate_offsets = 1;
+static int max_blocks = 0;
 
 typedef unsigned char uc;
 
@@ -70,6 +71,8 @@ typedef struct VP8_LOOP_MEM{
     
     cl_mem block_offsets_mem;
     cl_mem priority_num_blocks_mem;
+    
+    cl_mem lock_mem;
 } VP8_LOOP_MEM;
 
 VP8_LOOP_MEM loop_mem;
@@ -219,6 +222,13 @@ int cl_init_loop_filter() {
         cl_data.vp8_loop_filter_simple_vertical_edges_kernel = NULL;
     }
     
+    loop_mem.lock_mem = clCreateBuffer(cl_data.context, CL_MEM_READ_WRITE|CL_MEM_ALLOC_HOST_PTR, sizeof(cl_int)*2, NULL, &err);
+    if (err != CL_SUCCESS){
+        printf("Error creating loop filter buffer\n");
+        return err;
+    }
+
+    
     loop_mem.num_blocks = 0;
     loop_mem.offsets_mem = NULL;
     loop_mem.pitches_mem = NULL;
@@ -248,6 +258,10 @@ void cl_destroy_loop_filter(){
     VP8_CL_RELEASE_KERNEL(cl_data.vp8_loop_filter_simple_horizontal_edges_kernel);
     VP8_CL_RELEASE_KERNEL(cl_data.vp8_loop_filter_simple_vertical_edges_kernel);
 
+    if (loop_mem.lock_mem != NULL)
+        clReleaseMemObject(loop_mem.lock_mem);
+    loop_mem.lock_mem = NULL;
+    
     if (cl_data.loop_filter_program)
         clReleaseProgram(cl_data.loop_filter_program);
    
@@ -378,18 +392,19 @@ void vp8_loop_filter_build_offsets(MACROBLOCKD *mbd, int num_blocks,
 
 /* Filter all Macroblocks in a given priority level */
 void vp8_loop_filter_macroblocks_cl(
-        VP8_COMMON *cm, MACROBLOCKD *mbd, int priority_level, VP8_LOOPFILTER_ARGS *args
+        VP8_COMMON *cm, MACROBLOCKD *mbd, int priority_level, int num_levels, VP8_LOOPFILTER_ARGS *args
 )
 {
     LOOPFILTERTYPE filter_type = cm->filter_type;
     int num_blocks = priority_num_blocks[priority_level];
     
     args->priority_level = priority_level;
+    args->num_levels = num_levels;
     
     if (filter_type == NORMAL_LOOPFILTER){
-        vp8_loop_filter_all_edges_cl(mbd, args, 3, num_blocks);
+        vp8_loop_filter_all_edges_cl(mbd, args, 3, max_blocks);
     } else {
-        vp8_loop_filter_simple_all_edges_cl(mbd, args, 1, num_blocks);
+        vp8_loop_filter_simple_all_edges_cl(mbd, args, 1, max_blocks);
     }
 
 }
@@ -529,7 +544,7 @@ void vp8_loop_filter_frame_cl
     cl_int rows[cm->MBs];
     cl_int cols[cm->MBs];
     cl_int filter_levels[cm->MBs];
-    int max_priority = 2 * (cm->mb_rows - 1) + cm->mb_cols;
+    int num_levels = 2 * (cm->mb_rows - 1) + cm->mb_cols;
     int current_blocks = 0;
     
     VP8_LOOPFILTER_ARGS args;
@@ -598,7 +613,9 @@ void vp8_loop_filter_frame_cl
         offsets_size = sizeof(cl_int)*cm->MBs*8;
         if (cm->filter_type == NORMAL_LOOPFILTER)
             offsets_size *= 2;
-        
+
+        max_blocks = 0;
+            
 #if MAP_OFFSETS
         VP8_CL_MAP_BUF(mbd->cl_commands, loop_mem.offsets_mem, offsets, offsets_size,,)
 #else
@@ -618,15 +635,20 @@ void vp8_loop_filter_frame_cl
     args.filters_mem = loop_mem.filters_mem;
     args.block_offsets_mem = loop_mem.block_offsets_mem;
     args.priority_num_blocks_mem = loop_mem.priority_num_blocks_mem;
+    args.lock_mem = loop_mem.lock_mem;
     
     //Maximum priority = 2*(Height-1) + Width in Macroblocks
     //First identify all Macroblocks that will be processed and their priority
     //levels for processing
-    for (priority = 0; priority < max_priority ; priority++){
+    for (priority = 0; priority < num_levels ; priority++){
         vp8_loop_filter_build_priority(priority, cm, mbd, post, &current_blocks,
                 y_offsets, u_offsets, v_offsets, dc_diffs, rows, cols, filter_levels, 
                 baseline_filter_level, offsets
         );
+        if (max_blocks < priority_num_blocks[priority]){
+            max_blocks = priority_num_blocks[priority];
+            printf("max_blocks is now %d\n", max_blocks);
+        }
     }
     
     if (recalculate_offsets == 1){
@@ -639,17 +661,41 @@ void vp8_loop_filter_frame_cl
 #endif
         
         //Now re-send the block_offsets/priority_num_blocks buffers
-        VP8_CL_SET_BUF(mbd->cl_commands, loop_mem.priority_num_blocks_mem, sizeof(cl_int)*max_priority, priority_num_blocks, vp8_loop_filter_frame(cm, mbd, default_filt_lvl), )
-        VP8_CL_SET_BUF(mbd->cl_commands, loop_mem.block_offsets_mem, sizeof(cl_int)*max_priority, block_offsets, vp8_loop_filter_frame(cm, mbd, default_filt_lvl), )
+        VP8_CL_SET_BUF(mbd->cl_commands, loop_mem.priority_num_blocks_mem, sizeof(cl_int)*num_levels, priority_num_blocks, vp8_loop_filter_frame(cm, mbd, default_filt_lvl), )
+        VP8_CL_SET_BUF(mbd->cl_commands, loop_mem.block_offsets_mem, sizeof(cl_int)*num_levels, block_offsets, vp8_loop_filter_frame(cm, mbd, default_filt_lvl), )
     }
     
     //Copy any needed buffer contents to the CL device
-    vp8_loop_filter_offsets_copy(cm, mbd, dc_diffs, rows, cols, filter_levels, max_priority);
+    vp8_loop_filter_offsets_copy(cm, mbd, dc_diffs, rows, cols, filter_levels, num_levels);
+    
+    //Reset lock memory values
+#if USE_MAPPED_BUFFERS
+    {
+        int *locks;
+        VP8_CL_MAP_BUF(mbd->cl_commands, loop_mem.lock_mem, locks, sizeof(cl_int)*2,,)
+        locks[0] = locks[1] = 0;
+        VP8_CL_UNMAP_BUF(mbd->cl_commands, loop_mem.lock_mem, locks,,);
+    }
+#else
+    {
+        int locks[2] = {0,0};
+        VP8_CL_SET_BUF(mbd->cl_commands, loop_mem.lock_mem, sizeof(cl_int)*2, locks, vp8_loop_filter_frame(cm, mbd, default_filt_lvl),)
+    }
+#endif
     
     //Actually process the various priority levels
-    for (priority = 0; priority < max_priority ; priority++){
-        vp8_loop_filter_macroblocks_cl(cm,  mbd, priority, &args);
+#if 1
+    vp8_loop_filter_macroblocks_cl(cm, mbd, 0, num_levels, &args);
+#else
+    for (priority = 0; priority < num_levels ; priority++){
+        if (priority == 0){
+            vp8_loop_filter_macroblocks_cl(cm,  mbd, priority, 2, &args);
+            priority++;
+        }
+        else
+            vp8_loop_filter_macroblocks_cl(cm,  mbd, priority, 1, &args);
     }
+#endif
 
     //Retrieve buffer contents
 #if USE_MAPPED_BUFFERS
