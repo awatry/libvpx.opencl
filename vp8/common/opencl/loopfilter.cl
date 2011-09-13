@@ -333,9 +333,6 @@ kernel void vp8_loop_filter_all_edges_kernel(
     global int *pitches,
     global loop_filter_info *lfi,
     global int *filters,
-    int use_mbflim,
-    int filter_type,
-    int cur_iter,
     int priority_level,
     global int *block_offsets,
     global int *priority_num_blocks
@@ -387,9 +384,6 @@ kernel void vp8_loop_filter_horizontal_edges_kernel(
     global int *pitches, /* pitch */
     global loop_filter_info *lfi,
     global int *filters,
-    int use_mbflim, //unused for normal filters
-    int filter_type,
-    int cur_iter,
     int priority_level,
     global int *block_offsets,
     global int *priority_num_blocks
@@ -417,9 +411,6 @@ kernel void vp8_loop_filter_vertical_edges_kernel(
     global int *pitches,
     global loop_filter_info *lfi,
     global int *filters,
-    int use_mbflim,
-    int filter_type,
-    int cur_iter,
     int priority_level,
     global int *block_offsets,
     global int *priority_num_blocks
@@ -557,9 +548,7 @@ kernel void vp8_loop_filter_simple_vertical_edges_kernel
     global int *pitches, /* 1 or 3 values for Y or YUV pitches*/
     global loop_filter_info *lfi, /* Single struct for the frame */
     global int *filters_in, /* Filters for each block being processed */
-    int use_mbflim, /* Use lfi->flim or lfi->mbflim, need once per kernel call */
     int filter_type, /* Should dc_diffs, rows, or cols be used?*/
-    int cur_iter,
     int priority_level,
     global int *block_offsets,
     global int *priority_num_blocks
@@ -591,9 +580,6 @@ kernel void vp8_loop_filter_simple_horizontal_edges_kernel
     global int *pitches,
     global loop_filter_info *lfi,
     global int *filters_in,
-    int use_mbflim,
-    int filter_type,
-    int cur_iter,
     int priority_level,
     global int *block_offsets,
     global int *priority_num_blocks
@@ -623,9 +609,6 @@ kernel void vp8_loop_filter_simple_all_edges_kernel
     global int *pitches,
     global loop_filter_info *lfi,
     global int *filters_in,
-    int use_mbflim,
-    int filter_type,
-    int cur_iter,
     int priority_level,
     global int *block_offsets,
     global int *priority_num_blocks
