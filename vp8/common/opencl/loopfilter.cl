@@ -21,12 +21,7 @@ constant int threads[3] = {16, 8, 8};
 #if __OPENCL_VERSION__ == __CL_VERSION_1_0__
 #define clamp(x,y,z) vp8_char_clamp(x)
 char vp8_char_clamp(int in){
-    if (in > 127)
-        return 127;
-    if (in < -128)
-        return -128;
-
-    return in;
+    return max(min(in, 127), -128);
 }
 #endif
 
@@ -44,6 +39,11 @@ typedef struct
     int mb_rows;
     int mb_cols;
 } frame_info;
+
+//OpenCL built-in functions (
+size_t get_global_id(unsigned int);
+size_t get_global_size(unsigned int);
+
 
 uchar4 vp8_filter(
     signed char mask,
@@ -104,7 +104,7 @@ void vp8_loop_filter_horizontal_edge_worker(
     int filter_level = filters[block];
     
     if (filters[num_blocks*filter_type + block] > 0){
-        if (cur_iter == 0 || plane == 0){
+        if ( cur_iter == 0 || plane == 0){
             if (cur_iter > 0){
                 num_planes = 1;
             }
@@ -340,7 +340,6 @@ kernel void vp8_loop_filter_all_edges_kernel(
     global int *block_offsets,
     global int *priority_num_blocks
 ){
-
     int block_offset = block_offsets[priority_level];
 
     offsets = &offsets[16*block_offset];
@@ -739,16 +738,6 @@ __inline signed char vp8_filter_mask( signed char limit, signed char flimit,
 {
     signed char mask = 0;
 
-#if 1
-    mask |= (abs_diff(pq.s0, pq.s1) > limit) * -1;
-    mask |= (abs_diff(pq.s1, pq.s2) > limit) * -1;
-    mask |= (abs_diff(pq.s2, pq.s3) > limit) * -1;
-    mask |= (abs_diff(pq.s5, pq.s4) > limit) * -1;
-    mask |= (abs_diff(pq.s6, pq.s5) > limit) * -1;
-    mask |= (abs_diff(pq.s7, pq.s6) > limit) * -1;
-    mask |= (abs_diff(pq.s3, pq.s4) * 2 + abs_diff(pq.s2, pq.s5) / 2  > flimit * 2 + limit) * -1;
-    return ~mask;
-#else
     //Only apply the filter if the difference is LESS than 'limit'
     mask |= (abs_diff(pq.s0, pq.s1) > limit);
     mask |= (abs_diff(pq.s1, pq.s2) > limit);
@@ -757,9 +746,8 @@ __inline signed char vp8_filter_mask( signed char limit, signed char flimit,
     mask |= (abs_diff(pq.s6, pq.s5) > limit);
     mask |= (abs_diff(pq.s7, pq.s6) > limit);
     mask |= (abs_diff(pq.s3, pq.s4) * 2 + abs_diff(pq.s2, pq.s5) / 2  > flimit * 2 + limit);
-    
-    return (mask != 0 ? 0 : -1);
-#endif
+    mask *= -1;
+    return ~mask;
     
 }
 
