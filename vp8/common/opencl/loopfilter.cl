@@ -49,7 +49,7 @@ uchar4 vp8_filter(
     uchar4 base
 )
 {
-    char4 pq = convert_char4(base) ^ 0x80;
+    char4 pq = convert_char4(base) ^ (char4)0x80;
 
     char vp8_filter;
     char2 Filter;
@@ -81,7 +81,7 @@ uchar4 vp8_filter(
     u.s2 = sub_sat(pq.s2, Filter.s0);
     u.s3 = sub_sat(pq.s3, vp8_filter);
 
-    return convert_uchar4(u ^ 0x80);
+    return convert_uchar4(u ^ (char4)0x80);
 
 }
 
@@ -703,10 +703,10 @@ __inline uchar8 vp8_mbfilter(
     u.s2 = clamp((63 + filter.s1 * 9) >> 7, -128, 127);
     
     s.s012 = sub_sat(pq.s456, u.s012);
-    pq.s456 = s.s012 ^ 0x80;
+    pq.s456 = s.s012 ^ (char3)0x80;
     
     s.s012 = add_sat(pq.s321, u.s012);
-    pq.s321 = s.s012 ^ 0x80;
+    pq.s321 = s.s012 ^ (char3)0x80;
     
     return convert_uchar8(pq);
 }
@@ -773,7 +773,7 @@ __inline void vp8_simple_filter(
     char2 filter;
     
     char4 pq = (char4){*op1, *op0, *oq0, *oq1};
-    pq ^= 0x80;
+    pq ^= (char4)0x80;
 
     signed char u;
 
