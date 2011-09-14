@@ -50,39 +50,30 @@ size_t get_global_size(unsigned int);
 
 //Credit for this lock-based barrier goes to Matthew Scarpino at:
 //http://www.openclblog.com/2011/04/eureka.html
-void wait_on_siblings(int previous_blocks, int current_blocks, global int *locks)
+void wait_on_siblings(int priority_level, global int *locks)
 {
 
-    //Need priority level
-    //Number of blocks in this priority level
-    //Starting block offset in the priority level
-    //wait_on_siblings(block_offsets[priority_level],priority_num_blocks[priority_level], locks);
-    //Call wait_on_siblings for EVERY work group
-    //Only increment count for work groups that did work during this iteration
-    
     global int *mutex = locks;
-    global int *count = locks+1;
+    global int *count = &locks[1];
     
     if(get_local_id(0) == 0 && get_local_id(1) == 0 && get_local_id(2) == 0) {
-        //printf("Group [%d, %d, %d] waiting\n", get_global_id(0), get_global_id(1), get_global_id(2));
-        if (get_global_id(2) < current_blocks){
-            /* Increment the count */
-            while(LOCK(mutex))
-                ;
-            *count += 1;
-            UNLOCK(mutex);
-        }
-
+        //printf("Level %d, Group [%d, %d, %d] waiting\n", priority_level, get_group_id(0), get_group_id(1), get_group_id(2));
+        /* Increment the count */
+#if 0
+        while(LOCK(mutex))
+            ;
+        *count += 1;
+        printf("Count is now %d\n", *count);
+        UNLOCK(mutex);
+#else
+        atom_inc(count);
+        //printf("level = %d, Count is now %d\n", priority_level, *count);
+#endif
         /* Wait for everyone else to increment the count */
-        int waiting = 1;
-        while(waiting) {
-            while(LOCK(mutex))
-                ;
-            if(*count == (previous_blocks + current_blocks)) {
-                waiting = 0;
-            }
-            UNLOCK(mutex);
-        }
+        int final_count = (priority_level+1) * get_num_groups(0)*get_num_groups(1)*get_num_groups(2);
+        //printf("final count = %d\n", final_count);
+        //while(*count < final_count)
+        //    ;
     }
     barrier(CLK_GLOBAL_MEM_FENCE);
 }
@@ -390,8 +381,8 @@ kernel void vp8_loop_filter_all_edges_kernel(
         global int *filters = &filters_in[4*block_offset];
             
         if (get_global_id(2) < priority_num_blocks[priority_level]){
-            if (get_global_id(0) == 0 && get_global_id(1) == 0)
-                printf("Priority level is now %d\n", priority_level);
+            //if (get_global_id(0) == 0 && get_global_id(1) == 0 && get_global_id(2) == 0)
+            //    printf("Priority level is now %d\n", priority_level);
 
             //Prefetch vertical edge source pixels into global cache (horizontal isn't worth it)
             for(int plane = 0; plane < 3; plane++){
@@ -432,7 +423,7 @@ kernel void vp8_loop_filter_all_edges_kernel(
                     DC_DIFFS_LOCATION, 4);
         }
         
-        wait_on_siblings(block_offsets[priority_level], priority_num_blocks[priority_level], locks);
+        wait_on_siblings(priority_level, locks);
         priority_level++;
     }
     
@@ -726,7 +717,7 @@ kernel void vp8_loop_filter_simple_all_edges_kernel
             );
         }
         
-        wait_on_siblings(block_offsets[priority_level], priority_num_blocks[priority_level], locks);
+        wait_on_siblings(priority_level, locks);
         priority_level++;
     }
 }

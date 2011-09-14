@@ -401,10 +401,14 @@ void vp8_loop_filter_macroblocks_cl(
     args->priority_level = priority_level;
     args->num_levels = num_levels;
     
+    if (num_levels > 1){
+        num_blocks = max_blocks;
+    }
+    
     if (filter_type == NORMAL_LOOPFILTER){
-        vp8_loop_filter_all_edges_cl(mbd, args, 3, max_blocks);
+        vp8_loop_filter_all_edges_cl(mbd, args, 3, num_blocks);
     } else {
-        vp8_loop_filter_simple_all_edges_cl(mbd, args, 1, max_blocks);
+        vp8_loop_filter_simple_all_edges_cl(mbd, args, 1, num_blocks);
     }
 
 }
@@ -647,7 +651,6 @@ void vp8_loop_filter_frame_cl
         );
         if (max_blocks < priority_num_blocks[priority]){
             max_blocks = priority_num_blocks[priority];
-            printf("max_blocks is now %d\n", max_blocks);
         }
     }
     
@@ -684,15 +687,15 @@ void vp8_loop_filter_frame_cl
 #endif
     
     //Actually process the various priority levels
-#if 1
+#if 0
     vp8_loop_filter_macroblocks_cl(cm, mbd, 0, num_levels, &args);
 #else
     for (priority = 0; priority < num_levels ; priority++){
-        if (priority == 0){
-            vp8_loop_filter_macroblocks_cl(cm,  mbd, priority, 2, &args);
-            priority++;
-        }
-        else
+        //if (priority == 0){
+        //    vp8_loop_filter_macroblocks_cl(cm,  mbd, priority, 2, &args);
+        //    priority++;
+        //}
+        //else
             vp8_loop_filter_macroblocks_cl(cm,  mbd, priority, 1, &args);
     }
 #endif
