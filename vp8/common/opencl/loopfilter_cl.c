@@ -71,8 +71,6 @@ typedef struct VP8_LOOP_MEM{
     
     cl_mem block_offsets_mem;
     cl_mem priority_num_blocks_mem;
-    
-    cl_mem lock_mem;
 } VP8_LOOP_MEM;
 
 VP8_LOOP_MEM loop_mem;
@@ -222,13 +220,6 @@ int cl_init_loop_filter() {
         cl_data.vp8_loop_filter_simple_vertical_edges_kernel = NULL;
     }
     
-    loop_mem.lock_mem = clCreateBuffer(cl_data.context, CL_MEM_READ_WRITE|CL_MEM_ALLOC_HOST_PTR, sizeof(cl_int)*2, NULL, &err);
-    if (err != CL_SUCCESS){
-        printf("Error creating loop filter buffer\n");
-        return err;
-    }
-
-    
     loop_mem.num_blocks = 0;
     loop_mem.offsets_mem = NULL;
     loop_mem.pitches_mem = NULL;
@@ -258,10 +249,6 @@ void cl_destroy_loop_filter(){
     VP8_CL_RELEASE_KERNEL(cl_data.vp8_loop_filter_simple_horizontal_edges_kernel);
     VP8_CL_RELEASE_KERNEL(cl_data.vp8_loop_filter_simple_vertical_edges_kernel);
 
-    if (loop_mem.lock_mem != NULL)
-        clReleaseMemObject(loop_mem.lock_mem);
-    loop_mem.lock_mem = NULL;
-    
     if (cl_data.loop_filter_program)
         clReleaseProgram(cl_data.loop_filter_program);
    
@@ -645,7 +632,6 @@ void vp8_loop_filter_frame_cl
     args.filters_mem = loop_mem.filters_mem;
     args.block_offsets_mem = loop_mem.block_offsets_mem;
     args.priority_num_blocks_mem = loop_mem.priority_num_blocks_mem;
-    args.lock_mem = loop_mem.lock_mem;
     
     //Maximum priority = 2*(Height-1) + Width in Macroblocks
     //First identify all Macroblocks that will be processed and their priority
@@ -677,24 +663,9 @@ void vp8_loop_filter_frame_cl
     //Copy any needed buffer contents to the CL device
     vp8_loop_filter_offsets_copy(cm, mbd, dc_diffs, rows, cols, filter_levels, num_levels);
     
-    //Reset lock memory values
-#if USE_MAPPED_BUFFERS
-    {
-        int *locks;
-        VP8_CL_MAP_BUF(mbd->cl_commands, loop_mem.lock_mem, locks, sizeof(cl_int)*2,,)
-        locks[0] = locks[1] = 0;
-        VP8_CL_UNMAP_BUF(mbd->cl_commands, loop_mem.lock_mem, locks,,);
-    }
-#else
-    {
-        int locks[2] = {0,0};
-        VP8_CL_SET_BUF(mbd->cl_commands, loop_mem.lock_mem, sizeof(cl_int)*2, locks, vp8_loop_filter_frame(cm, mbd, default_filt_lvl),)
-    }
-#endif
-    
     //Actually process the various priority levels
     for (priority = 0; priority < num_levels ; priority++){
-#if 0
+#if 1
         int end_level = priority;
         if (priority_num_blocks[priority]*48 < cl_data.vp8_loop_filter_all_edges_kernel_size){
             while(++end_level < num_levels){
@@ -704,7 +675,8 @@ void vp8_loop_filter_frame_cl
             }
             end_level--;
         }
-        
+
+        //printf("Filtering levels %d through %d\n", priority, end_level);
         vp8_loop_filter_macroblocks_cl(cm, mbd, priority, (end_level-priority+1), &args);
         priority = end_level;
 #else

@@ -87,7 +87,6 @@ static int vp8_loop_filter_cl_run(
     VP8_CL_SET_LOOP_ARG(kernel, current_args, args, 6, cl_int, num_levels)
     VP8_CL_SET_LOOP_ARG(kernel, current_args, args, 7, cl_mem, block_offsets_mem)
     VP8_CL_SET_LOOP_ARG(kernel, current_args, args, 8, cl_mem, priority_num_blocks_mem);
-    VP8_CL_SET_LOOP_ARG(kernel, current_args, args, 9, cl_mem, lock_mem);
 
     VP8_CL_CHECK_SUCCESS( cq, err != CL_SUCCESS,
         "Error: Failed to set kernel arguments!\n",,err
@@ -100,7 +99,7 @@ static int vp8_loop_filter_cl_run(
         "Error: Failed to execute kernel!\n",
         printf("err = %d\n",err);,err
     );
-        
+
     return CL_SUCCESS;
 }
 

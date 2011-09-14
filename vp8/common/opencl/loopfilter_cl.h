@@ -28,7 +28,6 @@ typedef struct VP8_LOOPFILTER_ARGS{
     cl_mem pitches_mem;
     cl_mem lfi_mem;
     cl_mem filters_mem; //combination of dc_diffs, rows, cols, and filter_levels
-    cl_mem lock_mem;
 } VP8_LOOPFILTER_ARGS;
 
 #define prototype_loopfilter_cl(sym) \
