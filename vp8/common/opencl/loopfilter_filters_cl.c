@@ -117,7 +117,9 @@ void vp8_loop_filter_all_edges_cl
     size_t local = cl_data.vp8_loop_filter_all_edges_kernel_size;
     if (local < 48){
         int iter = 0;
-        for (iter=0; iter < args->num_levels; iter++){
+        int num_levels = args->num_levels;
+        args->num_levels = 1;
+        for (iter=0; iter < num_levels; iter++){
             //Handle Vertical and Horizontal edges in 2 passes.
             vp8_loop_filter_vertical_edges_cl(x, args, num_planes, num_blocks);
             vp8_loop_filter_horizontal_edges_cl(x, args, num_planes, num_blocks);
@@ -178,7 +180,9 @@ void vp8_loop_filter_simple_all_edges_cl
     size_t local = cl_data.vp8_loop_filter_simple_all_edges_kernel_size;
     if (local < 48){
         int iter = 0;
-        for (iter=0; iter < args->num_levels; iter++){        //Handle Vertical and Horizontal edges in 2 passes.
+        int num_levels = args->num_levels;
+        args->num_levels = 1;
+        for (iter=0; iter < num_levels; iter++){ //Handle vert/horiz edges separately
             vp8_loop_filter_simple_vertical_edges_cl(x, args, num_planes, num_blocks);
             vp8_loop_filter_simple_horizontal_edges_cl(x, args, num_planes, num_blocks);
             args->priority_level++;
