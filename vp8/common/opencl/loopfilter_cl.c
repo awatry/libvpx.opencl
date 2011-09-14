@@ -402,7 +402,12 @@ void vp8_loop_filter_macroblocks_cl(
     args->num_levels = num_levels;
     
     if (num_levels > 1){
-        num_blocks = max_blocks;
+        int max = 0;
+        int level;
+        for (level = priority_level; level < priority_level+num_levels; level++){
+            if (priority_num_blocks[level] > max)
+                max = priority_num_blocks[level];
+        }
     }
     
     if (filter_type == NORMAL_LOOPFILTER){
@@ -687,19 +692,30 @@ void vp8_loop_filter_frame_cl
 #endif
     
     //Actually process the various priority levels
-#if 0
-    vp8_loop_filter_macroblocks_cl(cm, mbd, 0, num_levels, &args);
-#else
     for (priority = 0; priority < num_levels ; priority++){
-        //if (priority == 0){
-        //    vp8_loop_filter_macroblocks_cl(cm,  mbd, priority, 2, &args);
-        //    priority++;
-        //}
-        //else
+#if 0
+        int end_level = priority;
+        if (priority_num_blocks[priority]*48 < cl_data.vp8_loop_filter_all_edges_kernel_size){
+            printf("num_levels = %d\n", num_levels);
+            printf("Max kernel size = %d\n", cl_data.vp8_loop_filter_all_edges_kernel_size);
+            while(++end_level < num_levels){
+                if (priority_num_blocks[end_level]*48 > cl_data.vp8_loop_filter_all_edges_kernel_size){
+                    printf("level %d is too big to fit in a single work group\n", end_level);
+                    break;
+                }
+            }
+            end_level--;
+        }
+        
+        printf("filtering priority levels %d through %d\n", priority, end_level);
+        printf("Number of levels = %d\n", (end_level-priority+1));
+        vp8_loop_filter_macroblocks_cl(cm, mbd, priority, (end_level-priority+1), &args);
+        priority = end_level;
+#else
             vp8_loop_filter_macroblocks_cl(cm,  mbd, priority, 1, &args);
-    }
 #endif
-
+    }
+    
     //Retrieve buffer contents
 #if USE_MAPPED_BUFFERS
     buf = clEnqueueMapBuffer(mbd->cl_commands, post->buffer_mem, CL_TRUE, CL_MAP_READ, 0, post->buffer_size, 0, NULL, NULL, &err); \

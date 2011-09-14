@@ -379,10 +379,8 @@ kernel void vp8_loop_filter_all_edges_kernel(
 
         global int *offsets = &offsets_in[16*block_offset];
         global int *filters = &filters_in[4*block_offset];
-            
+
         if (get_global_id(2) < priority_num_blocks[priority_level]){
-            //if (get_global_id(0) == 0 && get_global_id(1) == 0 && get_global_id(2) == 0)
-            //    printf("Priority level is now %d\n", priority_level);
 
             //Prefetch vertical edge source pixels into global cache (horizontal isn't worth it)
             for(int plane = 0; plane < 3; plane++){
@@ -407,7 +405,7 @@ kernel void vp8_loop_filter_all_edges_kernel(
 
         }
         
-        barrier(CLK_LOCAL_MEM_FENCE);
+        barrier(CLK_GLOBAL_MEM_FENCE);
         
         if (get_global_id(2) < priority_num_blocks[priority_level]){
 
@@ -423,7 +421,7 @@ kernel void vp8_loop_filter_all_edges_kernel(
                     DC_DIFFS_LOCATION, 4);
         }
         
-        wait_on_siblings(priority_level, locks);
+        barrier(CLK_GLOBAL_MEM_FENCE);
         priority_level++;
     }
     
@@ -696,9 +694,11 @@ kernel void vp8_loop_filter_simple_all_edges_kernel
                     lfi, filters_in, 0, DC_DIFFS_LOCATION, 3, priority_level,
                     block_offsets, priority_num_blocks
             );
+        }
 
-            barrier(CLK_GLOBAL_MEM_FENCE);
+        barrier(CLK_GLOBAL_MEM_FENCE);
 
+        if (get_global_id(2) < priority_num_blocks[priority_level]){
             vp8_loop_filter_simple_horizontal_edge_worker(s_base, offsets, pitches, lfi,
                     filters_in, 1, ROWS_LOCATION, 4, priority_level,
                     block_offsets, priority_num_blocks
@@ -717,7 +717,7 @@ kernel void vp8_loop_filter_simple_all_edges_kernel
             );
         }
         
-        wait_on_siblings(priority_level, locks);
+        barrier(CLK_GLOBAL_MEM_FENCE);
         priority_level++;
     }
 }
