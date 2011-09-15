@@ -144,7 +144,7 @@ int cl_common_init() {
 
     	//Try to find a valid compute device
     	//Favor the GPU, but fall back to any other available device if necessary
-#if defined(__APPLE__) || defined(_WIN32)
+#if defined(__APPLE__)
     	printf("Running CL as CPU-only for now...\n");
         err = clGetDeviceIDs(platform_ids[i], CL_DEVICE_TYPE_CPU, MAX_NUM_DEVICES, devices, &num_devices);
 #else
