@@ -152,13 +152,14 @@ __inline void vp8_loop_filter_vertical_edge_worker(
         int block_offset = cur_iter*num_blocks*num_planes + block*num_planes+plane;
         int s_off = offsets[block_offset];
 
-        s_off += p * get_global_id(0);
+        size_t thread = get_global_id(0);
+        s_off += p * thread;
 
         uchar8 data = vload8(0, &s_base[s_off-4]);
 
-        char mask = vp8_filter_mask(lfi->lim[get_global_id(0)], lfi->flim[get_global_id(0)], data);
+        char mask = vp8_filter_mask(lfi->lim[thread], lfi->flim[thread], data);
 
-        int hev = vp8_hevmask(lfi->thr[get_global_id(0)], data.s2345);
+        int hev = vp8_hevmask(lfi->thr[thread], data.s2345);
 
         data.s2345 = vp8_filter(mask, hev, data.s2345);
 
@@ -181,7 +182,8 @@ __inline void vp8_mbloop_filter_horizontal_edge_worker(
 ){
     
     int p = pitches[plane];
-    int s_off = offsets[8*num_blocks + block*num_planes+plane] + get_global_id(0);
+    size_t thread = get_global_id(0);
+    int s_off = offsets[8*num_blocks + block*num_planes+plane] + thread;
 
     uchar8 data;
     data.s0 = s_base[s_off-4*p];
@@ -193,9 +195,9 @@ __inline void vp8_mbloop_filter_horizontal_edge_worker(
     data.s6 = s_base[s_off+2*p];
     data.s7 = s_base[s_off+3*p];
 
-    char mask = vp8_filter_mask(lfi->lim[get_global_id(0)], lfi->mbflim[get_global_id(0)], data);
+    char mask = vp8_filter_mask(lfi->lim[thread], lfi->mbflim[thread], data);
 
-    char hev = vp8_hevmask(lfi->thr[get_global_id(0)], data.s2345);
+    char hev = vp8_hevmask(lfi->thr[thread], data.s2345);
 
     data = vp8_mbfilter(mask, hev, data);
 
@@ -225,31 +227,19 @@ __inline void vp8_mbloop_filter_vertical_edge_worker(
     int p = pitches[plane];
     int block_offset = block*num_planes+plane;
     int s_off = offsets[block_offset];
-
-    s_off += p * get_global_id(0);
+    size_t thread = get_global_id(0);
+    
+    s_off += p * thread;
 
     uchar8 data = vload8(0, &s_base[s_off-4]);
 
-    char mask = vp8_filter_mask(lfi->lim[get_global_id(0)], lfi->mbflim[get_global_id(0)], data);
+    char mask = vp8_filter_mask(lfi->lim[thread], lfi->mbflim[thread], data);
 
-    int hev = vp8_hevmask(lfi->thr[get_global_id(0)], data.s2345);
+    int hev = vp8_hevmask(lfi->thr[thread], data.s2345);
 
     data = vp8_mbfilter(mask, hev, data);
 
     vstore8(data, 0, &s_base[s_off-4]);
-}
-
-void vp8_loop_filter_all_edges_1_iter(
-    global unsigned char *s_base,
-    global int *offsets_in,
-    global int *pitches,
-    global loop_filter_info *lfi,
-    global int *filters_in,
-    int priority_level,
-    global int *block_offsets,
-    global int *priority_num_blocks
-){
-
 }
 
 kernel void vp8_loop_filter_all_edges_kernel(
@@ -282,9 +272,9 @@ kernel void vp8_loop_filter_all_edges_kernel(
             for(int pln = 0; pln < 3; pln++){
                 int p = pitches[pln];
                 int offset = block*3+pln;
-                int s_off = offsets[offset];
+                int s_off = offsets[offset] - 4;
                 for (int thread = 0; thread < 16; thread++){
-                    prefetch(&s_base[s_off+p*thread-4], 8);
+                    prefetch(&s_base[s_off+p*thread], 8);
                 }
             }
 
@@ -656,7 +646,6 @@ kernel void vp8_loop_filter_simple_all_edges_kernel
 }
 
 //Inline and non-kernel functions follow.
-
 __inline uchar8 vp8_mbfilter(
     signed char mask,
     signed char hev,
@@ -689,17 +678,21 @@ __inline uchar8 vp8_mbfilter(
     filter.s1 = vp8_filter;
 
     /* roughly 3/7th, 2/7th, and 1/7th difference across boundary */
+#if 1
+    u = convert_char4(clamp(((short4)63 + (short4)filter.s1 * (short4){27, 18, 9, 0}) >> 7, -128, 127) );
+#else
     u.s0 = clamp((63 + filter.s1 * 27) >> 7, -128, 127);
     u.s1 = clamp((63 + filter.s1 * 18) >> 7, -128, 127);
     u.s2 = clamp((63 + filter.s1 * 9) >> 7, -128, 127);
     u.s3 = 0;
+#endif
     
 #if 0
     char4 s;
-    s.s012 = sub_sat(pq.s456, u.s012);
-    pq.s456 = s.s012 ^ (char3)0x80;
-    s.s321 = add_sat(pq.s321, u.s012);
-    pq.s321 = s.s321 ^ (char3)0x80;
+    s = sub_sat(pq.s4567, u);
+    pq.s4567 = s ^ (char4){0x80, 0x80, 0x80, 0};
+    s.s3210 = add_sat(pq.s3210, u);
+    pq.s0123 = s ^ (char4){0, 0x80, 0x80, 0x80};
 #else
     pq.s4567 = sub_sat(pq.s4567, u.s0123);
     pq.s3210 = add_sat(pq.s3210, u.s0123);
