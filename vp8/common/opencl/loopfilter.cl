@@ -278,13 +278,13 @@ kernel void vp8_loop_filter_all_edges_kernel(
                 }
             }
 
-            if (thread_level_filter & (filters[num_blocks*COLS_LOCATION + block] > 0)){
-                vp8_mbloop_filter_vertical_edge_worker(s_base, offsets, pitches, lf_info, filters,
-                        COLS_LOCATION, filter_level, num_blocks, 3,  plane, block);
-            }
-
-            //YUV planes, then 2 more passes of Y plane
             if (thread_level_filter){
+                if ( filters[num_blocks*COLS_LOCATION + block] > 0 ){
+                    vp8_mbloop_filter_vertical_edge_worker(s_base, offsets, pitches, lf_info, filters,
+                            COLS_LOCATION, filter_level, num_blocks, 3,  plane, block);
+                }
+
+                //YUV planes, then 2 more passes of Y plane
                 vp8_loop_filter_vertical_edge_worker(s_base, offsets, pitches, lf_info, filters,
                         DC_DIFFS_LOCATION, filter_level, 1, num_blocks, 3, plane, block);
                 if (plane == 0){
@@ -300,13 +300,13 @@ kernel void vp8_loop_filter_all_edges_kernel(
 
         if (block < num_blocks){
 
-            if (thread_level_filter & (filters[num_blocks*ROWS_LOCATION + block] > 0)){
-                vp8_mbloop_filter_horizontal_edge_worker(s_base, offsets, pitches, lf_info, 
-                    filters, ROWS_LOCATION, filter_level, num_blocks, 3, plane, block);
-            }
-
-            //YUV planes, then 2 more passes of Y plane
             if (thread_level_filter){
+                if (filters[num_blocks*ROWS_LOCATION + block] > 0){
+                    vp8_mbloop_filter_horizontal_edge_worker(s_base, offsets, pitches, lf_info, 
+                        filters, ROWS_LOCATION, filter_level, num_blocks, 3, plane, block);
+                }
+
+                //YUV planes, then 2 more passes of Y plane
                 vp8_loop_filter_horizontal_edge_worker(s_base, offsets, pitches, lf_info, filters,
                         DC_DIFFS_LOCATION, filter_level, 0, num_blocks, 3, plane, block);
                 if (plane == 0){
