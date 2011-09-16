@@ -10,7 +10,7 @@ __inline signed char vp8_hevmask(signed char, uchar4);
 
 __inline uchar8 vp8_mbfilter(signed char mask,signed char hev,uchar8);
 
-void vp8_simple_filter(signed char mask,global uc *base, int op1_off,int op0_off,int oq0_off,int oq1_off);
+__inline void vp8_simple_filter(signed char mask,global uc *base, int op1_off,int op0_off,int oq0_off,int oq1_off);
 
 constant int threads[3] = {16, 8, 8};
 
@@ -43,13 +43,13 @@ typedef struct
 size_t get_global_id(unsigned int);
 size_t get_global_size(unsigned int);
 
-uchar4 vp8_filter(
+__inline uchar4 vp8_filter(
     signed char mask,
     signed char hev,
     uchar4 base
 )
 {
-    char4 pq = convert_char4(base) ^ (char4)0x80;
+    char4 pq = as_char4(base) ^ (char4)0x80;
 
     char vp8_filter;
     char2 Filter;
@@ -81,12 +81,12 @@ uchar4 vp8_filter(
     u.s2 = sub_sat(pq.s2, Filter.s0);
     u.s3 = sub_sat(pq.s3, vp8_filter);
 
-    return convert_uchar4(u ^ (char4)0x80);
+    return as_uchar4(u ^ (char4)0x80);
 
 }
 
 // Filters horizontal edges of inner blocks in a Macroblock
-void vp8_loop_filter_horizontal_edge_worker(
+__inline void vp8_loop_filter_horizontal_edge_worker(
     global unsigned char *s_base,
     global int *offsets,
     global int *pitches, /* pitch */
@@ -100,12 +100,15 @@ void vp8_loop_filter_horizontal_edge_worker(
     size_t plane,
     size_t block
 ){
+    size_t thread = get_global_id(0);
+    
     if (filters[num_blocks*filter_type + block] > 0){
         int p = pitches[plane];
         int block_offset = num_blocks*11 + cur_iter*num_blocks*num_planes + block*num_planes+plane;
         int s_off = offsets[block_offset];
 
-        s_off += get_global_id(0);
+        s_off += thread;
+        //s_off += thread, so maybe it's possible to use a strided copy with local memory to load into the vector
 
         uchar8 data;
         data.s0 = s_base[s_off-4*p];
@@ -117,9 +120,9 @@ void vp8_loop_filter_horizontal_edge_worker(
         data.s6 = s_base[s_off+2*p];
         data.s7 = s_base[s_off+3*p];
 
-        char mask = vp8_filter_mask(lfi->lim[get_global_id(0)], lfi->flim[get_global_id(0)], data);
+        char mask = vp8_filter_mask(lfi->lim[thread], lfi->flim[thread], data);
 
-        int hev = vp8_hevmask(lfi->thr[get_global_id(0)], data.s2345);
+        int hev = vp8_hevmask(lfi->thr[thread], data.s2345);
 
         data.s2345 = vp8_filter(mask, hev, data.s2345);
 
@@ -130,7 +133,7 @@ void vp8_loop_filter_horizontal_edge_worker(
     }
 }
 
-void vp8_loop_filter_vertical_edge_worker(
+__inline void vp8_loop_filter_vertical_edge_worker(
     global unsigned char *s_base,
     global int *offsets,
     global int *pitches,
@@ -163,7 +166,7 @@ void vp8_loop_filter_vertical_edge_worker(
     }
 }
 
-void vp8_mbloop_filter_horizontal_edge_worker(
+__inline void vp8_mbloop_filter_horizontal_edge_worker(
     global unsigned char *s_base,
     global int *offsets,
     global int *pitches,
@@ -205,7 +208,7 @@ void vp8_mbloop_filter_horizontal_edge_worker(
 
 }
 
-void vp8_mbloop_filter_vertical_edge_worker(
+__inline void vp8_mbloop_filter_vertical_edge_worker(
     global unsigned char *s_base,
     global int *offsets,
     global int *pitches,
@@ -662,7 +665,7 @@ __inline uchar8 vp8_mbfilter(
 {
     char4 u;
 
-    char8 pq = convert_char8(base);
+    char8 pq = as_char8(base);
     pq ^= (char8){0, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0};
     
     /* add outer taps if we have high edge variance */
@@ -702,19 +705,13 @@ __inline uchar8 vp8_mbfilter(
     pq ^= (char8){0, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0};
 #endif
     
-    return convert_uchar8(pq);
+    return as_uchar8(pq);
 }
 
 /* is there high variance internal edge ( 11111111 yes, 00000000 no) */
 __inline signed char vp8_hevmask(signed char thresh, uchar4 pq)
 {
-#if 1
-    char hev = (abs_diff(pq.s0, pq.s1) > thresh);
-    hev  |= (abs_diff(pq.s3, pq.s2) > thresh);
-    return hev*-1;
-#else
     return any(abs_diff(pq.s03, pq.s12) > thresh) * -1;
-#endif
 }
 
 
