@@ -692,6 +692,7 @@ __inline uchar8 vp8_mbfilter(
     u.s0 = clamp((63 + filter.s1 * 27) >> 7, -128, 127);
     u.s1 = clamp((63 + filter.s1 * 18) >> 7, -128, 127);
     u.s2 = clamp((63 + filter.s1 * 9) >> 7, -128, 127);
+    u.s3 = 0;
     
 #if 0
     char4 s;
@@ -700,8 +701,8 @@ __inline uchar8 vp8_mbfilter(
     s.s321 = add_sat(pq.s321, u.s012);
     pq.s321 = s.s321 ^ (char3)0x80;
 #else
-    pq.s456 = sub_sat(pq.s456, u.s012);
-    pq.s321 = add_sat(pq.s321, u.s012);
+    pq.s4567 = sub_sat(pq.s4567, u.s0123);
+    pq.s3210 = add_sat(pq.s3210, u.s0123);
     pq ^= (char8){0, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0};
 #endif
     
