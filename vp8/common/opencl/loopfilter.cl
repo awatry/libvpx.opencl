@@ -236,13 +236,12 @@ __inline void vp8_mbloop_filter_vertical_edge_worker(
     int filter_type,
     int filter_level,
     size_t num_blocks,
-    size_t num_planes,
     size_t plane,
     size_t block,
     int p //pitches[plane]
 ){
 
-    int block_offset = block*num_planes+plane;
+    int block_offset = block*3+plane;
     size_t thread = get_global_id(0);
     int s_off = offsets[block_offset] + p*thread - 4;
     
@@ -297,7 +296,7 @@ kernel void vp8_loop_filter_all_edges_kernel(
     if (thread_level_filter){
         if ( filters[num_blocks*COLS_LOCATION + block] > 0 ){
             vp8_mbloop_filter_vertical_edge_worker(s_base, offsets, pitches, lf_info, filters,
-                    COLS_LOCATION, filter_level, num_blocks, 3,  plane, block, p);
+                    COLS_LOCATION, filter_level, num_blocks, plane, block, p);
         }
 
         //YUV planes, then 2 more passes of Y plane
@@ -405,7 +404,7 @@ kernel void vp8_loop_filter_vertical_edges_kernel(
     do_filter &= thread_level_filter;
     if (do_filter){
         vp8_mbloop_filter_vertical_edge_worker(s_base, offsets, pitches, lf_info, filters,
-            COLS_LOCATION, filter_level, num_blocks, 3, plane, block, p);
+            COLS_LOCATION, filter_level, num_blocks, plane, block, p);
     }
     
     //YUV planes, then 2 more passes of Y plane
@@ -606,52 +605,43 @@ kernel void vp8_loop_filter_simple_all_edges_kernel
 )
 {
     
-    for (int i = 0; i < num_levels; i++){
-        if (get_global_id(2) < priority_num_blocks[priority_level]){
-            vp8_loop_filter_simple_vertical_edge_worker(s_base, offsets, pitches,
-                    lfi, filters_in, 1, COLS_LOCATION, 0, priority_level,
-                    block_offsets, priority_num_blocks
-            );
+    vp8_loop_filter_simple_vertical_edge_worker(s_base, offsets, pitches,
+            lfi, filters_in, 1, COLS_LOCATION, 0, priority_level,
+            block_offsets, priority_num_blocks
+    );
 
-            //3 Y plane iterations
-            vp8_loop_filter_simple_vertical_edge_worker(s_base, offsets, pitches,
-                    lfi, filters_in, 0, DC_DIFFS_LOCATION, 1, priority_level,
-                    block_offsets, priority_num_blocks
-            );
-            vp8_loop_filter_simple_vertical_edge_worker(s_base, offsets, pitches,
-                    lfi, filters_in, 0, DC_DIFFS_LOCATION, 2, priority_level,
-                    block_offsets, priority_num_blocks
-            );
-            vp8_loop_filter_simple_vertical_edge_worker(s_base, offsets, pitches,
-                    lfi, filters_in, 0, DC_DIFFS_LOCATION, 3, priority_level,
-                    block_offsets, priority_num_blocks
-            );
-        }
+    //3 Y plane iterations
+    vp8_loop_filter_simple_vertical_edge_worker(s_base, offsets, pitches,
+            lfi, filters_in, 0, DC_DIFFS_LOCATION, 1, priority_level,
+            block_offsets, priority_num_blocks
+    );
+    vp8_loop_filter_simple_vertical_edge_worker(s_base, offsets, pitches,
+            lfi, filters_in, 0, DC_DIFFS_LOCATION, 2, priority_level,
+            block_offsets, priority_num_blocks
+    );
+    vp8_loop_filter_simple_vertical_edge_worker(s_base, offsets, pitches,
+            lfi, filters_in, 0, DC_DIFFS_LOCATION, 3, priority_level,
+            block_offsets, priority_num_blocks
+    );
 
-        barrier(CLK_GLOBAL_MEM_FENCE);
+    barrier(CLK_GLOBAL_MEM_FENCE);
 
-        if (get_global_id(2) < priority_num_blocks[priority_level]){
-            vp8_loop_filter_simple_horizontal_edge_worker(s_base, offsets, pitches, lfi,
-                    filters_in, 1, ROWS_LOCATION, 4, priority_level,
-                    block_offsets, priority_num_blocks
-            );
-            vp8_loop_filter_simple_horizontal_edge_worker(s_base, offsets, pitches, lfi,
-                    filters_in, 0, DC_DIFFS_LOCATION, 5, priority_level,
-                    block_offsets, priority_num_blocks
-            );
-            vp8_loop_filter_simple_horizontal_edge_worker(s_base, offsets, pitches, lfi,
-                    filters_in, 0, DC_DIFFS_LOCATION, 6, priority_level,
-                    block_offsets, priority_num_blocks
-            );
-            vp8_loop_filter_simple_horizontal_edge_worker(s_base, offsets, pitches, lfi,
-                    filters_in, 0, DC_DIFFS_LOCATION, 7, priority_level,
-                    block_offsets, priority_num_blocks
-            );
-        }
-        
-        barrier(CLK_GLOBAL_MEM_FENCE);
-        priority_level++;
-    }
+    vp8_loop_filter_simple_horizontal_edge_worker(s_base, offsets, pitches, lfi,
+            filters_in, 1, ROWS_LOCATION, 4, priority_level,
+            block_offsets, priority_num_blocks
+    );
+    vp8_loop_filter_simple_horizontal_edge_worker(s_base, offsets, pitches, lfi,
+            filters_in, 0, DC_DIFFS_LOCATION, 5, priority_level,
+            block_offsets, priority_num_blocks
+    );
+    vp8_loop_filter_simple_horizontal_edge_worker(s_base, offsets, pitches, lfi,
+            filters_in, 0, DC_DIFFS_LOCATION, 6, priority_level,
+            block_offsets, priority_num_blocks
+    );
+    vp8_loop_filter_simple_horizontal_edge_worker(s_base, offsets, pitches, lfi,
+            filters_in, 0, DC_DIFFS_LOCATION, 7, priority_level,
+            block_offsets, priority_num_blocks
+    );
 }
 
 //Inline and non-kernel functions follow.
@@ -687,26 +677,16 @@ __inline uchar8 vp8_mbfilter(
     filter.s1 = vp8_filter;
 
     /* roughly 3/7th, 2/7th, and 1/7th difference across boundary */
-#if 0
-    u = convert_char4(clamp(((short4)63 + (short4)filter.s1 * (short4){27, 18, 9, 0}) >> 7, -128, 127) );
-#else
     u.s0 = clamp((63 + filter.s1 * 27) >> 7, -128, 127);
     u.s1 = clamp((63 + filter.s1 * 18) >> 7, -128, 127);
     u.s2 = clamp((63 + filter.s1 * 9) >> 7, -128, 127);
     u.s3 = 0;
-#endif
     
-#if 1
     char4 s;
     s = sub_sat(pq.s4567, u);
     pq.s4567 = s ^ (char4){0x80, 0x80, 0x80, 0};
     s = add_sat(pq.s0123, u.s3210);
     pq.s0123 = s ^ (char4){0, 0x80, 0x80, 0x80};
-#else
-    pq.s4567 = sub_sat(pq.s4567, u.s0123);
-    pq.s3210 = add_sat(pq.s3210, u.s0123);
-    pq ^= (char8){0, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0};
-#endif
     
     return as_uchar8(pq);
 }
@@ -715,7 +695,6 @@ __inline uchar8 vp8_mbfilter(
 __inline uchar vp8_hevmask(signed char thresh, uchar4 pq)
 {
     return ~any(abs_diff(pq.s03, pq.s12) > thresh) + 1;
-    //return any(abs_diff(pq.s03, pq.s12) > thresh) * -1; //If return type = signed char
 }
 
 
@@ -724,7 +703,6 @@ __inline signed char vp8_filter_mask( signed char limit, signed char flimit,
         uchar8 pq)
 {
     //Only apply the filter if the difference is LESS than 'limit'
-#if 1
     char mask = (abs_diff(pq.s0, pq.s1) > limit);
     mask |= (abs_diff(pq.s1, pq.s2) > limit);
     mask |= (abs_diff(pq.s2, pq.s3) > limit);
@@ -733,18 +711,6 @@ __inline signed char vp8_filter_mask( signed char limit, signed char flimit,
     mask |= (abs_diff(pq.s7, pq.s6) > limit);
     mask |= (abs_diff(pq.s3, pq.s4) * 2 + abs_diff(pq.s2, pq.s5) / 2  > flimit * 2 + limit);
     return mask - 1;
-#else
-    short8 mask8 = convert_short8(abs_diff(pq.s01256732, pq.s12345645));
-    mask8.s6 = mask8.s6 * 2 + mask8.s7 / 2;
-    
-    short8 limits = (short8)limit;
-    limits.s6 += flimit * 2;
-    mask8 = mask8 > limits;
-    mask8.s7 = 0;
-    
-    return any(mask8) - 1;
-#endif
-
 }
 
 /* should we apply any filter at all ( 11111111 yes, 00000000 no) */
