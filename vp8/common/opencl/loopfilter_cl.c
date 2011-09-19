@@ -665,7 +665,7 @@ void vp8_loop_filter_frame_cl
     
     //Actually process the various priority levels
     for (priority = 0; priority < num_levels ; priority++){
-#if 1
+#if 0
         int end_level = priority;
         if (priority_num_blocks[priority]*48 < cl_data.vp8_loop_filter_all_edges_kernel_size){
             while(++end_level < num_levels){
