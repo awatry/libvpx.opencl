@@ -6,9 +6,9 @@ typedef signed char sc;
 
 __inline signed char vp8_filter_mask(sc, sc, uchar8);
 __inline signed char vp8_simple_filter_mask(signed char, signed char, uc, uc, uc, uc);
-__inline signed char vp8_hevmask(signed char, uchar4);
+__inline uchar vp8_hevmask(signed char, uchar4);
 
-__inline uchar8 vp8_mbfilter(signed char mask,signed char hev,uchar8);
+__inline uchar8 vp8_mbfilter(signed char mask, uchar hev, uchar8);
 
 __inline void vp8_simple_filter(signed char mask,global uc *base, int op1_off,int op0_off,int oq0_off,int oq1_off);
 
@@ -45,7 +45,7 @@ size_t get_global_size(unsigned int);
 
 __inline uchar4 vp8_filter(
     signed char mask,
-    signed char hev,
+    uchar hev,
     uchar4 base
 )
 {
@@ -648,7 +648,7 @@ kernel void vp8_loop_filter_simple_all_edges_kernel
 //Inline and non-kernel functions follow.
 __inline uchar8 vp8_mbfilter(
     signed char mask,
-    signed char hev,
+    uchar hev,
     uchar8 base
 )
 {
@@ -678,7 +678,7 @@ __inline uchar8 vp8_mbfilter(
     filter.s1 = vp8_filter;
 
     /* roughly 3/7th, 2/7th, and 1/7th difference across boundary */
-#if 1
+#if 0
     u = convert_char4(clamp(((short4)63 + (short4)filter.s1 * (short4){27, 18, 9, 0}) >> 7, -128, 127) );
 #else
     u.s0 = clamp((63 + filter.s1 * 27) >> 7, -128, 127);
@@ -687,11 +687,11 @@ __inline uchar8 vp8_mbfilter(
     u.s3 = 0;
 #endif
     
-#if 0
+#if 1
     char4 s;
     s = sub_sat(pq.s4567, u);
     pq.s4567 = s ^ (char4){0x80, 0x80, 0x80, 0};
-    s.s3210 = add_sat(pq.s3210, u);
+    s = add_sat(pq.s0123, u.s3210);
     pq.s0123 = s ^ (char4){0, 0x80, 0x80, 0x80};
 #else
     pq.s4567 = sub_sat(pq.s4567, u.s0123);
@@ -703,9 +703,10 @@ __inline uchar8 vp8_mbfilter(
 }
 
 /* is there high variance internal edge ( 11111111 yes, 00000000 no) */
-__inline signed char vp8_hevmask(signed char thresh, uchar4 pq)
+__inline uchar vp8_hevmask(signed char thresh, uchar4 pq)
 {
-    return any(abs_diff(pq.s03, pq.s12) > thresh) * -1;
+    return ~any(abs_diff(pq.s03, pq.s12) > thresh) + 1;
+    //return any(abs_diff(pq.s03, pq.s12) > thresh) * -1; //If return type = signed char
 }
 
 
