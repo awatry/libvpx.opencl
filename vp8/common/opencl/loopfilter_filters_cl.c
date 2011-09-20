@@ -61,8 +61,12 @@ static int vp8_loop_filter_cl_run(
     size_t local[3] = {16, num_planes, num_blocks};
     int err;
 
+#if VP8_LOOP_FILTER_MULTI_LEVEL
     if (max_local_size < 16*num_planes*num_blocks){
         local[2] = 1;
+#else
+    local[2] = 1;
+#endif
         if ((max_local_size < 16 * num_planes )){
             local[1] = 1; //Drop down to 1 plane
             if (max_local_size < 16){
@@ -70,7 +74,9 @@ static int vp8_loop_filter_cl_run(
                               //At this point it'd be better to probably disable CL
             }
         }
+#if VP8_LOOP_FILTER_MULTI_LEVEL
     }
+#endif
     
     if (first_run){
         memset(filter_args, -1, sizeof(VP8_LOOPFILTER_ARGS)*NUM_KERNELS);
