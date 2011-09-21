@@ -4,7 +4,7 @@
 typedef unsigned char uc;
 typedef signed char sc;
 
-__inline signed char vp8_filter_mask(sc, sc, uchar8);
+__inline signed char vp8_filter_mask(uc, sc, uchar8);
 __inline signed char vp8_simple_filter_mask(signed char, signed char, uc, uc, uc, uc);
 __inline uchar vp8_hevmask(signed char, uchar4);
 
@@ -714,7 +714,7 @@ __inline uchar vp8_hevmask(signed char thresh, uchar4 pq)
 
 
 /* should we apply any filter at all ( 11111111 yes, 00000000 no) */
-__inline signed char vp8_filter_mask( signed char limit, signed char flimit,
+__inline signed char vp8_filter_mask( uchar limit, signed char flimit,
         uchar8 pq)
 {
     //Only apply the filter if the difference is LESS than 'limit'
