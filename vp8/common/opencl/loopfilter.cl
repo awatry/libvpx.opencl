@@ -12,13 +12,13 @@ __inline uchar8 vp8_mbfilter(signed char mask, uchar hev, uchar8);
 
 __inline void vp8_simple_filter(signed char mask,global uc *base, int op1_off,int op0_off,int oq0_off,int oq1_off);
 
-constant int threads[3] = {16, 8, 8};
+constant size_t threads[3] = {16, 8, 8};
 
 #ifndef __CL_VERSION_1_0__
 #define __CL_VERSION_1_0__ 100
 #endif 
 
-#if __OPENCL_VERSION__ == __CL_VERSION_1_0__
+#if !defined(__OPENCL_VERSION__) || (__OPENCL_VERSION__ == __CL_VERSION_1_0__)
 #define clamp(x,y,z) vp8_char_clamp(x)
 char vp8_char_clamp(int in){
     return max(min(in, 127), -128);
@@ -597,9 +597,10 @@ kernel void vp8_loop_filter_simple_all_edges_kernel
     global int *priority_num_blocks
 )
 {
-    
+    int block = (int)get_global_id(2);
+
     for (int i = 0; i < num_levels; i++){
-        if (get_global_id(2) < priority_num_blocks[priority_level]){
+        if (block < priority_num_blocks[priority_level]){
             vp8_loop_filter_simple_vertical_edge_worker(s_base, offsets, pitches,
                     lfi, filters_in, 1, COLS_LOCATION, 0, priority_level,
                     block_offsets, priority_num_blocks
@@ -622,7 +623,7 @@ kernel void vp8_loop_filter_simple_all_edges_kernel
 
         barrier(CLK_GLOBAL_MEM_FENCE);
 
-        if (get_global_id(2) < priority_num_blocks[priority_level]){
+        if (block < priority_num_blocks[priority_level]){
             vp8_loop_filter_simple_horizontal_edge_worker(s_base, offsets, pitches, lfi,
                     filters_in, 1, ROWS_LOCATION, 4, priority_level,
                     block_offsets, priority_num_blocks

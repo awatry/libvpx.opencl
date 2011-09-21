@@ -131,13 +131,22 @@ int cl_common_init() {
     	char buf[2048];
         size_t len;
         
+#if 0
     	err = clGetPlatformInfo( platform_ids[i], CL_PLATFORM_VENDOR, sizeof(buf), buf, &len);
     	if (err != CL_SUCCESS){
             fprintf(stderr, "Error retrieving platform vendor for platform %d",i);
             continue;
     	}
-    	//printf("Platform %d: %s\n",i,buf);
+    	printf("Platform %d: %s\n",i,buf);
 
+        err = clGetPlatformInfo( platform_ids[i], CL_PLATFORM_VERSION, sizeof(buf), buf, &len);
+    	if (err != CL_SUCCESS){
+            fprintf(stderr, "Error retrieving platform version for platform %d",i);
+            continue;
+    	}
+    	printf("Version %d: %s\n",i,buf);
+#endif
+        
         //If you need to force a platform (e.g. CPU-only testing), uncomment this
         //if (strstr(buf,"NVIDIA"))
         //    continue;
