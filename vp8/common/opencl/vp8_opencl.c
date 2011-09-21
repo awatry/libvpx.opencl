@@ -131,25 +131,34 @@ int cl_common_init() {
     	char buf[2048];
         size_t len;
         
+#if 0
     	err = clGetPlatformInfo( platform_ids[i], CL_PLATFORM_VENDOR, sizeof(buf), buf, &len);
     	if (err != CL_SUCCESS){
             fprintf(stderr, "Error retrieving platform vendor for platform %d",i);
             continue;
     	}
-    	//printf("Platform %d: %s\n",i,buf);
+    	printf("Platform %d: %s\n",i,buf);
 
+        err = clGetPlatformInfo( platform_ids[i], CL_PLATFORM_VERSION, sizeof(buf), buf, &len);
+    	if (err != CL_SUCCESS){
+            fprintf(stderr, "Error retrieving platform version for platform %d",i);
+            continue;
+    	}
+    	printf("Version %d: %s\n",i,buf);
+#endif
+        
         //If you need to force a platform (e.g. CPU-only testing), uncomment this
         //if (strstr(buf,"NVIDIA"))
         //    continue;
 
     	//Try to find a valid compute device
     	//Favor the GPU, but fall back to any other available device if necessary
-#if defined(__APPLE__)
+#if defined(__MACOS_10_6__)
     	printf("Running CL as CPU-only for now...\n");
         err = clGetDeviceIDs(platform_ids[i], CL_DEVICE_TYPE_CPU, MAX_NUM_DEVICES, devices, &num_devices);
 #else
         err = clGetDeviceIDs(platform_ids[i], CL_DEVICE_TYPE_ALL, MAX_NUM_DEVICES, devices, &num_devices);
-#endif //__APPLE__
+#endif //Snow Leopard
         //printf("found %d devices\n", num_devices);
         cl_data.device_id = NULL;
         for( dev = 0; dev < num_devices; dev++ ){

@@ -4,7 +4,7 @@
 typedef unsigned char uc;
 typedef signed char sc;
 
-__inline signed char vp8_filter_mask(sc, sc, uchar8);
+__inline signed char vp8_filter_mask(uc, sc, uchar8);
 __inline signed char vp8_simple_filter_mask(signed char, signed char, uc, uc, uc, uc);
 __inline uchar vp8_hevmask(signed char, uchar4);
 
@@ -12,13 +12,13 @@ __inline uchar8 vp8_mbfilter(signed char mask, uchar hev, uchar8);
 
 __inline void vp8_simple_filter(signed char mask,global uc *base, int op1_off,int op0_off,int oq0_off,int oq1_off);
 
-constant int threads[3] = {16, 8, 8};
+constant size_t threads[3] = {16, 8, 8};
 
 #ifndef __CL_VERSION_1_0__
 #define __CL_VERSION_1_0__ 100
 #endif 
 
-#if __OPENCL_VERSION__ == __CL_VERSION_1_0__
+#if !defined(__OPENCL_VERSION__) || (__OPENCL_VERSION__ == __CL_VERSION_1_0__)
 #define clamp(x,y,z) vp8_char_clamp(x)
 char vp8_char_clamp(int in){
     return max(min(in, 127), -128);
@@ -67,7 +67,8 @@ __inline uchar4 vp8_filter(
      * if it equals 4 we'll set to adjust by -1 to account for the fact
      * we'd round 3 the other way
      */
-    Filter = add_sat((char2)vp8_filter, (char2){4,3});
+    char2 rounding = {4,3};
+    Filter = add_sat((char2)vp8_filter, rounding);
     Filter.s0 >>= 3;
     Filter.s1 >>= 3;
     
@@ -635,44 +636,54 @@ kernel void vp8_loop_filter_simple_all_edges_kernel
     global int *priority_num_blocks
 )
 {
-    
-    vp8_loop_filter_simple_vertical_edge_worker(s_base, offsets, pitches,
-            lfi, filters_in, 1, COLS_LOCATION, 0, priority_level,
-            block_offsets, priority_num_blocks
-    );
+    int block = (int)get_global_id(2);
 
-    //3 Y plane iterations
-    vp8_loop_filter_simple_vertical_edge_worker(s_base, offsets, pitches,
-            lfi, filters_in, 0, DC_DIFFS_LOCATION, 1, priority_level,
-            block_offsets, priority_num_blocks
-    );
-    vp8_loop_filter_simple_vertical_edge_worker(s_base, offsets, pitches,
-            lfi, filters_in, 0, DC_DIFFS_LOCATION, 2, priority_level,
-            block_offsets, priority_num_blocks
-    );
-    vp8_loop_filter_simple_vertical_edge_worker(s_base, offsets, pitches,
-            lfi, filters_in, 0, DC_DIFFS_LOCATION, 3, priority_level,
-            block_offsets, priority_num_blocks
-    );
+    for (int i = 0; i < num_levels; i++){
+        if (block < priority_num_blocks[priority_level]){
+            vp8_loop_filter_simple_vertical_edge_worker(s_base, offsets, pitches,
+                    lfi, filters_in, 1, COLS_LOCATION, 0, priority_level,
+                    block_offsets, priority_num_blocks
+            );
 
-    barrier(CLK_GLOBAL_MEM_FENCE);
+            //3 Y plane iterations
+            vp8_loop_filter_simple_vertical_edge_worker(s_base, offsets, pitches,
+                    lfi, filters_in, 0, DC_DIFFS_LOCATION, 1, priority_level,
+                    block_offsets, priority_num_blocks
+            );
+            vp8_loop_filter_simple_vertical_edge_worker(s_base, offsets, pitches,
+                    lfi, filters_in, 0, DC_DIFFS_LOCATION, 2, priority_level,
+                    block_offsets, priority_num_blocks
+            );
+            vp8_loop_filter_simple_vertical_edge_worker(s_base, offsets, pitches,
+                    lfi, filters_in, 0, DC_DIFFS_LOCATION, 3, priority_level,
+                    block_offsets, priority_num_blocks
+            );
+        }
 
-    vp8_loop_filter_simple_horizontal_edge_worker(s_base, offsets, pitches, lfi,
-            filters_in, 1, ROWS_LOCATION, 4, priority_level,
-            block_offsets, priority_num_blocks
-    );
-    vp8_loop_filter_simple_horizontal_edge_worker(s_base, offsets, pitches, lfi,
-            filters_in, 0, DC_DIFFS_LOCATION, 5, priority_level,
-            block_offsets, priority_num_blocks
-    );
-    vp8_loop_filter_simple_horizontal_edge_worker(s_base, offsets, pitches, lfi,
-            filters_in, 0, DC_DIFFS_LOCATION, 6, priority_level,
-            block_offsets, priority_num_blocks
-    );
-    vp8_loop_filter_simple_horizontal_edge_worker(s_base, offsets, pitches, lfi,
-            filters_in, 0, DC_DIFFS_LOCATION, 7, priority_level,
-            block_offsets, priority_num_blocks
-    );
+        barrier(CLK_GLOBAL_MEM_FENCE);
+
+        if (block < priority_num_blocks[priority_level]){
+            vp8_loop_filter_simple_horizontal_edge_worker(s_base, offsets, pitches, lfi,
+                    filters_in, 1, ROWS_LOCATION, 4, priority_level,
+                    block_offsets, priority_num_blocks
+            );
+            vp8_loop_filter_simple_horizontal_edge_worker(s_base, offsets, pitches, lfi,
+                    filters_in, 0, DC_DIFFS_LOCATION, 5, priority_level,
+                    block_offsets, priority_num_blocks
+            );
+            vp8_loop_filter_simple_horizontal_edge_worker(s_base, offsets, pitches, lfi,
+                    filters_in, 0, DC_DIFFS_LOCATION, 6, priority_level,
+                    block_offsets, priority_num_blocks
+            );
+            vp8_loop_filter_simple_horizontal_edge_worker(s_base, offsets, pitches, lfi,
+                    filters_in, 0, DC_DIFFS_LOCATION, 7, priority_level,
+                    block_offsets, priority_num_blocks
+            );
+        }
+        
+        barrier(CLK_GLOBAL_MEM_FENCE);
+        priority_level++;
+    }
 }
 
 //Inline and non-kernel functions follow.
@@ -693,10 +704,11 @@ __inline uchar8 vp8_mbfilter(
     vp8_filter &= mask;
 
     char2 filter = (char2)vp8_filter;
-    filter &= hev;
+    filter &= (char2)hev;
 
     /* save bottom 3 bits so that we round one side +4 and the other +3 */
-    filter = add_sat(filter, (char2){4,3});
+    char2 rounding = {4,3};
+    filter = add_sat(filter, rounding);
     filter.s0 >>= 3;
     filter.s1 >>= 3;
     
@@ -730,7 +742,7 @@ __inline uchar vp8_hevmask(signed char thresh, uchar4 pq)
 
 
 /* should we apply any filter at all ( 11111111 yes, 00000000 no) */
-__inline signed char vp8_filter_mask( signed char limit, signed char flimit,
+__inline signed char vp8_filter_mask( uchar limit, signed char flimit,
         uchar8 pq)
 {
     //Only apply the filter if the difference is LESS than 'limit'
@@ -786,7 +798,8 @@ __inline void vp8_simple_filter(
     vp8_filter &= mask;
 
     /* save bottom 3 bits so that we round one side +4 and the other +3 */
-    filter = add_sat((char2)vp8_filter, (char2){4,3});
+    char2 rounding = {4,3};
+    filter = add_sat((char2)vp8_filter, rounding);
     filter.s0 >>= 3;
     filter.s1 >>= 3;
 
