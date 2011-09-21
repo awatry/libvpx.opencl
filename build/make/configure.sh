@@ -555,6 +555,10 @@ process_common_toolchain() {
                 tgt_isa=x86_64
                 tgt_os=darwin10
                 ;;
+            *darwin11*)
+                tgt_isa=x86_64
+                tgt_os=darwin11
+                ;;
             *mingw32*|*cygwin*)
                 [ -z "$tgt_isa" ] && tgt_isa=x86
                 tgt_os=win32
@@ -615,10 +619,16 @@ process_common_toolchain() {
             add_ldflags "-mmacosx-version-min=10.5"
             ;;
         *-darwin10-*)
-            add_cflags  "-isysroot /Developer/SDKs/MacOSX10.6.sdk"
+            add_cflags  "-isysroot /Developer/SDKs/MacOSX10.6.sdk/"
             add_cflags  "-mmacosx-version-min=10.6"
-            add_ldflags "-isysroot /Developer/SDKs/MacOSX10.6.sdk"
+            add_ldflags "-isysroot /Developer/SDKs/MacOSX10.6.sdk/"
             add_ldflags "-mmacosx-version-min=10.6"
+            ;;
+        *-darwin11-*)
+            add_cflags  "-isysroot /Developer/SDKs/MacOSX10.7.sdk/"
+            add_cflags  "-mmacosx-version-min=10.7"
+            add_ldflags "-isysroot /Developer/SDKs/MacOSX10.7.sdk/"
+            add_ldflags "-mmacosx-version-min=10.7"
             ;;
     esac
 
@@ -966,8 +976,12 @@ process_common_toolchain() {
 	
         #Use dlopen() to load OpenCL when possible.
         case ${toolchain} in
-            *darwin10*)
-                check_add_cflags -D__APPLE__
+            *darwin10*) #Snow Leopard
+                check_add_cflags -D__APPLE__ -D__MACOS_10_6__
+                add_extralibs -framework OpenCL
+                ;;
+            *darwin11*) #Lion
+                check_add_cflags -D__APPLE__ -D__MACOS_10_7__
                 add_extralibs -framework OpenCL
                 ;;
             *-win32-gcc)

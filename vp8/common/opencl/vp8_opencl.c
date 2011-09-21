@@ -144,12 +144,12 @@ int cl_common_init() {
 
     	//Try to find a valid compute device
     	//Favor the GPU, but fall back to any other available device if necessary
-#if defined(__APPLE__)
+#if defined(__MACOS_10_6__)
     	printf("Running CL as CPU-only for now...\n");
         err = clGetDeviceIDs(platform_ids[i], CL_DEVICE_TYPE_CPU, MAX_NUM_DEVICES, devices, &num_devices);
 #else
         err = clGetDeviceIDs(platform_ids[i], CL_DEVICE_TYPE_ALL, MAX_NUM_DEVICES, devices, &num_devices);
-#endif //__APPLE__
+#endif //Snow Leopard
         //printf("found %d devices\n", num_devices);
         cl_data.device_id = NULL;
         for( dev = 0; dev < num_devices; dev++ ){

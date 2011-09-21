@@ -67,7 +67,8 @@ __inline uchar4 vp8_filter(
      * if it equals 4 we'll set to adjust by -1 to account for the fact
      * we'd round 3 the other way
      */
-    Filter = add_sat((char2)vp8_filter, (char2){4,3});
+    char2 rounding = {4,3};
+    Filter = add_sat((char2)vp8_filter, rounding);
     Filter.s0 >>= 3;
     Filter.s1 >>= 3;
     
@@ -663,10 +664,11 @@ __inline uchar8 vp8_mbfilter(
     vp8_filter &= mask;
 
     char2 filter = (char2)vp8_filter;
-    filter &= hev;
+    filter &= (char2)hev;
 
     /* save bottom 3 bits so that we round one side +4 and the other +3 */
-    filter = add_sat(filter, (char2){4,3});
+    char2 rounding = {4,3};
+    filter = add_sat(filter, rounding);
     filter.s0 >>= 3;
     filter.s1 >>= 3;
     
@@ -780,7 +782,8 @@ __inline void vp8_simple_filter(
     vp8_filter &= mask;
 
     /* save bottom 3 bits so that we round one side +4 and the other +3 */
-    filter = add_sat((char2)vp8_filter, (char2){4,3});
+    char2 rounding = {4,3};
+    filter = add_sat((char2)vp8_filter, rounding);
     filter.s0 >>= 3;
     filter.s1 >>= 3;
 
