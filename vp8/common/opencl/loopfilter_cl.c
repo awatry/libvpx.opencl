@@ -19,14 +19,16 @@
 #include "vp8_opencl.h"
 #include "blockd_cl.h"
 
-#if NVIDIA
+/* Note: Testing on 9/22 indicates that mapping buffers no longer provides a
+         significant advantage on AMD hardware due to traffic reductions.
+         The !mapped route is now being made the default to appease NVidia's GPUs.
+ */
+#if 1
 #define USE_MAPPED_BUFFERS 0
-#define MAP_PITCHES 0
 #define MAP_FILTERS 0
 #define MAP_OFFSETS 0
 #else
 #define USE_MAPPED_BUFFERS 1
-#define MAP_PITCHES 1
 #define MAP_FILTERS 1
 #define MAP_OFFSETS 1
 #endif
