@@ -33,7 +33,7 @@ extern "C" {
 #define TWO_PASS_SIXTAP 0
 
 //Snow Leopard doesn't support CopyRect, Lion does.
-#ifdef __APPLE__
+#ifdef __MACOS_10_6__
 #define MEM_COPY_KERNEL 1
 #else
 //Note that OpenCL 1.0 also doesn't support clEnqueueCopyBufferRect, 1.1 does.
