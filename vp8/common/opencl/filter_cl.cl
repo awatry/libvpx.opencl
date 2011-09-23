@@ -2,7 +2,7 @@
 #pragma OPENCL EXTENSION cl_amd_printf : enable
 
 #define BILINEAR_ROW_SIZE 2
-__constant int bilinear_filters[8*2] = {
+constant int bilinear_filters[8*2] = {
     128, 0,
     112, 16,
     96, 32,
@@ -14,22 +14,23 @@ __constant int bilinear_filters[8*2] = {
 };
 
 #define SIXTAP_ROW_SIZE 8
-__constant short sub_pel_filters[64] = {
+constant short8 sub_pel_filters[8] = {
     //These were originally 8x6, but are padded for vector ops
-     0, 0, 128, 0, 0, 0, 0, 0, /* note that 1/8 pel positions are just as per alpha -0.5 bicubic */
-     0, -6, 123, 12, -1, 0, 0, 0,
-     2, -11, 108, 36, -8, 1, 0, 0, /* New 1/4 pel 6 tap filter */
-     0, -9, 93, 50, -6, 0, 0, 0,
-     3, -16, 77, 77, -16, 3, 0, 0, /* New 1/2 pel 6 tap filter */
-     0, -6, 50, 93, -9, 0, 0, 0,
-     1, -8, 36, 108, -11, 2, 0, 0, /* New 1/4 pel 6 tap filter */
-     0, -1, 12, 123, -6, 0, 0, 0,
+    {0, 0, 128, 0, 0, 0, 0, 0}, /* note that 1/8 pel positions are just as per alpha -0.5 bicubic */
+    {0, -6, 123, 12, -1, 0, 0, 0},
+    {2, -11, 108, 36, -8, 1, 0, 0}, /* New 1/4 pel 6 tap filter */
+    {0, -9, 93, 50, -6, 0, 0, 0},
+    {3, -16, 77, 77, -16, 3, 0, 0}, /* New 1/2 pel 6 tap filter */
+    {0, -6, 50, 93, -9, 0, 0, 0},
+    {1, -8, 36, 108, -11, 2, 0, 0}, /* New 1/4 pel 6 tap filter */
+    {0, -1, 12, 123, -6, 0, 0, 0}
 };
 
-
-__inline short8 sub_pel_filter_values(int offset){
+__inline short8 sub_pel_filter_values(int offset, constant short8 *sub_pel_filters){
+#if 0
+    return sub_pel_filters[offset]; //doesn't work on AMD in Windows...?
+#else
     short8 result = 0;
-    
     switch (offset){
         case 0:
             result.s2 = 128;
@@ -85,8 +86,8 @@ __inline short8 sub_pel_filter_values(int offset){
         default:
             break;
     }
-    
     return result;
+#endif
 }
 
 kernel void vp8_filter_block2d_first_pass_kernel(
@@ -105,17 +106,17 @@ kernel void vp8_filter_block2d_first_pass_kernel(
 
     int Temp;
 
-    __constant short *vp8_filter = &sub_pel_filters[filter_offset*SIXTAP_ROW_SIZE];
+    short8 vp8_filter = sub_pel_filter_values(filter_offset, sub_pel_filters);
 
     if (tid < (output_width*output_height)){
         src_offset = tid + (tid/output_width * (src_pixels_per_line - output_width));
 
-        Temp = (int)(src_ptr[src_offset - 2] * vp8_filter[0]) +
-           (int)(src_ptr[src_offset - 1] * vp8_filter[1]) +
-           (int)(src_ptr[src_offset]     * vp8_filter[2]) +
-           (int)(src_ptr[src_offset + 1] * vp8_filter[3]) +
-           (int)(src_ptr[src_offset + 2] * vp8_filter[4]) +
-           (int)(src_ptr[src_offset + 3] * vp8_filter[5]) +
+        Temp = (int)(src_ptr[src_offset - 2] * vp8_filter.s0) +
+           (int)(src_ptr[src_offset - 1] * vp8_filter.s1) +
+           (int)(src_ptr[src_offset]     * vp8_filter.s2) +
+           (int)(src_ptr[src_offset + 1] * vp8_filter.s3) +
+           (int)(src_ptr[src_offset + 2] * vp8_filter.s4) +
+           (int)(src_ptr[src_offset + 3] * vp8_filter.s5) +
            (VP8_FILTER_WEIGHT >> 1);      /* Rounding */
 
         /* Normalize back to 0-255 */
@@ -157,8 +158,9 @@ kernel void vp8_filter_block2d_second_pass_kernel
 
     unsigned int src_increment = src_pixels_per_line - output_width;
 
-    __constant short *vp8_filter = &sub_pel_filters[filter_offset*SIXTAP_ROW_SIZE];
-
+    short8 vp8_filter = sub_pel_filter_values(filter_offset, sub_pel_filters);
+    
+    
     if (i < (output_width * output_height)){
         out_offset = i/output_width;
         src_offset = out_offset;
@@ -167,13 +169,13 @@ kernel void vp8_filter_block2d_second_pass_kernel
         out_offset = i%output_width + (out_offset * output_pitch);
 
         /* Apply filter */
-        Temp = ((int)src_ptr[src_offset - PS2] * vp8_filter[0]) +
-           ((int)src_ptr[src_offset -(int)pixel_step] * vp8_filter[1]) +
-           ((int)src_ptr[src_offset]                  * vp8_filter[2]) +
-           ((int)src_ptr[src_offset + pixel_step]     * vp8_filter[3]) +
-           ((int)src_ptr[src_offset + PS2]       * vp8_filter[4]) +
-           ((int)src_ptr[src_offset + PS3]       * vp8_filter[5]) +
-           (VP8_FILTER_WEIGHT >> 1);   /* Rounding */
+        Temp = ((int)src_ptr[src_offset - PS2] * vp8_filter.s0 +
+           ((int)src_ptr[src_offset -(int)pixel_step] * vp8_filter.s1) +
+           ((int)src_ptr[src_offset]                  * vp8_filter.s2) +
+           ((int)src_ptr[src_offset + pixel_step]     * vp8_filter.s3) +
+           ((int)src_ptr[src_offset + PS2]       * vp8_filter.s4) +
+           ((int)src_ptr[src_offset + PS3]       * vp8_filter.s5) +
+           (VP8_FILTER_WEIGHT >> 1));   /* Rounding */
 
         /* Normalize back to 0-255 */
         Temp = Temp >> VP8_FILTER_SHIFT;
@@ -428,7 +430,7 @@ void vp8_filter_block2d_first_pass(
     //__constant short *vp8_filter = &sub_pel_filters[filter_offset*SIXTAP_ROW_SIZE];
     //printf("offset = %d\n", filter_offset*SIXTAP_ROW_SIZE);
     if (tid < (output_width*output_height)){
-        short8 filter = sub_pel_filter_values(filter_offset);
+        short8 filter = sub_pel_filter_values(filter_offset, sub_pel_filters);
 
         //printf("filter_offset = %d, filters = {%d, %d, %d, %d, %d, %d}\n", filter_offset, filter0, filter1, filter2, filter3, filter4, filter5);
         //printf("sub_pel_filters[0][2] = %d\n", sub_pel_filters[2]);
@@ -522,7 +524,7 @@ void vp8_filter_block2d_second_pass
 
     uint i = get_global_id(0);
 
-    short8 vp8_filter = sub_pel_filter_values(filter_offset);
+    short8 vp8_filter = sub_pel_filter_values(filter_offset, sub_pel_filters);
     
     if (i < (output_width * output_height)){
         out_offset = i/output_width;
