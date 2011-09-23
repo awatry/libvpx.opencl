@@ -139,6 +139,10 @@ int cl_common_init() {
     	}
     	printf("Platform %d: %s\n",i,buf);
 
+        //If you need to force a platform (e.g. CPU-only testing), uncomment this
+        //if (strstr(buf,"NVIDIA"))
+        //   continue;
+
         err = clGetPlatformInfo( platform_ids[i], CL_PLATFORM_VERSION, sizeof(buf), buf, &len);
     	if (err != CL_SUCCESS){
             fprintf(stderr, "Error retrieving platform version for platform %d",i);
@@ -146,12 +150,8 @@ int cl_common_init() {
     	}
     	printf("Version %d: %s\n",i,buf);
 #endif
-        
-        //If you need to force a platform (e.g. CPU-only testing), uncomment this
-        //if (strstr(buf,"NVIDIA"))
-        //    continue;
 
-    	//Try to find a valid compute device
+        //Try to find a valid compute device
     	//Favor the GPU, but fall back to any other available device if necessary
 #if defined(__MACOS_10_6__)
     	printf("Running CL as CPU-only for now...\n");
