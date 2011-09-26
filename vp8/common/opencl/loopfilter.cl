@@ -223,7 +223,6 @@ __inline void vp8_mbloop_filter_vertical_edge_worker(
     global int *filters,
     int filter_type,
     int filter_level,
-    size_t num_blocks,
     size_t plane,
     size_t block,
     int p //pitches[plane]
@@ -233,7 +232,6 @@ __inline void vp8_mbloop_filter_vertical_edge_worker(
     size_t thread = get_global_id(0);
     int s_off = offsets[block_offset] + p*thread;
     
-    //uchar8 data = vload8(0, &s_base[s_off]);
     uchar8 data = load8(s_base, s_off, 1);
 
     char mask = vp8_filter_mask(lfi->lim[thread], lfi->mbflim[thread], data);
@@ -243,7 +241,6 @@ __inline void vp8_mbloop_filter_vertical_edge_worker(
     data = vp8_mbfilter(mask, hev, data);
 
     save6(s_base, s_off, 1, data);
-    //vstore8(data, 0, &s_base[s_off]);
 }
 
 kernel void vp8_loop_filter_all_edges_kernel(
@@ -293,7 +290,7 @@ kernel void vp8_loop_filter_all_edges_kernel(
         if (thread_level_filter){
             if ( filters[num_blocks*COLS_LOCATION + block] > 0 ){
                 vp8_mbloop_filter_vertical_edge_worker(s_base, offsets, pitches, lf_info, filters,
-                        COLS_LOCATION, filter_level, num_blocks, plane, block, p);
+                        COLS_LOCATION, filter_level, plane, block, p);
             }
 
             //YUV planes, then 2 more passes of Y plane
@@ -419,7 +416,7 @@ kernel void vp8_loop_filter_vertical_edges_kernel(
     do_filter &= thread_level_filter;
     if (do_filter){
         vp8_mbloop_filter_vertical_edge_worker(s_base, offsets, pitches, lf_info, filters,
-            COLS_LOCATION, filter_level, num_blocks, plane, block, p);
+            COLS_LOCATION, filter_level, plane, block, p);
     }
     
     //YUV planes, then 2 more passes of Y plane
@@ -699,8 +696,7 @@ __inline uchar8 vp8_mbfilter(
     pq.s3 = add_sat(pq.s3, filter.s1);
 
     /* only apply wider filter if not high edge variance */
-    vp8_filter &= ~hev;
-    filter.s1 = vp8_filter;
+    filter.s1 = vp8_filter & ~hev;
 
     /* roughly 3/7th, 2/7th, and 1/7th difference across boundary */
     u.s0 = clamp((63 + filter.s1 * 27) >> 7, -128, 127);
@@ -728,7 +724,8 @@ __inline uchar vp8_hevmask(signed char thresh, uchar4 pq)
 __inline signed char vp8_filter_mask( uchar limit, signed char flimit,
         uchar8 pq)
 {
-    //Only apply the filter if the difference is LESS than 'limit'
+#if 1
+   //Only apply the filter if the difference is LESS than 'limit'
     char mask = (abs_diff(pq.s0, pq.s1) > limit);
     mask |= (abs_diff(pq.s1, pq.s2) > limit);
     mask |= (abs_diff(pq.s2, pq.s3) > limit);
@@ -737,6 +734,12 @@ __inline signed char vp8_filter_mask( uchar limit, signed char flimit,
     mask |= (abs_diff(pq.s7, pq.s6) > limit);
     mask |= (abs_diff(pq.s3, pq.s4) * 2 + abs_diff(pq.s2, pq.s5) / 2  > flimit * 2 + limit);
     return mask - 1;
+#else
+	char8 mask8 = abs_diff(pq.s01256700, pq.s12345600) > limit;
+	mask8 |= (char8)(abs_diff(pq.s3, pq.s4) * 2 + abs_diff(pq.s2, pq.s5) / 2 > flimit * 2 + limit);
+	mask8--;
+	return any(mask8) ? -1 : 0;
+#endif
 }
 
 /* should we apply any filter at all ( 11111111 yes, 00000000 no) */
