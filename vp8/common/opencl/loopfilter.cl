@@ -115,18 +115,6 @@ __inline void save6(global unsigned char *s_base, int s_off, int p, uchar8 data)
     s_base[s_off + 2*p  ] = data.s6;
 }
 
-__inline void save8(global unsigned char *s_base, int s_off, int p, uchar8 data){
-        s_base[s_off - 4*p] = data.s0;
-        s_base[s_off - 3*p] = data.s1;
-        s_base[s_off - 2*p] = data.s2;
-        s_base[s_off - p  ] = data.s3;
-        s_base[s_off      ] = data.s4;
-        s_base[s_off + p  ] = data.s5;
-        s_base[s_off + 2*p  ] = data.s6;
-        s_base[s_off + 3*p  ] = data.s7;
-}
-
-
 // Filters horizontal edges of inner blocks in a Macroblock
 __inline void vp8_loop_filter_horizontal_edge_worker(
     global unsigned char *s_base,
@@ -243,9 +231,10 @@ __inline void vp8_mbloop_filter_vertical_edge_worker(
 
     int block_offset = block*3+plane;
     size_t thread = get_global_id(0);
-    int s_off = offsets[block_offset] + p*thread - 4;
+    int s_off = offsets[block_offset] + p*thread;
     
-    uchar8 data = vload8(0, &s_base[s_off]);
+    //uchar8 data = vload8(0, &s_base[s_off]);
+    uchar8 data = load8(s_base, s_off, 1);
 
     char mask = vp8_filter_mask(lfi->lim[thread], lfi->mbflim[thread], data);
 
@@ -253,7 +242,8 @@ __inline void vp8_mbloop_filter_vertical_edge_worker(
 
     data = vp8_mbfilter(mask, hev, data);
 
-    vstore8(data, 0, &s_base[s_off]);
+    save6(s_base, s_off, 1, data);
+    //vstore8(data, 0, &s_base[s_off]);
 }
 
 kernel void vp8_loop_filter_all_edges_kernel(
