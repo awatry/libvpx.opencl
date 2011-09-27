@@ -400,8 +400,6 @@ void vp8_loop_filter_frame
     u_ptr = post->u_buffer;
     v_ptr = post->v_buffer;
 
-#if 0
-
     /* vp8_filter each macro block */
     for (mb_row = 0; mb_row < cm->mb_rows; mb_row++)
     {
@@ -411,18 +409,11 @@ void vp8_loop_filter_frame
 
             filter_level = baseline_filter_level[Segment];
             
-            printf("mode_info_offset = %d\n", mbd->mode_info_context - cm->mi);
-            printf("row = %d, col = %d\n", mb_row, mb_col);
-            printf("y_offset = %d, uv_offset = %d\n", y_ptr - post->y_buffer, u_ptr - post->u_buffer);
-
             /* Distance of Mb to the various image edges.
              * These specified to 8th pel as they are always compared to values that are in 1/8th pel units
              * Apply any context driven MB level adjustment
              */
             filter_level = vp8_adjust_mb_lf_value(mbd, filter_level);
-
-            printf("filter_level = %d\n", filter_level);
-            
 
             if (filter_level)
             {
@@ -453,38 +444,6 @@ void vp8_loop_filter_frame
 
         mbd->mode_info_context++;         /* Skip border mb */
     }
-
-#else
-#define VP8_LOOP_FILTER_RASTER_SCAN 0
-#if VP8_LOOP_FILTER_RASTER_SCAN
-    for (mb_row = 0; mb_row < cm->mb_rows; mb_row++) {
-        for (mb_col = 0; mb_col < cm->mb_cols; mb_col++) {
-#else
-    //Maximum priority 
-    for (i = 0; i < 2 * (cm->mb_rows - 1) + cm->mb_cols ; i++){
-        //Process all MBs in current priority
-        for (mb_row = 0; mb_row <= i && mb_row < cm->mb_rows; mb_row++){
-        //for (mb_row = (i > cm->mb_rows ? cm->mb_rows : i); mb_row >= 0; mb_row--){
-
-            //First row is done left to right, subsequent rows are offset two
-            //to the left to prevent corruption of a pure diagonal scan that
-            //is offset by 1.
-            if (mb_row == 0){
-                mb_col = i - mb_row;
-            } else {
-                mb_col = i - 2 * mb_row;
-            }
-
-            //Skip non-existant MBs
-            if ((mb_col > -1 && (mb_col < cm->mb_cols)) && (mb_row < cm->mb_rows)){
-#endif
-                vp8_loop_filter_macroblock(mb_row, mb_col, cm, mbd, baseline_filter_level, post);
-#if !VP8_LOOP_FILTER_RASTER_SCAN
-            }
-#endif
-        }
-    }
-#endif //if !RASTER_SCAN
 }
 
 
