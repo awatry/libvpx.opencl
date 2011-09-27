@@ -433,7 +433,9 @@ void vp8_loop_filter_add_macroblock_cl(VP8_COMMON *cm, int mb_row, int mb_col,
     filter_levels[pos] = vp8_loop_filter_level(mbd, baseline_filter_level);
     row[pos] = mb_row;
     col[pos] = mb_col;
-    dc_diffs[pos] = mbd->mode_info_context->mbmi.dc_diff;
+    dc_diffs[pos] = ! (mbd->mode_info_context->mbmi.mode != B_PRED &&
+                            mbd->mode_info_context->mbmi.mode != SPLITMV &&
+                            mbd->mode_info_context->mbmi.mb_skip_coeff);
 }
 
 void vp8_loop_filter_build_priority(int priority, VP8_COMMON *cm, MACROBLOCKD *mbd,

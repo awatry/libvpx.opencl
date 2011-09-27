@@ -219,8 +219,6 @@ static void decode_macroblock(VP8D_COMP *pbi, MACROBLOCKD *xd)
         clamp_mvs(xd);
     }
 
-    xd->mode_info_context->mbmi.dc_diff = 1;
-
 #if PROFILE_OUTPUT
      if (xd->frame_type == KEY_FRAME)
          printf("Intra-Coded MB\n");
@@ -242,9 +240,10 @@ static void decode_macroblock(VP8D_COMP *pbi, MACROBLOCKD *xd)
     }
 #endif
 
-    if (xd->mode_info_context->mbmi.mode != B_PRED && xd->mode_info_context->mbmi.mode != SPLITMV && eobtotal == 0)
+    eobtotal |= (xd->mode_info_context->mbmi.mode == B_PRED ||
+                  xd->mode_info_context->mbmi.mode == SPLITMV);
+    if (!eobtotal)
     {
-        xd->mode_info_context->mbmi.dc_diff = 0;
         skip_recon_mb(pbi, xd);
         return;
     }

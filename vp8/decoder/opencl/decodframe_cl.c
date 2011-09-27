@@ -120,7 +120,6 @@ void vp8_decode_macroblock_cl(VP8D_COMP *pbi, MACROBLOCKD *xd, int eobtotal)
 
     if (xd->mode_info_context->mbmi.mode != B_PRED && xd->mode_info_context->mbmi.mode != SPLITMV && eobtotal == 0)
     {
-        xd->mode_info_context->mbmi.dc_diff = 0;
         skip_recon_mb_cl(pbi, xd);
         return;
     }

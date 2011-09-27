@@ -293,51 +293,6 @@ int vp8_adjust_mb_lf_value(MACROBLOCKD *mbd, int filter_level)
     return filter_level;
 }
 
-void vp8_loop_filter_macroblock(int mb_row, int mb_col, VP8_COMMON *cm,
-        MACROBLOCKD *mbd, int baseline_filter_level[],
-        YV12_BUFFER_CONFIG *post) {
-
-    int Segment;
-    int mb_cols = cm->mb_cols;
-    int alt_flt_enabled = mbd->segmentation_enabled;
-    loop_filter_info *lfi = cm->lf_info;
-    int filter_level;
-
-    unsigned char *y_ptr, *u_ptr, *v_ptr;
-    int y_offset = 16 * (mb_col + (mb_row*mb_cols)) + mb_row * (post->y_stride * 16 - post->y_width);
-    int uv_offset = 8 * (mb_col + (mb_row*mb_cols)) + mb_row * (post->uv_stride * 8 - post->uv_width);
-
-    mbd->mode_info_context = cm->mi + ((mb_row * (mb_cols+1) + mb_col));
-    Segment = (alt_flt_enabled) ? mbd->mode_info_context->mbmi.segment_id : 0;
-    filter_level = baseline_filter_level[Segment];
-
-    y_ptr = post->y_buffer + y_offset;
-    u_ptr = post->u_buffer + uv_offset;
-    v_ptr = post->v_buffer + uv_offset;
-
-    /* Distance of Mb to the various image edges.
-     * These specified to 8th pel as they are always compared to values that are in 1/8th pel units
-     * Apply any context driven MB level adjustment
-     */
-    filter_level = vp8_adjust_mb_lf_value(mbd, filter_level);
-
-    if (filter_level) {
-        if (mb_col > 0)
-            cm->lf_mbv(y_ptr, u_ptr, v_ptr, post->y_stride, post->uv_stride, &lfi[filter_level], cm->simpler_lpf);
-
-        if (mbd->mode_info_context->mbmi.dc_diff > 0)
-            cm->lf_bv(y_ptr, u_ptr, v_ptr, post->y_stride, post->uv_stride, &lfi[filter_level], cm->simpler_lpf);
-
-        /* don't apply across umv border */
-        if (mb_row > 0)
-            cm->lf_mbh(y_ptr, u_ptr, v_ptr, post->y_stride, post->uv_stride, &lfi[filter_level], cm->simpler_lpf);
-
-        if (mbd->mode_info_context->mbmi.dc_diff > 0)
-            cm->lf_bh(y_ptr, u_ptr, v_ptr, post->y_stride, post->uv_stride, &lfi[filter_level], cm->simpler_lpf);
-    }
-
-}
-
 void vp8_loop_filter_frame
 (
     VP8_COMMON *cm,
@@ -406,8 +361,11 @@ void vp8_loop_filter_frame
         for (mb_col = 0; mb_col < cm->mb_cols; mb_col++)
         {
             int Segment = (alt_flt_enabled) ? mbd->mode_info_context->mbmi.segment_id : 0;
+            int skip_lf = (mbd->mode_info_context->mbmi.mode != B_PRED &&
+                            mbd->mode_info_context->mbmi.mode != SPLITMV &&
+                            mbd->mode_info_context->mbmi.mb_skip_coeff);
 
-            filter_level = baseline_filter_level[Segment];
+            int filter_level = baseline_filter_level[Segment];
             
             /* Distance of Mb to the various image edges.
              * These specified to 8th pel as they are always compared to values that are in 1/8th pel units
@@ -420,14 +378,14 @@ void vp8_loop_filter_frame
                 if (mb_col > 0)
                     cm->lf_mbv(y_ptr, u_ptr, v_ptr, post->y_stride, post->uv_stride, &lfi[filter_level], cm->simpler_lpf);
 
-                if (mbd->mode_info_context->mbmi.dc_diff > 0)
+                if (!skip_lf)
                     cm->lf_bv(y_ptr, u_ptr, v_ptr, post->y_stride, post->uv_stride, &lfi[filter_level], cm->simpler_lpf);
 
                 /* don't apply across umv border */
                 if (mb_row > 0)
                     cm->lf_mbh(y_ptr, u_ptr, v_ptr, post->y_stride, post->uv_stride, &lfi[filter_level], cm->simpler_lpf);
 
-                if (mbd->mode_info_context->mbmi.dc_diff > 0)
+                if (!skip_lf)
                     cm->lf_bh(y_ptr, u_ptr, v_ptr, post->y_stride, post->uv_stride, &lfi[filter_level], cm->simpler_lpf);
             }
 
@@ -511,6 +469,10 @@ void vp8_loop_filter_frame_yonly
         for (mb_col = 0; mb_col < cm->mb_cols; mb_col++)
         {
             int Segment = (alt_flt_enabled) ? mbd->mode_info_context->mbmi.segment_id : 0;
+            int skip_lf = (mbd->mode_info_context->mbmi.mode != B_PRED &&
+                            mbd->mode_info_context->mbmi.mode != SPLITMV &&
+                            mbd->mode_info_context->mbmi.mb_skip_coeff);
+
             filter_level = baseline_filter_level[Segment];
 
             /* Apply any context driven MB level adjustment */
@@ -521,14 +483,14 @@ void vp8_loop_filter_frame_yonly
                 if (mb_col > 0)
                     cm->lf_mbv(y_ptr, 0, 0, post->y_stride, 0, &lfi[filter_level], 0);
 
-                if (mbd->mode_info_context->mbmi.dc_diff > 0)
+                if (!skip_lf)
                     cm->lf_bv(y_ptr, 0, 0, post->y_stride, 0, &lfi[filter_level], 0);
 
                 /* don't apply across umv border */
                 if (mb_row > 0)
                     cm->lf_mbh(y_ptr, 0, 0, post->y_stride, 0, &lfi[filter_level], 0);
 
-                if (mbd->mode_info_context->mbmi.dc_diff > 0)
+                if (!skip_lf)
                     cm->lf_bh(y_ptr, 0, 0, post->y_stride, 0, &lfi[filter_level], 0);
             }
 
@@ -619,6 +581,10 @@ void vp8_loop_filter_partial_frame
         for (mb_col = 0; mb_col < mb_cols; mb_col++)
         {
             int Segment = (alt_flt_enabled) ? mbd->mode_info_context->mbmi.segment_id : 0;
+            int skip_lf = (mbd->mode_info_context->mbmi.mode != B_PRED &&
+                            mbd->mode_info_context->mbmi.mode != SPLITMV &&
+                            mbd->mode_info_context->mbmi.mb_skip_coeff);
+
             filter_level = baseline_filter_level[Segment];
 
             if (filter_level)
@@ -626,12 +592,12 @@ void vp8_loop_filter_partial_frame
                 if (mb_col > 0)
                     cm->lf_mbv(y_ptr, 0, 0, post->y_stride, 0, &lfi[filter_level], 0);
 
-                if (mbd->mode_info_context->mbmi.dc_diff > 0)
+                if (!skip_lf)
                     cm->lf_bv(y_ptr, 0, 0, post->y_stride, 0, &lfi[filter_level], 0);
 
                 cm->lf_mbh(y_ptr, 0, 0, post->y_stride, 0, &lfi[filter_level], 0);
 
-                if (mbd->mode_info_context->mbmi.dc_diff > 0)
+                if (!skip_lf)
                     cm->lf_bh(y_ptr, 0, 0, post->y_stride, 0, &lfi[filter_level], 0);
             }
 
