@@ -134,7 +134,7 @@ static void skip_recon_mb(VP8D_COMP *pbi, MACROBLOCKD *xd)
     }
     else
     {
-        vp8_build_inter_predictors_mb_s(xd);
+        vp8_build_inter16x16_predictors_mb_s(xd);
 #if CONFIG_OPENCL && ENABLE_CL_SUBPIXEL
         VP8_CL_FINISH(xd->cl_commands);
 #if !ONE_CQ_PER_MB
@@ -143,6 +143,7 @@ static void skip_recon_mb(VP8D_COMP *pbi, MACROBLOCKD *xd)
         VP8_CL_FINISH(xd->block[20].cl_commands);
 #endif
 #endif
+
     }
 }
 
