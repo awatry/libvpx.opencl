@@ -1232,7 +1232,7 @@ void vp8_set_speed_features(VP8_COMP *cpi)
         cpi->find_fractional_mv_step = vp8_skip_fractional_mv_step;
     }
 
-    if (cpi->sf.optimize_coefficients == 1)
+    if (cpi->sf.optimize_coefficients == 1 && cpi->pass!=1)
         cpi->mb.optimize = 1;
     else
         cpi->mb.optimize = 0;
@@ -3451,15 +3451,15 @@ static void encode_frame_to_data_rate
                 buff_lvl_step = (cpi->oxcf.maximum_buffer_size - cpi->oxcf.optimal_buffer_level) / Adjustment;
 
                 if (buff_lvl_step)
-                {
                     Adjustment = (cpi->buffer_level - cpi->oxcf.optimal_buffer_level) / buff_lvl_step;
-                    cpi->active_worst_quality -= Adjustment;
-                }
+                else
+                    Adjustment = 0;
             }
-            else
-            {
-                cpi->active_worst_quality -= Adjustment;
-            }
+
+            cpi->active_worst_quality -= Adjustment;
+
+            if(cpi->active_worst_quality < cpi->active_best_quality)
+                cpi->active_worst_quality = cpi->active_best_quality;
         }
     }
 
