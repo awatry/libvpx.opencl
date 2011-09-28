@@ -1684,7 +1684,10 @@ void vp8_change_config(VP8_PTR ptr, VP8_CONFIG *oxcf)
     // Only allow dropped frames in buffered mode
     cpi->drop_frames_allowed = cpi->oxcf.allow_df && cpi->buffered_mode;
 
-    cm->filter_type          = (LOOPFILTERTYPE) cpi->filter_type;
+    if (!cm->use_bilinear_mc_filter)
+        cm->mcomp_filter_type = SIXTAP;
+    else
+        cm->mcomp_filter_type = BILINEAR;
 
     cpi->target_bandwidth = cpi->oxcf.target_bandwidth;
 

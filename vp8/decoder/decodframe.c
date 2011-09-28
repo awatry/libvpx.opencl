@@ -592,7 +592,7 @@ static void init_frame(VP8D_COMP *pbi)
     {
 
         /* To enable choice of different interpolation filters */
-        if (pc->mcomp_filter_type == SIXTAP)
+        if (pc->use_bilinear_mc_filter == 0)
         {
 #if CONFIG_OPENCL
             xd->sixtap_filter = CL_TRUE;
