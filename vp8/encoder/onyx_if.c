@@ -980,11 +980,9 @@ void vp8_set_speed_features(VP8_COMP *cpi)
         {
             sf->auto_filter = 0;                     // Faster selection of loop filter
 
-#if CONFIG_REALTIME_ONLY
             sf->search_method = HEX;
-#else
-            sf->search_method = DIAMOND;
-#endif
+            //sf->search_method = DIAMOND;
+
             sf->iterative_sub_pixel = 0;
 
             cpi->mode_check_freq[THR_V_PRED] = 4;
@@ -2651,7 +2649,7 @@ static void resize_key_frame(VP8_COMP *cpi)
 }
 
 
-static void update_alt_ref_frame_and_stats(VP8_COMP *cpi)
+static void update_alt_ref_frame_stats(VP8_COMP *cpi)
 {
     VP8_COMMON *cm = &cpi->common;
 
