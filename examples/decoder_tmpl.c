@@ -42,8 +42,6 @@ static void die(const char *fmt, ...) {
 
 @DIE_CODEC
 
-@HELPERS
-
 int main(int argc, char **argv) {
     FILE            *infile, *outfile;
     vpx_codec_ctx_t  codec;
