@@ -189,7 +189,6 @@ static void decode_macroblock(VP8D_COMP *pbi, MACROBLOCKD *xd, int mb_row, int m
             BLOCKD *b = &xd->block[i];
             short *qcoeff = b->qcoeff_base + b->qcoeff_offset;
             vp8mt_predict_intra4x4(pbi, xd, b->bmi.mode, b->predictor_base + b->predictor_offset, mb_row, mb_col, i);
-
             if (xd->eobs[i] > 1)
             {
                 DEQUANT_INVOKE(&pbi->dequant, idct_add)
@@ -290,14 +289,7 @@ static THREAD_FUNCTION thread_decoding_proc(void *p_data)
                             }
                         }
 
-                        if (xd->mode_info_context->mbmi.mode == SPLITMV || xd->mode_info_context->mbmi.mode == B_PRED)
-                        {
-                            for (i = 0; i < 16; i++)
-                            {
-                                BLOCKD *d = &xd->block[i];
-                                vpx_memcpy(&d->bmi, &xd->mode_info_context->bmi[i], sizeof(B_MODE_INFO));
-                            }
-                        }
+                        update_blockd_bmi(xd);
 
                         /* Distance of Mb to the various image edges.
                          * These are specified to 8th pel as they are always compared to values that are in 1/8th pel units
@@ -778,14 +770,7 @@ void vp8mt_decode_mb_rows( VP8D_COMP *pbi, MACROBLOCKD *xd)
                     }
                 }
 
-                if (xd->mode_info_context->mbmi.mode == SPLITMV || xd->mode_info_context->mbmi.mode == B_PRED)
-                {
-                    for (i = 0; i < 16; i++)
-                    {
-                        BLOCKD *d = &xd->block[i];
-                        vpx_memcpy(&d->bmi, &xd->mode_info_context->bmi[i], sizeof(B_MODE_INFO));
-                    }
-                }
+                update_blockd_bmi(xd);
 
                 /* Distance of Mb to the various image edges.
                  * These are specified to 8th pel as they are always compared to values that are in 1/8th pel units
