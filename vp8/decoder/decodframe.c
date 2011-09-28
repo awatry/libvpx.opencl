@@ -335,7 +335,7 @@ static void decode_macroblock(VP8D_COMP *pbi, MACROBLOCKD *xd,
             short *qcoeff = b->qcoeff_base + b->qcoeff_offset;
             
             RECON_INVOKE(RTCD_VTABLE(recon), intra4x4_predict)
-                         (b, b->bmi.mode, b->predictor_base + b->predictor_offset);
+                          (b, b->bmi.as_mode, b->predictor_base + b->predictor_offset);
 
             if (xd->eobs[i] > 1)
             {
@@ -1035,8 +1035,6 @@ int vp8_decode_frame(VP8D_COMP *pbi)
 #endif
 
     vpx_memset(pc->above_context, 0, sizeof(ENTROPY_CONTEXT_PLANES) * pc->mb_cols);
-
-    vpx_memcpy(&xd->block[0].bmi, &xd->mode_info_context->bmi[0], sizeof(B_MODE_INFO));
 
 #if PROFILE_OUTPUT
     if (pc->frame_type == KEY_FRAME)

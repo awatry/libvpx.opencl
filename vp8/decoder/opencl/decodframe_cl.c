@@ -103,7 +103,9 @@ static void skip_recon_mb_cl(VP8D_COMP *pbi, MACROBLOCKD *xd)
         } else
 #endif
         {
-            vp8_build_inter_predictors_mb_s(xd);
+            vp8_build_inter16x16_predictors_mb(xd, xd->dst.y_buffer,
+                                           xd->dst.u_buffer, xd->dst.v_buffer,
+                                           xd->dst.y_stride, xd->dst.uv_stride);
         }
         VP8_CL_FINISH(xd->cl_commands);
 #if !ONE_CQ_PER_MB
@@ -235,7 +237,8 @@ void vp8_decode_macroblock_cl(VP8D_COMP *pbi, MACROBLOCKD *xd, int eobtotal)
 #if ENABLE_CL_IDCT_DEQUANT
             VP8_CL_FINISH(b->cl_commands);
 #endif
-            vp8_predict_intra4x4(b, b->bmi.mode, b->predictor_base + b->predictor_offset);
+            RECON_INVOKE(RTCD_VTABLE(recon), intra4x4_predict)
+               (b, b->bmi.as_mode, b->predictor_base + b->predictor_offset);
 
 #if ENABLE_CL_IDCT_DEQUANT
             if (cl_initialized == CL_SUCCESS){
