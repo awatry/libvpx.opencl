@@ -216,6 +216,7 @@ HAVE_LIST="
     pthread_h
     sys_mman_h
     dlopen
+    unistd_h
 "
 CONFIG_LIST="
     external_build
