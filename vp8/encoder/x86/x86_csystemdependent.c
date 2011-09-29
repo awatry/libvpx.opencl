@@ -16,7 +16,7 @@
 
 
 #if HAVE_MMX
-static void short_fdct8x4_mmx(short *input, short *output, int pitch)
+void vp8_short_fdct8x4_mmx(short *input, short *output, int pitch)
 {
     vp8_short_fdct4x4_mmx(input,   output,    pitch);
     vp8_short_fdct4x4_mmx(input + 4, output + 16, pitch);
@@ -26,7 +26,7 @@ int vp8_fast_quantize_b_impl_mmx(short *coeff_ptr, short *zbin_ptr,
                                  short *qcoeff_ptr, short *dequant_ptr,
                                  short *scan_mask, short *round_ptr,
                                  short *quant_ptr, short *dqcoeff_ptr);
-static void fast_quantize_b_mmx(BLOCK *b, BLOCKD *d)
+void vp8_fast_quantize_b_mmx(BLOCK *b, BLOCKD *d)
 {
     short *scan_mask   = vp8_default_zig_zag_mask;//d->scan_order_mask_ptr;
     short *coeff_ptr   = b->coeff;
@@ -51,7 +51,7 @@ static void fast_quantize_b_mmx(BLOCK *b, BLOCKD *d)
 }
 
 int vp8_mbblock_error_mmx_impl(short *coeff_ptr, short *dcoef_ptr, int dc);
-static int mbblock_error_mmx(MACROBLOCK *mb, int dc)
+int vp8_mbblock_error_mmx(MACROBLOCK *mb, int dc)
 {
     short *coeff_ptr =  mb->block[0].coeff;
     short *dcoef_ptr =  mb->e_mbd.block[0].dqcoeff_base + mb->e_mbd.block[0].dqcoeff_offset;
@@ -59,7 +59,7 @@ static int mbblock_error_mmx(MACROBLOCK *mb, int dc)
 }
 
 int vp8_mbuverror_mmx_impl(short *s_ptr, short *d_ptr);
-static int mbuverror_mmx(MACROBLOCK *mb)
+int vp8_mbuverror_mmx(MACROBLOCK *mb)
 {
     short *s_ptr = &mb->coeff[256];
     short *d_ptr = &mb->e_mbd.dqcoeff[256];
@@ -69,7 +69,7 @@ static int mbuverror_mmx(MACROBLOCK *mb)
 void vp8_subtract_b_mmx_impl(unsigned char *z,  int src_stride,
                              short *diff, unsigned char *predictor,
                              int pitch);
-static void subtract_b_mmx(BLOCK *be, BLOCKD *bd, int pitch)
+void vp8_subtract_b_mmx(BLOCK *be, BLOCKD *bd, int pitch)
 {
     unsigned char *z = *(be->base_src) + be->src;
     unsigned int  src_stride = be->src_stride;
@@ -83,7 +83,7 @@ static void subtract_b_mmx(BLOCK *be, BLOCKD *bd, int pitch)
 #if HAVE_SSE2
 
 int vp8_mbblock_error_xmm_impl(short *coeff_ptr, short *dcoef_ptr, int dc);
-static int mbblock_error_xmm(MACROBLOCK *mb, int dc)
+int vp8_mbblock_error_xmm(MACROBLOCK *mb, int dc)
 {
     short *coeff_ptr =  mb->block[0].coeff;
     short *dcoef_ptr =  mb->e_mbd.block[0].dqcoeff_base + mb->e_mbd.block[0].dqcoeff_offset;
@@ -91,7 +91,7 @@ static int mbblock_error_xmm(MACROBLOCK *mb, int dc)
 }
 
 int vp8_mbuverror_xmm_impl(short *s_ptr, short *d_ptr);
-static int mbuverror_xmm(MACROBLOCK *mb)
+int vp8_mbuverror_xmm(MACROBLOCK *mb)
 {
     short *s_ptr = &mb->coeff[256];
     short *d_ptr = &mb->e_mbd.dqcoeff[256];
@@ -101,7 +101,7 @@ static int mbuverror_xmm(MACROBLOCK *mb)
 void vp8_subtract_b_sse2_impl(unsigned char *z,  int src_stride,
                              short *diff, unsigned char *predictor,
                              int pitch);
-static void subtract_b_sse2(BLOCK *be, BLOCKD *bd, int pitch)
+void vp8_subtract_b_sse2(BLOCK *be, BLOCKD *bd, int pitch)
 {
     unsigned char *z = *(be->base_src) + be->src;
     unsigned int  src_stride = be->src_stride;
@@ -113,7 +113,7 @@ static void subtract_b_sse2(BLOCK *be, BLOCKD *bd, int pitch)
 #endif
 
 #if HAVE_SSSE3
-#if CONFIG_PSNR
+#if CONFIG_INTERNAL_STATS
 #if ARCH_X86_64
 typedef void ssimpf
 (
@@ -139,12 +139,6 @@ void vp8_arch_x86_encoder_init(VP8_COMP *cpi)
 {
 #if CONFIG_RUNTIME_CPU_DETECT
     int flags = x86_simd_caps();
-    int mmx_enabled = flags & HAS_MMX;
-    int xmm_enabled = flags & HAS_SSE;
-    int wmt_enabled = flags & HAS_SSE2;
-    int SSE3Enabled = flags & HAS_SSE3;
-    int SSSE3Enabled = flags & HAS_SSSE3;
-    int SSE4_1Enabled = flags & HAS_SSE4_1;
 
     /* Note:
      *
@@ -155,7 +149,7 @@ void vp8_arch_x86_encoder_init(VP8_COMP *cpi)
 
     /* Override default functions with fastest ones for this CPU. */
 #if HAVE_MMX
-    if (mmx_enabled)
+    if (flags & HAS_MMX)
     {
         cpi->rtcd.variance.sad16x16              = vp8_sad16x16_mmx;
         cpi->rtcd.variance.sad16x8               = vp8_sad16x8_mmx;
@@ -182,31 +176,28 @@ void vp8_arch_x86_encoder_init(VP8_COMP *cpi)
         cpi->rtcd.variance.mse16x16              = vp8_mse16x16_mmx;
         cpi->rtcd.variance.getmbss               = vp8_get_mb_ss_mmx;
 
-        cpi->rtcd.variance.get16x16prederror     = vp8_get16x16pred_error_mmx;
-        cpi->rtcd.variance.get8x8var             = vp8_get8x8var_mmx;
-        cpi->rtcd.variance.get16x16var           = vp8_get16x16var_mmx;
         cpi->rtcd.variance.get4x4sse_cs          = vp8_get4x4sse_cs_mmx;
 
         cpi->rtcd.fdct.short4x4                  = vp8_short_fdct4x4_mmx;
-        cpi->rtcd.fdct.short8x4                  = short_fdct8x4_mmx;
+        cpi->rtcd.fdct.short8x4                  = vp8_short_fdct8x4_mmx;
         cpi->rtcd.fdct.fast4x4                   = vp8_short_fdct4x4_mmx;
-        cpi->rtcd.fdct.fast8x4                   = short_fdct8x4_mmx;
+        cpi->rtcd.fdct.fast8x4                   = vp8_short_fdct8x4_mmx;
 
         cpi->rtcd.fdct.walsh_short4x4            = vp8_short_walsh4x4_c;
 
         cpi->rtcd.encodemb.berr                  = vp8_block_error_mmx;
-        cpi->rtcd.encodemb.mberr                 = mbblock_error_mmx;
-        cpi->rtcd.encodemb.mbuverr               = mbuverror_mmx;
-        cpi->rtcd.encodemb.subb                  = subtract_b_mmx;
+        cpi->rtcd.encodemb.mberr                 = vp8_mbblock_error_mmx;
+        cpi->rtcd.encodemb.mbuverr               = vp8_mbuverror_mmx;
+        cpi->rtcd.encodemb.subb                  = vp8_subtract_b_mmx;
         cpi->rtcd.encodemb.submby                = vp8_subtract_mby_mmx;
         cpi->rtcd.encodemb.submbuv               = vp8_subtract_mbuv_mmx;
 
-        /*cpi->rtcd.quantize.fastquantb            = fast_quantize_b_mmx;*/
+        /*cpi->rtcd.quantize.fastquantb            = vp8_fast_quantize_b_mmx;*/
     }
 #endif
 
 #if HAVE_SSE2
-    if (wmt_enabled)
+    if (flags & HAS_SSE2)
     {
         cpi->rtcd.variance.sad16x16              = vp8_sad16x16_wmt;
         cpi->rtcd.variance.sad16x8               = vp8_sad16x8_wmt;
@@ -233,11 +224,6 @@ void vp8_arch_x86_encoder_init(VP8_COMP *cpi)
         cpi->rtcd.variance.mse16x16              = vp8_mse16x16_wmt;
         cpi->rtcd.variance.getmbss               = vp8_get_mb_ss_sse2;
 
-        cpi->rtcd.variance.get16x16prederror     = vp8_get16x16pred_error_sse2;
-        cpi->rtcd.variance.get8x8var             = vp8_get8x8var_sse2;
-        cpi->rtcd.variance.get16x16var           = vp8_get16x16var_sse2;
-
-
         /* cpi->rtcd.variance.get4x4sse_cs  not implemented for wmt */;
 
         cpi->rtcd.fdct.short4x4                  = vp8_short_fdct4x4_sse2;
@@ -248,9 +234,9 @@ void vp8_arch_x86_encoder_init(VP8_COMP *cpi)
         cpi->rtcd.fdct.walsh_short4x4            = vp8_short_walsh4x4_sse2 ;
 
         cpi->rtcd.encodemb.berr                  = vp8_block_error_xmm;
-        cpi->rtcd.encodemb.mberr                 = mbblock_error_xmm;
-        cpi->rtcd.encodemb.mbuverr               = mbuverror_xmm;
-        cpi->rtcd.encodemb.subb                  = subtract_b_sse2;
+        cpi->rtcd.encodemb.mberr                 = vp8_mbblock_error_xmm;
+        cpi->rtcd.encodemb.mbuverr               = vp8_mbuverror_xmm;
+        cpi->rtcd.encodemb.subb                  = vp8_subtract_b_sse2;
         cpi->rtcd.encodemb.submby                = vp8_subtract_mby_sse2;
         cpi->rtcd.encodemb.submbuv               = vp8_subtract_mbuv_sse2;
 
@@ -264,7 +250,7 @@ void vp8_arch_x86_encoder_init(VP8_COMP *cpi)
 #endif
 
 #if HAVE_SSE3
-    if (SSE3Enabled)
+    if (flags & HAS_SSE3)
     {
         cpi->rtcd.variance.sad16x16              = vp8_sad16x16_sse3;
         cpi->rtcd.variance.sad16x16x3            = vp8_sad16x16x3_sse3;
@@ -279,11 +265,12 @@ void vp8_arch_x86_encoder_init(VP8_COMP *cpi)
         cpi->rtcd.variance.sad8x8x4d             = vp8_sad8x8x4d_sse3;
         cpi->rtcd.variance.sad4x4x4d             = vp8_sad4x4x4d_sse3;
         cpi->rtcd.search.diamond_search          = vp8_diamond_search_sadx4;
+        cpi->rtcd.search.refining_search         = vp8_refining_search_sadx4;
     }
 #endif
 
 #if HAVE_SSSE3
-    if (SSSE3Enabled)
+    if (flags & HAS_SSSE3)
     {
         cpi->rtcd.variance.sad16x16x3            = vp8_sad16x16x3_ssse3;
         cpi->rtcd.variance.sad16x8x3             = vp8_sad16x8x3_ssse3;
@@ -293,7 +280,7 @@ void vp8_arch_x86_encoder_init(VP8_COMP *cpi)
 
         cpi->rtcd.quantize.fastquantb            = vp8_fast_quantize_b_ssse3;
 
-#if CONFIG_PSNR
+#if CONFIG_INTERNAL_STATS
 #if ARCH_X86_64
         cpi->rtcd.variance.ssimpf_8x8            = vp8_ssim_parms_8x8_sse3;
         cpi->rtcd.variance.ssimpf                = vp8_ssim_parms_16x16_sse3;
@@ -306,7 +293,7 @@ void vp8_arch_x86_encoder_init(VP8_COMP *cpi)
 
 
 #if HAVE_SSE4_1
-    if (SSE4_1Enabled)
+    if (flags & HAS_SSE4_1)
     {
         cpi->rtcd.variance.sad16x16x8            = vp8_sad16x16x8_sse4;
         cpi->rtcd.variance.sad16x8x8             = vp8_sad16x8x8_sse4;
@@ -314,6 +301,8 @@ void vp8_arch_x86_encoder_init(VP8_COMP *cpi)
         cpi->rtcd.variance.sad8x8x8              = vp8_sad8x8x8_sse4;
         cpi->rtcd.variance.sad4x4x8              = vp8_sad4x4x8_sse4;
         cpi->rtcd.search.full_search             = vp8_full_search_sadx8;
+
+        cpi->rtcd.quantize.quantb                = vp8_regular_quantize_b_sse4;
     }
 #endif
 

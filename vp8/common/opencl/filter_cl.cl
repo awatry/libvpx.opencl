@@ -420,21 +420,14 @@ void vp8_filter_block2d_first_pass(
     int ngroups = get_num_groups(0);
     int lsize = get_local_size(0);
 
-    //printf("global_size = %d, ngroups = %d, lsize = %d\n", nthreads, ngroups, lsize);
-    
     global unsigned char *src_ptr = &src_base[src_offset];
     //Note that src_offset will be reset later, which is why we capture it now
 
     int Temp;
 
-    //__constant short *vp8_filter = &sub_pel_filters[filter_offset*SIXTAP_ROW_SIZE];
-    //printf("offset = %d\n", filter_offset*SIXTAP_ROW_SIZE);
     if (tid < (output_width*output_height)){
         short8 filter = sub_pel_filter_values(filter_offset, sub_pel_filters);
 
-        //printf("filter_offset = %d, filters = {%d, %d, %d, %d, %d, %d}\n", filter_offset, filter0, filter1, filter2, filter3, filter4, filter5);
-        //printf("sub_pel_filters[0][2] = %d\n", sub_pel_filters[2]);
-        
         if (ngroups > 1){
             //This is generally only true on Apple CPU-CL, which gives a group
             //size of 1, regardless of the CPU core count.
@@ -442,8 +435,19 @@ void vp8_filter_block2d_first_pass(
                 i = iter * lsize + get_local_id(0);
                 src_offset = i + (i/output_width * (src_pixels_per_line - output_width));
 
-                //printf("src_offset = %d\n", src_offset);
-                
+#define USE_DOT_FILTERING 0
+#if USE_DOT_FILTERING
+            float8 src_data;
+            float8 tmpfilter = convert_float8(filter);
+            src_data.s0 = src_ptr[src_offset-2];
+            src_data.s1 = src_ptr[src_offset-1];
+            src_data.s2 = src_ptr[src_offset];
+            src_data.s3 = src_ptr[src_offset+1];
+            src_data.s4 = src_ptr[src_offset+2];
+            src_data.s5 = src_ptr[src_offset+3];
+            Temp = dot(src_data.s0123, tmpfilter.s0123) + dot(src_data.s01, tmpfilter.s45);
+            Temp += (VP8_FILTER_WEIGHT >> 1);
+#else
                 Temp = (int)(src_ptr[src_offset - 2] * filter.s0) +
                        (int)(src_ptr[src_offset - 1] * filter.s1) +
                        (int)(src_ptr[src_offset]     * filter.s2) +
@@ -451,28 +455,30 @@ void vp8_filter_block2d_first_pass(
                        (int)(src_ptr[src_offset + 2] * filter.s4) +
                        (int)(src_ptr[src_offset + 3] * filter.s5) +
                        (VP8_FILTER_WEIGHT >> 1);      /* Rounding */
+#endif
 
                 /* Normalize back to 0-255 */
                 Temp >>= VP8_FILTER_SHIFT;
 
-                if (Temp < 0)
-                    Temp = 0;
-                else if ( Temp > 255 )
-                    Temp = 255;
+                Temp = clamp(Temp, 0, 255);
 
                 output_ptr[i] = Temp;
-                //if (get_group_id(0) == 0 && iter ==1 && get_local_id(0)==1){
-                    //printf("short size = %d, filter_offset = %d, sub_pel_filters - vp8_filter = %d\n", sizeof(short), filter_offset, sub_pel_filters[0] - vp8_filter);
-                //    printf("Input values = {%d, %d, %d, %d, %d, %d}, filters = {%d, %d, %d, %d, %d, %d}\n", 
-                //            src_ptr[src_offset-2], src_ptr[src_offset-1], src_ptr[src_offset], 
-                //            src_ptr[src_offset+1], src_ptr[src_offset+2], src_ptr[src_offset+3], 
-                //            filter.s0, filter.s1, filter.s2, filter.s3, filter.s4, filter.s5);
-                    //printf("Wrote %d to index %d\n", Temp, i);
-                //}
             }
         } else {
             src_offset = i + (i/output_width * (src_pixels_per_line - output_width));
 
+#if USE_DOT_FILTERING
+            float8 src_data;
+            float8 tmpfilter = convert_float8(filter);
+            src_data.s0 = src_ptr[src_offset-2];
+            src_data.s1 = src_ptr[src_offset-1];
+            src_data.s2 = src_ptr[src_offset];
+            src_data.s3 = src_ptr[src_offset+1];
+            src_data.s4 = src_ptr[src_offset+2];
+            src_data.s5 = src_ptr[src_offset+3];
+            Temp = dot(src_data.s0123, tmpfilter.s0123) + dot(src_data.s01, tmpfilter.s45);
+            Temp += (VP8_FILTER_WEIGHT >> 1);
+#else
             Temp = (int)(src_ptr[src_offset - 2] * filter.s0) +
                    (int)(src_ptr[src_offset - 1] * filter.s1) +
                    (int)(src_ptr[src_offset]     * filter.s2) +
@@ -480,23 +486,19 @@ void vp8_filter_block2d_first_pass(
                    (int)(src_ptr[src_offset + 2] * filter.s4) +
                    (int)(src_ptr[src_offset + 3] * filter.s5) +
                    (VP8_FILTER_WEIGHT >> 1);      /* Rounding */
-
+#endif
             /* Normalize back to 0-255 */
             Temp >>= VP8_FILTER_SHIFT;
 
-            if (Temp < 0)
-                Temp = 0;
-            else if ( Temp > 255 )
-                Temp = 255;
+            Temp = clamp(Temp, 0, 255);
 
             output_ptr[i] = Temp;
-            //if (i == 5 && )
         }
     }
 
     //Add a fence so that no 2nd pass stuff starts before 1st pass writes are done.
     barrier(CLK_LOCAL_MEM_FENCE);
-    write_mem_fence(CLK_LOCAL_MEM_FENCE);
+    //write_mem_fence(CLK_LOCAL_MEM_FENCE);
 }
 
 void vp8_filter_block2d_second_pass

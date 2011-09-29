@@ -149,17 +149,14 @@ static int vp8_temporal_filter_find_matching_mb_c
 )
 {
     MACROBLOCK *x = &cpi->mb;
-    int thissme;
     int step_param;
     int further_steps;
-    int n = 0;
     int sadpb = x->sadperbit16;
     int bestsme = INT_MAX;
-    int num00 = 0;
 
     BLOCK *b = &x->block[0];
     BLOCKD *d = &x->e_mbd.block[0];
-    MV best_ref_mv1 = {0,0};
+    int_mv best_ref_mv1;
 
     int *mvcost[2]    = { &dummy_cost[mv_max+1], &dummy_cost[mv_max+1] };
     int *mvsadcost[2] = { &dummy_cost[mv_max+1], &dummy_cost[mv_max+1] };
@@ -171,6 +168,8 @@ static int vp8_temporal_filter_find_matching_mb_c
     unsigned char **base_pre = d->base_pre;
     int pre = d->pre;
     int pre_stride = d->pre_stride;
+
+    best_ref_mv1.as_int = 0;
 
     // Setup frame pointers
     b->base_src = &arf_frame->y_buffer;
@@ -198,10 +197,10 @@ static int vp8_temporal_filter_find_matching_mb_c
     /*cpi->sf.search_method == HEX*/
     // TODO Check that the 16x16 vf & sdf are selected here
     bestsme = vp8_hex_search(x, b, d,
-        &best_ref_mv1, &d->bmi.mv.as_mv,
+        &best_ref_mv1, &d->bmi.mv,
         step_param,
-        sadpb/*x->errorperbit*/,
-        &num00, &cpi->fn_ptr[BLOCK_16X16],
+        sadpb,
+        &cpi->fn_ptr[BLOCK_16X16],
         mvsadcost, mvcost, &best_ref_mv1);
 
 #if ALT_REF_SUBPEL_ENABLED
@@ -211,7 +210,7 @@ static int vp8_temporal_filter_find_matching_mb_c
         int distortion;
         unsigned int sse;
         bestsme = cpi->find_fractional_mv_step(x, b, d,
-                    &d->bmi.mv.as_mv, &best_ref_mv1,
+                    &d->bmi.mv, &best_ref_mv1,
                     x->errorperbit, &cpi->fn_ptr[BLOCK_16X16],
                     mvcost, &distortion, &sse);
     }
@@ -243,7 +242,6 @@ static void vp8_temporal_filter_iterate_c
     unsigned int filter_weight;
     int mb_cols = cpi->common.mb_cols;
     int mb_rows = cpi->common.mb_rows;
-    int MBs  = cpi->common.MBs;
     int mb_y_offset = 0;
     int mb_uv_offset = 0;
     DECLARE_ALIGNED_ARRAY(16, unsigned int, accumulator, 16*16 + 8*8 + 8*8);
@@ -269,8 +267,7 @@ static void vp8_temporal_filter_iterate_c
 
         for (mb_col = 0; mb_col < mb_cols; mb_col++)
         {
-            int i, j, k, w;
-            int weight_cap;
+            int i, j, k;
             int stride;
 
             vpx_memset(accumulator, 0, 384*sizeof(unsigned int));
@@ -436,7 +433,6 @@ void vp8_temporal_filter_prepare_c
     int frames_to_blur_forward = 0;
     int frames_to_blur = 0;
     int start_frame = 0;
-    unsigned int filtered = 0;
 
     int strength = cpi->oxcf.arnr_strength;
 

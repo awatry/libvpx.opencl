@@ -8,7 +8,7 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-
+#include "vpx_config.h"
 #include "vp8/encoder/variance.h"
 #include "vp8/common/pragmas.h"
 #include "vpx_ports/mem.h"
@@ -34,7 +34,7 @@ extern void filter_block1d_v6_mmx
     short *vp7_filter
 );
 
-extern unsigned int vp8_get_mb_ss_mmx(short *src_ptr);
+extern unsigned int vp8_get_mb_ss_mmx(const short *src_ptr);
 extern unsigned int vp8_get8x8var_mmx
 (
     const unsigned char *src_ptr,
@@ -76,44 +76,6 @@ extern void vp8_filter_block2d_bil_var_mmx
     int *sum,
     unsigned int *sumsquared
 );
-extern unsigned int vp8_get16x16pred_error_mmx
-(
-    unsigned char *src_ptr,
-    int src_stride,
-    unsigned char *ref_ptr,
-    int ref_stride
-);
-
-
-unsigned int vp8_get16x16var_mmx(
-    const unsigned char *src_ptr,
-    int  source_stride,
-    const unsigned char *ref_ptr,
-    int  recon_stride,
-    unsigned *SSE,
-    unsigned *SUM
-)
-{
-    unsigned int sse0, sse1, sse2, sse3, var;
-    int sum0, sum1, sum2, sum3, avg;
-
-
-    vp8_get8x8var_mmx(src_ptr, source_stride, ref_ptr, recon_stride, &sse0, &sum0) ;
-    vp8_get8x8var_mmx(src_ptr + 8, source_stride, ref_ptr + 8, recon_stride, &sse1, &sum1);
-    vp8_get8x8var_mmx(src_ptr + 8 * source_stride, source_stride, ref_ptr + 8 * recon_stride, recon_stride, &sse2, &sum2) ;
-    vp8_get8x8var_mmx(src_ptr + 8 * source_stride + 8, source_stride, ref_ptr + 8 * recon_stride + 8, recon_stride, &sse3, &sum3);
-
-    var = sse0 + sse1 + sse2 + sse3;
-    avg = sum0 + sum1 + sum2 + sum3;
-
-    *SSE = var;
-    *SUM = avg;
-    return (var - ((avg * avg) >> 8));
-
-}
-
-
-
 
 
 unsigned int vp8_variance4x4_mmx(
@@ -176,7 +138,7 @@ unsigned int vp8_variance16x16_mmx(
     int  source_stride,
     const unsigned char *ref_ptr,
     int  recon_stride,
-    int *sse)
+    unsigned int *sse)
 {
     unsigned int sse0, sse1, sse2, sse3, var;
     int sum0, sum1, sum2, sum3, avg;
@@ -401,7 +363,7 @@ unsigned int vp8_sub_pixel_variance8x16_mmx
     int  yoffset,
     const unsigned char *dst_ptr,
     int dst_pixels_per_line,
-    int *sse
+    unsigned int *sse
 )
 {
     int xsum;

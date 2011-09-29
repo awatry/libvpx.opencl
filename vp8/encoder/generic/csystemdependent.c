@@ -17,8 +17,6 @@
 void vp8_arch_x86_encoder_init(VP8_COMP *cpi);
 void vp8_arch_arm_encoder_init(VP8_COMP *cpi);
 
-extern void vp8_fast_quantize_b_c(BLOCK *b, BLOCKD *d);
-
 void (*vp8_yv12_copy_partial_frame_ptr)(YV12_BUFFER_CONFIG *src_ybc, YV12_BUFFER_CONFIG *dst_ybc, int Fraction);
 extern void vp8_yv12_copy_partial_frame(YV12_BUFFER_CONFIG *src_ybc, YV12_BUFFER_CONFIG *dst_ybc, int Fraction);
 
@@ -69,9 +67,6 @@ void vp8_cmachine_specific_config(VP8_COMP *cpi)
     cpi->rtcd.variance.mse16x16              = vp8_mse16x16_c;
     cpi->rtcd.variance.getmbss               = vp8_get_mb_ss_c;
 
-    cpi->rtcd.variance.get16x16prederror     = vp8_get16x16pred_error_c;
-    cpi->rtcd.variance.get8x8var             = vp8_get8x8var_c;
-    cpi->rtcd.variance.get16x16var           = vp8_get16x16var_c;;
     cpi->rtcd.variance.get4x4sse_cs          = vp8_get4x4sse_cs_c;
 
     cpi->rtcd.fdct.short4x4                  = vp8_short_fdct4x4_c;
@@ -88,8 +83,11 @@ void vp8_cmachine_specific_config(VP8_COMP *cpi)
     cpi->rtcd.encodemb.submbuv               = vp8_subtract_mbuv_c;
 
     cpi->rtcd.quantize.quantb                = vp8_regular_quantize_b;
+    cpi->rtcd.quantize.quantb_pair           = vp8_regular_quantize_b_pair;
     cpi->rtcd.quantize.fastquantb            = vp8_fast_quantize_b_c;
+    cpi->rtcd.quantize.fastquantb_pair       = vp8_fast_quantize_b_pair_c;
     cpi->rtcd.search.full_search             = vp8_full_search_sad;
+    cpi->rtcd.search.refining_search         = vp8_refining_search_sad;
     cpi->rtcd.search.diamond_search          = vp8_diamond_search_sad;
 #if !(CONFIG_REALTIME_ONLY)
     cpi->rtcd.temporal.apply                 = vp8_temporal_filter_apply_c;
@@ -99,7 +97,7 @@ void vp8_cmachine_specific_config(VP8_COMP *cpi)
     // Pure C:
     vp8_yv12_copy_partial_frame_ptr = vp8_yv12_copy_partial_frame;
 
-#if CONFIG_PSNR
+#if CONFIG_INTERNAL_STATS
     cpi->rtcd.variance.ssimpf_8x8            = ssim_parms_8x8_c;
     cpi->rtcd.variance.ssimpf                = ssim_parms_c;
 #endif

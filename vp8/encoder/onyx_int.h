@@ -47,8 +47,8 @@
 #define MIN_THRESHMULT  32
 #define MAX_THRESHMULT  512
 
-#define GF_ZEROMV_ZBIN_BOOST 24
-#define LF_ZEROMV_ZBIN_BOOST 12
+#define GF_ZEROMV_ZBIN_BOOST 12
+#define LF_ZEROMV_ZBIN_BOOST 6
 #define MV_ZBIN_BOOST        4
 #define ZBIN_OQ_MAX 192
 
@@ -240,7 +240,7 @@ enum
     BLOCK_MAX_SEGMENTS
 };
 
-typedef struct
+typedef struct VP8_COMP
 {
 
     DECLARE_ALIGNED(16, short, Y1quant[QINDEX_RANGE][16]);
@@ -285,7 +285,6 @@ typedef struct
     int source_alt_ref_active;  // an alt ref frame has been encoded and is usable
 
     int is_src_frame_alt_ref;   // source of frame to encode is an exact copy of an alt ref frame
-    int is_next_src_alt_ref;    // source of next frame to encode is an exact copy of an alt ref frame
 
     int gold_is_last; // golden frame same as last frame ( short circuit gold searches)
     int alt_is_last;  // Alt reference frame same as last ( short circuit altref search)
@@ -311,17 +310,9 @@ typedef struct
     unsigned int mode_chosen_counts[MAX_MODES];
     unsigned int mbs_tested_so_far;
 
-    unsigned int check_freq[2];
-    unsigned int do_full[2];
-
     int rd_thresh_mult[MAX_MODES];
     int rd_baseline_thresh[MAX_MODES];
     int rd_threshes[MAX_MODES];
-    int mvcostbase;
-    int mvcostmultiplier;
-    int subseqblockweight;
-    int errthresh;
-    unsigned int activity_avg;
 
     int RDMULT;
     int RDDIV ;
@@ -334,16 +325,6 @@ typedef struct
     long long intra_error;
     long long last_intra_error;
 
-#if 0
-    // Experimental RD code
-    long long frame_distortion;
-    long long last_frame_distortion;
-#endif
-
-    int last_mb_distortion;
-
-    int frames_since_auto_filter;
-
     int this_frame_target;
     int projected_frame_size;
     int last_q[2];                   // Separate values for Intra/Inter
@@ -351,37 +332,18 @@ typedef struct
     double rate_correction_factor;
     double key_frame_rate_correction_factor;
     double gf_rate_correction_factor;
-    double est_max_qcorrection_factor;
 
     int frames_till_gf_update_due;      // Count down till next GF
     int current_gf_interval;          // GF interval chosen when we coded the last GF
 
     int gf_overspend_bits;            // Total bits overspent becasue of GF boost (cumulative)
 
-    int gf_group_bits;                // Projected Bits available for a group of frames including 1 GF or ARF
-    int gf_bits;                     // Bits for the golden frame or ARF - 2 pass only
-    int mid_gf_extra_bits;             // A few extra bits for the frame half way between two gfs.
-
-    // Projected total bits available for a key frame group of frames
-    long long kf_group_bits;
-
-    // Error score of frames still to be coded in kf group
-    long long kf_group_error_left;
-
-    // Bits for the key frame in a key frame group - 2 pass only
-    int kf_bits;
-
     int non_gf_bitrate_adjustment;     // Used in the few frames following a GF to recover the extra bits spent in that GF
-    int initial_gf_use;               // percentage use of gf 2 frames after gf
-
-    int gf_group_error_left;           // Remaining error from uncoded frames in a gf group. Two pass use only
 
     int kf_overspend_bits;            // Extra bits spent on key frames that need to be recovered on inter frames
     int kf_bitrate_adjustment;        // Current number of bit s to try and recover on each inter frame.
     int max_gf_interval;
-    int static_scene_max_gf_interval;
     int baseline_gf_interval;
-    int gf_decay_rate;
     int active_arnr_frames;           // <= cpi->oxcf.arnr_max_frames
 
     INT64 key_frame_count;
@@ -389,7 +351,6 @@ typedef struct
     int per_frame_bandwidth;          // Current section per frame bandwidth target
     int av_per_frame_bandwidth;        // Average frame size target for clip
     int min_frame_bandwidth;          // Minimum allocation that should be used for any frame
-    int last_key_frame_size;
     int inter_frame_target;
     double output_frame_rate;
     long long last_time_stamp_seen;
@@ -427,8 +388,6 @@ typedef struct
     int active_best_quality;
 
     int cq_target_quality;
-    int maxq_max_limit;
-    int maxq_min_limit;
 
     int drop_frames_allowed;          // Are we permitted to drop frames?
     int drop_frame;                  // Drop this frame?
@@ -442,45 +401,18 @@ typedef struct
 
     unsigned int MVcount [2] [MVvals];  /* (row,col) MV cts this frame */
 
-    unsigned int coef_counts [BLOCK_TYPES] [COEF_BANDS] [PREV_COEF_CONTEXTS] [vp8_coef_tokens];  /* for this frame */
-    //DECLARE_ALIGNED(16, int, coef_counts_backup [BLOCK_TYPES] [COEF_BANDS] [PREV_COEF_CONTEXTS] [vp8_coef_tokens]);   //not used any more
+    unsigned int coef_counts [BLOCK_TYPES] [COEF_BANDS] [PREV_COEF_CONTEXTS] [MAX_ENTROPY_TOKENS];  /* for this frame */
+    //DECLARE_ALIGNED(16, int, coef_counts_backup [BLOCK_TYPES] [COEF_BANDS] [PREV_COEF_CONTEXTS] [MAX_ENTROPY_TOKENS]);   //not used any more
     //save vp8_tree_probs_from_distribution result for each frame to avoid repeat calculation
-    vp8_prob frame_coef_probs [BLOCK_TYPES] [COEF_BANDS] [PREV_COEF_CONTEXTS] [vp8_coef_tokens-1];
-    unsigned int frame_branch_ct [BLOCK_TYPES] [COEF_BANDS] [PREV_COEF_CONTEXTS] [vp8_coef_tokens-1][2];
+    vp8_prob frame_coef_probs [BLOCK_TYPES] [COEF_BANDS] [PREV_COEF_CONTEXTS] [ENTROPY_NODES];
+    unsigned int frame_branch_ct [BLOCK_TYPES] [COEF_BANDS] [PREV_COEF_CONTEXTS] [ENTROPY_NODES][2];
 
-    /* Second compressed data partition contains coefficient data. */
-
-    unsigned char *output_partition2;
-    size_t output_partition2size;
-
-    int frames_to_key;
     int gfu_boost;
     int kf_boost;
     int last_boost;
-    double total_error_left;
-    double total_intra_error_left;
-    double total_coded_error_left;
-    double start_tot_err_left;
-    double min_error;
-    double kf_intra_err_min;
-    double gf_intra_err_min;
-
-    double modified_error_total;
-    double modified_error_used;
-    double modified_error_left;
-    double clip_bpe;
-    double observed_bpe;
-
-    double avg_iiratio;
 
     int target_bandwidth;
-    long long bits_left;
-    long long clip_bits_total;
-    FIRSTPASS_STATS *total_stats;
-    FIRSTPASS_STATS *this_frame_stats;
-    FIRSTPASS_STATS *stats_in, *stats_in_end;
     struct vpx_codec_pkt_list  *output_pkt_list;
-    int                          first_pass_done;
 
 #if 0
     // Experimental code for lagged and one pass
@@ -501,14 +433,9 @@ typedef struct
     int interquantizer;
     int auto_gold;
     int auto_adjust_gold_quantizer;
-    int goldquantizer;
     int goldfreq;
-    int auto_adjust_key_quantizer;
-    int keyquantizer;
     int auto_worst_q;
-    int filter_type;
     int cpu_used;
-    int chroma_boost;
     int horiz_scale;
     int vert_scale;
     int pass;
@@ -526,30 +453,10 @@ typedef struct
     int this_frame_percent_intra;
     int last_frame_percent_intra;
 
-    int last_key_frame_q;
-    int last_kffilt_lvl;
-
     int ref_frame_flags;
 
     SPEED_FEATURES sf;
     int error_bins[1024];
-
-    int inter_lvl;
-    int intra_lvl;
-    int motion_lvl;
-    int motion_speed;
-    int motion_var;
-    unsigned int next_iiratio;
-    unsigned int this_iiratio;
-    int this_frame_modified_error;
-
-    double norm_intra_err_per_mb;
-    double norm_inter_err_per_mb;
-    double norm_iidiff_per_mb;
-
-    int last_best_mode_index;          // Record of mode index chosen for previous macro block.
-    int last_auto_filt_val;
-    int last_auto_filt_q;
 
     // Data used for real time conferencing mode to help determine if it would be good to update the gf
     int inter_zz_count;
@@ -557,10 +464,6 @@ typedef struct
     int gf_update_recommended;
     int skip_true_count;
     int skip_false_count;
-
-    int alt_qcount;
-
-    int ready_for_new_frame;
 
     unsigned char *segmentation_map;
     signed char segment_feature_data[MB_LVL_MAX][MAX_MB_SEGMENTS];            // Segment data (can be deltas or absolute values)
@@ -580,7 +483,6 @@ typedef struct
     // multithread data
     int * mt_current_mb_col;
     int mt_sync_range;
-    int processor_core_count;
     int b_multi_threaded;
     int encoding_thread_count;
 
@@ -599,11 +501,13 @@ typedef struct
 #endif
 
     TOKENLIST *tplist;
+    unsigned int partition_sz[MAX_PARTITIONS];
     // end of multithread data
 
 
     fractional_mv_step_fp *find_fractional_mv_step;
     vp8_full_search_fn_t full_search_sad;
+    vp8_refining_search_fn_t refining_search_sad;
     vp8_diamond_search_fn_t diamond_search_sad;
     vp8_variance_fn_ptr_t fn_ptr[BLOCK_MAX_SEGMENTS];
     unsigned int time_receive_data;
@@ -611,14 +515,49 @@ typedef struct
     unsigned int time_pick_lpf;
     unsigned int time_encode_mb_row;
 
-    unsigned int tempdata1;
-    unsigned int tempdata2;
-
     int base_skip_false_prob[128];
-    unsigned int section_intra_rating;
 
-    double section_max_qfactor;
+    struct twopass_rc
+    {
+        unsigned int section_intra_rating;
+        double section_max_qfactor;
+        unsigned int next_iiratio;
+        unsigned int this_iiratio;
+        FIRSTPASS_STATS *total_stats;
+        FIRSTPASS_STATS *this_frame_stats;
+        FIRSTPASS_STATS *stats_in, *stats_in_end, *stats_in_start;
+        int first_pass_done;
+        long long bits_left;
+        long long clip_bits_total;
+        double avg_iiratio;
+        double modified_error_total;
+        double modified_error_used;
+        double modified_error_left;
+        double total_error_left;
+        double total_intra_error_left;
+        double total_coded_error_left;
+        double start_tot_err_left;
+        double kf_intra_err_min;
+        double gf_intra_err_min;
+        int frames_to_key;
+        int maxq_max_limit;
+        int maxq_min_limit;
+        int gf_decay_rate;
+        int static_scene_max_gf_interval;
+        int kf_bits;
+        int gf_group_error_left;           // Remaining error from uncoded frames in a gf group. Two pass use only
 
+        // Projected total bits available for a key frame group of frames
+        long long kf_group_bits;
+
+        // Error score of frames still to be coded in kf group
+        long long kf_group_error_left;
+
+        int gf_group_bits;                // Projected Bits available for a group of frames including 1 GF or ARF
+        int gf_bits;                     // Bits for the golden frame or ARF - 2 pass only
+        int mid_gf_extra_bits;             // A few extra bits for the frame half way between two gfs.
+        double est_max_qcorrection_factor;
+    } twopass;
 
 #if CONFIG_RUNTIME_CPU_DETECT
     VP8_ENCODER_RTCD            rtcd;
@@ -629,7 +568,7 @@ typedef struct
     int fixed_divide[512];
 #endif
 
-#if CONFIG_PSNR
+#if CONFIG_INTERNAL_STATS
     int    count;
     double total_y;
     double total_u;
@@ -656,9 +595,17 @@ typedef struct
 #endif
     int b_calculate_psnr;
 
+    // Per MB activity measurement
+    unsigned int activity_avg;
+    unsigned int * mb_activity_map;
+    int * mb_norm_activity_map;
 
-    unsigned char *gf_active_flags;   // Record of which MBs still refer to last golden frame either directly or through 0,0
+    // Record of which MBs still refer to last golden frame either
+    // directly or through 0,0
+    unsigned char *gf_active_flags;
     int gf_active_count;
+
+    int output_partition;
 
     //Store last frame's MV info for next frame MV prediction
     int_mv *lfmv;
@@ -668,6 +615,7 @@ typedef struct
 #if CONFIG_REALTIME_ONLY
     int force_next_frame_intra; /* force next frame to intra when kf_auto says so */
 #endif
+    int droppable;
 } VP8_COMP;
 
 void control_data_rate(VP8_COMP *cpi);
@@ -676,7 +624,7 @@ void vp8_encode_frame(VP8_COMP *cpi);
 
 void vp8_pack_bitstream(VP8_COMP *cpi, unsigned char *dest, unsigned long *size);
 
-unsigned int vp8_activity_masking(VP8_COMP *cpi, MACROBLOCK *x);
+void vp8_activity_masking(VP8_COMP *cpi, MACROBLOCK *x);
 
 int rd_cost_intra_mb(MACROBLOCKD *x);
 

@@ -35,13 +35,15 @@ void vp8_initialize_common(void);
 
 #define NUM_YV12_BUFFERS 4
 
+#define MAX_PARTITIONS 9
+
 typedef struct frame_contexts
 {
     vp8_prob bmode_prob [VP8_BINTRAMODES-1];
     vp8_prob ymode_prob [VP8_YMODES-1];   /* interframe intra mode probs */
     vp8_prob uv_mode_prob [VP8_UV_MODES-1];
     vp8_prob sub_mv_ref_prob [VP8_SUBMVREFS-1];
-    vp8_prob coef_probs [BLOCK_TYPES] [COEF_BANDS] [PREV_COEF_CONTEXTS] [vp8_coef_tokens-1];
+    vp8_prob coef_probs [BLOCK_TYPES] [COEF_BANDS] [PREV_COEF_CONTEXTS] [ENTROPY_NODES];
     MV_CONTEXT mvc[2];
     MV_CONTEXT pre_mvc[2];  /* not to caculate the mvcost for the frame if mvc doesn't change. */
 } FRAME_CONTEXT;
@@ -119,7 +121,7 @@ typedef struct VP8Common
     /* profile settings */
     int mb_no_coeff_skip;
     int no_lpf;
-    int simpler_lpf;
+    int use_bilinear_mc_filter;
     int full_pixel;
 
     int base_qindex;
@@ -139,6 +141,8 @@ typedef struct VP8Common
 
     MODE_INFO *mip; /* Base of allocated array */
     MODE_INFO *mi;  /* Corresponds to upper left visible macroblock */
+    MODE_INFO *prev_mip; /* MODE_INFO array 'mip' from last decoded frame */
+    MODE_INFO *prev_mi;  /* 'mi' from last frame (points into prev_mip) */
 
 
     INTERPOLATIONFILTERTYPE mcomp_filter_type;
@@ -194,6 +198,9 @@ typedef struct VP8Common
 
 #if CONFIG_RUNTIME_CPU_DETECT
     VP8_COMMON_RTCD rtcd;
+#endif
+#if CONFIG_MULTITHREAD
+    int processor_core_count;
 #endif
     struct postproc_state  postproc_state;
 } VP8_COMMON;

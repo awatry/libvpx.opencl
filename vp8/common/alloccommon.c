@@ -27,6 +27,9 @@ static void update_mode_info_border(MODE_INFO *mi, int rows, int cols)
 
     for (i = 0; i < rows; i++)
     {
+        /* TODO(holmer): Bug? This updates the last element of each row
+         * rather than the border element!
+         */
         vpx_memset(&mi[i*cols-1], 0, sizeof(MODE_INFO));
     }
 }
@@ -43,9 +46,11 @@ void vp8_de_alloc_frame_buffers(VP8_COMMON *oci)
 
     vpx_free(oci->above_context);
     vpx_free(oci->mip);
+    vpx_free(oci->prev_mip);
 
     oci->above_context = 0;
     oci->mip = 0;
+    oci->prev_mip = 0;
 
 }
 
@@ -65,7 +70,7 @@ int vp8_alloc_frame_buffers(VP8_COMMON *oci, int width, int height)
 
     for (i = 0; i < NUM_YV12_BUFFERS; i++)
     {
-        oci->fb_idx_ref_cnt[0] = 0;
+        oci->fb_idx_ref_cnt[i] = 0;
         oci->yv12_fb[i].flags = 0;
         if (vp8_yv12_alloc_frame_buffer(&oci->yv12_fb[i], width, height, VP8BORDERINPIXELS) < 0)
         {
@@ -110,6 +115,21 @@ int vp8_alloc_frame_buffers(VP8_COMMON *oci, int width, int height)
 
     oci->mi = oci->mip + oci->mode_info_stride + 1;
 
+    /* allocate memory for last frame MODE_INFO array */
+#if CONFIG_ERROR_CONCEALMENT
+    oci->prev_mip = vpx_calloc((oci->mb_cols + 1) * (oci->mb_rows + 1), sizeof(MODE_INFO));
+
+    if (!oci->prev_mip)
+    {
+        vp8_de_alloc_frame_buffers(oci);
+        return 1;
+    }
+
+    oci->prev_mi = oci->prev_mip + oci->mode_info_stride + 1;
+#else
+    oci->prev_mip = NULL;
+    oci->prev_mi = NULL;
+#endif
 
     oci->above_context = vpx_calloc(sizeof(ENTROPY_CONTEXT_PLANES) * oci->mb_cols, 1);
 
@@ -120,6 +140,9 @@ int vp8_alloc_frame_buffers(VP8_COMMON *oci, int width, int height)
     }
 
     update_mode_info_border(oci->mi, oci->mb_rows, oci->mb_cols);
+#if CONFIG_ERROR_CONCEALMENT
+    update_mode_info_border(oci->prev_mi, oci->mb_rows, oci->mb_cols);
+#endif
 
     return 0;
 }
@@ -129,33 +152,33 @@ void vp8_setup_version(VP8_COMMON *cm)
     {
     case 0:
         cm->no_lpf = 0;
-        cm->simpler_lpf = 0;
-        cm->mcomp_filter_type = SIXTAP;
+        cm->filter_type = NORMAL_LOOPFILTER;
+        cm->use_bilinear_mc_filter = 0;
         cm->full_pixel = 0;
         break;
     case 1:
         cm->no_lpf = 0;
-        cm->simpler_lpf = 1;
-        cm->mcomp_filter_type = BILINEAR;
+        cm->filter_type = SIMPLE_LOOPFILTER;
+        cm->use_bilinear_mc_filter = 1;
         cm->full_pixel = 0;
         break;
     case 2:
         cm->no_lpf = 1;
-        cm->simpler_lpf = 0;
-        cm->mcomp_filter_type = BILINEAR;
+        cm->filter_type = NORMAL_LOOPFILTER;
+        cm->use_bilinear_mc_filter = 1;
         cm->full_pixel = 0;
         break;
     case 3:
         cm->no_lpf = 1;
-        cm->simpler_lpf = 1;
-        cm->mcomp_filter_type = BILINEAR;
+        cm->filter_type = SIMPLE_LOOPFILTER;
+        cm->use_bilinear_mc_filter = 1;
         cm->full_pixel = 1;
         break;
     default:
         /*4,5,6,7 are reserved for future use*/
         cm->no_lpf = 0;
-        cm->simpler_lpf = 0;
-        cm->mcomp_filter_type = SIXTAP;
+        cm->filter_type = NORMAL_LOOPFILTER;
+        cm->use_bilinear_mc_filter = 0;
         cm->full_pixel = 0;
         break;
     }
@@ -169,8 +192,8 @@ void vp8_create_common(VP8_COMMON *oci)
 
     oci->mb_no_coeff_skip = 1;
     oci->no_lpf = 0;
-    oci->simpler_lpf = 0;
-    oci->mcomp_filter_type = SIXTAP;
+    oci->filter_type = NORMAL_LOOPFILTER;
+    oci->use_bilinear_mc_filter = 0;
     oci->full_pixel = 0;
     oci->multi_token_partition = ONE_PARTITION;
     oci->clr_type = REG_YUV;

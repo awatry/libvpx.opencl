@@ -87,6 +87,9 @@ static const arg_def_t threadsarg = ARG_DEF("t", "threads", 1,
                                     "Max threads to use");
 static const arg_def_t verbosearg = ARG_DEF("v", "verbose", 0,
                                   "Show version string");
+static const arg_def_t error_concealment = ARG_DEF(NULL, "error-concealment", 0,
+                                       "Enable decoder error-concealment");
+
 
 #if CONFIG_MD5
 static const arg_def_t md5arg = ARG_DEF(NULL, "md5", 0,
@@ -100,6 +103,7 @@ static const arg_def_t *all_args[] =
 #if CONFIG_MD5
     &md5arg,
 #endif
+    &error_concealment,
     NULL
 };
 
@@ -573,12 +577,10 @@ file_is_webm(struct input_ctx *input,
 {
     unsigned int i, n;
     int          track_type = -1;
-    uint64_t     tstamp=0;
 
     nestegg_io io = {nestegg_read_cb, nestegg_seek_cb, nestegg_tell_cb,
                      input->infile};
     nestegg_video_params params;
-    nestegg_packet * pkt;
 
     if(nestegg_init(&input->nestegg_ctx, io, NULL))
         goto fail;
@@ -702,6 +704,7 @@ int main(int argc, const char **argv_)
     FILE                  *infile;
     int                    frame_in = 0, frame_out = 0, flipuv = 0, noblit = 0, do_md5 = 0, progress = 0;
     int                    stop_after = 0, postproc = 0, summary = 0, quiet = 1;
+    int                    ec_enabled = 0;
     vpx_codec_iface_t       *iface = NULL;
     unsigned int           fourcc;
     unsigned long          dx_time = 0;
@@ -725,6 +728,8 @@ int main(int argc, const char **argv_)
     int                     vp8_dbg_display_mv = 0;
 #endif
     struct input_ctx        input = {0};
+    int                     frames_corrupted = 0;
+    int                     dec_flags = 0;
 
     /* Parse command line */
     exec_name = argv_[0];
@@ -843,6 +848,10 @@ int main(int argc, const char **argv_)
                 postproc = 1;
                 vp8_dbg_display_mv = flags;
             }
+        }
+        else if (arg_match(&arg, &error_concealment, argi))
+        {
+            ec_enabled = 1;
         }
 
 #endif
@@ -964,8 +973,10 @@ int main(int argc, const char **argv_)
             break;
         }
 
+    dec_flags = (postproc ? VPX_CODEC_USE_POSTPROC : 0) |
+                (ec_enabled ? VPX_CODEC_USE_ERROR_CONCEALMENT : 0);
     if (vpx_codec_dec_init(&decoder, iface ? iface :  ifaces[0].iface, &cfg,
-                           postproc ? VPX_CODEC_USE_POSTPROC : 0))
+                           dec_flags))
     {
         fprintf(stderr, "Failed to initialize decoder: %s\n", vpx_codec_error(&decoder));
         return EXIT_FAILURE;
@@ -1018,6 +1029,7 @@ int main(int argc, const char **argv_)
         vpx_codec_iter_t  iter = NULL;
         vpx_image_t    *img;
         struct vpx_usec_timer timer;
+        int                   corrupted;
 
         vpx_usec_timer_start(&timer);
 
@@ -1036,6 +1048,14 @@ int main(int argc, const char **argv_)
         dx_time += vpx_usec_timer_elapsed(&timer);
 
         ++frame_in;
+
+        if (vpx_codec_control(&decoder, VP8D_GET_FRAME_CORRUPTED, &corrupted))
+        {
+            fprintf(stderr, "Failed VP8_GET_FRAME_CORRUPTED: %s\n",
+                    vpx_codec_error(&decoder));
+            goto fail;
+        }
+        frames_corrupted += corrupted;
 
         if ((img = vpx_codec_get_frame(&decoder, &iter)))
             ++frame_out;
@@ -1102,6 +1122,9 @@ int main(int argc, const char **argv_)
         fprintf(stderr, "\n");
     }
 
+    if (frames_corrupted)
+        fprintf(stderr, "WARNING: %d frames corrupted.\n",frames_corrupted);
+
 fail:
 
     if (vpx_codec_destroy(&decoder))
@@ -1120,5 +1143,5 @@ fail:
     fclose(infile);
     free(argv);
 
-    return EXIT_SUCCESS;
+    return frames_corrupted ? EXIT_FAILURE : EXIT_SUCCESS;
 }

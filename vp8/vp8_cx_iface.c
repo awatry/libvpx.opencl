@@ -151,7 +151,8 @@ static vpx_codec_err_t validate_config(vpx_codec_alg_priv_t      *ctx,
     RANGE_CHECK_HI(cfg, g_lag_in_frames,    0);
 #endif
     RANGE_CHECK(cfg, rc_end_usage,          VPX_VBR, VPX_CQ);
-    RANGE_CHECK_HI(cfg, rc_undershoot_pct,  100);
+    RANGE_CHECK_HI(cfg, rc_undershoot_pct,  1000);
+    RANGE_CHECK_HI(cfg, rc_overshoot_pct,   1000);
     RANGE_CHECK_HI(cfg, rc_2pass_vbr_bias_pct, 100);
     RANGE_CHECK(cfg, kf_mode,               VPX_KF_DISABLED, VPX_KF_AUTO);
     //RANGE_CHECK_BOOL(cfg,                 g_delete_firstpassfile);
@@ -304,6 +305,7 @@ static vpx_codec_err_t set_vp8e_config(VP8_CONFIG *oxcf,
     }
 
     oxcf->target_bandwidth       = cfg.rc_target_bitrate;
+    oxcf->rc_max_intra_bitrate_pct = cfg.rc_max_intra_bitrate_pct;
 
     oxcf->best_allowed_q          = cfg.rc_min_quantizer;
     oxcf->worst_allowed_q         = cfg.rc_max_quantizer;
@@ -311,7 +313,7 @@ static vpx_codec_err_t set_vp8e_config(VP8_CONFIG *oxcf,
     oxcf->fixed_q = -1;
 
     oxcf->under_shoot_pct         = cfg.rc_undershoot_pct;
-    //oxcf->over_shoot_pct        = cfg.rc_overshoot_pct;
+    oxcf->over_shoot_pct          = cfg.rc_overshoot_pct;
 
     oxcf->maximum_buffer_size     = cfg.rc_buf_sz;
     oxcf->starting_buffer_level   = cfg.rc_buf_initial_sz;
@@ -357,6 +359,7 @@ static vpx_codec_err_t set_vp8e_config(VP8_CONFIG *oxcf,
         printf("key_freq: %d\n", oxcf->key_freq);
         printf("end_usage: %d\n", oxcf->end_usage);
         printf("under_shoot_pct: %d\n", oxcf->under_shoot_pct);
+        printf("over_shoot_pct: %d\n", oxcf->over_shoot_pct);
         printf("starting_buffer_level: %d\n", oxcf->starting_buffer_level);
         printf("optimal_buffer_level: %d\n",  oxcf->optimal_buffer_level);
         printf("maximum_buffer_size: %d\n", oxcf->maximum_buffer_size);
@@ -728,6 +731,9 @@ static vpx_codec_err_t vp8e_encode(vpx_codec_alg_priv_t  *ctx,
         if (ctx->base.init_flags & VPX_CODEC_USE_PSNR)
             ((VP8_COMP *)ctx->cpi)->b_calculate_psnr = 1;
 
+        if (ctx->base.init_flags & VPX_CODEC_USE_OUTPUT_PARTITION)
+            ((VP8_COMP *)ctx->cpi)->output_partition = 1;
+
         /* Convert API flags to internal codec lib flags */
         lib_flags = (flags & VPX_EFLAG_FORCE_KF) ? FRAMEFLAGS_KEY : 0;
 
@@ -767,8 +773,6 @@ static vpx_codec_err_t vp8e_encode(vpx_codec_alg_priv_t  *ctx,
                 round = 1000000 * ctx->cfg.g_timebase.num / 2 - 1;
                 delta = (dst_end_time_stamp - dst_time_stamp);
                 pkt.kind = VPX_CODEC_CX_FRAME_PKT;
-                pkt.data.frame.buf = cx_data;
-                pkt.data.frame.sz  = size;
                 pkt.data.frame.pts =
                     (dst_time_stamp * ctx->cfg.g_timebase.den + round)
                     / ctx->cfg.g_timebase.num / 10000000;
@@ -794,11 +798,38 @@ static vpx_codec_err_t vp8e_encode(vpx_codec_alg_priv_t  *ctx,
                     pkt.data.frame.duration = 0;
                 }
 
-                vpx_codec_pkt_list_add(&ctx->pkt_list.head, &pkt);
+                if (cpi->droppable)
+                    pkt.data.frame.flags |= VPX_FRAME_IS_DROPPABLE;
+
+                if (cpi->output_partition)
+                {
+                    int i;
+                    const int num_partitions =
+                            (1 << cpi->common.multi_token_partition) + 1;
+                    for (i = 0; i < num_partitions; ++i)
+                    {
+                        pkt.data.frame.buf = cx_data;
+                        pkt.data.frame.sz = cpi->partition_sz[i];
+                        pkt.data.frame.partition_id = i;
+                        /* don't set the fragment bit for the last partition */
+                        if (i < num_partitions - 1)
+                            pkt.data.frame.flags |= VPX_FRAME_IS_FRAGMENT;
+                        vpx_codec_pkt_list_add(&ctx->pkt_list.head, &pkt);
+                        cx_data += cpi->partition_sz[i];
+                        cx_data_sz -= cpi->partition_sz[i];
+                    }
+                }
+                else
+                {
+                    pkt.data.frame.buf = cx_data;
+                    pkt.data.frame.sz  = size;
+                    pkt.data.frame.partition_id = -1;
+                    vpx_codec_pkt_list_add(&ctx->pkt_list.head, &pkt);
+                    cx_data += size;
+                    cx_data_sz -= size;
+                }
 
                 //printf("timestamp: %lld, duration: %d\n", pkt->data.frame.pts, pkt->data.frame.duration);
-                cx_data += size;
-                cx_data_sz -= size;
             }
         }
     }
@@ -1083,11 +1114,11 @@ static vpx_codec_enc_cfg_map_t vp8e_usage_cfg_map[] =
         {0},                /* rc_twopass_stats_in */
 #endif
         256,                /* rc_target_bandwidth */
-
+        0,                  /* rc_max_intra_bitrate_pct */
         4,                  /* rc_min_quantizer */
         63,                 /* rc_max_quantizer */
-        95,                 /* rc_undershoot_pct */
-        200,                /* rc_overshoot_pct */
+        100,                /* rc_undershoot_pct */
+        100,                /* rc_overshoot_pct */
 
         6000,               /* rc_max_buffer_size */
         4000,               /* rc_buffer_initial_size; */
@@ -1118,7 +1149,8 @@ CODEC_INTERFACE(vpx_codec_vp8_cx) =
 {
     "WebM Project VP8 Encoder" VERSION_STRING,
     VPX_CODEC_INTERNAL_ABI_VERSION,
-    VPX_CODEC_CAP_ENCODER | VPX_CODEC_CAP_PSNR,
+    VPX_CODEC_CAP_ENCODER | VPX_CODEC_CAP_PSNR |
+    VPX_CODEC_CAP_OUTPUT_PARTITION,
     /* vpx_codec_caps_t          caps; */
     vp8e_init,          /* vpx_codec_init_fn_t       init; */
     vp8e_destroy,       /* vpx_codec_destroy_fn_t    destroy; */

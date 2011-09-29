@@ -24,12 +24,16 @@
 #include "vp8/common/threading.h"
 #include "decoderthreading.h"
 #include <stdio.h>
+#include <assert.h>
 
 #include "vp8/common/quant_common.h"
 #include "vpx_scale/vpxscale.h"
 #include "vp8/common/systemdependent.h"
 #include "vpx_ports/vpx_timer.h"
 #include "detokenize.h"
+#if CONFIG_ERROR_CONCEALMENT
+#include "error_concealment.h"
+#endif
 #if ARCH_ARM
 #include "vpx_ports/arm.h"
 #endif
@@ -43,6 +47,8 @@ static cl_command_queue cl_commands = NULL;
 
 extern void vp8_init_loop_filter(VP8_COMMON *cm);
 extern void vp8cx_init_de_quantizer(VP8D_COMP *pbi);
+static int get_free_fb (VP8_COMMON *cm);
+static void ref_cnt_fb (int *buf, int *idx, int new_idx);
 
 #define PROFILE_OUTPUT 0
 #if PROFILE_OUTPUT
@@ -110,6 +116,15 @@ VP8D_PTR vp8dx_create_decompressor(VP8D_CONFIG *oxcf)
     }
 
     pbi->common.error.setjmp = 0;
+
+#if CONFIG_ERROR_CONCEALMENT
+    pbi->ec_enabled = oxcf->error_concealment;
+#else
+    pbi->ec_enabled = 0;
+#endif
+
+    pbi->input_partition = oxcf->input_partition;
+
     return (VP8D_PTR) pbi;
 }
 
@@ -132,13 +147,16 @@ void vp8dx_remove_decompressor(VP8D_PTR ptr)
         vp8mt_de_alloc_temp_buffers(pbi, pbi->common.mb_rows);
     vp8_decoder_remove_threads(pbi);
 #endif
+#if CONFIG_ERROR_CONCEALMENT
+    vp8_de_alloc_overlap_lists(pbi);
+#endif
     vp8_remove_common(&pbi->common);
-
+    vpx_free(pbi->mbc);
     vpx_free(pbi);
 }
 
 
-int vp8dx_get_reference(VP8D_PTR ptr, VP8_REFFRAME ref_frame_flag, YV12_BUFFER_CONFIG *sd)
+vpx_codec_err_t vp8dx_get_reference(VP8D_PTR ptr, VP8_REFFRAME ref_frame_flag, YV12_BUFFER_CONFIG *sd)
 {
     VP8D_COMP *pbi = (VP8D_COMP *) ptr;
     VP8_COMMON *cm = &pbi->common;
@@ -150,33 +168,65 @@ int vp8dx_get_reference(VP8D_PTR ptr, VP8_REFFRAME ref_frame_flag, YV12_BUFFER_C
         ref_fb_idx = cm->gld_fb_idx;
     else if (ref_frame_flag == VP8_ALT_FLAG)
         ref_fb_idx = cm->alt_fb_idx;
+    else{
+        vpx_internal_error(&pbi->common.error, VPX_CODEC_ERROR,
+            "Invalid reference frame");
+        return pbi->common.error.error_code;
+    }
+
+    if(cm->yv12_fb[ref_fb_idx].y_height != sd->y_height ||
+        cm->yv12_fb[ref_fb_idx].y_width != sd->y_width ||
+        cm->yv12_fb[ref_fb_idx].uv_height != sd->uv_height ||
+        cm->yv12_fb[ref_fb_idx].uv_width != sd->uv_width){
+        vpx_internal_error(&pbi->common.error, VPX_CODEC_ERROR,
+            "Incorrect buffer dimensions");
+    }
     else
-        return -1;
+        vp8_yv12_copy_frame_ptr(&cm->yv12_fb[ref_fb_idx], sd);
 
-    vp8_yv12_copy_frame_ptr(&cm->yv12_fb[ref_fb_idx], sd);
-
-    return 0;
+    return pbi->common.error.error_code;
 }
 
 
-int vp8dx_set_reference(VP8D_PTR ptr, VP8_REFFRAME ref_frame_flag, YV12_BUFFER_CONFIG *sd)
+vpx_codec_err_t vp8dx_set_reference(VP8D_PTR ptr, VP8_REFFRAME ref_frame_flag, YV12_BUFFER_CONFIG *sd)
 {
     VP8D_COMP *pbi = (VP8D_COMP *) ptr;
     VP8_COMMON *cm = &pbi->common;
-    int ref_fb_idx;
+    int *ref_fb_ptr = NULL;
+    int free_fb;
 
     if (ref_frame_flag == VP8_LAST_FLAG)
-        ref_fb_idx = cm->lst_fb_idx;
+        ref_fb_ptr = &cm->lst_fb_idx;
     else if (ref_frame_flag == VP8_GOLD_FLAG)
-        ref_fb_idx = cm->gld_fb_idx;
+        ref_fb_ptr = &cm->gld_fb_idx;
     else if (ref_frame_flag == VP8_ALT_FLAG)
-        ref_fb_idx = cm->alt_fb_idx;
-    else
-        return -1;
+        ref_fb_ptr = &cm->alt_fb_idx;
+    else{
+        vpx_internal_error(&pbi->common.error, VPX_CODEC_ERROR,
+            "Invalid reference frame");
+        return pbi->common.error.error_code;
+    }
 
-    vp8_yv12_copy_frame_ptr(sd, &cm->yv12_fb[ref_fb_idx]);
+    if(cm->yv12_fb[*ref_fb_ptr].y_height != sd->y_height ||
+        cm->yv12_fb[*ref_fb_ptr].y_width != sd->y_width ||
+        cm->yv12_fb[*ref_fb_ptr].uv_height != sd->uv_height ||
+        cm->yv12_fb[*ref_fb_ptr].uv_width != sd->uv_width){
+        vpx_internal_error(&pbi->common.error, VPX_CODEC_ERROR,
+            "Incorrect buffer dimensions");
+    }
+    else{
+        /* Find an empty frame buffer. */
+        free_fb = get_free_fb(cm);
+        /* Decrease fb_idx_ref_cnt since it will be increased again in
+         * ref_cnt_fb() below. */
+        cm->fb_idx_ref_cnt[free_fb]--;
 
-    return 0;
+        /* Manage the reference counters and copy image. */
+        ref_cnt_fb (cm->fb_idx_ref_cnt, ref_fb_ptr, free_fb);
+        vp8_yv12_copy_frame_ptr(sd, &cm->yv12_fb[*ref_fb_ptr]);
+    }
+
+   return pbi->common.error.error_code;
 }
 
 /*For ARM NEON, d8-d15 are callee-saved registers, and need to be saved by us.*/
@@ -192,6 +242,7 @@ static int get_free_fb (VP8_COMMON *cm)
         if (cm->fb_idx_ref_cnt[i] == 0)
             break;
 
+    assert(i < NUM_YV12_BUFFERS);
     cm->fb_idx_ref_cnt[i] = 1;
     return i;
 }
@@ -283,62 +334,91 @@ int vp8dx_receive_compressed_data(VP8D_PTR ptr, unsigned long size, const unsign
 
     pbi->common.error.error_code = VPX_CODEC_OK;
 
-    if (size == 0)
+    if (pbi->input_partition && !(source == NULL && size == 0))
     {
-       /* This is used to signal that we are missing frames.
-        * We do not know if the missing frame(s) was supposed to update
-        * any of the reference buffers, but we act conservative and
-        * mark only the last buffer as corrupted.
-        */
-        cm->yv12_fb[cm->lst_fb_idx].corrupted = 1;
-
-        /* Signal that we have no frame to show. */
-        cm->show_frame = 0;
-
-        /* Nothing more to do. */
+        /* Store a pointer to this partition and return. We haven't
+         * received the complete frame yet, so we will wait with decoding.
+         */
+        pbi->partitions[pbi->num_partitions] = source;
+        pbi->partition_sizes[pbi->num_partitions] = size;
+        pbi->source_sz += size;
+        pbi->num_partitions++;
+        if (pbi->num_partitions > (1<<pbi->common.multi_token_partition) + 1)
+            pbi->common.multi_token_partition++;
+        if (pbi->common.multi_token_partition > EIGHT_PARTITION)
+        {
+            pbi->common.error.error_code = VPX_CODEC_UNSUP_BITSTREAM;
+            pbi->common.error.setjmp = 0;
+            return -1;
+        }
         return 0;
     }
-
-
-#if HAVE_ARMV7
-#if CONFIG_RUNTIME_CPU_DETECT
-    if (cm->rtcd.flags & HAS_NEON)
-#endif
+    else
     {
-        vp8_push_neon(dx_store_reg);
-    }
-#endif
+        if (!pbi->input_partition)
+        {
+            pbi->Source = source;
+            pbi->source_sz = size;
+        }
 
-    cm->new_fb_idx = get_free_fb (cm);
+        if (pbi->source_sz == 0)
+        {
+           /* This is used to signal that we are missing frames.
+            * We do not know if the missing frame(s) was supposed to update
+            * any of the reference buffers, but we act conservative and
+            * mark only the last buffer as corrupted.
+            */
+            cm->yv12_fb[cm->lst_fb_idx].corrupted = 1;
 
-    if (setjmp(pbi->common.error.jmp))
-    {
+            /* If error concealment is disabled we won't signal missing frames to
+             * the decoder.
+             */
+            if (!pbi->ec_enabled)
+            {
+                /* Signal that we have no frame to show. */
+                cm->show_frame = 0;
+
+                /* Nothing more to do. */
+                return 0;
+            }
+        }
+
 #if HAVE_ARMV7
 #if CONFIG_RUNTIME_CPU_DETECT
         if (cm->rtcd.flags & HAS_NEON)
 #endif
         {
-            vp8_pop_neon(dx_store_reg);
+            vp8_push_neon(dx_store_reg);
         }
 #endif
-        pbi->common.error.setjmp = 0;
 
-       /* We do not know if the missing frame(s) was supposed to update
-        * any of the reference buffers, but we act conservative and
-        * mark only the last buffer as corrupted.
-        */
-        cm->yv12_fb[cm->lst_fb_idx].corrupted = 1;
+        cm->new_fb_idx = get_free_fb (cm);
 
-        if (cm->fb_idx_ref_cnt[cm->new_fb_idx] > 0)
-          cm->fb_idx_ref_cnt[cm->new_fb_idx]--;
-        return -1;
+        if (setjmp(pbi->common.error.jmp))
+        {
+#if HAVE_ARMV7
+#if CONFIG_RUNTIME_CPU_DETECT
+            if (cm->rtcd.flags & HAS_NEON)
+#endif
+            {
+                vp8_pop_neon(dx_store_reg);
+            }
+#endif
+            pbi->common.error.setjmp = 0;
+
+           /* We do not know if the missing frame(s) was supposed to update
+            * any of the reference buffers, but we act conservative and
+            * mark only the last buffer as corrupted.
+            */
+            cm->yv12_fb[cm->lst_fb_idx].corrupted = 1;
+
+            if (cm->fb_idx_ref_cnt[cm->new_fb_idx] > 0)
+              cm->fb_idx_ref_cnt[cm->new_fb_idx]--;
+            return -1;
+        }
+
+        pbi->common.error.setjmp = 1;
     }
-
-    pbi->common.error.setjmp = 1;
-
-    /*cm->current_video_frame++;*/
-    pbi->Source = source;
-    pbi->source_sz = size;
 
 #if CONFIG_OPENCL
     pbi->mb.cl_commands = NULL;
@@ -522,6 +602,28 @@ int vp8dx_receive_compressed_data(VP8D_PTR ptr, unsigned long size, const unsign
 
     vp8_clear_system_state();
 
+#if CONFIG_ERROR_CONCEALMENT
+    /* swap the mode infos to storage for future error concealment */
+    if (pbi->ec_enabled && pbi->common.prev_mi)
+    {
+        const MODE_INFO* tmp = pbi->common.prev_mi;
+        int row, col;
+        pbi->common.prev_mi = pbi->common.mi;
+        pbi->common.mi = tmp;
+
+        /* Propagate the segment_ids to the next frame */
+        for (row = 0; row < pbi->common.mb_rows; ++row)
+        {
+            for (col = 0; col < pbi->common.mb_cols; ++col)
+            {
+                const int i = row*pbi->common.mode_info_stride + col;
+                pbi->common.mi[i].mbmi.segment_id =
+                        pbi->common.prev_mi[i].mbmi.segment_id;
+            }
+        }
+    }
+#endif
+
     /*vp8_print_modes_and_motion_vectors( cm->mi, cm->mb_rows,cm->mb_cols, cm->current_video_frame);*/
 
     if (cm->show_frame)
@@ -529,6 +631,10 @@ int vp8dx_receive_compressed_data(VP8D_PTR ptr, unsigned long size, const unsign
 
     pbi->ready_for_new_data = 0;
     pbi->last_time_stamp = time_stamp;
+    pbi->num_partitions = 0;
+    if (pbi->input_partition)
+        pbi->common.multi_token_partition = 0;
+    pbi->source_sz = 0;
 
 #if 0
     {

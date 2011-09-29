@@ -23,6 +23,8 @@
 #endif
 
 #define VP8_CAP_POSTPROC (CONFIG_POSTPROC ? VPX_CODEC_CAP_POSTPROC : 0)
+#define VP8_CAP_ERROR_CONCEALMENT (CONFIG_ERROR_CONCEALMENT ? \
+                                    VPX_CODEC_CAP_ERROR_CONCEALMENT : 0)
 
 typedef vpx_codec_stream_info_t  vp8_stream_info_t;
 
@@ -377,6 +379,10 @@ static vpx_codec_err_t vp8_decode(vpx_codec_alg_priv_t  *ctx,
             oxcf.Version = 9;
             oxcf.postprocess = 0;
             oxcf.max_threads = ctx->cfg.threads;
+            oxcf.error_concealment =
+                    (ctx->base.init_flags & VPX_CODEC_USE_ERROR_CONCEALMENT);
+            oxcf.input_partition =
+                    (ctx->base.init_flags & VPX_CODEC_USE_INPUT_PARTITION);
 
             optr = vp8dx_create_decompressor(&oxcf);
 
@@ -597,8 +603,7 @@ static vpx_codec_err_t vp8_set_reference(vpx_codec_alg_priv_t *ctx,
 
         image2yuvconfig(&frame->img, &sd);
 
-        vp8dx_set_reference(ctx->pbi, frame->frame_type, &sd);
-        return VPX_CODEC_OK;
+        return vp8dx_set_reference(ctx->pbi, frame->frame_type, &sd);
     }
     else
         return VPX_CODEC_INVALID_PARAM;
@@ -619,8 +624,7 @@ static vpx_codec_err_t vp8_get_reference(vpx_codec_alg_priv_t *ctx,
 
         image2yuvconfig(&frame->img, &sd);
 
-        vp8dx_get_reference(ctx->pbi, frame->frame_type, &sd);
-        return VPX_CODEC_OK;
+        return vp8dx_get_reference(ctx->pbi, frame->frame_type, &sd);
     }
     else
         return VPX_CODEC_INVALID_PARAM;
@@ -631,8 +635,8 @@ static vpx_codec_err_t vp8_set_postproc(vpx_codec_alg_priv_t *ctx,
                                         int ctr_id,
                                         va_list args)
 {
-    vp8_postproc_cfg_t *data = va_arg(args, vp8_postproc_cfg_t *);
 #if CONFIG_POSTPROC
+    vp8_postproc_cfg_t *data = va_arg(args, vp8_postproc_cfg_t *);
 
     if (data)
     {
@@ -732,7 +736,8 @@ CODEC_INTERFACE(vpx_codec_vp8_dx) =
 {
     "WebM Project VP8 Decoder" VERSION_STRING,
     VPX_CODEC_INTERNAL_ABI_VERSION,
-    VPX_CODEC_CAP_DECODER | VP8_CAP_POSTPROC,
+    VPX_CODEC_CAP_DECODER | VP8_CAP_POSTPROC | VP8_CAP_ERROR_CONCEALMENT |
+    VPX_CODEC_CAP_INPUT_PARTITION,
     /* vpx_codec_caps_t          caps; */
     vp8_init,         /* vpx_codec_init_fn_t       init; */
     vp8_destroy,      /* vpx_codec_destroy_fn_t    destroy; */
@@ -762,7 +767,7 @@ vpx_codec_iface_t vpx_codec_vp8_algo =
 {
     "WebM Project VP8 Decoder (Deprecated API)" VERSION_STRING,
     VPX_CODEC_INTERNAL_ABI_VERSION,
-    VPX_CODEC_CAP_DECODER | VP8_CAP_POSTPROC,
+    VPX_CODEC_CAP_DECODER | VP8_CAP_POSTPROC | VP8_CAP_ERROR_CONCEALMENT,
     /* vpx_codec_caps_t          caps; */
     vp8_init,         /* vpx_codec_init_fn_t       init; */
     vp8_destroy,      /* vpx_codec_destroy_fn_t    destroy; */

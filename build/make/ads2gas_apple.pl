@@ -41,6 +41,9 @@ sub trim($)
 
 while (<STDIN>)
 {
+    # Load and store alignment
+    s/@/,:/g;
+
     # Comment character
     s/;/@/g;
 
@@ -97,7 +100,10 @@ while (<STDIN>)
     s/CODE([0-9][0-9])/.code $1/;
 
     # No AREA required
-    s/^\s*AREA.*$/.text/;
+    # But ALIGNs in AREA must be obeyed
+    s/^\s*AREA.*ALIGN=([0-9])$/.text\n.p2align $1/;
+    # If no ALIGN, strip the AREA and align to 4 bytes
+    s/^\s*AREA.*$/.text\n.p2align 2/;
 
     # DCD to .word
     # This one is for incoming symbols
@@ -137,8 +143,8 @@ while (<STDIN>)
     # put the colon at the end of the line in the macro
     s/^([a-zA-Z_0-9\$]+)/$1:/ if !/EQU/;
 
-    # Strip ALIGN
-    s/\sALIGN/@ ALIGN/g;
+    # ALIGN directive
+    s/ALIGN/.balign/g;
 
     # Strip ARM
     s/\sARM/@ ARM/g;

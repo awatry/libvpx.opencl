@@ -22,12 +22,15 @@ void vp8_arch_arm_encoder_init(VP8_COMP *cpi)
 {
 #if CONFIG_RUNTIME_CPU_DETECT
     int flags = cpi->common.rtcd.flags;
-    int has_edsp = flags & HAS_EDSP;
-    int has_media = flags & HAS_MEDIA;
-    int has_neon = flags & HAS_NEON;
+
+#if HAVE_ARMV5TE
+    if (flags & HAS_EDSP)
+    {
+    }
+#endif
 
 #if HAVE_ARMV6
-    if (has_media)
+    if (flags & HAS_MEDIA)
     {
         cpi->rtcd.variance.sad16x16              = vp8_sad16x16_armv6;
         /*cpi->rtcd.variance.sad16x8               = vp8_sad16x8_c;
@@ -53,10 +56,7 @@ void vp8_arch_arm_encoder_init(VP8_COMP *cpi)
         cpi->rtcd.variance.mse16x16              = vp8_mse16x16_armv6;
         /*cpi->rtcd.variance.getmbss               = vp8_get_mb_ss_c;*/
 
-        /*cpi->rtcd.variance.get16x16prederror     = vp8_get16x16pred_error_c;
-        cpi->rtcd.variance.get8x8var             = vp8_get8x8var_c;
-        cpi->rtcd.variance.get16x16var           = vp8_get16x16var_c;;
-        cpi->rtcd.variance.get4x4sse_cs          = vp8_get4x4sse_cs_c;*/
+        /*cpi->rtcd.variance.get4x4sse_cs          = vp8_get4x4sse_cs_c;*/
 
         /*cpi->rtcd.fdct.short4x4                  = vp8_short_fdct4x4_c;
         cpi->rtcd.fdct.short8x4                  = vp8_short_fdct8x4_c;*/
@@ -77,7 +77,7 @@ void vp8_arch_arm_encoder_init(VP8_COMP *cpi)
 #endif
 
 #if HAVE_ARMV7
-    if (has_neon)
+    if (flags & HAS_NEON)
     {
         cpi->rtcd.variance.sad16x16              = vp8_sad16x16_neon;
         cpi->rtcd.variance.sad16x8               = vp8_sad16x8_neon;
@@ -103,9 +103,6 @@ void vp8_arch_arm_encoder_init(VP8_COMP *cpi)
         cpi->rtcd.variance.mse16x16              = vp8_mse16x16_neon;
         /*cpi->rtcd.variance.getmbss               = vp8_get_mb_ss_c;*/
 
-        cpi->rtcd.variance.get16x16prederror     = vp8_get16x16pred_error_neon;
-        /*cpi->rtcd.variance.get8x8var             = vp8_get8x8var_c;
-        cpi->rtcd.variance.get16x16var           = vp8_get16x16var_c;*/
         cpi->rtcd.variance.get4x4sse_cs          = vp8_get4x4sse_cs_neon;
 
         cpi->rtcd.fdct.short4x4                  = vp8_short_fdct4x4_neon;
@@ -122,17 +119,15 @@ void vp8_arch_arm_encoder_init(VP8_COMP *cpi)
         cpi->rtcd.encodemb.submbuv               = vp8_subtract_mbuv_neon;
 
         /*cpi->rtcd.quantize.quantb                = vp8_regular_quantize_b;
-        cpi->rtcd.quantize.fastquantb            = vp8_fast_quantize_b_c;*/
-        /* The neon quantizer has not been updated to match the new exact
-         * quantizer introduced in commit e04e2935
-         */
-        /*cpi->rtcd.quantize.fastquantb            = vp8_fast_quantize_b_neon;*/
+        cpi->rtcd.quantize.quantb_pair           = vp8_regular_quantize_b_pair;*/
+        cpi->rtcd.quantize.fastquantb            = vp8_fast_quantize_b_neon;
+        cpi->rtcd.quantize.fastquantb_pair       = vp8_fast_quantize_b_pair_neon;
     }
 #endif
 
 #if HAVE_ARMV7
 #if CONFIG_RUNTIME_CPU_DETECT
-    if (has_neon)
+    if (flags & HAS_NEON)
 #endif
     {
         vp8_yv12_copy_partial_frame_ptr = vpxyv12_copy_partial_frame_neon;

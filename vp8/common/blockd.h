@@ -142,16 +142,11 @@ typedef enum
    modes for the Y blocks to the left and above us; for interframes, there
    is a single probability table. */
 
-typedef struct
+union b_mode_info
 {
-    B_PREDICTION_MODE mode;
-    union
-    {
-        int as_int;
-        MV  as_mv;
-    } mv;
-} B_MODE_INFO;
-
+    B_PREDICTION_MODE as_mode;
+    int_mv mv;
+};
 
 typedef enum
 {
@@ -166,11 +161,7 @@ typedef struct
 {
     MB_PREDICTION_MODE mode, uv_mode;
     MV_REFERENCE_FRAME ref_frame;
-    union
-    {
-        int as_int;
-        MV  as_mv;
-    } mv;
+    int_mv mv;
 
     unsigned char partitioning;
     unsigned char mb_skip_coeff;                                /* does this mb has coefficients at all, 1=no coefficients, 0=need decode tokens */
@@ -178,13 +169,11 @@ typedef struct
     unsigned char segment_id;                  /* Which set of segmentation parameters should be used for this MB */
 } MB_MODE_INFO;
 
-
 typedef struct
 {
     MB_MODE_INFO mbmi;
-    B_MODE_INFO bmi[16];
+    union b_mode_info bmi[16];
 } MODE_INFO;
-
 
 typedef struct
 {
@@ -230,8 +219,7 @@ typedef struct
 
     char *eobs_base; //beginning of MB.eobs
 
-    B_MODE_INFO bmi;
-
+    union b_mode_info bmi;
 } BLOCKD;
 
 typedef struct
@@ -305,6 +293,9 @@ typedef struct
     int mb_to_top_edge;
     int mb_to_bottom_edge;
 
+    int ref_frame_cost[MAX_REF_FRAMES];
+
+
     unsigned int frames_since_golden;
     unsigned int frames_till_alt_ref_frame;
 
@@ -325,5 +316,21 @@ typedef struct
 
 extern void vp8_build_block_doffsets(MACROBLOCKD *x);
 extern void vp8_setup_block_dptrs(MACROBLOCKD *x);
+
+static void update_blockd_bmi(MACROBLOCKD *xd)
+{
+    int i;
+    int is_4x4;
+    is_4x4 = (xd->mode_info_context->mbmi.mode == SPLITMV) ||
+              (xd->mode_info_context->mbmi.mode == B_PRED);
+
+    if (is_4x4)
+    {
+        for (i = 0; i < 16; i++)
+        {
+            xd->block[i].bmi = xd->mode_info_context->bmi[i];
+        }
+    }
+}
 
 #endif  /* __INC_BLOCKD_H */
