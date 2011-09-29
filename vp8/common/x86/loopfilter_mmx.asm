@@ -16,7 +16,7 @@
 ;(
 ;    unsigned char *src_ptr,
 ;    int src_pixel_step,
-;    const char *blimit,
+;    const char *flimit,
 ;    const char *limit,
 ;    const char *thresh,
 ;    int  count
@@ -122,10 +122,12 @@ next8_h:
         paddusb     mm5, mm5              ; abs(p0-q0)*2
         paddusb     mm5, mm2              ; abs (p0 - q0) *2 + abs(p1-q1)/2
 
-        mov         rdx, arg(2) ;blimit           ; get blimit
-        movq        mm7, [rdx]            ; blimit
+        mov         rdx, arg(2) ;flimit           ; get flimit
+        movq        mm2, [rdx]            ; flimit mm2
+        paddb       mm2, mm2              ; flimit*2 (less than 255)
+        paddb       mm7, mm2              ; flimit * 2 + limit (less than 255)
 
-        psubusb     mm5,    mm7           ; abs (p0 - q0) *2 + abs(p1-q1)/2  > blimit
+        psubusb     mm5,    mm7           ; abs (p0 - q0) *2 + abs(p1-q1)/2  > flimit * 2 + limit
         por         mm1,    mm5
         pxor        mm5,    mm5
         pcmpeqb     mm1,    mm5           ; mask mm1
@@ -228,7 +230,7 @@ next8_h:
 ;(
 ;    unsigned char *src_ptr,
 ;    int  src_pixel_step,
-;    const char *blimit,
+;    const char *flimit,
 ;    const char *limit,
 ;    const char *thresh,
 ;    int count
@@ -404,9 +406,9 @@ next8_v:
         pand        mm5,        [GLOBAL(tfe)]               ; set lsb of each byte to zero
         psrlw       mm5,        1                           ; abs(p1-q1)/2
 
-        mov         rdx,        arg(2) ;blimit                      ;
+        mov         rdx,        arg(2) ;flimit                      ;
 
-        movq        mm4,        [rdx]                       ;blimit
+        movq        mm2,        [rdx]                       ;flimit  mm2
         movq        mm1,        mm3                         ; mm1=mm3=p0
 
         movq        mm7,        mm6                         ; mm7=mm6=q0
@@ -417,7 +419,10 @@ next8_v:
         paddusb     mm1,        mm1                         ; abs(q0-p0)*2
         paddusb     mm1,        mm5                         ; abs (p0 - q0) *2 + abs(p1-q1)/2
 
-        psubusb     mm1,        mm4                         ; abs (p0 - q0) *2 + abs(p1-q1)/2  > blimit
+        paddb       mm2,        mm2                         ; flimit*2 (less than 255)
+        paddb       mm4,        mm2                         ; flimit * 2 + limit (less than 255)
+
+        psubusb     mm1,        mm4                         ; abs (p0 - q0) *2 + abs(p1-q1)/2  > flimit * 2 + limit
         por         mm1,        mm0;                        ; mask
 
         pxor        mm0,        mm0
@@ -598,7 +603,7 @@ next8_v:
 ;(
 ;    unsigned char *src_ptr,
 ;    int  src_pixel_step,
-;    const char *blimit,
+;    const char *flimit,
 ;    const char *limit,
 ;    const char *thresh,
 ;    int count
@@ -714,15 +719,17 @@ next8_mbh:
         paddusb     mm5, mm5              ; abs(p0-q0)*2
         paddusb     mm5, mm2              ; abs (p0 - q0) *2 + abs(p1-q1)/2
 
-        mov         rdx, arg(2) ;blimit           ; get blimit
-        movq        mm7, [rdx]            ; blimit
+        mov         rdx, arg(2) ;flimit           ; get flimit
+        movq        mm2, [rdx]            ; flimit mm2
+        paddb       mm2, mm2              ; flimit*2 (less than 255)
+        paddb       mm7, mm2              ; flimit * 2 + limit (less than 255)
 
-        psubusb     mm5,    mm7           ; abs (p0 - q0) *2 + abs(p1-q1)/2  > blimit
+        psubusb     mm5,    mm7           ; abs (p0 - q0) *2 + abs(p1-q1)/2  > flimit * 2 + limit
         por         mm1,    mm5
         pxor        mm5,    mm5
         pcmpeqb     mm1,    mm5           ; mask mm1
 
-        ; mm1 = mask, mm0=q0,  mm7 = blimit, t0 = abs(q0-q1) t1 = abs(p1-p0)
+        ; mm1 = mask, mm0=q0,  mm7 = flimit, t0 = abs(q0-q1) t1 = abs(p1-p0)
         ; mm6 = p0,
 
         ; calculate high edge variance
@@ -915,7 +922,7 @@ next8_mbh:
 ;(
 ;    unsigned char *src_ptr,
 ;    int  src_pixel_step,
-;    const char *blimit,
+;    const char *flimit,
 ;    const char *limit,
 ;    const char *thresh,
 ;    int count
@@ -1101,9 +1108,9 @@ next8_mbv:
         pand        mm5,        [GLOBAL(tfe)]               ; set lsb of each byte to zero
         psrlw       mm5,        1                           ; abs(p1-q1)/2
 
-        mov         rdx,        arg(2) ;blimit                      ;
+        mov         rdx,        arg(2) ;flimit                      ;
 
-        movq        mm4,        [rdx]                       ;blimit
+        movq        mm2,        [rdx]                       ;flimit  mm2
         movq        mm1,        mm3                         ; mm1=mm3=p0
 
         movq        mm7,        mm6                         ; mm7=mm6=q0
@@ -1114,7 +1121,10 @@ next8_mbv:
         paddusb     mm1,        mm1                         ; abs(q0-p0)*2
         paddusb     mm1,        mm5                         ; abs (p0 - q0) *2 + abs(p1-q1)/2
 
-        psubusb     mm1,        mm4                         ; abs (p0 - q0) *2 + abs(p1-q1)/2  > blimit
+        paddb       mm2,        mm2                         ; flimit*2 (less than 255)
+        paddb       mm4,        mm2                         ; flimit * 2 + limit (less than 255)
+
+        psubusb     mm1,        mm4                         ; abs (p0 - q0) *2 + abs(p1-q1)/2  > flimit * 2 + limit
         por         mm1,        mm0;                        ; mask
 
         pxor        mm0,        mm0
@@ -1382,13 +1392,16 @@ next8_mbv:
 ;(
 ;    unsigned char *src_ptr,
 ;    int  src_pixel_step,
-;    const char *blimit
+;    const char *flimit,
+;    const char *limit,
+;    const char *thresh,
+;    int count
 ;)
 global sym(vp8_loop_filter_simple_horizontal_edge_mmx)
 sym(vp8_loop_filter_simple_horizontal_edge_mmx):
     push        rbp
     mov         rbp, rsp
-    SHADOW_ARGS_TO_STACK 3
+    SHADOW_ARGS_TO_STACK 6
     GET_GOT     rbx
     push        rsi
     push        rdi
@@ -1397,10 +1410,14 @@ sym(vp8_loop_filter_simple_horizontal_edge_mmx):
         mov         rsi, arg(0) ;src_ptr
         movsxd      rax, dword ptr arg(1) ;src_pixel_step     ; destination pitch?
 
-        mov         rcx, 2                ; count
+        movsxd      rcx, dword ptr arg(5) ;count
 nexts8_h:
-        mov         rdx, arg(2) ;blimit           ; get blimit
+        mov         rdx, arg(3) ;limit
+        movq        mm7, [rdx]
+        mov         rdx, arg(2) ;flimit           ; get flimit
         movq        mm3, [rdx]            ;
+        paddb       mm3, mm3              ; flimit*2 (less than 255)
+        paddb       mm3, mm7              ; flimit * 2 + limit (less than 255)
 
         mov         rdi, rsi              ; rdi points to row +1 for indirect addressing
         add         rdi, rax
@@ -1428,7 +1445,7 @@ nexts8_h:
         paddusb     mm5, mm5              ; abs(p0-q0)*2
         paddusb     mm5, mm1              ; abs (p0 - q0) *2 + abs(p1-q1)/2
 
-        psubusb     mm5, mm3              ; abs(p0 - q0) *2 + abs(p1-q1)/2  > blimit
+        psubusb     mm5, mm3              ; abs(p0 - q0) *2 + abs(p1-q1)/2  > flimit * 2 + limit
         pxor        mm3, mm3
         pcmpeqb     mm5, mm3
 
@@ -1498,13 +1515,16 @@ nexts8_h:
 ;(
 ;    unsigned char *src_ptr,
 ;    int  src_pixel_step,
-;    const char *blimit
+;    const char *flimit,
+;    const char *limit,
+;    const char *thresh,
+;    int count
 ;)
 global sym(vp8_loop_filter_simple_vertical_edge_mmx)
 sym(vp8_loop_filter_simple_vertical_edge_mmx):
     push        rbp
     mov         rbp, rsp
-    SHADOW_ARGS_TO_STACK 3
+    SHADOW_ARGS_TO_STACK 6
     GET_GOT     rbx
     push        rsi
     push        rdi
@@ -1519,7 +1539,7 @@ sym(vp8_loop_filter_simple_vertical_edge_mmx):
         movsxd      rax, dword ptr arg(1) ;src_pixel_step     ; destination pitch?
 
         lea         rsi, [rsi + rax*4- 2];  ;
-        mov         rcx, 2                                      ; count
+        movsxd      rcx, dword ptr arg(5) ;count
 nexts8_v:
 
         lea         rdi,        [rsi + rax];
@@ -1582,10 +1602,14 @@ nexts8_v:
         paddusb     mm5,        mm5                             ; abs(p0-q0)*2
         paddusb     mm5,        mm6                             ; abs (p0 - q0) *2 + abs(p1-q1)/2
 
-        mov         rdx,        arg(2) ;blimit                          ; get blimit
+        mov         rdx,        arg(2) ;flimit                          ; get flimit
         movq        mm7,        [rdx]
+        mov         rdx,        arg(3)                          ; get limit
+        movq        mm6,        [rdx]
+        paddb       mm7,        mm7                             ; flimit*2 (less than 255)
+        paddb       mm7,        mm6                             ; flimit * 2 + limit (less than 255)
 
-        psubusb     mm5,        mm7                             ; abs(p0 - q0) *2 + abs(p1-q1)/2  > blimit
+        psubusb     mm5,        mm7                             ; abs(p0 - q0) *2 + abs(p1-q1)/2  > flimit * 2 + limit
         pxor        mm7,        mm7
         pcmpeqb     mm5,        mm7                             ; mm5 = mask
 
