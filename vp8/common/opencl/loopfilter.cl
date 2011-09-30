@@ -87,23 +87,23 @@ __inline uchar4 vp8_filter(
 }
 
 __inline uchar8 load8(global unsigned char *s_base, int s_off, int p){
-        uchar8 data;
-        data.s0 = s_base[s_off-4*p];
-        data.s1 = s_base[s_off-3*p];
-        data.s2 = s_base[s_off-2*p];
-        data.s3 = s_base[s_off-p];
-        data.s4 = s_base[s_off];
-        data.s5 = s_base[s_off+p];
-        data.s6 = s_base[s_off+2*p];
-        data.s7 = s_base[s_off+3*p];
-        return data;
+    uchar8 data;
+    data.s0 = s_base[s_off-4*p];
+    data.s1 = s_base[s_off-3*p];
+    data.s2 = s_base[s_off-2*p];
+    data.s3 = s_base[s_off-p];
+    data.s4 = s_base[s_off];
+    data.s5 = s_base[s_off+p];
+    data.s6 = s_base[s_off+2*p];
+    data.s7 = s_base[s_off+3*p];
+    return data;
 }
 
 __inline void save4(global unsigned char *s_base, int s_off, int p, uchar8 data){
-        s_base[s_off - 2*p] = data.s2;
-        s_base[s_off - p  ] = data.s3;
-        s_base[s_off      ] = data.s4;
-        s_base[s_off + p  ] = data.s5;
+    s_base[s_off - 2*p] = data.s2;
+    s_base[s_off - p  ] = data.s3;
+    s_base[s_off      ] = data.s4;
+    s_base[s_off + p  ] = data.s5;
 }
 
 __inline void save6(global unsigned char *s_base, int s_off, int p, uchar8 data){
@@ -115,9 +115,65 @@ __inline void save6(global unsigned char *s_base, int s_off, int p, uchar8 data)
     s_base[s_off + 2*p  ] = data.s6;
 }
 
+__inline uchar16 load16(global unsigned char *s_base, int s_off, int p){
+    uchar16 data;
+    data.s01234567 = load8(s_base, s_off, p);
+    data.s89abcdef = load8(s_base, s_off+8*p, p);
+    return data;
+}
+
+__inline void private_load16(private uchar *dest, global unsigned char *s_base, int s_off, int p){
+    dest[0] = s_base[s_off-4*p];
+    dest[1] = s_base[s_off-3*p];
+    dest[2] = s_base[s_off-2*p];
+    dest[3] = s_base[s_off-1*p];
+    dest[4] = s_base[s_off-0*p];
+    dest[5] = s_base[s_off+1*p];
+    dest[6] = s_base[s_off+2*p];
+    dest[7] = s_base[s_off+3*p];
+    dest[8] = s_base[s_off+4*p];
+    dest[9] = s_base[s_off+5*p];
+    dest[10] = s_base[s_off+6*p];
+    dest[11] = s_base[s_off+7*p];
+    dest[12] = s_base[s_off+8*p];
+    dest[13] = s_base[s_off+9*p];
+    dest[14] = s_base[s_off+10*p];
+    dest[15] = s_base[s_off+11*p];
+}
+
+__inline void private_save12(global uchar *s_base, int s_off, int p, private uchar *data){
+    s_base[s_off - 2*p] = data[2];
+    s_base[s_off - p  ] = data[3];
+    s_base[s_off      ] = data[4];
+    s_base[s_off + p  ] = data[5];
+    s_base[s_off + 2*p] = data[6];
+    s_base[s_off + 3*p] = data[7];
+    s_base[s_off + 4*p] = data[8];
+    s_base[s_off + 5*p] = data[9];
+    s_base[s_off + 6*p] = data[10];
+    s_base[s_off + 7*p] = data[11];
+    s_base[s_off + 8*p] = data[12];
+    s_base[s_off + 9*p] = data[13];
+}
+
+__inline void save12(global unsigned char *s_base, int s_off, int p, uchar16 data){
+    s_base[s_off - 2*p] = data.s2;
+    s_base[s_off - p  ] = data.s3;
+    s_base[s_off      ] = data.s4;
+    s_base[s_off + p  ] = data.s5;
+    s_base[s_off + 2*p] = data.s6;
+    s_base[s_off + 3*p] = data.s7;
+    s_base[s_off + 4*p] = data.s8;
+    s_base[s_off + 5*p] = data.s9;
+    s_base[s_off + 6*p] = data.sa;
+    s_base[s_off + 7*p] = data.sb;
+    s_base[s_off + 8*p] = data.sc;
+    s_base[s_off + 9*p] = data.sd;
+}
+
 // Filters horizontal edges of inner blocks in a Macroblock
 __inline void vp8_loop_filter_horizontal_edge_worker(
-    global unsigned char *s_base,
+    global uchar *s_base,
     global int *offsets,
     global int *pitches, /* pitch */
     global loop_filter_info *lfi,
@@ -132,7 +188,7 @@ __inline void vp8_loop_filter_horizontal_edge_worker(
     int p //pitches[plane]
 ){
     size_t thread = get_global_id(0);
-    
+    uchar8 data;
     if (filters[num_blocks*filter_type + block] > 0){
         int block_offset = num_blocks*11 + cur_iter*num_blocks*num_planes + block*num_planes+plane;
         int s_off = offsets[block_offset];
@@ -140,7 +196,7 @@ __inline void vp8_loop_filter_horizontal_edge_worker(
         s_off += thread;
         //s_off += thread, so maybe it's possible to use a strided copy with local memory to load into the vector
 
-        uchar8 data = load8(s_base, s_off, p);
+        data = load8(s_base, s_off, p);
 
         char mask = vp8_filter_mask(lfi->lim[thread], lfi->flim[thread], data);
 
@@ -153,7 +209,7 @@ __inline void vp8_loop_filter_horizontal_edge_worker(
 }
 
 __inline void vp8_loop_filter_vertical_edge_worker(
-    global unsigned char *s_base,
+    private uchar *s_data,
     global int *offsets,
     global int *pitches,
     global loop_filter_info *lfi,
@@ -167,22 +223,17 @@ __inline void vp8_loop_filter_vertical_edge_worker(
     size_t block,
     int p
 ){
+    uchar8 data = vload8(0, s_data);
     if (filters[num_blocks*filter_type + block] > 0){
         size_t thread = get_global_id(0);
-
-        int block_offset = cur_iter*num_blocks*num_planes + block*num_planes + plane;
-        int s_off = offsets[block_offset] + p * thread;
-
-        uchar8 data = vload8(0, &s_base[s_off-4]);
 
         char mask = vp8_filter_mask(lfi->lim[thread], lfi->flim[thread], data);
 
         int hev = vp8_hevmask(lfi->thr[thread], data.s2345);
 
         data.s2345 = vp8_filter(mask, hev, data.s2345);
-
-        vstore4(data.s2345, 0, &s_base[s_off-2]);
     }
+    vstore8(data, 0, s_data);
 }
 
 __inline void vp8_mbloop_filter_horizontal_edge_worker(
@@ -231,7 +282,7 @@ __inline void vp8_mbloop_filter_vertical_edge_worker(
     int block_offset = block*3+plane;
     size_t thread = get_global_id(0);
     int s_off = offsets[block_offset] + p*thread;
-    
+
     uchar8 data = load8(s_base, s_off, 1);
 
     char mask = vp8_filter_mask(lfi->lim[thread], lfi->mbflim[thread], data);
@@ -286,22 +337,28 @@ kernel void vp8_loop_filter_all_edges_kernel(
             }
         }
 
-
         if (thread_level_filter){
             if ( filters[num_blocks*COLS_LOCATION + block] > 0 ){
                 vp8_mbloop_filter_vertical_edge_worker(s_base, offsets, pitches, lf_info, filters,
                         COLS_LOCATION, filter_level, plane, block, p);
             }
 
+            block_offset = num_blocks*3 + block*3 + plane;
+            int s_off = offsets[block_offset] + p * thread;
+            private uchar data[16];
+            private_load16(data, s_base, s_off, 1);
+
             //YUV planes, then 2 more passes of Y plane
-            vp8_loop_filter_vertical_edge_worker(s_base, offsets, pitches, lf_info, filters,
+            vp8_loop_filter_vertical_edge_worker(data, offsets, pitches, lf_info, filters,
                     DC_DIFFS_LOCATION, filter_level, 1, num_blocks, 3, plane, block, p);
             if (plane == 0){
-                vp8_loop_filter_vertical_edge_worker(s_base, offsets, pitches, lf_info, filters,
+                vp8_loop_filter_vertical_edge_worker(&data[4], offsets, pitches, lf_info, filters,
                         DC_DIFFS_LOCATION, filter_level, 6, num_blocks, 1, plane, block, p);
-                vp8_loop_filter_vertical_edge_worker(s_base, offsets, pitches, lf_info, filters,
+                vp8_loop_filter_vertical_edge_worker(&data[8], offsets, pitches, lf_info, filters,
                         DC_DIFFS_LOCATION, filter_level, 7, num_blocks, 1,  plane, block, p);
             }
+            
+            private_save12(s_base, s_off, 1, data);
         }
 #if VP8_LOOP_FILTER_MULTI_LEVEL
     }
@@ -309,10 +366,6 @@ kernel void vp8_loop_filter_all_edges_kernel(
 
     barrier(CLK_GLOBAL_MEM_FENCE);
 
-    //if (priority_level == 0 && get_global_id(0)==0 && get_global_id(1)==0 && get_global_id(2)==0){
-    //    printf("Priority level = 0\n");
-    //}
-    
 #if VP8_LOOP_FILTER_MULTI_LEVEL
     if (block < priority_num_blocks[priority_level]){
 #endif
@@ -421,14 +474,23 @@ kernel void vp8_loop_filter_vertical_edges_kernel(
     
     //YUV planes, then 2 more passes of Y plane
     if (thread_level_filter){
-        vp8_loop_filter_vertical_edge_worker(s_base, offsets, pitches, lf_info, filters,
+        private uchar data[16];
+        block_offset = num_blocks*3 + block*3 + plane;
+        int s_off = offsets[block_offset] + p * thread;
+
+        private_load16(data, s_base, s_off, 1);
+
+        //YUV planes, then 2 more passes of Y plane
+        vp8_loop_filter_vertical_edge_worker(data, offsets, pitches, lf_info, filters,
                 DC_DIFFS_LOCATION, filter_level, 1, num_blocks, 3, plane, block, p);
         if (plane == 0){
-            vp8_loop_filter_vertical_edge_worker(s_base, offsets, pitches, lf_info, filters,
+            vp8_loop_filter_vertical_edge_worker(&data[4], offsets, pitches, lf_info, filters,
                     DC_DIFFS_LOCATION, filter_level, 6, num_blocks, 1, plane, block, p);
-            vp8_loop_filter_vertical_edge_worker(s_base, offsets, pitches, lf_info, filters,
-                    DC_DIFFS_LOCATION, filter_level, 7, num_blocks, 1, plane, block, p);
+            vp8_loop_filter_vertical_edge_worker(&data[8], offsets, pitches, lf_info, filters,
+                    DC_DIFFS_LOCATION, filter_level, 7, num_blocks, 1,  plane, block, p);
         }
+
+        private_save12(s_base, s_off, 1, data);
     }
     
 }

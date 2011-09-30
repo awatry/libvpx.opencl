@@ -67,6 +67,8 @@ static int vp8_loop_filter_cl_run(
 #else
     local[2] = 1;
 #endif
+    local[2] = 1;
+    
         if ((max_local_size < 16 * num_planes )){
             local[1] = 1; //Drop down to 1 plane
             if (max_local_size < 16){
