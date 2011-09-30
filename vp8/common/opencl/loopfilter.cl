@@ -718,7 +718,7 @@ __inline uchar vp8_hevmask(signed char thresh, uchar4 pq)
     mask |= abs_diff(pq.s3, pq.s2) > thresh;
     return mask * -1;
 #else
-    return ~any(abs_diff(pq.s03, pq.s12) > (char2)thresh) + 1;
+    return ~any(abs_diff(pq.s03, pq.s12) > (uchar2)thresh) + 1;
 #endif
 }
 
