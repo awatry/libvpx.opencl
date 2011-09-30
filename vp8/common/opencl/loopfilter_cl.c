@@ -23,7 +23,7 @@
          significant advantage on AMD hardware due to traffic reductions.
          The !mapped route is now being made the default to appease NVidia's GPUs.
  */
-#if 1
+#if 0
 #define USE_MAPPED_BUFFERS 0
 #define MAP_FILTERS 0
 #define MAP_OFFSETS 0
