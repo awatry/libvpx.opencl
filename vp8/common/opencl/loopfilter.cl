@@ -4,6 +4,10 @@
 typedef unsigned char uc;
 typedef signed char sc;
 
+__inline signed char vp8_filter_mask_mem(uc, sc, uchar*);
+__inline uchar vp8_hevmask_mem(signed char, uchar*);
+__inline void vp8_filter_mem( signed char mask, uchar hev, uchar *base);
+
 __inline signed char vp8_filter_mask(uc, sc, uchar8);
 __inline signed char vp8_simple_filter_mask(signed char, signed char, uc, uc, uc, uc);
 __inline uchar vp8_hevmask(signed char, uchar4);
@@ -42,6 +46,57 @@ typedef struct
 //OpenCL built-in functions (
 size_t get_global_id(unsigned int);
 size_t get_global_size(unsigned int);
+
+__inline void vp8_filter_mem(
+    signed char mask,
+    uchar hev,
+    uchar *base
+)
+{
+    
+    char *pq = (char*)base;
+    pq[0] ^= 0x80;
+    pq[1] ^= 0x80;
+    pq[2] ^= 0x80;
+    pq[3] ^= 0x80;
+
+    char vp8_filter;
+    char2 Filter;
+    char4 u;
+
+    /* add outer taps if we have high edge variance */
+    vp8_filter = sub_sat(pq[0], pq[3]);
+    vp8_filter &= hev;
+
+    /* inner taps */
+    vp8_filter = clamp(vp8_filter + 3 * (pq[2] - pq[1]), -128, 127);
+    vp8_filter &= mask;
+
+    /* save bottom 3 bits so that we round one side +4 and the other +3
+     * if it equals 4 we'll set to adjust by -1 to account for the fact
+     * we'd round 3 the other way
+     */
+    char2 rounding = {4,3};
+    Filter = add_sat((char2)vp8_filter, rounding);
+    Filter.s0 >>= 3;
+    Filter.s1 >>= 3;
+    
+    /* outer tap adjustments */
+    vp8_filter = Filter.s0 + 1;
+    vp8_filter >>= 1;
+    vp8_filter &= ~hev;
+
+    u.s0 = add_sat(pq[0], vp8_filter);
+    u.s1 = add_sat(pq[1], Filter.s1);
+    u.s2 = sub_sat(pq[2], Filter.s0);
+    u.s3 = sub_sat(pq[3], vp8_filter);
+
+    pq[0] = u.s0 ^ 0x80;
+    pq[1] = u.s1 ^ 0x80;
+    pq[2] = u.s2 ^ 0x80;
+    pq[3] = u.s3 ^ 0x80;
+    
+}
 
 __inline uchar4 vp8_filter(
     signed char mask,
@@ -209,7 +264,7 @@ __inline void vp8_loop_filter_horizontal_edge_worker(
 }
 
 __inline void vp8_loop_filter_vertical_edge_worker(
-    private uchar *s_data,
+    private uchar *data,
     global int *offsets,
     global int *pitches,
     global loop_filter_info *lfi,
@@ -223,17 +278,15 @@ __inline void vp8_loop_filter_vertical_edge_worker(
     size_t block,
     int p
 ){
-    uchar8 data = vload8(0, s_data);
     if (filters[num_blocks*filter_type + block] > 0){
         size_t thread = get_global_id(0);
 
-        char mask = vp8_filter_mask(lfi->lim[thread], lfi->flim[thread], data);
+        char mask = vp8_filter_mask_mem(lfi->lim[thread], lfi->flim[thread], data);
 
-        int hev = vp8_hevmask(lfi->thr[thread], data.s2345);
+        int hev = vp8_hevmask_mem(lfi->thr[thread], &data[2]);
 
-        data.s2345 = vp8_filter(mask, hev, data.s2345);
+        vp8_filter_mem(mask, hev, &data[2]);
     }
-    vstore8(data, 0, s_data);
 }
 
 __inline void vp8_mbloop_filter_horizontal_edge_worker(
@@ -729,6 +782,62 @@ kernel void vp8_loop_filter_simple_all_edges_kernel
 }
 
 //Inline and non-kernel functions follow.
+__inline void vp8_mbfilter_mem(
+    signed char mask,
+    uchar hev,
+    uchar *base
+)
+{
+    char4 u;
+
+    char *pq = (char*)base;
+    pq[0] ^= 0x80;
+    pq[1] ^= 0x80;
+    pq[2] ^= 0x80;
+    pq[3] ^= 0x80;
+    pq[4] ^= 0x80;
+    pq[5] ^= 0x80;
+    
+    /* add outer taps if we have high edge variance */
+    char vp8_filter = sub_sat(pq[2], pq[5]);
+    vp8_filter = clamp(vp8_filter + 3 * (pq[4] - pq[3]), -128, 127);
+    vp8_filter &= mask;
+
+    char2 filter = (char2)vp8_filter;
+    filter &= (char2)hev;
+
+    /* save bottom 3 bits so that we round one side +4 and the other +3 */
+    char2 rounding = {4,3};
+    filter = add_sat(filter, rounding);
+    filter.s0 >>= 3;
+    filter.s1 >>= 3;
+    
+    pq[4] = sub_sat(pq[4], filter.s0);
+    pq[3] = add_sat(pq[3], filter.s1);
+
+    /* only apply wider filter if not high edge variance */
+    filter.s1 = vp8_filter & ~hev;
+
+    /* roughly 3/7th, 2/7th, and 1/7th difference across boundary */
+    u.s0 = clamp((63 + filter.s1 * 27) >> 7, -128, 127);
+    u.s1 = clamp((63 + filter.s1 * 18) >> 7, -128, 127);
+    u.s2 = clamp((63 + filter.s1 * 9) >> 7, -128, 127);
+    u.s3 = 0;
+    
+    char4 s;
+    s = sub_sat(vload4(0, &pq[4]), u);
+    pq[4] = s.s0 ^ 0x80;
+    pq[5] = s.s1 ^ 0x80;
+    pq[6] = s.s2 ^ 0x80;
+    pq[7] = s.s3;
+    
+    s = add_sat(vload4(0, pq), u.s3210);
+    pq[0] = s.s0;
+    pq[1] = s.s1 ^ 0x80;
+    pq[2] = s.s2 ^ 0x80;
+    pq[3] = s.s3 ^ 0x80;
+}
+
 __inline uchar8 vp8_mbfilter(
     signed char mask,
     uchar hev,
@@ -775,12 +884,31 @@ __inline uchar8 vp8_mbfilter(
     return as_uchar8(pq);
 }
 
+__inline uchar vp8_hevmask_mem(signed char thresh, uchar *pq){
+    uchar mask = abs_diff(pq[0], pq[1]) > thresh;
+    mask |= abs_diff(pq[3], pq[2]) > thresh;
+    return ~mask + 1;
+}
+
 /* is there high variance internal edge ( 11111111 yes, 00000000 no) */
 __inline uchar vp8_hevmask(signed char thresh, uchar4 pq)
 {
     return ~any(abs_diff(pq.s03, pq.s12) > thresh) + 1;
 }
 
+__inline signed char vp8_filter_mask_mem(uchar limit, signed char flimit,
+        uchar *pq)
+{
+   //Only apply the filter if the difference is LESS than 'limit'
+    char mask = (abs_diff(pq[0], pq[1]) > limit);
+    mask |= (abs_diff(pq[1], pq[2]) > limit);
+    mask |= (abs_diff(pq[2], pq[3]) > limit);
+    mask |= (abs_diff(pq[5], pq[4]) > limit);
+    mask |= (abs_diff(pq[6], pq[5]) > limit);
+    mask |= (abs_diff(pq[7], pq[6]) > limit);
+    mask |= (abs_diff(pq[3], pq[4]) * 2 + abs_diff(pq[2], pq[5]) / 2  > flimit * 2 + limit);
+    return mask - 1;
+}
 
 /* should we apply any filter at all ( 11111111 yes, 00000000 no) */
 __inline signed char vp8_filter_mask( uchar limit, signed char flimit,
