@@ -33,14 +33,15 @@
 #define MAP_OFFSETS 1
 #endif
 
+#define STRINGIFY(x) #x
 
 #define COLS_LOCATION 1
 #define DC_DIFFS_LOCATION 2
 #define ROWS_LOCATION 3
 #if VP8_LOOP_FILTER_MULTI_LEVEL
-const char *loopFilterCompileOptions = "-D COLS_LOCATION=1 -D DC_DIFFS_LOCATION=2 -D ROWS_LOCATION=3 -D VP8_LOOP_FILTER_MULTI_LEVEL=1 -D MAX_LOOP_FILTER=64 -D SIMD_WIDTH=16";
+const char *loopFilterCompileOptions = "-D COLS_LOCATION=1 -D DC_DIFFS_LOCATION=2 -D ROWS_LOCATION=3 -D VP8_LOOP_FILTER_MULTI_LEVEL=1 -D MAX_LOOP_FILTER=63 -D SIMD_WIDTH=" STRINGIFY(SIMD_WIDTH);
 #else
-const char *loopFilterCompileOptions = "-D COLS_LOCATION=1 -D DC_DIFFS_LOCATION=2 -D ROWS_LOCATION=3 -D VP8_LOOP_FILTER_MULTI_LEVEL=0 -D MAX_LOOP_FILTER=64 -D SIMD_WIDTH=16";
+const char *loopFilterCompileOptions = "-D COLS_LOCATION=1 -D DC_DIFFS_LOCATION=2 -D ROWS_LOCATION=3 -D VP8_LOOP_FILTER_MULTI_LEVEL=0 -D MAX_LOOP_FILTER=63 -D SIMD_WIDTH=" STRINGIFY(SIMD_WIDTH);
 #endif
 const char *loop_filter_cl_file_name = "vp8/common/opencl/loopfilter";
 
@@ -121,7 +122,7 @@ int cl_populate_loop_mem(MACROBLOCKD *mbd, YV12_BUFFER_CONFIG *post){
     VP8_CL_UNMAP_BUF(mbd->cl_commands, loop_mem.pitches_mem, pitches,,err)
 #else
     cl_int pitches[3] = {post->y_stride, post->uv_stride, post->uv_stride};
-    VP8_CL_SET_BUF(mbd->cl_commands, loop_mem.pitches_mem, 3*sizeof(cl_int), pitches,,);
+    VP8_CL_SET_BUF(mbd->cl_commands, loop_mem.pitches_mem, 3*sizeof(cl_int), pitches,,err);
 #endif
     return err;
 }
@@ -510,8 +511,8 @@ void vp8_loop_filter_frame_cl
     int err, priority;
 #if USE_MAPPED_BUFFERS
     loop_filter_info *lfi_ptr = NULL;
-#endif
     unsigned char *buf = NULL;
+#endif
 
     cl_int *offsets = NULL;
     size_t offsets_size;
@@ -526,8 +527,6 @@ void vp8_loop_filter_frame_cl
     int current_blocks = 0;
     
     VP8_LOOPFILTER_ARGS args;
-    
-    mbd->mode_info_context = cm->mi; /* Point at base of Mb MODE_INFO list */
     
     /* Initialize the loop filter for this frame. */
     vp8_loop_filter_frame_init( cm, mbd, default_filt_lvl, cm->sharpness_level);
@@ -550,12 +549,12 @@ void vp8_loop_filter_frame_cl
 #endif
 
 #if USE_MAPPED_BUFFERS
-    VP8_CL_MAP_BUF(mbd->cl_commands, post->buffer_mem, buf, post->buffer_size, vp8_loop_filter_frame(cm,mbd),);
+    VP8_CL_MAP_BUF(mbd->cl_commands, post->buffer_mem, buf, post->buffer_size, vp8_loop_filter_frame(cm,mbd, default_filt_lvl),);
     vpx_memcpy(buf, post->buffer_alloc, post->buffer_size);
     VP8_CL_UNMAP_BUF(mbd->cl_commands, post->buffer_mem, buf,,);
 #else
     VP8_CL_SET_BUF(mbd->cl_commands, post->buffer_mem, post->buffer_size, post->buffer_alloc,
-            vp8_loop_filter_frame(cm,mbd),);
+            vp8_loop_filter_frame(cm,mbd,default_filt_lvl),);
 #endif
 
     current_settings.filter_type = cm->filter_type;
@@ -658,7 +657,7 @@ void vp8_loop_filter_frame_cl
         vp8_loop_filter_macroblocks_cl(cm,  mbd, priority, 1, &args);
 #endif
     }
-    
+
     //Retrieve buffer contents
 #if USE_MAPPED_BUFFERS
     buf = clEnqueueMapBuffer(mbd->cl_commands, post->buffer_mem, CL_TRUE, CL_MAP_READ, 0, post->buffer_size, 0, NULL, NULL, &err); \

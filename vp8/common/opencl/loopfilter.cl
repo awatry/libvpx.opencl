@@ -33,14 +33,14 @@ char vp8_char_clamp(int in){
 
 typedef struct
 {
-    unsigned char mblim[MAX_LOOP_FILTER + 1][SIMD_WIDTH] __attribute__ ((aligned (SIMD_WIDTH)));
-    unsigned char blim[MAX_LOOP_FILTER + 1][SIMD_WIDTH] __attribute__ ((aligned (SIMD_WIDTH)));
-    unsigned char lim[MAX_LOOP_FILTER + 1][SIMD_WIDTH] __attribute__ ((aligned (SIMD_WIDTH)));
-    unsigned char hev_thr[4][SIMD_WIDTH] __attribute__ ((aligned (SIMD_WIDTH)));
+    unsigned char mblim[MAX_LOOP_FILTER + 1][SIMD_WIDTH];
+    unsigned char blim[MAX_LOOP_FILTER + 1][SIMD_WIDTH];
+    unsigned char lim[MAX_LOOP_FILTER + 1][SIMD_WIDTH];
+    unsigned char hev_thr[4][SIMD_WIDTH];
     unsigned char lvl[4][4][4];
     unsigned char hev_thr_lut[2][MAX_LOOP_FILTER + 1];
     unsigned char mode_lf_lut[10];
-} loop_filter_info_n;
+} loop_filter_info_n __attribute__ ((aligned(SIMD_WIDTH)));
 
 typedef struct
 {
@@ -256,13 +256,13 @@ __inline void vp8_loop_filter_horizontal_edge_worker(
 
         data = load8(s_base, s_off, p);
 
-        char mask = vp8_filter_mask(lfi->lim[0], lfi->blim[0], data);
+        char mask = vp8_filter_mask(lfi->lim[thread], lfi->blim[thread], data);
 
-        char hev = vp8_hevmask(lfi->hev_thr[0], data.s2345);
+        char hev = vp8_hevmask(lfi->hev_thr[thread], data.s2345);
 
-        if (cur_iter == 3 && thread == 3 && plane == 0){
-            printf("block = %d, thread = %d, plane = %d, hev = %d, mask = %d\n", block, thread, plane, hev, mask);
-        }
+        //if (cur_iter == 3 && thread == 3 && plane == 0){
+        //    printf("block = %d, thread = %d, plane = %d, hev = %d, mask = %d\n", block, thread, plane, hev, mask);
+        //}
         
         data.s2345 = vp8_filter(mask, hev, data.s2345);
 
@@ -288,9 +288,9 @@ __inline void vp8_loop_filter_vertical_edge_worker(
     if (filters[num_blocks*filter_type + block] > 0){
         size_t thread = get_global_id(0);
 
-        char mask = vp8_filter_mask_mem(lfi->lim[0], lfi->blim[0], data);
+        char mask = vp8_filter_mask_mem(lfi->lim[thread], lfi->blim[thread], data);
 
-        int hev = vp8_hevmask_mem(lfi->hev_thr[0], &data[2]);
+        int hev = vp8_hevmask_mem(lfi->hev_thr[thread], &data[2]);
         
         vp8_filter_mem(mask, hev, &data[2]);
     }
@@ -316,9 +316,9 @@ __inline void vp8_mbloop_filter_horizontal_edge_worker(
 
     uchar8 data = load8(s_base, s_off, p);
 
-    char mask = vp8_filter_mask(lfi->lim[0], lfi->mblim[0], data);
+    char mask = vp8_filter_mask(lfi->lim[thread], lfi->mblim[thread], data);
 
-    char hev = vp8_hevmask(lfi->hev_thr[0], data.s2345);
+    char hev = vp8_hevmask(lfi->hev_thr[thread], data.s2345);
 
     data = vp8_mbfilter(mask, hev, data);
 
@@ -345,9 +345,9 @@ __inline void vp8_mbloop_filter_vertical_edge_worker(
 
     uchar8 data = load8(s_base, s_off, 1);
 
-    char mask = vp8_filter_mask(lfi->lim[0], lfi->mblim[0], data);
+    char mask = vp8_filter_mask(lfi->lim[thread], lfi->mblim[thread], data);
 
-    int hev = vp8_hevmask(lfi->hev_thr[0], data.s2345);
+    int hev = vp8_hevmask(lfi->hev_thr[thread], data.s2345);
 
     data = vp8_mbfilter(mask, hev, data);
 
@@ -385,10 +385,6 @@ kernel void vp8_loop_filter_all_edges_kernel(
 #endif
     int block_offset = block_offsets[priority_level];
 
-    if (block == 0 && thread == 3 && plane == 0){
-        printf("priority_level = %d\n", priority_level);
-    }
-    
     global int *offsets = &offsets_in[16*block_offset];
     global int *filters = &filters_in[4*block_offset];
     size_t num_blocks = priority_num_blocks[priority_level];
@@ -399,7 +395,7 @@ kernel void vp8_loop_filter_all_edges_kernel(
     int thread_level_filter = (thread<threads[plane]) & (filter_level!=0);
 
     set_lfi(lfi_n, &lf_info, frame_type, filter_level);
-    
+
 #if VP8_LOOP_FILTER_MULTI_LEVEL
     if (block < priority_num_blocks[priority_level]){
 #endif
@@ -489,7 +485,6 @@ kernel void vp8_loop_filter_horizontal_edges_kernel(
     size_t num_blocks = get_global_size(2);
     
     int block_offset = block_offsets[priority_level];
-
     filters = &filters[4*block_offset];
     offsets = &offsets[16*block_offset];
     int filter_level = filters[block];

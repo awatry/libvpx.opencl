@@ -304,16 +304,16 @@ void vp8_loop_filter_frame
 
     unsigned char *y_ptr, *u_ptr, *v_ptr;
 
+    /* Point at base of Mb MODE_INFO list */
+    const MODE_INFO *mode_info_context = cm->mi;
+    
 #if CONFIG_OPENCL && ENABLE_CL_LOOPFILTER
     if ( cl_initialized == CL_SUCCESS ){
         vp8_loop_filter_frame_cl(cm,mbd,cm->filter_level);
         return;
     }
 #endif
-
-    /* Point at base of Mb MODE_INFO list */
-    const MODE_INFO *mode_info_context = cm->mi;
-
+    
     /* Initialize the loop filter for this frame. */
     vp8_loop_filter_frame_init( cm, mbd, default_filt_lvl, cm->sharpness_level);
 
