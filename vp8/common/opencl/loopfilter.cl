@@ -43,10 +43,6 @@ typedef struct
     int mb_cols;
 } frame_info;
 
-//OpenCL built-in functions (
-size_t get_global_id(unsigned int);
-size_t get_global_size(unsigned int);
-
 __inline void vp8_filter_mem(
     signed char mask,
     uchar hev,
@@ -893,7 +889,14 @@ __inline uchar vp8_hevmask_mem(signed char thresh, uchar *pq){
 /* is there high variance internal edge ( 11111111 yes, 00000000 no) */
 __inline uchar vp8_hevmask(signed char thresh, uchar4 pq)
 {
-    return ~any(abs_diff(pq.s03, pq.s12) > thresh) + 1;
+#if 0
+    char mask = 0;
+    mask = abs_diff(pq.s0, pq.s1) > thresh;
+    mask |= abs_diff(pq.s3, pq.s2) > thresh;
+    return mask * -1;
+#else
+    return ~any(abs_diff(pq.s03, pq.s12) > (uchar2)thresh) + 1;
+#endif
 }
 
 __inline signed char vp8_filter_mask_mem(uchar limit, signed char flimit,
