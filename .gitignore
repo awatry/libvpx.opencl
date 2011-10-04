@@ -1,6 +1,6 @@
 *.a
 *.asm.s
-*.asm.S
+*.c.S
 *.bin
 *.d
 *.exe
