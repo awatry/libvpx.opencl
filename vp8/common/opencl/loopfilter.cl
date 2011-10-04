@@ -975,7 +975,7 @@ __inline signed char vp8_filter_mask(uc limit, uc blimit, uchar8 pq)
 }
 
 /* should we apply any filter at all ( 11111111 yes, 00000000 no) */
-static __inline signed char vp8_simple_filter_mask(uc blimit, uc p1, uc p0, uc q0, uc q1)
+__inline signed char vp8_simple_filter_mask(uc blimit, uc p1, uc p0, uc q0, uc q1)
 {
     signed char mask = (abs(p0 - q0) * 2 + abs(p1 - q1) / 2  <= blimit) * -1;
     return mask;
