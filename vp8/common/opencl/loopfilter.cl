@@ -354,7 +354,7 @@ __inline void vp8_mbloop_filter_vertical_edge_worker(
     save6(s_base, s_off, 1, data);
 }
 
-void set_lfi(global loop_filter_info_n *lfi_n, loop_filter_info *lfi, int frame_type, int filter_level){
+__inline void set_lfi(global loop_filter_info_n *lfi_n, loop_filter_info *lfi, int frame_type, int filter_level){
     int hev_index = lfi_n->hev_thr_lut[frame_type][filter_level];
     lfi->mblim = lfi_n->mblim[filter_level];
     lfi->blim = lfi_n->blim[filter_level];
@@ -685,26 +685,27 @@ kernel void vp8_loop_filter_simple_vertical_edges_kernel
     int frame_type
 ){
     
-    int filter_level = filters_in[get_global_id(2)];
-    loop_filter_info lf_info;
-    set_lfi(lfi_n, &lf_info, frame_type, filter_level);
+    loop_filter_info lfi;
+    int block_offset = block_offsets[priority_level];
+    int filter_level = filters_in[4*block_offset + get_global_id(2)];
+    set_lfi(lfi_n, &lfi, frame_type, filter_level);
 
     vp8_loop_filter_simple_vertical_edge_worker(s_base, offsets, pitches,
-            &lf_info, filters_in, 1, COLS_LOCATION, 0, priority_level,
+            &lfi, filters_in, 1, COLS_LOCATION, 0, priority_level,
             block_offsets, priority_num_blocks
     );
 
     //3 Y plane iterations
     vp8_loop_filter_simple_vertical_edge_worker(s_base, offsets, pitches,
-            &lf_info, filters_in, 0, DC_DIFFS_LOCATION, 1, priority_level,
+            &lfi, filters_in, 0, DC_DIFFS_LOCATION, 1, priority_level,
             block_offsets, priority_num_blocks
     );
     vp8_loop_filter_simple_vertical_edge_worker(s_base, offsets, pitches,
-            &lf_info, filters_in, 0, DC_DIFFS_LOCATION, 2, priority_level,
+            &lfi, filters_in, 0, DC_DIFFS_LOCATION, 2, priority_level,
             block_offsets, priority_num_blocks
     );
     vp8_loop_filter_simple_vertical_edge_worker(s_base, offsets, pitches,
-            &lf_info, filters_in, 0, DC_DIFFS_LOCATION, 3, priority_level,
+            &lfi, filters_in, 0, DC_DIFFS_LOCATION, 3, priority_level,
             block_offsets, priority_num_blocks
     );
 }
@@ -723,8 +724,9 @@ kernel void vp8_loop_filter_simple_horizontal_edges_kernel
     int frame_type
 ){
 
-    int filter_level = filters_in[get_global_id(2)];
     loop_filter_info lfi;
+    int block_offset = block_offsets[priority_level];
+    int filter_level = filters_in[4*block_offset + get_global_id(2)];
     set_lfi(lfi_n, &lfi, frame_type, filter_level);
     
     vp8_loop_filter_simple_horizontal_edge_worker(s_base, offsets, pitches, &lfi,
@@ -761,11 +763,14 @@ kernel void vp8_loop_filter_simple_all_edges_kernel
 {
 
     int block = (int)get_global_id(2);
-    int filter_level = filters_in[block];
     loop_filter_info lfi;
-    set_lfi(lfi_n, &lfi, frame_type, filter_level);
-
+    
     for (int i = 0; i < num_levels; i++){
+        int block_offset = block_offsets[priority_level];
+        int filter_level = filters_in[4*block_offset + block];
+        set_lfi(lfi_n, &lfi, frame_type, filter_level);
+    
+        
         if (block < priority_num_blocks[priority_level]){
             vp8_loop_filter_simple_vertical_edge_worker(s_base, offsets, pitches,
                     &lfi, filters_in, 1, COLS_LOCATION, 0, priority_level,
@@ -917,7 +922,7 @@ __inline uchar8 vp8_mbfilter(
 }
 
 __inline char vp8_hevmask_mem(uchar thresh, uchar *pq){
-#if 1
+#if 0
     signed char hev = 0;
     hev  |= (abs(pq[0] - pq[1]) > thresh) * -1;
     hev  |= (abs(pq[3] - pq[2]) > thresh) * -1;
@@ -932,30 +937,11 @@ __inline char vp8_hevmask_mem(uchar thresh, uchar *pq){
 /* is there high variance internal edge ( 11111111 yes, 00000000 no) */
 __inline char vp8_hevmask(uchar thresh, uchar4 pq)
 {
-#if 1
-    signed char hev = 0;
-    hev  |= (abs(pq.s0 - pq.s1) > thresh) * -1;
-    hev  |= (abs(pq.s3 - pq.s2) > thresh) * -1;
-    return hev;
-#else
     return ~any(abs_diff(pq.s03, pq.s12) > (uchar2)thresh) + 1;
-#endif
 }
 
 __inline signed char vp8_filter_mask_mem(uc limit, uc blimit, uchar *pq)
 {
-#if 1
-    signed char mask = 0;
-    mask |= (abs(pq[0] - pq[1]) > limit) * -1;
-    mask |= (abs(pq[1] - pq[2]) > limit) * -1;
-    mask |= (abs(pq[2] - pq[3]) > limit) * -1;
-    mask |= (abs(pq[5] - pq[4]) > limit) * -1;
-    mask |= (abs(pq[6] - pq[5]) > limit) * -1;
-    mask |= (abs(pq[7] - pq[6]) > limit) * -1;
-    mask |= (abs(pq[3] - pq[4]) * 2 + abs(pq[2] - pq[5]) / 2  > blimit) * -1;
-    mask = ~mask;
-    return mask;
-#else
     //Only apply the filter if the difference is LESS than 'limit'
     char mask = (abs_diff(pq[0], pq[1]) > limit);
     mask |= (abs_diff(pq[1], pq[2]) > limit);
@@ -963,9 +949,8 @@ __inline signed char vp8_filter_mask_mem(uc limit, uc blimit, uchar *pq)
     mask |= (abs_diff(pq[5], pq[4]) > limit);
     mask |= (abs_diff(pq[6], pq[5]) > limit);
     mask |= (abs_diff(pq[7], pq[6]) > limit);
-    mask |= (abs_diff(pq[3], pq[4]) * 2 + abs_diff(pq[2], pq[5]) / 2  > flimit * 2 + limit);
+    mask |= (abs_diff(pq[3], pq[4]) * 2 + abs_diff(pq[2], pq[5]) / 2  > blimit);
     return mask - 1;
-#endif
 }
 
 /* should we apply any filter at all ( 11111111 yes, 00000000 no) */
@@ -973,19 +958,17 @@ __inline signed char vp8_filter_mask(uc limit, uc blimit, uchar8 pq)
 {
 #if 1
    //Only apply the filter if the difference is LESS than 'limit'
-    signed char mask = 0;
-    mask |= (abs(pq.s0 - pq.s1) > limit) * -1;
-    mask |= (abs(pq.s1 - pq.s2) > limit) * -1;
-    mask |= (abs(pq.s2 - pq.s3) > limit) * -1;
-    mask |= (abs(pq.s5 - pq.s4) > limit) * -1;
-    mask |= (abs(pq.s6 - pq.s5) > limit) * -1;
-    mask |= (abs(pq.s7 - pq.s6) > limit) * -1;
-    mask |= (abs(pq.s3 - pq.s4) * 2 + abs(pq.s2 - pq.s5) / 2  > blimit) * -1;
-    mask = ~mask;
-    return mask;
+    signed char mask = (abs_diff(pq.s0, pq.s1) > limit);
+    mask |= (abs_diff(pq.s1, pq.s2) > limit);
+    mask |= (abs_diff(pq.s2, pq.s3) > limit);
+    mask |= (abs_diff(pq.s5, pq.s4) > limit);
+    mask |= (abs_diff(pq.s6, pq.s5) > limit);
+    mask |= (abs_diff(pq.s7, pq.s6) > limit);
+    mask |= (abs_diff(pq.s3, pq.s4) * 2 + abs_diff(pq.s2, pq.s5) / 2  > blimit);
+    return mask - 1;
 #else
 	char8 mask8 = abs_diff(pq.s01256700, pq.s12345600) > limit;
-	mask8 |= (char8)(abs_diff(pq.s3, pq.s4) * 2 + abs_diff(pq.s2, pq.s5) / 2 > flimit * 2 + limit);
+	mask8 |= (char8)(abs_diff(pq.s3, pq.s4) * 2 + abs_diff(pq.s2, pq.s5) / 2 > blimit);
 	mask8--;
 	return any(mask8) ? -1 : 0;
 #endif
