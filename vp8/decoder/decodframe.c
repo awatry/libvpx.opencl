@@ -418,7 +418,7 @@ decode_mb_row(VP8D_COMP *pbi, VP8_COMMON *pc, int mb_row, MACROBLOCKD *xd)
 
 
     xd->dst.buffer_alloc = pc->yv12_fb[dst_fb_idx].buffer_alloc;
-    xd->dst.buffer_size = pc->yv12_fb[dst_fb_idx].buffer_size;
+    xd->dst.frame_size = pc->yv12_fb[dst_fb_idx].frame_size;
 #if CONFIG_OPENCL
     xd->dst.buffer_mem = pc->yv12_fb[dst_fb_idx].buffer_mem;
 #endif
@@ -472,7 +472,7 @@ decode_mb_row(VP8D_COMP *pbi, VP8_COMMON *pc, int mb_row, MACROBLOCKD *xd)
         xd->pre.u_buffer = pc->yv12_fb[ref_fb_idx].u_buffer + recon_uvoffset;
         xd->pre.v_buffer = pc->yv12_fb[ref_fb_idx].v_buffer + recon_uvoffset;
         xd->pre.buffer_alloc = pc->yv12_fb[ref_fb_idx].buffer_alloc;
-        xd->pre.buffer_size = pc->yv12_fb[ref_fb_idx].buffer_size;
+        xd->pre.frame_size = pc->yv12_fb[ref_fb_idx].frame_size;
 #if CONFIG_OPENCL
         xd->pre.buffer_mem = pc->yv12_fb[ref_fb_idx].buffer_mem;
 #endif

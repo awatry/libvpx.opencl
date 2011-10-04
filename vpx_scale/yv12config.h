@@ -60,7 +60,6 @@ extern "C"
         unsigned char *v_buffer;
 
         unsigned char *buffer_alloc;
-        int buffer_size;
 #if CONFIG_OPENCL
         cl_mem buffer_mem;
 #endif

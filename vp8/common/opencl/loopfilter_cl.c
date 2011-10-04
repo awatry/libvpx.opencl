@@ -554,11 +554,11 @@ void vp8_loop_filter_frame_cl
 #endif
 
 #if USE_MAPPED_BUFFERS
-    VP8_CL_MAP_BUF(mbd->cl_commands, post->buffer_mem, buf, post->buffer_size, vp8_loop_filter_frame(cm,mbd, default_filt_lvl),);
-    vpx_memcpy(buf, post->buffer_alloc, post->buffer_size);
+    VP8_CL_MAP_BUF(mbd->cl_commands, post->buffer_mem, buf, post->frame_size, vp8_loop_filter_frame(cm,mbd, default_filt_lvl),);
+    vpx_memcpy(buf, post->buffer_alloc, post->frame_size);
     VP8_CL_UNMAP_BUF(mbd->cl_commands, post->buffer_mem, buf,,);
 #else
-    VP8_CL_SET_BUF(mbd->cl_commands, post->buffer_mem, post->buffer_size, post->buffer_alloc,
+    VP8_CL_SET_BUF(mbd->cl_commands, post->buffer_mem, post->frame_size, post->buffer_alloc,
             vp8_loop_filter_frame(cm,mbd,default_filt_lvl),);
 #endif
 
@@ -665,11 +665,11 @@ void vp8_loop_filter_frame_cl
 
     //Retrieve buffer contents
 #if USE_MAPPED_BUFFERS
-    buf = clEnqueueMapBuffer(mbd->cl_commands, post->buffer_mem, CL_TRUE, CL_MAP_READ, 0, post->buffer_size, 0, NULL, NULL, &err); \
-    vpx_memcpy(post->buffer_alloc, buf, post->buffer_size);
+    buf = clEnqueueMapBuffer(mbd->cl_commands, post->buffer_mem, CL_TRUE, CL_MAP_READ, 0, post->frame_size, 0, NULL, NULL, &err); \
+    vpx_memcpy(post->buffer_alloc, buf, post->frame_size);
     VP8_CL_UNMAP_BUF(mbd->cl_commands, post->buffer_mem, buf,,);
 #else
-    err = clEnqueueReadBuffer(mbd->cl_commands, post->buffer_mem, CL_FALSE, 0, post->buffer_size, post->buffer_alloc, 0, NULL, NULL);
+    err = clEnqueueReadBuffer(mbd->cl_commands, post->buffer_mem, CL_FALSE, 0, post->frame_size, post->buffer_alloc, 0, NULL, NULL);
 #endif
     
     VP8_CL_CHECK_SUCCESS(mbd->cl_commands, err != CL_SUCCESS,
