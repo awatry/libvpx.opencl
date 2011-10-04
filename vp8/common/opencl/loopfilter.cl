@@ -16,7 +16,7 @@ constant size_t threads[3] = {16, 8, 8};
 
 #ifndef __CL_VERSION_1_0__
 #define __CL_VERSION_1_0__ 100
-#endif 
+#endif
 
 #if !defined(__OPENCL_VERSION__) || (__OPENCL_VERSION__ == __CL_VERSION_1_0__)
 #define clamp(x,y,z) vp8_char_clamp(x)
@@ -67,7 +67,7 @@ __inline uchar4 vp8_filter(
     Filter = add_sat((char2)vp8_filter, rounding);
     Filter.s0 >>= 3;
     Filter.s1 >>= 3;
-    
+
     /* outer tap adjustments */
     vp8_filter = Filter.s0 + 1;
     vp8_filter >>= 1;
@@ -265,7 +265,7 @@ kernel void vp8_loop_filter_all_edges_kernel(
     global int *filters = &filters_in[4*block_offset];
     size_t num_blocks = priority_num_blocks[priority_level];
     int filter_level = filters[block];
-    global loop_filter_info *lf_info = &lfi[filter_level];    
+    global loop_filter_info *lf_info = &lfi[filter_level];
     int p = pitches[plane];
     int thread_level_filter = (thread<threads[plane]) & (filter_level!=0);
 
@@ -281,7 +281,6 @@ kernel void vp8_loop_filter_all_edges_kernel(
                 prefetch(&s_base[s_off+pitch*thread], 8);
             }
         }
-
 
         if (thread_level_filter){
             if ( filters[num_blocks*COLS_LOCATION + block] > 0 ){
