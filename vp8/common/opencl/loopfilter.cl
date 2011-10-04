@@ -436,7 +436,7 @@ kernel void vp8_loop_filter_all_edges_kernel(
     }
 #endif
 
-    barrier(CLK_GLOBAL_MEM_FENCE);
+    write_mem_fence(CLK_GLOBAL_MEM_FENCE);
 
 #if VP8_LOOP_FILTER_MULTI_LEVEL
     if (block < priority_num_blocks[priority_level]){
