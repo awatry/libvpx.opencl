@@ -28,7 +28,6 @@
 
 extern void mb_init_dequantizer(VP8D_COMP *pbi, MACROBLOCKD *xd);
 extern void clamp_mvs(MACROBLOCKD *xd);
-extern void vp8_build_uvmvs(MACROBLOCKD *x, int fullpixel);
 
 #if CONFIG_RUNTIME_CPU_DETECT
 #define RTCD_VTABLE(x) (&(pbi)->common.rtcd.x)
@@ -83,6 +82,11 @@ static void setup_decoding_thread_data(VP8D_COMP *pbi, MACROBLOCKD *xd, MB_ROW_D
         {
             mbd->block[j].dequant = xd->block[j].dequant;
         }
+
+        mbd->fullpixel_mask = 0xffffffff;
+        if(pc->full_pixel)
+            mbd->fullpixel_mask = 0xfffffff8;
+
     }
 
     for (i=0; i< pc->mb_rows; i++)
@@ -214,7 +218,9 @@ static void decode_macroblock(VP8D_COMP *pbi, MACROBLOCKD *xd, int mb_row, int m
         {
             BLOCKD *b = &xd->block[i];
             short *qcoeff = b->qcoeff_base + b->qcoeff_offset;
-            vp8mt_predict_intra4x4(pbi, xd, b->bmi.as_mode, b->predictor_base + b->predictor_offset, mb_row, mb_col, i);
+            int b_mode = xd->mode_info_context->bmi[i].as_mode;
+
+            vp8mt_predict_intra4x4(pbi, xd, b_mode, b->predictor_base + b->predictor_offset, mb_row, mb_col, i);
 
             if (xd->eobs[i] > 1)
             {
@@ -314,8 +320,6 @@ static THREAD_FUNCTION thread_decoding_proc(void *p_data)
                             }
                         }
 
-                        update_blockd_bmi(xd);
-
                         /* Distance of MB to the various image edges.
                          * These are specified to 8th pel as they are always
                          * compared to values that are in 1/8th pel units.
@@ -379,7 +383,6 @@ static THREAD_FUNCTION thread_decoding_proc(void *p_data)
                             xd->corrupted |= pc->yv12_fb[ref_fb_idx].corrupted;
                         }
 
-                        vp8_build_uvmvs(xd, pc->full_pixel);
                         decode_macroblock(pbi, xd, mb_row, mb_col);
 
                         /* check if the boolean decoder has suffered an error */
@@ -820,8 +823,6 @@ void vp8mt_decode_mb_rows( VP8D_COMP *pbi, MACROBLOCKD *xd)
                     }
                 }
 
-                update_blockd_bmi(xd);
-
                 /* Distance of MB to the various image edges.
                  * These are specified to 8th pel as they are always compared to
                  * values that are in 1/8th pel units.
@@ -880,7 +881,6 @@ void vp8mt_decode_mb_rows( VP8D_COMP *pbi, MACROBLOCKD *xd)
                     xd->corrupted |= pc->yv12_fb[ref_fb_idx].corrupted;
                 }
 
-                vp8_build_uvmvs(xd, pc->full_pixel);
                 decode_macroblock(pbi, xd, mb_row, mb_col);
 
                 /* check if the boolean decoder has suffered an error */

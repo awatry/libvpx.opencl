@@ -310,9 +310,10 @@ static void decode_macroblock(VP8D_COMP *pbi, MACROBLOCKD *xd,
         {
             BLOCKD *b = &xd->block[i];
             short *qcoeff = b->qcoeff_base + b->qcoeff_offset;
-            
+            int b_mode = xd->mode_info_context->bmi[i].as_mode;
+
             RECON_INVOKE(RTCD_VTABLE(recon), intra4x4_predict)
-                          (b, b->bmi.as_mode, b->predictor_base + b->predictor_offset);
+                          (b, b_mode, b->predictor_base + b->predictor_offset);
 
             if (xd->eobs[i] > 1)
             {
@@ -467,8 +468,6 @@ decode_mb_row(VP8D_COMP *pbi, VP8_COMMON *pc, int mb_row, MACROBLOCKD *xd)
         }
 #endif
 
-        update_blockd_bmi(xd);
-
         xd->dst.y_buffer = pc->yv12_fb[dst_fb_idx].y_buffer + recon_yoffset;
         xd->dst.u_buffer = pc->yv12_fb[dst_fb_idx].u_buffer + recon_uvoffset;
         xd->dst.v_buffer = pc->yv12_fb[dst_fb_idx].v_buffer + recon_uvoffset;
@@ -498,14 +497,6 @@ decode_mb_row(VP8D_COMP *pbi, VP8_COMMON *pc, int mb_row, MACROBLOCKD *xd)
             xd->corrupted |= pc->yv12_fb[ref_fb_idx].corrupted;
         }
 
-        vp8_build_uvmvs(xd, pc->full_pixel);
-
-        /*
-        if(pc->current_video_frame==0 &&mb_col==1 && mb_row==0)
-        pbi->debugoutput =1;
-        else
-        pbi->debugoutput =0;
-        */
         decode_macroblock(pbi, xd, mb_row * pc->mb_cols  + mb_col);
 
         /* check if the boolean decoder has suffered an error */
@@ -749,6 +740,11 @@ static void init_frame(VP8D_COMP *pbi)
     xd->mode_info_context->mbmi.mode = DC_PRED;
     xd->mode_info_stride = pc->mode_info_stride;
     xd->corrupted = 0; /* init without corruption */
+
+    xd->fullpixel_mask = 0xffffffff;
+    if(pc->full_pixel)
+        xd->fullpixel_mask = 0xfffffff8;
+
 }
 
 
