@@ -22,7 +22,7 @@ extern "C"
 #include "../vpx_config.h"
     
 #if CONFIG_OPENCL
-#include "../vp8/common/opencl/vp8_opencl.h"
+#include "vp8/common/opencl/vp8_opencl.h"
 #endif
 
     /*************************************
