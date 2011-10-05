@@ -628,7 +628,7 @@ static void setup_token_decoder(VP8D_COMP *pbi,
         {
             if (read_is_valid(partition_size_ptr, 3, user_data_end))
                 partition_size = read_partition_size(partition_size_ptr);
-            else if(pbi->ec_enabled)
+            else if (pbi->ec_active)
                 partition_size = bytes_left;
             else
                 vpx_internal_error(&pc->error, VPX_CODEC_CORRUPT_FRAME,
@@ -643,7 +643,7 @@ static void setup_token_decoder(VP8D_COMP *pbi,
          */
         if (!read_is_valid(partition, partition_size, user_data_end))
         {
-            if(pbi->ec_enabled)
+            if (pbi->ec_active)
                 partition_size = bytes_left;
             else
                 vpx_internal_error(&pc->error, VPX_CODEC_CORRUPT_FRAME,
