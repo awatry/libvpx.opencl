@@ -40,6 +40,7 @@ Advanced options:
   ${toggle_error_concealment}     enable this option to get a decoder which is able to conceal losses
   ${toggle_runtime_cpu_detect}    runtime cpu detection
   ${toggle_shared}                shared library support
+  ${toggle_static}                static library support
   ${toggle_small}                 favor smaller size over speed
   ${toggle_opencl}                support for OpenCL-assisted VP8 decoding (experimental)
   ${toggle_postproc_visualizer}   macro block / block level visualizers
@@ -157,6 +158,7 @@ enabled doxygen && php -v >/dev/null 2>&1 && enable install_docs
 enable install_bins
 enable install_libs
 
+enable static
 enable optimizations
 enable fast_unaligned #allow unaligned accesses, if supported by hw
 enable md5
@@ -257,6 +259,7 @@ CONFIG_LIST="
     realtime_only
     error_concealment
     shared
+    static
     small
     opencl
     postproc_visualizer
@@ -299,6 +302,7 @@ CMDLINE_SELECT="
     realtime_only
     error_concealment
     shared
+    static
     small
     opencl
     postproc_visualizer

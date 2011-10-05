@@ -38,23 +38,15 @@ typedef struct
 
 typedef struct
 {
-    INT64 time_stamp;
+    int64_t time_stamp;
     int size;
 } DATARATE;
-
-typedef struct
-{
-    INT16         min_val;
-    INT16         Length;
-    UINT8 Probs[12];
-} TOKENEXTRABITS;
 
 typedef struct
 {
     int const *scan;
     UINT8 const *ptr_block2leftabove;
     vp8_tree_index const *vp8_coef_tree_ptr;
-    TOKENEXTRABITS const *teb_base_ptr;
     unsigned char *norm_ptr;
     UINT8 *ptr_coef_bands_x;
 
@@ -117,7 +109,7 @@ typedef struct VP8Decompressor
 #endif
 
     vp8_reader *mbc;
-    INT64 last_time_stamp;
+    int64_t last_time_stamp;
     int   ready_for_new_data;
 
     DATARATE dr[16];

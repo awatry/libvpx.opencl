@@ -9,6 +9,7 @@
  */
 
 #include "vpx_ports/config.h"
+#include "vpx/vpx_integer.h"
 #include "recon.h"
 #include "subpixel.h"
 #include "blockd.h"
@@ -22,12 +23,6 @@
 #include "opencl/filter_cl.h"
 #include "opencl/reconinter_cl.h"
 #endif
-
-/* use this define on systems where unaligned int reads and writes are
- * not allowed, i.e. ARM architectures
- */
-/*#define MUST_BE_ALIGNED*/
-
 
 static const int bbb[4] = {0, 2, 8, 10};
 
@@ -47,7 +42,7 @@ void vp8_copy_mem16x16_c(
 
     for (r = 0; r < 16; r++)
     {
-#ifdef MUST_BE_ALIGNED
+#if !(CONFIG_FAST_UNALIGNED)
         dst[0] = src[0];
         dst[1] = src[1];
         dst[2] = src[2];
@@ -66,10 +61,10 @@ void vp8_copy_mem16x16_c(
         dst[15] = src[15];
 
 #else
-        ((int *)dst)[0] = ((int *)src)[0] ;
-        ((int *)dst)[1] = ((int *)src)[1] ;
-        ((int *)dst)[2] = ((int *)src)[2] ;
-        ((int *)dst)[3] = ((int *)src)[3] ;
+        ((uint32_t *)dst)[0] = ((uint32_t *)src)[0] ;
+        ((uint32_t *)dst)[1] = ((uint32_t *)src)[1] ;
+        ((uint32_t *)dst)[2] = ((uint32_t *)src)[2] ;
+        ((uint32_t *)dst)[3] = ((uint32_t *)src)[3] ;
 
 #endif
         src += src_stride;
@@ -90,7 +85,7 @@ void vp8_copy_mem8x8_c(
 
     for (r = 0; r < 8; r++)
     {
-#ifdef MUST_BE_ALIGNED
+#if !(CONFIG_FAST_UNALIGNED)
         dst[0] = src[0];
         dst[1] = src[1];
         dst[2] = src[2];
@@ -100,8 +95,8 @@ void vp8_copy_mem8x8_c(
         dst[6] = src[6];
         dst[7] = src[7];
 #else
-        ((int *)dst)[0] = ((int *)src)[0] ;
-        ((int *)dst)[1] = ((int *)src)[1] ;
+        ((uint32_t *)dst)[0] = ((uint32_t *)src)[0] ;
+        ((uint32_t *)dst)[1] = ((uint32_t *)src)[1] ;
 #endif
         src += src_stride;
         dst += dst_stride;
@@ -120,7 +115,7 @@ void vp8_copy_mem8x4_c(
 
     for (r = 0; r < 4; r++)
     {
-#ifdef MUST_BE_ALIGNED
+#if !(CONFIG_FAST_UNALIGNED)
         dst[0] = src[0];
         dst[1] = src[1];
         dst[2] = src[2];
@@ -130,8 +125,8 @@ void vp8_copy_mem8x4_c(
         dst[6] = src[6];
         dst[7] = src[7];
 #else
-        ((int *)dst)[0] = ((int *)src)[0] ;
-        ((int *)dst)[1] = ((int *)src)[1] ;
+        ((uint32_t *)dst)[0] = ((uint32_t *)src)[0] ;
+        ((uint32_t *)dst)[1] = ((uint32_t *)src)[1] ;
 #endif
         src += src_stride;
         dst += dst_stride;
@@ -161,13 +156,13 @@ void vp8_build_inter_predictors_b(BLOCKD *d, int pitch, vp8_subpix_fn_t sppf)
 
         for (r = 0; r < 4; r++)
         {
-#ifdef MUST_BE_ALIGNED
-            pred_ptr[0]  = ptr_base[ptr_offset];
-            pred_ptr[1]  = ptr_base[ptr_offset+1];
-            pred_ptr[2]  = ptr_base[ptr_offset+2];
-            pred_ptr[3]  = ptr_base[ptr_offset+3];
+#if !(CONFIG_FAST_UNALIGNED)
+            pred_ptr[0]  = ptr[0];
+            pred_ptr[1]  = ptr[1];
+            pred_ptr[2]  = ptr[2];
+            pred_ptr[3]  = ptr[3];
 #else
-            *(int *)pred_ptr = *(int *)(ptr_base+ptr_offset) ;
+            *(uint32_t *)pred_ptr = *(uint32_t *)(ptr_base + ptr_offset);
 #endif
             pred_ptr     += pitch;
             ptr_offset   += d->pre_stride;
