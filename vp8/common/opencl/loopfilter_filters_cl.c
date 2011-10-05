@@ -70,7 +70,7 @@ static int vp8_loop_filter_cl_run(
             }
         }
     }
-    
+
     if (first_run){
         memset(filter_args, -1, sizeof(VP8_LOOPFILTER_ARGS)*NUM_KERNELS);
         first_run = 0;

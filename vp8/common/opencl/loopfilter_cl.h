@@ -19,7 +19,7 @@
 #include "../loopfilter.h"
 
 //Should multiple priority levels be filtered per kernel invocation
-#define VP8_LOOP_FILTER_MULTI_LEVEL 1
+#define VP8_LOOP_FILTER_MULTI_LEVEL 0
 
 typedef struct VP8_LOOPFILTER_ARGS{
     cl_int priority_level;
