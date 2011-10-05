@@ -71,8 +71,7 @@ typedef unsigned char uc;
 extern void vp8_loop_filter_frame
 (
     VP8_COMMON *cm,
-    MACROBLOCKD *mbd,
-    int default_filt_lvl
+    MACROBLOCKD *mbd
 );
 
 typedef struct VP8_LOOP_MEM{
@@ -498,7 +497,7 @@ void vp8_loop_filter_offsets_copy(VP8_COMMON *cm, MACROBLOCKD *mbd,
 #if MAP_FILTERS
     VP8_CL_UNMAP_BUF(mbd->cl_commands, loop_mem.filters_mem, filters, ,)
 #else
-    VP8_CL_SET_BUF(mbd->cl_commands, loop_mem.filters_mem, 4*cm->MBs*sizeof(cl_int), filters, vp8_loop_filter_frame(cm,mbd,cm->filter_level),)
+    VP8_CL_SET_BUF(mbd->cl_commands, loop_mem.filters_mem, 4*cm->MBs*sizeof(cl_int), filters, vp8_loop_filter_frame(cm,mbd),)
     free(filters);
 #endif
 }
@@ -506,8 +505,7 @@ void vp8_loop_filter_offsets_copy(VP8_COMMON *cm, MACROBLOCKD *mbd,
 void vp8_loop_filter_frame_cl
 (
     VP8_COMMON *cm,
-    MACROBLOCKD *mbd,
-    int default_filt_lvl
+    MACROBLOCKD *mbd
 )
 {
     YV12_BUFFER_CONFIG *post = cm->frame_to_show;
@@ -534,7 +532,7 @@ void vp8_loop_filter_frame_cl
     VP8_LOOPFILTER_ARGS args;
     
     /* Initialize the loop filter for this frame. */
-    vp8_loop_filter_frame_init( cm, mbd, default_filt_lvl, cm->sharpness_level);
+    vp8_loop_filter_frame_init( cm, mbd, cm->filter_level);
 
 #if USE_MAPPED_BUFFERS
     if (lfi_mem == NULL){
@@ -554,12 +552,12 @@ void vp8_loop_filter_frame_cl
 #endif
 
 #if USE_MAPPED_BUFFERS
-    VP8_CL_MAP_BUF(mbd->cl_commands, post->buffer_mem, buf, post->frame_size, vp8_loop_filter_frame(cm,mbd, default_filt_lvl),);
+    VP8_CL_MAP_BUF(mbd->cl_commands, post->buffer_mem, buf, post->frame_size, vp8_loop_filter_frame(cm,mbd),);
     vpx_memcpy(buf, post->buffer_alloc, post->frame_size);
     VP8_CL_UNMAP_BUF(mbd->cl_commands, post->buffer_mem, buf,,);
 #else
     VP8_CL_SET_BUF(mbd->cl_commands, post->buffer_mem, post->frame_size, post->buffer_alloc,
-            vp8_loop_filter_frame(cm,mbd,default_filt_lvl),);
+            vp8_loop_filter_frame(cm,mbd),);
 #endif
 
     current_settings.filter_type = cm->filter_type;
@@ -598,7 +596,7 @@ void vp8_loop_filter_frame_cl
         offsets = malloc(offsets_size);
         if (offsets == NULL){
             cl_destroy(mbd->cl_commands, VP8_CL_TRIED_BUT_FAILED);
-            vp8_loop_filter_frame(cm, mbd, default_filt_lvl);
+            vp8_loop_filter_frame(cm, mbd);
             return;
         }
 #endif
@@ -630,14 +628,14 @@ void vp8_loop_filter_frame_cl
 #if MAP_OFFSETS
         VP8_CL_UNMAP_BUF(mbd->cl_commands, loop_mem.offsets_mem, offsets,,);
 #else
-        VP8_CL_SET_BUF(mbd->cl_commands, loop_mem.offsets_mem, offsets_size, offsets, vp8_loop_filter_frame(cm, mbd, default_filt_lvl), )
+        VP8_CL_SET_BUF(mbd->cl_commands, loop_mem.offsets_mem, offsets_size, offsets, vp8_loop_filter_frame(cm, mbd), )
         free(offsets);
         offsets = NULL;
 #endif
         
         //Now re-send the block_offsets/priority_num_blocks buffers
-        VP8_CL_SET_BUF(mbd->cl_commands, loop_mem.priority_num_blocks_mem, sizeof(cl_int)*num_levels, priority_num_blocks, vp8_loop_filter_frame(cm, mbd, default_filt_lvl), )
-        VP8_CL_SET_BUF(mbd->cl_commands, loop_mem.block_offsets_mem, sizeof(cl_int)*num_levels, block_offsets, vp8_loop_filter_frame(cm, mbd, default_filt_lvl), )
+        VP8_CL_SET_BUF(mbd->cl_commands, loop_mem.priority_num_blocks_mem, sizeof(cl_int)*num_levels, priority_num_blocks, vp8_loop_filter_frame(cm, mbd), )
+        VP8_CL_SET_BUF(mbd->cl_commands, loop_mem.block_offsets_mem, sizeof(cl_int)*num_levels, block_offsets, vp8_loop_filter_frame(cm, mbd), )
     }
     
     //Copy any needed buffer contents to the CL device

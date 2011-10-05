@@ -45,8 +45,7 @@ typedef struct VP8_LOOPFILTER_ARGS{
 extern void vp8_loop_filter_frame_cl
 (
     VP8_COMMON *cm,
-    MACROBLOCKD *mbd,
-    int default_filt_lvl
+    MACROBLOCKD *mbd
 );
 
 extern prototype_loopfilter_block_cl(vp8_lf_normal_mb_v_cl);
