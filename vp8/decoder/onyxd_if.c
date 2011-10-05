@@ -106,14 +106,7 @@ VP8D_PTR vp8dx_create_decompressor(VP8D_CONFIG *oxcf)
      */
     vp8cx_init_de_quantizer(pbi);
 
-    {
-        VP8_COMMON *cm = &pbi->common;
-
-        vp8_init_loop_filter(cm);
-        cm->last_frame_type = KEY_FRAME;
-        cm->last_filter_type = cm->filter_type;
-        cm->last_sharpness_level = cm->sharpness_level;
-    }
+    vp8_loop_filter_init(&pbi->common);
 
     pbi->common.error.setjmp = 0;
 
@@ -122,8 +115,20 @@ VP8D_PTR vp8dx_create_decompressor(VP8D_CONFIG *oxcf)
 #else
     pbi->ec_enabled = 0;
 #endif
+    /* Error concealment is activated after a key frame has been
+     * decoded without errors when error concealment is enabled.
+     */
+    pbi->ec_active = 0;
+
+    pbi->decoded_key_frame = 0;
 
     pbi->input_partition = oxcf->input_partition;
+
+    /* Independent partitions is activated when a frame updates the
+     * token probability table to have equal probabilities over the
+     * PREV_COEF context.
+     */
+    pbi->independent_partitions = 0;
 
     return (VP8D_PTR) pbi;
 }
@@ -231,8 +236,8 @@ vpx_codec_err_t vp8dx_set_reference(VP8D_PTR ptr, VP8_REFFRAME ref_frame_flag, Y
 
 /*For ARM NEON, d8-d15 are callee-saved registers, and need to be saved by us.*/
 #if HAVE_ARMV7
-extern void vp8_push_neon(INT64 *store);
-extern void vp8_pop_neon(INT64 *store);
+extern void vp8_push_neon(int64_t *store);
+extern void vp8_pop_neon(int64_t *store);
 #endif
 
 static int get_free_fb (VP8_COMMON *cm)
@@ -315,10 +320,10 @@ static int swap_frame_buffers (VP8_COMMON *cm)
     return err;
 }
 
-int vp8dx_receive_compressed_data(VP8D_PTR ptr, unsigned long size, const unsigned char *source, INT64 time_stamp)
+int vp8dx_receive_compressed_data(VP8D_PTR ptr, unsigned long size, const unsigned char *source, int64_t time_stamp)
 {
 #if HAVE_ARMV7
-    INT64 dx_store_reg[8];
+    int64_t dx_store_reg[8];
 #endif
     VP8D_COMP *pbi = (VP8D_COMP *) ptr;
     VP8_COMMON *cm = &pbi->common;
@@ -339,16 +344,16 @@ int vp8dx_receive_compressed_data(VP8D_PTR ptr, unsigned long size, const unsign
         /* Store a pointer to this partition and return. We haven't
          * received the complete frame yet, so we will wait with decoding.
          */
+        assert(pbi->num_partitions < MAX_PARTITIONS);
         pbi->partitions[pbi->num_partitions] = source;
         pbi->partition_sizes[pbi->num_partitions] = size;
         pbi->source_sz += size;
         pbi->num_partitions++;
-        if (pbi->num_partitions > (1<<pbi->common.multi_token_partition) + 1)
-            pbi->common.multi_token_partition++;
-        if (pbi->common.multi_token_partition > EIGHT_PARTITION)
+        if (pbi->num_partitions > (1 << EIGHT_PARTITION) + 1)
         {
             pbi->common.error.error_code = VPX_CODEC_UNSUP_BITSTREAM;
             pbi->common.error.setjmp = 0;
+            pbi->num_partitions = 0;
             return -1;
         }
         return 0;
@@ -359,6 +364,25 @@ int vp8dx_receive_compressed_data(VP8D_PTR ptr, unsigned long size, const unsign
         {
             pbi->Source = source;
             pbi->source_sz = size;
+        }
+        else
+        {
+            assert(pbi->common.multi_token_partition <= EIGHT_PARTITION);
+            if (pbi->num_partitions == 0)
+            {
+                pbi->num_partitions = 1;
+                pbi->partitions[0] = NULL;
+                pbi->partition_sizes[0] = 0;
+            }
+            while (pbi->num_partitions < (1 << pbi->common.multi_token_partition) + 1)
+            {
+                // Reset all missing partitions
+                pbi->partitions[pbi->num_partitions] =
+                    pbi->partitions[pbi->num_partitions - 1] +
+                    pbi->partition_sizes[pbi->num_partitions - 1];
+                pbi->partition_sizes[pbi->num_partitions] = 0;
+                pbi->num_partitions++;
+            }
         }
 
         if (pbi->source_sz == 0)
@@ -373,10 +397,12 @@ int vp8dx_receive_compressed_data(VP8D_PTR ptr, unsigned long size, const unsign
             /* If error concealment is disabled we won't signal missing frames to
              * the decoder.
              */
-            if (!pbi->ec_enabled)
+            if (!pbi->ec_active)
             {
                 /* Signal that we have no frame to show. */
                 cm->show_frame = 0;
+
+                pbi->num_partitions = 0;
 
                 /* Nothing more to do. */
                 return 0;
@@ -405,6 +431,8 @@ int vp8dx_receive_compressed_data(VP8D_PTR ptr, unsigned long size, const unsign
             }
 #endif
             pbi->common.error.setjmp = 0;
+
+            pbi->num_partitions = 0;
 
            /* We do not know if the missing frame(s) was supposed to update
             * any of the reference buffers, but we act conservative and
@@ -512,6 +540,7 @@ int vp8dx_receive_compressed_data(VP8D_PTR ptr, unsigned long size, const unsign
 #endif
         pbi->common.error.error_code = VPX_CODEC_ERROR;
         pbi->common.error.setjmp = 0;
+        pbi->num_partitions = 0;
         if (cm->fb_idx_ref_cnt[cm->new_fb_idx] > 0)
           cm->fb_idx_ref_cnt[cm->new_fb_idx]--;
         return retcode;
@@ -532,6 +561,7 @@ int vp8dx_receive_compressed_data(VP8D_PTR ptr, unsigned long size, const unsign
 #endif
             pbi->common.error.error_code = VPX_CODEC_ERROR;
             pbi->common.error.setjmp = 0;
+            pbi->num_partitions = 0;
             return -1;
         }
     } else
@@ -549,10 +579,11 @@ int vp8dx_receive_compressed_data(VP8D_PTR ptr, unsigned long size, const unsign
 #endif
             pbi->common.error.error_code = VPX_CODEC_ERROR;
             pbi->common.error.setjmp = 0;
+            pbi->num_partitions = 0;
             return -1;
         }
 
-        if(pbi->common.filter_level)
+        if(cm->filter_level)
         {
 
 #if PROFILE_OUTPUT
@@ -561,7 +592,7 @@ int vp8dx_receive_compressed_data(VP8D_PTR ptr, unsigned long size, const unsign
 #endif
            
             /* Apply the loop filter if appropriate. */
-            vp8_loop_filter_frame(cm, &pbi->mb, cm->filter_level);
+            vp8_loop_filter_frame(cm, &pbi->mb);
 
 #if PROFILE_OUTPUT
             vpx_usec_timer_mark(&lpftimer);
@@ -577,10 +608,6 @@ int vp8dx_receive_compressed_data(VP8D_PTR ptr, unsigned long size, const unsign
             }
 #endif
 #endif
-
-            cm->last_frame_type = cm->frame_type;
-            cm->last_filter_type = cm->filter_type;
-            cm->last_sharpness_level = cm->sharpness_level;
         }
 #if PROFILE_OUTPUT
         else {
@@ -632,16 +659,14 @@ int vp8dx_receive_compressed_data(VP8D_PTR ptr, unsigned long size, const unsign
     pbi->ready_for_new_data = 0;
     pbi->last_time_stamp = time_stamp;
     pbi->num_partitions = 0;
-    if (pbi->input_partition)
-        pbi->common.multi_token_partition = 0;
     pbi->source_sz = 0;
 
 #if 0
     {
         int i;
-        INT64 earliest_time = pbi->dr[0].time_stamp;
-        INT64 latest_time = pbi->dr[0].time_stamp;
-        INT64 time_diff = 0;
+        int64_t earliest_time = pbi->dr[0].time_stamp;
+        int64_t latest_time = pbi->dr[0].time_stamp;
+        int64_t time_diff = 0;
         int bytes = 0;
 
         pbi->dr[pbi->common.current_video_frame&0xf].size = pbi->bc.pos + pbi->bc2.pos + 4;;
@@ -690,8 +715,7 @@ int vp8dx_receive_compressed_data(VP8D_PTR ptr, unsigned long size, const unsign
 
     return retcode;
 }
-
-int vp8dx_get_raw_frame(VP8D_PTR ptr, YV12_BUFFER_CONFIG *sd, INT64 *time_stamp, INT64 *time_end_stamp, vp8_ppflags_t *flags)
+int vp8dx_get_raw_frame(VP8D_PTR ptr, YV12_BUFFER_CONFIG *sd, int64_t *time_stamp, int64_t *time_end_stamp, vp8_ppflags_t *flags)
 {
     int ret = -1;
     VP8D_COMP *pbi = (VP8D_COMP *) ptr;

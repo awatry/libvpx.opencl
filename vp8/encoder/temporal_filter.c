@@ -24,7 +24,6 @@
 #include "segmentation.h"
 #include "vp8/common/g_common.h"
 #include "vpx_scale/yv12extend.h"
-#include "vp8/common/postproc.h"
 #include "vpx_mem/vpx_mem.h"
 #include "vp8/common/swapyv12buffer.h"
 #include "vp8/common/threading.h"
@@ -157,6 +156,7 @@ static int vp8_temporal_filter_find_matching_mb_c
     BLOCK *b = &x->block[0];
     BLOCKD *d = &x->e_mbd.block[0];
     int_mv best_ref_mv1;
+    int_mv best_ref_mv1_full; /* full-pixel value of best_ref_mv1 */
 
     int *mvcost[2]    = { &dummy_cost[mv_max+1], &dummy_cost[mv_max+1] };
     int *mvsadcost[2] = { &dummy_cost[mv_max+1], &dummy_cost[mv_max+1] };
@@ -170,6 +170,8 @@ static int vp8_temporal_filter_find_matching_mb_c
     int pre_stride = d->pre_stride;
 
     best_ref_mv1.as_int = 0;
+    best_ref_mv1_full.as_mv.col = best_ref_mv1.as_mv.col >>3;
+    best_ref_mv1_full.as_mv.row = best_ref_mv1.as_mv.row >>3;
 
     // Setup frame pointers
     b->base_src = &arf_frame->y_buffer;
@@ -197,7 +199,7 @@ static int vp8_temporal_filter_find_matching_mb_c
     /*cpi->sf.search_method == HEX*/
     // TODO Check that the 16x16 vf & sdf are selected here
     bestsme = vp8_hex_search(x, b, d,
-        &best_ref_mv1, &d->bmi.mv,
+        &best_ref_mv1_full, &d->bmi.mv,
         step_param,
         sadpb,
         &cpi->fn_ptr[BLOCK_16X16],
@@ -259,10 +261,19 @@ static void vp8_temporal_filter_iterate_c
     for (mb_row = 0; mb_row < mb_rows; mb_row++)
     {
 #if ALT_REF_MC_ENABLED
-        // Reduced search extent by 3 for 6-tap filter & smaller UMV border
-        cpi->mb.mv_row_min = -((mb_row * 16) + (VP8BORDERINPIXELS - 19));
+        // Source frames are extended to 16 pixels.  This is different than
+        //  L/A/G reference frames that have a border of 32 (VP8BORDERINPIXELS)
+        // A 6 tap filter is used for motion search.  This requires 2 pixels
+        //  before and 3 pixels after.  So the largest Y mv on a border would
+        //  then be 16 - 3.  The UV blocks are half the size of the Y and
+        //  therefore only extended by 8.  The largest mv that a UV block
+        //  can support is 8 - 3.  A UV mv is half of a Y mv.
+        //  (16 - 3) >> 1 == 6 which is greater than 8 - 3.
+        // To keep the mv in play for both Y and UV planes the max that it
+        //  can be on a border is therefore 16 - 5.
+        cpi->mb.mv_row_min = -((mb_row * 16) + (16 - 5));
         cpi->mb.mv_row_max = ((cpi->common.mb_rows - 1 - mb_row) * 16)
-                                + (VP8BORDERINPIXELS - 19);
+                                + (16 - 5);
 #endif
 
         for (mb_col = 0; mb_col < mb_cols; mb_col++)
@@ -274,10 +285,9 @@ static void vp8_temporal_filter_iterate_c
             vpx_memset(count, 0, 384*sizeof(unsigned short));
 
 #if ALT_REF_MC_ENABLED
-            // Reduced search extent by 3 for 6-tap filter & smaller UMV border
-            cpi->mb.mv_col_min = -((mb_col * 16) + (VP8BORDERINPIXELS - 19));
+            cpi->mb.mv_col_min = -((mb_col * 16) + (16 - 5));
             cpi->mb.mv_col_max = ((cpi->common.mb_cols - 1 - mb_col) * 16)
-                                    + (VP8BORDERINPIXELS - 19);
+                                    + (16 - 5);
 #endif
 
             for (frame = 0; frame < frame_count; frame++)

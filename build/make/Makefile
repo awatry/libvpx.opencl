@@ -82,8 +82,8 @@ qexec=$(if $(quiet),@)
 #
 # Common rules"
 #
-.PHONY: all-$(target)
-all-$(target):
+.PHONY: all
+all:
 
 .PHONY: clean
 clean::
@@ -336,6 +336,7 @@ ifneq ($(call enabled,DIST-SRCS),)
     DIST-SRCS-$(CONFIG_MSVS)  += build/make/gen_msvs_proj.sh
     DIST-SRCS-$(CONFIG_MSVS)  += build/make/gen_msvs_sln.sh
     DIST-SRCS-$(CONFIG_MSVS)  += build/x86-msvs/yasm.rules
+    DIST-SRCS-$(CONFIG_MSVS)  += build/x86-msvs/obj_int_extract.bat
     DIST-SRCS-$(CONFIG_RVCT) += build/make/armlink_adapter.sh
     # Include obj_int_extract if we use offsets from asm_*_offsets
     DIST-SRCS-$(ARCH_ARM)$(ARCH_X86)$(ARCH_X86_64)    += build/make/obj_int_extract.c
@@ -358,6 +359,6 @@ ifeq ($(CONFIG_EXTERNAL_BUILD),yes)
 endif
 BUILD_TARGETS += .docs .libs .bins
 INSTALL_TARGETS += .install-docs .install-srcs .install-libs .install-bins
-all-$(target): $(BUILD_TARGETS)
+all: $(BUILD_TARGETS)
 install:: $(INSTALL_TARGETS)
 dist: $(INSTALL_TARGETS)

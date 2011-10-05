@@ -9,7 +9,7 @@
  */
 
 
-#include "vpx_ports/config.h"
+#include "vpx_config.h"
 #include "vp8/decoder/onyxd_int.h"
 
 #include "vp8/common/opencl/vp8_opencl.h"

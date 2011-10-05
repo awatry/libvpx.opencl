@@ -9,11 +9,10 @@
  */
 
 
-#include "vpx_ports/config.h"
+#include "vpx_config.h"
 #include "vpx_ports/arm.h"
 #include "vp8/common/blockd.h"
 #include "vp8/common/pragmas.h"
-#include "vp8/common/postproc.h"
 #include "vp8/decoder/dequantize.h"
 #include "vp8/decoder/onyxd_int.h"
 

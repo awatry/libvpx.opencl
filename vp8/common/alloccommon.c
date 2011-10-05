@@ -9,7 +9,7 @@
  */
 
 
-#include "vpx_ports/config.h"
+#include "vpx_config.h"
 #include "blockd.h"
 #include "vpx_mem/vpx_mem.h"
 #include "onyxc_int.h"
@@ -186,7 +186,7 @@ void vp8_setup_version(VP8_COMMON *cm)
 void vp8_create_common(VP8_COMMON *oci)
 {
     vp8_machine_specific_config(oci);
-    vp8_default_coef_probs(oci);
+
     vp8_init_mbmode_probs(oci);
     vp8_default_bmode_probs(oci->fc.bmode_prob);
 

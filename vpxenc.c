@@ -32,7 +32,6 @@
 #include <fcntl.h>
 #include <unistd.h>
 #endif
-#include "vpx_version.h"
 #include "vpx/vp8cx.h"
 #include "vpx_ports/mem_ops.h"
 #include "vpx_ports/vpx_timer.h"
@@ -501,25 +500,52 @@ void Ebml_Write(EbmlGlobal *glob, const void *buffer_in, unsigned long len)
     if(fwrite(buffer_in, 1, len, glob->stream));
 }
 
-
-void Ebml_Serialize(EbmlGlobal *glob, const void *buffer_in, unsigned long len)
-{
-    const unsigned char *q = (const unsigned char *)buffer_in + len - 1;
-
-    for(; len; len--)
-        Ebml_Write(glob, q--, 1);
+#define WRITE_BUFFER(s) \
+for(i = len-1; i>=0; i--)\
+{ \
+    x = *(const s *)buffer_in >> (i * CHAR_BIT); \
+    Ebml_Write(glob, &x, 1); \
 }
+void Ebml_Serialize(EbmlGlobal *glob, const void *buffer_in, int buffer_size, unsigned long len)
+{
+    char x;
+    int i;
 
+    /* buffer_size:
+     * 1 - int8_t;
+     * 2 - int16_t;
+     * 3 - int32_t;
+     * 4 - int64_t;
+     */
+    switch (buffer_size)
+    {
+        case 1:
+            WRITE_BUFFER(int8_t)
+            break;
+        case 2:
+            WRITE_BUFFER(int16_t)
+            break;
+        case 4:
+            WRITE_BUFFER(int32_t)
+            break;
+        case 8:
+            WRITE_BUFFER(int64_t)
+            break;
+        default:
+            break;
+    }
+}
+#undef WRITE_BUFFER
 
-/* Need a fixed size serializer for the track ID. libmkv provdes a 64 bit
+/* Need a fixed size serializer for the track ID. libmkv provides a 64 bit
  * one, but not a 32 bit one.
  */
 static void Ebml_SerializeUnsigned32(EbmlGlobal *glob, unsigned long class_id, uint64_t ui)
 {
     unsigned char sizeSerialized = 4 | 0x80;
     Ebml_WriteID(glob, class_id);
-    Ebml_Serialize(glob, &sizeSerialized, 1);
-    Ebml_Serialize(glob, &ui, 4);
+    Ebml_Serialize(glob, &sizeSerialized, sizeof(sizeSerialized), 1);
+    Ebml_Serialize(glob, &ui, sizeof(ui), 4);
 }
 
 
@@ -528,12 +554,12 @@ Ebml_StartSubElement(EbmlGlobal *glob, EbmlLoc *ebmlLoc,
                           unsigned long class_id)
 {
     //todo this is always taking 8 bytes, this may need later optimization
-    //this is a key that says lenght unknown
-    unsigned long long unknownLen =  LITERALU64(0x01FFFFFFFFFFFFFF);
+    //this is a key that says length unknown
+    uint64_t unknownLen =  LITERALU64(0x01FFFFFFFFFFFFFF);
 
     Ebml_WriteID(glob, class_id);
     *ebmlLoc = ftello(glob->stream);
-    Ebml_Serialize(glob, &unknownLen, 8);
+    Ebml_Serialize(glob, &unknownLen, sizeof(unknownLen), 8);
 }
 
 static void
@@ -551,7 +577,7 @@ Ebml_EndSubElement(EbmlGlobal *glob, EbmlLoc *ebmlLoc)
 
     /* Seek back to the beginning of the element and write the new size */
     fseeko(glob->stream, *ebmlLoc, SEEK_SET);
-    Ebml_Serialize(glob, &size, 8);
+    Ebml_Serialize(glob, &size, sizeof(size), 8);
 
     /* Reset the stream pointer */
     fseeko(glob->stream, pos, SEEK_SET);
@@ -597,6 +623,18 @@ write_webm_seek_info(EbmlGlobal *ebml)
         //segment info
         EbmlLoc startInfo;
         uint64_t frame_time;
+        char version_string[64];
+
+        /* Assemble version string */
+        if(ebml->debug)
+            strcpy(version_string, "vpxenc");
+        else
+        {
+            strcpy(version_string, "vpxenc ");
+            strncat(version_string,
+                    vpx_codec_version_str(),
+                    sizeof(version_string) - 1 - strlen(version_string));
+        }
 
         frame_time = (uint64_t)1000 * ebml->framerate.den
                      / ebml->framerate.num;
@@ -605,10 +643,8 @@ write_webm_seek_info(EbmlGlobal *ebml)
         Ebml_SerializeUnsigned(ebml, TimecodeScale, 1000000);
         Ebml_SerializeFloat(ebml, Segment_Duration,
                             ebml->last_pts_ms + frame_time);
-        Ebml_SerializeString(ebml, 0x4D80,
-            ebml->debug ? "vpxenc" : "vpxenc" VERSION_STRING);
-        Ebml_SerializeString(ebml, 0x5741,
-            ebml->debug ? "vpxenc" : "vpxenc" VERSION_STRING);
+        Ebml_SerializeString(ebml, 0x4D80, version_string);
+        Ebml_SerializeString(ebml, 0x5741, version_string);
         Ebml_EndSubElement(ebml, &startInfo);
     }
 }
@@ -741,13 +777,13 @@ write_webm_block(EbmlGlobal                *glob,
 
     block_length = pkt->data.frame.sz + 4;
     block_length |= 0x10000000;
-    Ebml_Serialize(glob, &block_length, 4);
+    Ebml_Serialize(glob, &block_length, sizeof(block_length), 4);
 
     track_number = 1;
     track_number |= 0x80;
     Ebml_Write(glob, &track_number, 1);
 
-    Ebml_Serialize(glob, &block_timecode, 2);
+    Ebml_Serialize(glob, &block_timecode, sizeof(block_timecode), 2);
 
     flags = 0;
     if(is_keyframe)
@@ -944,7 +980,7 @@ static const struct arg_enum_list stereo_mode_enum[] = {
 static const arg_def_t stereo_mode      = ARG_DEF_ENUM(NULL, "stereo-mode", 1,
         "Stereo 3D video format", stereo_mode_enum);
 static const arg_def_t timebase         = ARG_DEF(NULL, "timebase", 1,
-        "Stream timebase (frame duration)");
+        "Output timestamp precision (fractional seconds)");
 static const arg_def_t error_resilient  = ARG_DEF(NULL, "error-resilient", 1,
         "Enable error resiliency features");
 static const arg_def_t lag_in_frames    = ARG_DEF(NULL, "lag-in-frames", 1,
@@ -989,14 +1025,11 @@ static const arg_def_t buf_initial_sz     = ARG_DEF(NULL, "buf-initial-sz", 1,
         "Client initial buffer size (ms)");
 static const arg_def_t buf_optimal_sz     = ARG_DEF(NULL, "buf-optimal-sz", 1,
         "Client optimal buffer size (ms)");
-static const arg_def_t max_intra_rate_pct = ARG_DEF(NULL, "max-intra-rate", 1,
-        "Max I-frame bitrate (pct)");
 static const arg_def_t *rc_args[] =
 {
     &dropframe_thresh, &resize_allowed, &resize_up_thresh, &resize_down_thresh,
     &end_usage, &target_bitrate, &min_quantizer, &max_quantizer,
     &undershoot_pct, &overshoot_pct, &buf_sz, &buf_initial_sz, &buf_optimal_sz,
-    &max_intra_rate_pct,
     NULL
 };
 
@@ -1060,12 +1093,14 @@ static const arg_def_t tune_ssim = ARG_DEF_ENUM(NULL, "tune", 1,
                                    "Material to favor", tuning_enum);
 static const arg_def_t cq_level = ARG_DEF(NULL, "cq-level", 1,
                                    "Constrained Quality Level");
+static const arg_def_t max_intra_rate_pct = ARG_DEF(NULL, "max-intra-rate", 1,
+        "Max I-frame bitrate (pct)");
 
 static const arg_def_t *vp8_args[] =
 {
     &cpu_used, &auto_altref, &noise_sens, &sharpness, &static_thresh,
     &token_parts, &arnr_maxframes, &arnr_strength, &arnr_type,
-    &tune_ssim, &cq_level, NULL
+    &tune_ssim, &cq_level, &max_intra_rate_pct, NULL
 };
 static const int vp8_arg_ctrl_map[] =
 {
@@ -1073,7 +1108,7 @@ static const int vp8_arg_ctrl_map[] =
     VP8E_SET_NOISE_SENSITIVITY, VP8E_SET_SHARPNESS, VP8E_SET_STATIC_THRESHOLD,
     VP8E_SET_TOKEN_PARTITIONS,
     VP8E_SET_ARNR_MAXFRAMES, VP8E_SET_ARNR_STRENGTH , VP8E_SET_ARNR_TYPE,
-    VP8E_SET_TUNING, VP8E_SET_CQ_LEVEL, 0
+    VP8E_SET_TUNING, VP8E_SET_CQ_LEVEL, VP8E_SET_MAX_INTRA_BITRATE_PCT, 0
 };
 #endif
 
@@ -1100,6 +1135,9 @@ static void usage_exit()
     fprintf(stderr, "\nVP8 Specific Options:\n");
     arg_show_usage(stdout, vp8_args);
 #endif
+    fprintf(stderr, "\nStream timebase (--timebase):\n"
+            "  The desired precision of timestamps in the output, expressed\n"
+            "  in fractional seconds. Default is 1/1000.\n");
     fprintf(stderr, "\n"
            "Included encoders:\n"
            "\n");
@@ -1138,7 +1176,7 @@ static int merge_hist_buckets(struct hist_bucket *bucket,
             big_bucket = i;
     }
 
-    /* If we have too many buckets, merge the smallest with an ajacent
+    /* If we have too many buckets, merge the smallest with an adjacent
      * bucket.
      */
     while(buckets > max_buckets)
@@ -1312,6 +1350,11 @@ static void init_rate_histogram(struct rate_hist          *hist,
      * adjustment (5/4) to account for alt-refs
      */
     hist->samples = cfg->rc_buf_sz * 5 / 4 * fps->num / fps->den / 1000;
+
+    // prevent division by zero
+    if (hist->samples == 0)
+      hist->samples=1;
+
     hist->pts = calloc(hist->samples, sizeof(*hist->pts));
     hist->sz = calloc(hist->samples, sizeof(*hist->sz));
     for(i=0; i<RATE_BINS; i++)
@@ -1604,8 +1647,6 @@ int main(int argc, const char **argv_)
             cfg.rc_end_usage = arg_parse_enum_or_int(&arg);
         else if (arg_match(&arg, &target_bitrate, argi))
             cfg.rc_target_bitrate = arg_parse_uint(&arg);
-        else if (arg_match(&arg, &max_intra_rate_pct, argi))
-            cfg.rc_max_intra_bitrate_pct = arg_parse_uint(&arg);
         else if (arg_match(&arg, &min_quantizer, argi))
             cfg.rc_min_quantizer = arg_parse_uint(&arg);
         else if (arg_match(&arg, &max_quantizer, argi))

@@ -222,6 +222,13 @@ extern prototype_sad_multi_dif_address(vp8_variance_sad8x16x4d);
 #endif
 extern prototype_sad_multi_dif_address(vp8_variance_sad4x4x4d);
 
+#if ARCH_X86 || ARCH_X86_64
+#ifndef vp8_variance_copy32xn
+#define vp8_variance_copy32xn vp8_copy32xn_c
+#endif
+extern prototype_sad(vp8_variance_copy32xn);
+#endif
+
 //-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 
 #ifndef vp8_variance_var4x4
@@ -313,15 +320,15 @@ extern prototype_variance(vp8_variance_mse16x16);
 #endif
 extern prototype_get16x16prederror(vp8_variance_get4x4sse_cs);
 
-#ifndef vp8_ssimpf
-#define vp8_ssimpf ssim_parms_c
-#endif
-extern prototype_ssimpf(vp8_ssimpf)
-
 #ifndef vp8_ssimpf_8x8
-#define vp8_ssimpf_8x8 ssim_parms_8x8_c
+#define vp8_ssimpf_8x8 vp8_ssim_parms_8x8_c
 #endif
 extern prototype_ssimpf(vp8_ssimpf_8x8)
+
+#ifndef vp8_ssimpf_16x16
+#define vp8_ssimpf_16x16 vp8_ssim_parms_16x16_c
+#endif
+extern prototype_ssimpf(vp8_ssimpf_16x16)
 
 typedef prototype_sad(*vp8_sad_fn_t);
 typedef prototype_sad_multi_same_address(*vp8_sad_multi_fn_t);
@@ -381,9 +388,13 @@ typedef struct
     vp8_sad_multi_d_fn_t     sad8x8x4d;
     vp8_sad_multi_d_fn_t     sad4x4x4d;
 
+#if ARCH_X86 || ARCH_X86_64
+    vp8_sad_fn_t             copy32xn;
+#endif
+
 #if CONFIG_INTERNAL_STATS
     vp8_ssimpf_fn_t          ssimpf_8x8;
-    vp8_ssimpf_fn_t          ssimpf;
+    vp8_ssimpf_fn_t          ssimpf_16x16;
 #endif
 
 } vp8_variance_rtcd_vtable_t;
@@ -399,13 +410,17 @@ typedef struct
     vp8_sad_multi_fn_t      sdx3f;
     vp8_sad_multi1_fn_t     sdx8f;
     vp8_sad_multi_d_fn_t    sdx4df;
-
+#if ARCH_X86 || ARCH_X86_64
+    vp8_sad_fn_t            copymem;
+#endif
 } vp8_variance_fn_ptr_t;
 
 #if CONFIG_RUNTIME_CPU_DETECT
 #define VARIANCE_INVOKE(ctx,fn) (ctx)->fn
+#define SSIMPF_INVOKE(ctx,fn) (ctx)->ssimpf_##fn
 #else
 #define VARIANCE_INVOKE(ctx,fn) vp8_variance_##fn
+#define SSIMPF_INVOKE(ctx,fn) vp8_ssimpf_##fn
 #endif
 
 #endif

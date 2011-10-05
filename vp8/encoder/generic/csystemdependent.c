@@ -9,7 +9,7 @@
  */
 
 
-#include "vpx_ports/config.h"
+#include "vpx_config.h"
 #include "vp8/encoder/variance.h"
 #include "vp8/encoder/onyx_int.h"
 
@@ -47,7 +47,9 @@ void vp8_cmachine_specific_config(VP8_COMP *cpi)
     cpi->rtcd.variance.sad8x16x4d            = vp8_sad8x16x4d_c;
     cpi->rtcd.variance.sad8x8x4d             = vp8_sad8x8x4d_c;
     cpi->rtcd.variance.sad4x4x4d             = vp8_sad4x4x4d_c;
-
+#if ARCH_X86 || ARCH_X86_64
+    cpi->rtcd.variance.copy32xn              = vp8_copy32xn_c;
+#endif
     cpi->rtcd.variance.var4x4                = vp8_variance4x4_c;
     cpi->rtcd.variance.var8x8                = vp8_variance8x8_c;
     cpi->rtcd.variance.var8x16               = vp8_variance8x16_c;
@@ -92,15 +94,14 @@ void vp8_cmachine_specific_config(VP8_COMP *cpi)
 #if !(CONFIG_REALTIME_ONLY)
     cpi->rtcd.temporal.apply                 = vp8_temporal_filter_apply_c;
 #endif
+#if CONFIG_INTERNAL_STATS
+    cpi->rtcd.variance.ssimpf_8x8            = vp8_ssim_parms_8x8_c;
+    cpi->rtcd.variance.ssimpf_16x16          = vp8_ssim_parms_16x16_c;
+#endif
 #endif
 
     // Pure C:
     vp8_yv12_copy_partial_frame_ptr = vp8_yv12_copy_partial_frame;
-
-#if CONFIG_INTERNAL_STATS
-    cpi->rtcd.variance.ssimpf_8x8            = ssim_parms_8x8_c;
-    cpi->rtcd.variance.ssimpf                = ssim_parms_c;
-#endif
 
 #if ARCH_X86 || ARCH_X86_64
     vp8_arch_x86_encoder_init(cpi);

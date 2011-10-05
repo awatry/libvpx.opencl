@@ -14,8 +14,8 @@
 
 void vpx_log(const char *format, ...);
 
-#include "../../vpx_ports/config.h"
-#include "../../vpx_scale/yv12config.h"
+#include "vpx_config.h"
+#include "vpx_scale/yv12config.h"
 #include "mv.h"
 #include "treecoder.h"
 #include "subpixel.h"
@@ -67,7 +67,7 @@ extern const unsigned char vp8_block2left[25];
 extern const unsigned char vp8_block2above[25];
 
 #define VP8_COMBINEENTROPYCONTEXTS( Dest, A, B) \
-    Dest = ((A)!=0) + ((B)!=0);
+    Dest = (A)+(B);
 
 
 typedef enum
@@ -222,7 +222,7 @@ typedef struct
     union b_mode_info bmi;
 } BLOCKD;
 
-typedef struct
+typedef struct MacroBlockD
 {
     DECLARE_ALIGNED(16, short, diff[400]);      /* from idct diff */
     DECLARE_ALIGNED(16, unsigned char,  predictor[384]);
@@ -243,6 +243,7 @@ typedef struct
 
     /* 16 Y blocks, 4 U, 4 V, 1 DC 2nd order block, each with 16 entries. */
     BLOCKD block[25];
+    int fullpixel_mask;
 
     YV12_BUFFER_CONFIG pre; /* Filtered copy of previous frame reconstruction */
     YV12_BUFFER_CONFIG dst; /* Destination buffer for current frame */
@@ -308,6 +309,14 @@ typedef struct
 
     int corrupted;
 
+#if ARCH_X86 || ARCH_X86_64
+    /* This is an intermediate buffer currently used in sub-pixel motion search
+     * to keep a copy of the reference area. This buffer can be used for other
+     * purpose.
+     */
+    DECLARE_ALIGNED(32, unsigned char, y_buf[22*32]);
+#endif
+
 #if CONFIG_RUNTIME_CPU_DETECT
     struct VP8_COMMON_RTCD  *rtcd;
 #endif
@@ -316,21 +325,5 @@ typedef struct
 
 extern void vp8_build_block_doffsets(MACROBLOCKD *x);
 extern void vp8_setup_block_dptrs(MACROBLOCKD *x);
-
-static void update_blockd_bmi(MACROBLOCKD *xd)
-{
-    int i;
-    int is_4x4;
-    is_4x4 = (xd->mode_info_context->mbmi.mode == SPLITMV) ||
-              (xd->mode_info_context->mbmi.mode == B_PRED);
-
-    if (is_4x4)
-    {
-        for (i = 0; i < 16; i++)
-        {
-            xd->block[i].bmi = xd->mode_info_context->bmi[i];
-        }
-    }
-}
 
 #endif  /* __INC_BLOCKD_H */

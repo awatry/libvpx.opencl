@@ -110,7 +110,7 @@
         psubusb     xmm6,                   xmm5              ; p1-=p0
 
         por         xmm6,                   xmm4              ; abs(p1 - p0)
-        mov         rdx,                    arg(2)            ; get flimit
+        mov         rdx,                    arg(2)            ; get blimit
 
         movdqa        t1,                   xmm6              ; save to t1
 
@@ -123,7 +123,7 @@
         psubusb     xmm1,                   xmm7
         por         xmm2,                   xmm3              ; abs(p1-q1)
 
-        movdqa      xmm4,                   XMMWORD PTR [rdx] ; flimit
+        movdqa      xmm7,                   XMMWORD PTR [rdx] ; blimit
 
         movdqa      xmm3,                   xmm0              ; q0
         pand        xmm2,                   [GLOBAL(tfe)]     ; set lsb of each byte to zero
@@ -134,13 +134,11 @@
         psrlw       xmm2,                   1                 ; abs(p1-q1)/2
 
         psubusb     xmm5,                   xmm3              ; p0-=q0
-        paddb       xmm4,                   xmm4              ; flimit*2 (less than 255)
 
         psubusb     xmm3,                   xmm6              ; q0-=p0
         por         xmm5,                   xmm3              ; abs(p0 - q0)
 
         paddusb     xmm5,                   xmm5              ; abs(p0-q0)*2
-        paddb       xmm7,                   xmm4              ; flimit * 2 + limit (less than 255)
 
         movdqa      xmm4,                   t0                ; hev get abs (q1 - q0)
 
@@ -150,7 +148,7 @@
 
         movdqa      xmm2,                   XMMWORD PTR [rdx] ; hev
 
-        psubusb     xmm5,                   xmm7              ; abs (p0 - q0) *2 + abs(p1-q1)/2  > flimit * 2 + limit
+        psubusb     xmm5,                   xmm7              ; abs (p0 - q0) *2 + abs(p1-q1)/2  > blimit
         psubusb     xmm4,                   xmm2              ; hev
 
         psubusb     xmm3,                   xmm2              ; hev
@@ -273,12 +271,13 @@
 
 %endmacro
 
+%if ABI_IS_32BIT
 
 ;void vp8_loop_filter_horizontal_edge_sse2
 ;(
 ;    unsigned char *src_ptr,
 ;    int            src_pixel_step,
-;    const char    *flimit,
+;    const char    *blimit,
 ;    const char    *limit,
 ;    const char    *thresh,
 ;    int            count
@@ -323,12 +322,13 @@ sym(vp8_loop_filter_horizontal_edge_sse2):
     pop         rbp
     ret
 
+%endif
 
 ;void vp8_loop_filter_horizontal_edge_uv_sse2
 ;(
 ;    unsigned char *src_ptr,
 ;    int            src_pixel_step,
-;    const char    *flimit,
+;    const char    *blimit,
 ;    const char    *limit,
 ;    const char    *thresh,
 ;    int            count
@@ -574,7 +574,7 @@ sym(vp8_loop_filter_horizontal_edge_uv_sse2):
 ;(
 ;    unsigned char *src_ptr,
 ;    int            src_pixel_step,
-;    const char    *flimit,
+;    const char    *blimit,
 ;    const char    *limit,
 ;    const char    *thresh,
 ;    int            count
@@ -624,7 +624,7 @@ sym(vp8_mbloop_filter_horizontal_edge_sse2):
 ;(
 ;    unsigned char *u,
 ;    int            src_pixel_step,
-;    const char    *flimit,
+;    const char    *blimit,
 ;    const char    *limit,
 ;    const char    *thresh,
 ;    unsigned char *v
@@ -904,7 +904,7 @@ sym(vp8_mbloop_filter_horizontal_edge_uv_sse2):
         movdqa      xmm4,               XMMWORD PTR [rdx]; limit
 
         pmaxub      xmm0,               xmm7
-        mov         rdx,                arg(2)          ; flimit
+        mov         rdx,                arg(2)          ; blimit
 
         psubusb     xmm0,               xmm4
         movdqa      xmm5,               xmm2            ; q1
@@ -921,12 +921,11 @@ sym(vp8_mbloop_filter_horizontal_edge_uv_sse2):
         psrlw       xmm5,               1               ; abs(p1-q1)/2
         psubusb     xmm6,               xmm3            ; q0-p0
 
-        movdqa      xmm2,               XMMWORD PTR [rdx]; flimit
+        movdqa      xmm4,               XMMWORD PTR [rdx]; blimit
 
         mov         rdx,                arg(4)          ; get thresh
 
         por         xmm1,               xmm6            ; abs(q0-p0)
-        paddb       xmm2,               xmm2            ; flimit*2 (less than 255)
 
         movdqa      xmm6,               t0              ; get abs (q1 - q0)
 
@@ -939,10 +938,9 @@ sym(vp8_mbloop_filter_horizontal_edge_uv_sse2):
         paddusb     xmm1,               xmm5            ; abs (p0 - q0) *2 + abs(p1-q1)/2
         psubusb     xmm6,               xmm7            ; abs(q1 - q0) > thresh
 
-        paddb       xmm4,               xmm2            ; flimit * 2 + limit (less than 255)
         psubusb     xmm3,               xmm7            ; abs(p1 - p0)> thresh
 
-        psubusb     xmm1,               xmm4            ; abs (p0 - q0) *2 + abs(p1-q1)/2  > flimit * 2 + limit
+        psubusb     xmm1,               xmm4            ; abs (p0 - q0) *2 + abs(p1-q1)/2  > blimit
         por         xmm6,               xmm3            ; abs(q1 - q0) > thresh || abs(p1 - p0) > thresh
 
         por         xmm1,               xmm0            ; mask
@@ -1009,12 +1007,13 @@ sym(vp8_mbloop_filter_horizontal_edge_uv_sse2):
         movd        [rdi+2*rcx+2],      %2
 %endmacro
 
+%if ABI_IS_32BIT
 
 ;void vp8_loop_filter_vertical_edge_sse2
 ;(
 ;    unsigned char *src_ptr,
 ;    int            src_pixel_step,
-;    const char    *flimit,
+;    const char    *blimit,
 ;    const char    *limit,
 ;    const char    *thresh,
 ;    int            count
@@ -1076,12 +1075,13 @@ sym(vp8_loop_filter_vertical_edge_sse2):
     pop         rbp
     ret
 
+%endif
 
 ;void vp8_loop_filter_vertical_edge_uv_sse2
 ;(
 ;    unsigned char *u,
 ;    int            src_pixel_step,
-;    const char    *flimit,
+;    const char    *blimit,
 ;    const char    *limit,
 ;    const char    *thresh,
 ;    unsigned char *v
@@ -1239,7 +1239,7 @@ sym(vp8_loop_filter_vertical_edge_uv_sse2):
 ;(
 ;    unsigned char *src_ptr,
 ;    int            src_pixel_step,
-;    const char    *flimit,
+;    const char    *blimit,
 ;    const char    *limit,
 ;    const char    *thresh,
 ;    int            count
@@ -1308,7 +1308,7 @@ sym(vp8_mbloop_filter_vertical_edge_sse2):
 ;(
 ;    unsigned char *u,
 ;    int            src_pixel_step,
-;    const char    *flimit,
+;    const char    *blimit,
 ;    const char    *limit,
 ;    const char    *thresh,
 ;    unsigned char *v
@@ -1376,16 +1376,13 @@ sym(vp8_mbloop_filter_vertical_edge_uv_sse2):
 ;(
 ;    unsigned char *src_ptr,
 ;    int  src_pixel_step,
-;    const char *flimit,
-;    const char *limit,
-;    const char *thresh,
-;    int count
+;    const char *blimit,
 ;)
 global sym(vp8_loop_filter_simple_horizontal_edge_sse2)
 sym(vp8_loop_filter_simple_horizontal_edge_sse2):
     push        rbp
     mov         rbp, rsp
-    SHADOW_ARGS_TO_STACK 6
+    SHADOW_ARGS_TO_STACK 3
     SAVE_XMM 7
     GET_GOT     rbx
     push        rsi
@@ -1394,21 +1391,16 @@ sym(vp8_loop_filter_simple_horizontal_edge_sse2):
 
         mov         rsi, arg(0)             ;src_ptr
         movsxd      rax, dword ptr arg(1)   ;src_pixel_step     ; destination pitch?
-        mov         rdx, arg(2) ;flimit     ; get flimit
+        mov         rdx, arg(2)             ;blimit
         movdqa      xmm3, XMMWORD PTR [rdx]
-        mov         rdx, arg(3) ;limit
-        movdqa      xmm7, XMMWORD PTR [rdx]
-
-        paddb       xmm3, xmm3              ; flimit*2 (less than 255)
-        paddb       xmm3, xmm7              ; flimit * 2 + limit (less than 255)
 
         mov         rdi, rsi                ; rdi points to row +1 for indirect addressing
         add         rdi, rax
         neg         rax
 
         ; calculate mask
-        movdqu      xmm1, [rsi+2*rax]       ; p1
-        movdqu      xmm0, [rdi]             ; q1
+        movdqa      xmm1, [rsi+2*rax]       ; p1
+        movdqa      xmm0, [rdi]             ; q1
         movdqa      xmm2, xmm1
         movdqa      xmm7, xmm0
         movdqa      xmm4, xmm0
@@ -1418,8 +1410,8 @@ sym(vp8_loop_filter_simple_horizontal_edge_sse2):
         pand        xmm1, [GLOBAL(tfe)]     ; set lsb of each byte to zero
         psrlw       xmm1, 1                 ; abs(p1-q1)/2
 
-        movdqu      xmm5, [rsi+rax]         ; p0
-        movdqu      xmm4, [rsi]             ; q0
+        movdqa      xmm5, [rsi+rax]         ; p0
+        movdqa      xmm4, [rsi]             ; q0
         movdqa      xmm0, xmm4              ; q0
         movdqa      xmm6, xmm5              ; p0
         psubusb     xmm5, xmm4              ; p0-=q0
@@ -1428,7 +1420,7 @@ sym(vp8_loop_filter_simple_horizontal_edge_sse2):
         paddusb     xmm5, xmm5              ; abs(p0-q0)*2
         paddusb     xmm5, xmm1              ; abs (p0 - q0) *2 + abs(p1-q1)/2
 
-        psubusb     xmm5, xmm3              ; abs(p0 - q0) *2 + abs(p1-q1)/2  > flimit * 2 + limit
+        psubusb     xmm5, xmm3              ; abs(p0 - q0) *2 + abs(p1-q1)/2  > blimit
         pxor        xmm3, xmm3
         pcmpeqb     xmm5, xmm3
 
@@ -1461,7 +1453,7 @@ sym(vp8_loop_filter_simple_horizontal_edge_sse2):
 
         psubsb      xmm3, xmm0              ; q0-= q0 add
         pxor        xmm3, [GLOBAL(t80)]     ; unoffset
-        movdqu      [rsi], xmm3             ; write back
+        movdqa      [rsi], xmm3             ; write back
 
         ; now do +3 side
         psubsb      xmm5, [GLOBAL(t1s)]     ; +3 instead of +4
@@ -1477,7 +1469,7 @@ sym(vp8_loop_filter_simple_horizontal_edge_sse2):
 
         paddsb      xmm6, xmm0              ; p0+= p0 add
         pxor        xmm6, [GLOBAL(t80)]     ; unoffset
-        movdqu      [rsi+rax], xmm6         ; write back
+        movdqa      [rsi+rax], xmm6         ; write back
 
     ; begin epilog
     pop rdi
@@ -1493,16 +1485,13 @@ sym(vp8_loop_filter_simple_horizontal_edge_sse2):
 ;(
 ;    unsigned char *src_ptr,
 ;    int  src_pixel_step,
-;    const char *flimit,
-;    const char *limit,
-;    const char *thresh,
-;    int count
+;    const char *blimit,
 ;)
 global sym(vp8_loop_filter_simple_vertical_edge_sse2)
 sym(vp8_loop_filter_simple_vertical_edge_sse2):
     push        rbp         ; save old base pointer value.
     mov         rbp, rsp    ; set new base pointer value.
-    SHADOW_ARGS_TO_STACK 6
+    SHADOW_ARGS_TO_STACK 3
     SAVE_XMM 7
     GET_GOT     rbx         ; save callee-saved reg
     push        rsi
@@ -1522,17 +1511,17 @@ sym(vp8_loop_filter_simple_vertical_edge_sse2):
         lea         rdx,        [rsi + rax*4]
         lea         rcx,        [rdx + rax]
 
-        movdqu      xmm0,       [rsi]                   ; (high 96 bits unused) 03 02 01 00
-        movdqu      xmm1,       [rdx]                   ; (high 96 bits unused) 43 42 41 40
-        movdqu      xmm2,       [rdi]                   ; 13 12 11 10
-        movdqu      xmm3,       [rcx]                   ; 53 52 51 50
+        movd        xmm0,       [rsi]                   ; (high 96 bits unused) 03 02 01 00
+        movd        xmm1,       [rdx]                   ; (high 96 bits unused) 43 42 41 40
+        movd        xmm2,       [rdi]                   ; 13 12 11 10
+        movd        xmm3,       [rcx]                   ; 53 52 51 50
         punpckldq   xmm0,       xmm1                    ; (high 64 bits unused) 43 42 41 40 03 02 01 00
         punpckldq   xmm2,       xmm3                    ; 53 52 51 50 13 12 11 10
 
-        movdqu      xmm4,       [rsi + rax*2]           ; 23 22 21 20
-        movdqu      xmm5,       [rdx + rax*2]           ; 63 62 61 60
-        movdqu      xmm6,       [rdi + rax*2]           ; 33 32 31 30
-        movdqu      xmm7,       [rcx + rax*2]           ; 73 72 71 70
+        movd        xmm4,       [rsi + rax*2]           ; 23 22 21 20
+        movd        xmm5,       [rdx + rax*2]           ; 63 62 61 60
+        movd        xmm6,       [rdi + rax*2]           ; 33 32 31 30
+        movd        xmm7,       [rcx + rax*2]           ; 73 72 71 70
         punpckldq   xmm4,       xmm5                    ; 63 62 61 60 23 22 21 20
         punpckldq   xmm6,       xmm7                    ; 73 72 71 70 33 32 31 30
 
@@ -1555,17 +1544,17 @@ sym(vp8_loop_filter_simple_vertical_edge_sse2):
         lea         rdx,        [rsi + rax*4]
         lea         rcx,        [rdx + rax]
 
-        movdqu      xmm4,       [rsi]                   ; 83 82 81 80
-        movdqu      xmm1,       [rdx]                   ; c3 c2 c1 c0
-        movdqu      xmm6,       [rdi]                   ; 93 92 91 90
-        movdqu      xmm3,       [rcx]                   ; d3 d2 d1 d0
+        movd        xmm4,       [rsi]                   ; 83 82 81 80
+        movd        xmm1,       [rdx]                   ; c3 c2 c1 c0
+        movd        xmm6,       [rdi]                   ; 93 92 91 90
+        movd        xmm3,       [rcx]                   ; d3 d2 d1 d0
         punpckldq   xmm4,       xmm1                    ; c3 c2 c1 c0 83 82 81 80
         punpckldq   xmm6,       xmm3                    ; d3 d2 d1 d0 93 92 91 90
 
-        movdqu      xmm0,       [rsi + rax*2]           ; a3 a2 a1 a0
-        movdqu      xmm5,       [rdx + rax*2]           ; e3 e2 e1 e0
-        movdqu      xmm2,       [rdi + rax*2]           ; b3 b2 b1 b0
-        movdqu      xmm7,       [rcx + rax*2]           ; f3 f2 f1 f0
+        movd        xmm0,       [rsi + rax*2]           ; a3 a2 a1 a0
+        movd        xmm5,       [rdx + rax*2]           ; e3 e2 e1 e0
+        movd        xmm2,       [rdi + rax*2]           ; b3 b2 b1 b0
+        movd        xmm7,       [rcx + rax*2]           ; f3 f2 f1 f0
         punpckldq   xmm0,       xmm5                    ; e3 e2 e1 e0 a3 a2 a1 a0
         punpckldq   xmm2,       xmm7                    ; f3 f2 f1 f0 b3 b2 b1 b0
 
@@ -1607,14 +1596,10 @@ sym(vp8_loop_filter_simple_vertical_edge_sse2):
         paddusb     xmm5,       xmm5                            ; abs(p0-q0)*2
         paddusb     xmm5,       xmm6                            ; abs (p0 - q0) *2 + abs(p1-q1)/2
 
-        mov         rdx,        arg(2)                          ;flimit
+        mov         rdx,        arg(2)                          ;blimit
         movdqa      xmm7, XMMWORD PTR [rdx]
-        mov         rdx,        arg(3)                          ; get limit
-        movdqa      xmm6, XMMWORD PTR [rdx]
-        paddb       xmm7,        xmm7                           ; flimit*2 (less than 255)
-        paddb       xmm7,        xmm6                           ; flimit * 2 + limit (less than 255)
 
-        psubusb     xmm5,        xmm7                           ; abs(p0 - q0) *2 + abs(p1-q1)/2  > flimit * 2 + limit
+        psubusb     xmm5,        xmm7                           ; abs(p0 - q0) *2 + abs(p1-q1)/2  > blimit
         pxor        xmm7,        xmm7
         pcmpeqb     xmm5,        xmm7                           ; mm5 = mask
 

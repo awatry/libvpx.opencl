@@ -9,7 +9,7 @@
  */
 
 #include "../../decoder/onyxd_int.h"
-#include "../../../vpx_ports/config.h"
+#include "vpx_config.h"
 #include "../../common/idct.h"
 #include "blockd_cl.h"
 #include "../../decoder/opencl/dequantize_cl.h"
@@ -49,13 +49,13 @@ int vp8_cl_mb_prep(MACROBLOCKD *x, int flags){
         );
 
     if (flags & PRE_BUF){
-        VP8_CL_SET_BUF(x->cl_commands, x->pre.buffer_mem, x->pre.buffer_size, x->pre.buffer_alloc,
+        VP8_CL_SET_BUF(x->cl_commands, x->pre.buffer_mem, x->pre.frame_size, x->pre.buffer_alloc,
             ,err
         );
     }
 
     if (flags & DST_BUF){
-        VP8_CL_SET_BUF(x->cl_commands, x->dst.buffer_mem, x->dst.buffer_size, x->dst.buffer_alloc,
+        VP8_CL_SET_BUF(x->cl_commands, x->dst.buffer_mem, x->dst.frame_size, x->dst.buffer_alloc,
             ,err
         );
     }
@@ -113,7 +113,7 @@ int vp8_cl_mb_finish(MACROBLOCKD *x, int flags){
 
     if (flags & PRE_BUF){
         err = clEnqueueReadBuffer(x->cl_commands, x->pre.buffer_mem, CL_FALSE, 
-                0, x->pre.buffer_size, x->pre.buffer_alloc, 0, NULL, NULL);
+                0, x->pre.frame_size, x->pre.buffer_alloc, 0, NULL, NULL);
         VP8_CL_CHECK_SUCCESS( x->cl_commands, err != CL_SUCCESS,
           "Error: Failed to read from GPU!\n",
             , err
@@ -122,7 +122,7 @@ int vp8_cl_mb_finish(MACROBLOCKD *x, int flags){
 
     if (flags & DST_BUF){
         err = clEnqueueReadBuffer(x->cl_commands, x->dst.buffer_mem, CL_FALSE,
-                0, x->dst.buffer_size, x->dst.buffer_alloc, 0, NULL, NULL);
+                0, x->dst.frame_size, x->dst.buffer_alloc, 0, NULL, NULL);
         VP8_CL_CHECK_SUCCESS( x->cl_commands, err != CL_SUCCESS,
           "Error: Failed to read from GPU!\n",
             , err

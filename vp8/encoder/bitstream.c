@@ -22,7 +22,8 @@
 #include "vpx/vpx_encoder.h"
 #include "vpx_mem/vpx_mem.h"
 #include "bitstream.h"
-#include "vp8/common/defaultcoefcounts.h"
+
+#include "defaultcoefcounts.h"
 
 const int vp8cx_base_skip_false_prob[128] =
 {
@@ -158,18 +159,6 @@ static void write_split(vp8_writer *bc, int x)
     );
 }
 
-static const unsigned int norm[256] =
-{
-    0, 7, 6, 6, 5, 5, 5, 5, 4, 4, 4, 4, 4, 4, 4, 4, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
-    2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
-    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
-};
-
 static void pack_tokens_c(vp8_writer *w, const TOKENEXTRA *p, int xcount)
 {
     const TOKENEXTRA *const stop = p + xcount;
@@ -211,7 +200,7 @@ static void pack_tokens_c(vp8_writer *w, const TOKENEXTRA *p, int xcount)
                 range = split;
             }
 
-            shift = norm[range];
+            shift = vp8_norm[range];
             range <<= shift;
             count += shift;
 
@@ -271,7 +260,7 @@ static void pack_tokens_c(vp8_writer *w, const TOKENEXTRA *p, int xcount)
                         range = split;
                     }
 
-                    shift = norm[range];
+                    shift = vp8_norm[range];
                     range <<= shift;
                     count += shift;
 
@@ -427,7 +416,7 @@ static void pack_tokens_into_partitions_c(VP8_COMP *cpi, unsigned char *cx_data,
                             range = split;
                         }
 
-                        shift = norm[range];
+                        shift = vp8_norm[range];
                         range <<= shift;
                         count += shift;
 
@@ -487,7 +476,7 @@ static void pack_tokens_into_partitions_c(VP8_COMP *cpi, unsigned char *cx_data,
                                     range = split;
                                 }
 
-                                shift = norm[range];
+                                shift = vp8_norm[range];
                                 range <<= shift;
                                 count += shift;
 
@@ -634,7 +623,7 @@ static void pack_mb_row_tokens_c(VP8_COMP *cpi, vp8_writer *w)
                     range = split;
                 }
 
-                shift = norm[range];
+                shift = vp8_norm[range];
                 range <<= shift;
                 count += shift;
 
@@ -694,7 +683,7 @@ static void pack_mb_row_tokens_c(VP8_COMP *cpi, vp8_writer *w)
                             range = split;
                         }
 
-                        shift = norm[range];
+                        shift = vp8_norm[range];
                         range <<= shift;
                         count += shift;
 
@@ -1211,7 +1200,7 @@ static int independent_coef_context_savings(VP8_COMP *cpi)
             if (cpi->common.frame_type == KEY_FRAME)
             {
                 /* Reset to default probabilities at key frames */
-                sum_probs_over_prev_coef_context(vp8_default_coef_counts[i][j],
+                sum_probs_over_prev_coef_context(default_coef_counts[i][j],
                                                  prev_coef_count_sum);
             }
             else

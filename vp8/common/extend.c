@@ -85,10 +85,10 @@ void vp8_copy_and_extend_frame(YV12_BUFFER_CONFIG *src,
                           src->y_height, src->y_width,
                           et, el, eb, er);
 
-    et = (et + 1) >> 1;
-    el = (el + 1) >> 1;
-    eb = (eb + 1) >> 1;
-    er = (er + 1) >> 1;
+    et = dst->border >> 1;
+    el = dst->border >> 1;
+    eb = (dst->border >> 1) + dst->uv_height - src->uv_height;
+    er = (dst->border >> 1) + dst->uv_width - src->uv_width;
 
     copy_and_extend_plane(src->u_buffer, src->uv_stride,
                           dst->u_buffer, dst->uv_stride,
@@ -98,6 +98,60 @@ void vp8_copy_and_extend_frame(YV12_BUFFER_CONFIG *src,
     copy_and_extend_plane(src->v_buffer, src->uv_stride,
                           dst->v_buffer, dst->uv_stride,
                           src->uv_height, src->uv_width,
+                          et, el, eb, er);
+}
+
+
+void vp8_copy_and_extend_frame_with_rect(YV12_BUFFER_CONFIG *src,
+                                         YV12_BUFFER_CONFIG *dst,
+                                         int srcy, int srcx,
+                                         int srch, int srcw)
+{
+    int et = dst->border;
+    int el = dst->border;
+    int eb = dst->border + dst->y_height - src->y_height;
+    int er = dst->border + dst->y_width - src->y_width;
+    int src_y_offset = srcy * src->y_stride + srcx;
+    int dst_y_offset = srcy * dst->y_stride + srcx;
+    int src_uv_offset = ((srcy * src->uv_stride) >> 1) + (srcx >> 1);
+    int dst_uv_offset = ((srcy * dst->uv_stride) >> 1) + (srcx >> 1);
+
+    // If the side is not touching the bounder then don't extend.
+    if (srcy)
+      et = 0;
+    if (srcx)
+      el = 0;
+    if (srcy + srch != src->y_height)
+      eb = 0;
+    if (srcx + srcw != src->y_width)
+      er = 0;
+
+    copy_and_extend_plane(src->y_buffer + src_y_offset,
+                          src->y_stride,
+                          dst->y_buffer + dst_y_offset,
+                          dst->y_stride,
+                          srch, srcw,
+                          et, el, eb, er);
+
+    et = (et + 1) >> 1;
+    el = (el + 1) >> 1;
+    eb = (eb + 1) >> 1;
+    er = (er + 1) >> 1;
+    srch = (srch + 1) >> 1;
+    srcw = (srcw + 1) >> 1;
+
+    copy_and_extend_plane(src->u_buffer + src_uv_offset,
+                          src->uv_stride,
+                          dst->u_buffer + dst_uv_offset,
+                          dst->uv_stride,
+                          srch, srcw,
+                          et, el, eb, er);
+
+    copy_and_extend_plane(src->v_buffer + src_uv_offset,
+                          src->uv_stride,
+                          dst->v_buffer + dst_uv_offset,
+                          dst->uv_stride,
+                          srch, srcw,
                           et, el, eb, er);
 }
 

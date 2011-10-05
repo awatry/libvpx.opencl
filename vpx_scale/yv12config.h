@@ -22,7 +22,7 @@ extern "C"
 #include "../vpx_config.h"
     
 #if CONFIG_OPENCL
-#include "../vp8/common/opencl/vp8_opencl.h"
+#include "vp8/common/opencl/vp8_opencl.h"
 #endif
 
     /*************************************
@@ -60,7 +60,6 @@ extern "C"
         unsigned char *v_buffer;
 
         unsigned char *buffer_alloc;
-        int buffer_size;
 #if CONFIG_OPENCL
         cl_mem buffer_mem;
 #endif

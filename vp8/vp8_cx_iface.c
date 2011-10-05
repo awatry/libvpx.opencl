@@ -39,6 +39,7 @@ struct vp8_extracfg
     unsigned int                arnr_type;        /* alt_ref filter type */
     vp8e_tuning                 tuning;
     unsigned int                cq_level;         /* constrained quality level */
+    unsigned int                rc_max_intra_bitrate_pct;
 
 };
 
@@ -71,6 +72,7 @@ static const struct extraconfig_map extracfg_map[] =
             3,                          /* arnr_type*/
             0,                          /* tuning*/
             10,                         /* cq_level */
+            0,                          /* rc_max_intra_bitrate_pct */
         }
     }
 };
@@ -305,7 +307,7 @@ static vpx_codec_err_t set_vp8e_config(VP8_CONFIG *oxcf,
     }
 
     oxcf->target_bandwidth       = cfg.rc_target_bitrate;
-    oxcf->rc_max_intra_bitrate_pct = cfg.rc_max_intra_bitrate_pct;
+    oxcf->rc_max_intra_bitrate_pct = vp8_cfg.rc_max_intra_bitrate_pct;
 
     oxcf->best_allowed_q          = cfg.rc_min_quantizer;
     oxcf->worst_allowed_q         = cfg.rc_max_quantizer;
@@ -462,6 +464,7 @@ static vpx_codec_err_t set_param(vpx_codec_alg_priv_t *ctx,
         MAP(VP8E_SET_ARNR_TYPE     ,        xcfg.arnr_type);
         MAP(VP8E_SET_TUNING,                xcfg.tuning);
         MAP(VP8E_SET_CQ_LEVEL,              xcfg.cq_level);
+        MAP(VP8E_SET_MAX_INTRA_BITRATE_PCT, xcfg.rc_max_intra_bitrate_pct);
 
     }
 
@@ -723,7 +726,7 @@ static vpx_codec_err_t vp8e_encode(vpx_codec_alg_priv_t  *ctx,
     {
         unsigned int lib_flags;
         YV12_BUFFER_CONFIG sd;
-        INT64 dst_time_stamp, dst_end_time_stamp;
+        int64_t dst_time_stamp, dst_end_time_stamp;
         unsigned long size, cx_data_sz;
         unsigned char *cx_data;
 
@@ -806,14 +809,17 @@ static vpx_codec_err_t vp8e_encode(vpx_codec_alg_priv_t  *ctx,
                     int i;
                     const int num_partitions =
                             (1 << cpi->common.multi_token_partition) + 1;
+
+                    pkt.data.frame.flags |= VPX_FRAME_IS_FRAGMENT;
+
                     for (i = 0; i < num_partitions; ++i)
                     {
                         pkt.data.frame.buf = cx_data;
                         pkt.data.frame.sz = cpi->partition_sz[i];
                         pkt.data.frame.partition_id = i;
                         /* don't set the fragment bit for the last partition */
-                        if (i < num_partitions - 1)
-                            pkt.data.frame.flags |= VPX_FRAME_IS_FRAGMENT;
+                        if (i == (num_partitions - 1))
+                            pkt.data.frame.flags &= ~VPX_FRAME_IS_FRAGMENT;
                         vpx_codec_pkt_list_add(&ctx->pkt_list.head, &pkt);
                         cx_data += cpi->partition_sz[i];
                         cx_data_sz -= cpi->partition_sz[i];
@@ -1082,6 +1088,7 @@ static vpx_codec_ctrl_fn_map_t vp8e_ctf_maps[] =
     {VP8E_SET_ARNR_TYPE     ,           set_param},
     {VP8E_SET_TUNING,                   set_param},
     {VP8E_SET_CQ_LEVEL,                 set_param},
+    {VP8E_SET_MAX_INTRA_BITRATE_PCT,    set_param},
     { -1, NULL},
 };
 
@@ -1114,7 +1121,6 @@ static vpx_codec_enc_cfg_map_t vp8e_usage_cfg_map[] =
         {0},                /* rc_twopass_stats_in */
 #endif
         256,                /* rc_target_bandwidth */
-        0,                  /* rc_max_intra_bitrate_pct */
         4,                  /* rc_min_quantizer */
         63,                 /* rc_max_quantizer */
         100,                /* rc_undershoot_pct */

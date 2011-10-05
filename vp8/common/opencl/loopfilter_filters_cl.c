@@ -12,7 +12,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "vpx_ports/config.h"
+#include "vpx_config.h"
 #include "vp8_opencl.h"
 #include "blockd_cl.h"
 #include "loopfilter_cl.h"
@@ -28,7 +28,6 @@ static VP8_LOOPFILTER_ARGS filter_args[NUM_KERNELS];
         err |= clSetKernelArg(kernel, argnum, sizeof (type), &newargs->name); \
         current->name = newargs->name; \
     }\
-
 
 void vp8_loop_filter_horizontal_edges_cl( MACROBLOCKD *x, 
         VP8_LOOPFILTER_ARGS *args, int num_planes, int num_blocks
@@ -67,6 +66,7 @@ static int vp8_loop_filter_cl_run(
 #else
     local[2] = 1;
 #endif
+
         if ((max_local_size < 16 * num_planes )){
             local[1] = 1; //Drop down to 1 plane
             if (max_local_size < 16){
@@ -93,6 +93,7 @@ static int vp8_loop_filter_cl_run(
     VP8_CL_SET_LOOP_ARG(kernel, current_args, args, 6, cl_int, num_levels)
     VP8_CL_SET_LOOP_ARG(kernel, current_args, args, 7, cl_mem, block_offsets_mem)
     VP8_CL_SET_LOOP_ARG(kernel, current_args, args, 8, cl_mem, priority_num_blocks_mem);
+    VP8_CL_SET_LOOP_ARG(kernel, current_args, args, 9, cl_int, frame_type);
 
     VP8_CL_CHECK_SUCCESS( cq, err != CL_SUCCESS,
         "Error: Failed to set kernel arguments!\n",,err

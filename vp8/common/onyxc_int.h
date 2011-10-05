@@ -19,7 +19,9 @@
 #include "entropy.h"
 #include "idct.h"
 #include "recon.h"
+#if CONFIG_POSTPROC
 #include "postproc.h"
+#endif
 
 /*#ifdef PACKET_TESTING*/
 #include "header.h"
@@ -75,7 +77,9 @@ typedef struct VP8_COMMON_RTCD
     vp8_recon_rtcd_vtable_t       recon;
     vp8_subpix_rtcd_vtable_t      subpix;
     vp8_loopfilter_rtcd_vtable_t  loopfilter;
+#if CONFIG_POSTPROC
     vp8_postproc_rtcd_vtable_t    postproc;
+#endif
     int                           flags;
 #else
     int unused;
@@ -83,6 +87,7 @@ typedef struct VP8_COMMON_RTCD
 } VP8_COMMON_RTCD;
 
 typedef struct VP8Common
+
 {
     struct vpx_internal_error_info  error;
 
@@ -107,7 +112,8 @@ typedef struct VP8Common
     YV12_BUFFER_CONFIG post_proc_buffer;
     YV12_BUFFER_CONFIG temp_scale_frame;
 
-    FRAME_TYPE last_frame_type;  /* Save last frame's frame type for loopfilter init checking and motion search. */
+
+    FRAME_TYPE last_frame_type;  /* Save last frame's frame type for motion search. */
     FRAME_TYPE frame_type;
 
     int show_frame;
@@ -146,13 +152,10 @@ typedef struct VP8Common
 
 
     INTERPOLATIONFILTERTYPE mcomp_filter_type;
-    LOOPFILTERTYPE last_filter_type;
     LOOPFILTERTYPE filter_type;
-    loop_filter_info lf_info[MAX_LOOP_FILTER+1];
-    prototype_loopfilter_block((*lf_mbv));
-    prototype_loopfilter_block((*lf_mbh));
-    prototype_loopfilter_block((*lf_bv));
-    prototype_loopfilter_block((*lf_bh));
+
+    loop_filter_info_n lf_info;
+
     int filter_level;
     int last_sharpness_level;
     int sharpness_level;
@@ -202,13 +205,9 @@ typedef struct VP8Common
 #if CONFIG_MULTITHREAD
     int processor_core_count;
 #endif
+#if CONFIG_POSTPROC
     struct postproc_state  postproc_state;
+#endif
 } VP8_COMMON;
-
-
-int vp8_adjust_mb_lf_value(MACROBLOCKD *mbd, int filter_level);
-void vp8_init_loop_filter(VP8_COMMON *cm);
-void vp8_frame_init_loop_filter(loop_filter_info *lfi, int frame_type);
-extern void vp8_loop_filter_frame(VP8_COMMON *cm,    MACROBLOCKD *mbd,  int filt_val);
 
 #endif

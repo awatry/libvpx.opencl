@@ -18,11 +18,8 @@
 //Also, the only external functions being called here are the subpixel prediction
 //functions. Hopefully this means no worrying about when to copy data back/forth.
 
-#include "../../../vpx_ports/config.h"
-//#include "../recon.h"
+#include "vpx_config.h"
 #include "../subpixel.h"
-//#include "../blockd.h"
-//#include "../reconinter.h"
 #if CONFIG_RUNTIME_CPU_DETECT
 //#include "../onyxc_int.h"
 #endif

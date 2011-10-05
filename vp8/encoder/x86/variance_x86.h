@@ -121,6 +121,7 @@ extern prototype_sad(vp8_sad8x8_wmt);
 extern prototype_sad(vp8_sad8x16_wmt);
 extern prototype_sad(vp8_sad16x8_wmt);
 extern prototype_sad(vp8_sad16x16_wmt);
+extern prototype_sad(vp8_copy32xn_sse2);
 extern prototype_variance(vp8_variance4x4_wmt);
 extern prototype_variance(vp8_variance8x8_wmt);
 extern prototype_variance(vp8_variance8x16_wmt);
@@ -139,6 +140,8 @@ extern prototype_getmbss(vp8_get_mb_ss_sse2);
 extern prototype_variance(vp8_mse16x16_wmt);
 extern prototype_variance2(vp8_get8x8var_sse2);
 extern prototype_variance2(vp8_get16x16var_sse2);
+extern prototype_ssimpf(vp8_ssim_parms_8x8_sse2)
+extern prototype_ssimpf(vp8_ssim_parms_16x16_sse2)
 
 #if !CONFIG_RUNTIME_CPU_DETECT
 #undef  vp8_variance_sad4x4
@@ -155,6 +158,9 @@ extern prototype_variance2(vp8_get16x16var_sse2);
 
 #undef  vp8_variance_sad16x16
 #define vp8_variance_sad16x16 vp8_sad16x16_wmt
+
+#undef  vp8_variance_copy32xn
+#define vp8_variance_copy32xn vp8_copy32xn_sse2
 
 #undef  vp8_variance_var4x4
 #define vp8_variance_var4x4 vp8_variance4x4_wmt
@@ -204,6 +210,14 @@ extern prototype_variance2(vp8_get16x16var_sse2);
 #undef  vp8_variance_mse16x16
 #define vp8_variance_mse16x16 vp8_mse16x16_wmt
 
+#if ARCH_X86_64
+#undef  vp8_ssimpf_8x8
+#define vp8_ssimpf_8x8 vp8_ssim_parms_8x8_sse2
+
+#undef  vp8_ssimpf_16x16
+#define vp8_ssimpf_16x16 vp8_ssim_parms_16x16_sse2
+#endif
+
 #endif
 #endif
 
@@ -222,6 +236,7 @@ extern prototype_sad_multi_dif_address(vp8_sad16x8x4d_sse3);
 extern prototype_sad_multi_dif_address(vp8_sad8x16x4d_sse3);
 extern prototype_sad_multi_dif_address(vp8_sad8x8x4d_sse3);
 extern prototype_sad_multi_dif_address(vp8_sad4x4x4d_sse3);
+extern prototype_sad(vp8_copy32xn_sse3);
 
 #if !CONFIG_RUNTIME_CPU_DETECT
 
@@ -257,6 +272,9 @@ extern prototype_sad_multi_dif_address(vp8_sad4x4x4d_sse3);
 
 #undef  vp8_variance_sad4x4x4d
 #define vp8_variance_sad4x4x4d vp8_sad4x4x4d_sse3
+
+#undef  vp8_variance_copy32xn
+#define vp8_variance_copy32xn vp8_copy32xn_sse3
 
 #endif
 #endif

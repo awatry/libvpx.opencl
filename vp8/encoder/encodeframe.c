@@ -9,7 +9,7 @@
  */
 
 
-#include "vpx_ports/config.h"
+#include "vpx_config.h"
 #include "encodemb.h"
 #include "encodemv.h"
 #include "vp8/common/common.h"
@@ -140,7 +140,7 @@ static unsigned int mb_activity_measure( VP8_COMP *cpi, MACROBLOCK *x,
 
 // Calculate an "average" mb activity value for the frame
 #define ACT_MEDIAN 0
-static void calc_av_activity( VP8_COMP *cpi, INT64 activity_sum )
+static void calc_av_activity( VP8_COMP *cpi, int64_t activity_sum )
 {
 #if ACT_MEDIAN
     // Find median: Simple n^2 algorithm for experimentation
@@ -208,9 +208,9 @@ static void calc_activity_index( VP8_COMP *cpi, MACROBLOCK *x )
     VP8_COMMON *const cm = & cpi->common;
     int mb_row, mb_col;
 
-    INT64 act;
-    INT64 a;
-    INT64 b;
+    int64_t act;
+    int64_t a;
+    int64_t b;
 
 #if OUTPUT_NORM_ACT_STATS
     FILE *f = fopen("norm_act.stt", "a");
@@ -274,7 +274,7 @@ static void build_activity_map( VP8_COMP *cpi )
 
     int mb_row, mb_col;
     unsigned int mb_activity;
-    INT64 activity_sum = 0;
+    int64_t activity_sum = 0;
 
     // for each macroblock row in image
     for (mb_row = 0; mb_row < cm->mb_rows; mb_row++)
@@ -341,15 +341,15 @@ void vp8_activity_masking(VP8_COMP *cpi, MACROBLOCK *x)
     x->errorperbit = x->rdmult * 100 /(110 * x->rddiv);
     x->errorperbit += (x->errorperbit==0);
 #else
-    INT64 a;
-    INT64 b;
-    INT64 act = *(x->mb_activity_ptr);
+    int64_t a;
+    int64_t b;
+    int64_t act = *(x->mb_activity_ptr);
 
     // Apply the masking to the RD multiplier.
     a = act + (2*cpi->activity_avg);
     b = (2*act) + cpi->activity_avg;
 
-    x->rdmult = (unsigned int)(((INT64)x->rdmult*b + (a>>1))/a);
+    x->rdmult = (unsigned int)(((int64_t)x->rdmult*b + (a>>1))/a);
     x->errorperbit = x->rdmult * 100 /(110 * x->rddiv);
     x->errorperbit += (x->errorperbit==0);
 #endif
@@ -368,7 +368,6 @@ void encode_mb_row(VP8_COMP *cpi,
                    int *segment_counts,
                    int *totalrate)
 {
-    int i;
     int recon_yoffset, recon_uvoffset;
     int mb_col;
     int ref_fb_idx = cm->lst_fb_idx;
@@ -534,10 +533,6 @@ void encode_mb_row(VP8_COMP *cpi,
         // Increment the activity mask pointers.
         x->mb_activity_ptr++;
 
-        /* save the block info */
-        for (i = 0; i < 16; i++)
-            xd->mode_info_context->bmi[i] = xd->block[i].bmi;
-
         // adjust to the next column of macroblocks
         x->src.y_buffer += 16;
         x->src.u_buffer += 8;
@@ -665,6 +660,9 @@ void init_encode_frame_mb_context(VP8_COMP *cpi)
                                         + vp8_cost_one(cpi->prob_gf_coded);
     }
 
+    xd->fullpixel_mask = 0xffffffff;
+    if(cm->full_pixel)
+        xd->fullpixel_mask = 0xfffffff8;
 }
 
 void vp8_encode_frame(VP8_COMP *cpi)
@@ -1102,18 +1100,18 @@ static void adjust_act_zbin( VP8_COMP *cpi, MACROBLOCK *x )
 #if USE_ACT_INDEX
     x->act_zbin_adj = *(x->mb_activity_ptr);
 #else
-    INT64 a;
-    INT64 b;
-    INT64 act = *(x->mb_activity_ptr);
+    int64_t a;
+    int64_t b;
+    int64_t act = *(x->mb_activity_ptr);
 
     // Apply the masking to the RD multiplier.
     a = act + 4*cpi->activity_avg;
     b = 4*act + cpi->activity_avg;
 
     if ( act > cpi->activity_avg )
-        x->act_zbin_adj = (int)(((INT64)b + (a>>1))/a) - 1;
+        x->act_zbin_adj = (int)(((int64_t)b + (a>>1))/a) - 1;
     else
-        x->act_zbin_adj = 1 - (int)(((INT64)a + (b>>1))/b);
+        x->act_zbin_adj = 1 - (int)(((int64_t)a + (b>>1))/b);
 #endif
 }
 
@@ -1257,7 +1255,11 @@ int vp8cx_encode_inter_macroblock
                     cpi->zbin_mode_boost = MV_ZBIN_BOOST;
             }
         }
-        vp8_update_zbin_extra(cpi, x);
+
+        /* The fast quantizer doesn't use zbin_extra, only do so with
+         * the regular quantizer. */
+        if (cpi->sf.improved_quant)
+            vp8_update_zbin_extra(cpi, x);
     }
 
     cpi->count_mb_ref_frame_usage[xd->mode_info_context->mbmi.ref_frame] ++;
@@ -1280,8 +1282,6 @@ int vp8cx_encode_inter_macroblock
     else
     {
         int ref_fb_idx;
-
-        vp8_build_uvmvs(xd, cpi->common.full_pixel);
 
         if (xd->mode_info_context->mbmi.ref_frame == LAST_FRAME)
             ref_fb_idx = cpi->common.lst_fb_idx;

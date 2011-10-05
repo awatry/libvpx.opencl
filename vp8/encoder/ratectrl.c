@@ -850,9 +850,9 @@ static void calc_pframe_target_size(VP8_COMP *cpi)
                         if ( critical_buffer_level >
                              (cpi->oxcf.optimal_buffer_level >> 2) )
                         {
-                            INT64 qadjustment_range =
+                            int64_t qadjustment_range =
                                       cpi->worst_quality - cpi->ni_av_qi;
-                            INT64 above_base =
+                            int64_t above_base =
                                       (critical_buffer_level -
                                        (cpi->oxcf.optimal_buffer_level >> 2));
 
