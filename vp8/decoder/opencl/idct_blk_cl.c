@@ -9,8 +9,8 @@
  */
 
 #include "vp8/decoder/onyxd_int.h"
-#include "vpx_ports/config.h"
-#include "../../common/idct.h"
+#include "vpx_config.h"
+#include "vp8/common/idct.h"
 #include "vp8/common/opencl/blockd_cl.h"
 #include "dequantize_cl.h"
 

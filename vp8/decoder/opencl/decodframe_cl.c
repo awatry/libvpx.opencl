@@ -15,25 +15,6 @@
 #include "vp8/common/reconintra4x4.h"
 #include "vp8/common/recon.h"
 #include "vp8/common/reconinter.h"
-//#include "../dequantize.h"
-//#include "../detokenize.h"
-//#include "vp8/common/alloccommon.h"
-//#include "vp8/common/entropymode.h"
-//#include "vp8/common/quant_common.h"
-//#include "vpx_scale/vpxscale.h"
-//#include "vpx_scale/yv12extend.h"
-//#include "vp8/common/setupintrarecon.h"
-
-//#include "../decodemv.h"
-//#include "vp8/common/extend.h"
-//#include "vpx_mem/vpx_mem.h"
-//#include "vp8/common/idct.h"
-//#include "../dequantize.h"
-//#include "vp8/common/predictdc.h"
-//#include "vp8/common/threading.h"
-//#include "../decoderthreading.h"
-//#include "../dboolhuff.h"
-//#include "vp8/common/blockd.h"
 
 #include <assert.h>
 #include <stdio.h>

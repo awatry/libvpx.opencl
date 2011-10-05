@@ -1,6 +1,6 @@
-#include "vpx_ports/config.h"
+#include "vpx_config.h"
 
-#include "../../common/opencl/vp8_opencl.h"
+#include "vp8/common/opencl/vp8_opencl.h"
 #include "vp8_decode_cl.h"
 
 #include <stdio.h>

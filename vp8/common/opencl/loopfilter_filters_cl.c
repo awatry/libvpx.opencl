@@ -12,7 +12,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "vpx_ports/config.h"
+#include "vpx_config.h"
 #include "vp8_opencl.h"
 #include "blockd_cl.h"
 #include "loopfilter_cl.h"

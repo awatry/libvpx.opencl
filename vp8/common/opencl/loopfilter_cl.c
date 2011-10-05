@@ -1,4 +1,3 @@
-
 /*
  *  Copyright (c) 2011 The WebM project authors. All Rights Reserved.
  *
@@ -9,8 +8,6 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-
-#include "../../../vpx_ports/config.h"
 #include "loopfilter_cl.h"
 #include "../onyxc_int.h"
 
@@ -19,11 +16,8 @@
 #include "vp8_opencl.h"
 #include "blockd_cl.h"
 
-/* Note: Testing on 9/22 indicates that mapping buffers no longer provides a
-         significant advantage on AMD hardware due to traffic reductions.
-         The !mapped route is now being made the default to appease NVidia's GPUs.
- */
-#if 0
+//Disable usage of mapped buffers for performance increase on Nvidia hardware
+#if 0 
 #define USE_MAPPED_BUFFERS 0
 #define MAP_FILTERS 0
 #define MAP_OFFSETS 0

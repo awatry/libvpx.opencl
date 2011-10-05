@@ -9,7 +9,7 @@
  */
 
 #include "../../decoder/onyxd_int.h"
-#include "../../../vpx_ports/config.h"
+#include "vpx_config.h"
 #include "../../common/idct.h"
 #include "blockd_cl.h"
 #include "../../decoder/opencl/dequantize_cl.h"
