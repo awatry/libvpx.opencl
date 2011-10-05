@@ -394,9 +394,9 @@ kernel void vp8_loop_filter_all_edges_kernel(
     size_t plane = get_global_id(1);
     size_t block = get_global_id(2);
 
-    local uchar y_data[400]; //Local copy of frame data.
-    local uchar u_data[200]; //Local copy of frame data.
-    local uchar v_data[200]; //Local copy of frame data.
+    //local uchar y_data[400]; //Local copy of frame data.
+    //local uchar u_data[200]; //Local copy of frame data.
+    //local uchar v_data[200]; //Local copy of frame data.
     int block_offset = block_offsets[priority_level];
 
     global int *offsets = &offsets_in[16*block_offset];
@@ -406,7 +406,7 @@ kernel void vp8_loop_filter_all_edges_kernel(
     loop_filter_info lf_info;
 
     //if (plane == 0)
-    //   load_mb_y(y_data, 20, s_base, block*3, pitches[0], 0, 0);
+    //    load_mb_y(y_data, 20, s_base, block*3, pitches[0], 0, 0);
 
     int p = pitches[plane];
     int thread_level_filter = (thread<threads[plane]) & (filter_level!=0);
