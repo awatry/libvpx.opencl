@@ -44,10 +44,10 @@ typedef struct
 
 typedef struct
 {
-    global unsigned char *mblim;
-    global unsigned char *blim;
-    global unsigned char *lim;
-    global unsigned char *hev_thr;
+    unsigned char mblim;
+    unsigned char blim;
+    unsigned char lim;
+    unsigned char hev_thr;
 } loop_filter_info;
 
 __inline void vp8_filter_mem(
@@ -234,7 +234,7 @@ __inline void vp8_loop_filter_horizontal_edge_worker(
     global uchar *s_base,
     global int *offsets,
     global int *pitches, /* pitch */
-    loop_filter_info *lfi,
+    local loop_filter_info *lfi,
     global int *filters,
     int filter_type,
     int filter_level,
@@ -256,9 +256,9 @@ __inline void vp8_loop_filter_horizontal_edge_worker(
 
         data = load8(s_base, s_off, p);
 
-        char mask = vp8_filter_mask(lfi->lim[thread], lfi->blim[thread], data);
+        char mask = vp8_filter_mask(lfi->lim, lfi->blim, data);
 
-        char hev = vp8_hevmask(lfi->hev_thr[thread], data.s2345);
+        char hev = vp8_hevmask(lfi->hev_thr, data.s2345);
 
         //if (cur_iter == 3 && thread == 3 && plane == 0){
         //    printf("block = %d, thread = %d, plane = %d, hev = %d, mask = %d\n", block, thread, plane, hev, mask);
@@ -274,7 +274,7 @@ __inline void vp8_loop_filter_vertical_edge_worker(
     private uchar *data,
     global int *offsets,
     global int *pitches,
-    loop_filter_info *lfi,
+    local loop_filter_info *lfi,
     global int *filters,
     int filter_type,
     int filter_level,
@@ -288,9 +288,9 @@ __inline void vp8_loop_filter_vertical_edge_worker(
     if (filters[num_blocks*filter_type + block] > 0){
         size_t thread = get_global_id(0);
 
-        char mask = vp8_filter_mask_mem(lfi->lim[thread], lfi->blim[thread], data);
+        char mask = vp8_filter_mask_mem(lfi->lim, lfi->blim, data);
 
-        int hev = vp8_hevmask_mem(lfi->hev_thr[thread], &data[2]);
+        int hev = vp8_hevmask_mem(lfi->hev_thr, &data[2]);
         
         vp8_filter_mem(mask, hev, &data[2]);
     }
@@ -300,7 +300,7 @@ __inline void vp8_mbloop_filter_horizontal_edge_worker(
     global unsigned char *s_base,
     global int *offsets,
     global int *pitches,
-    loop_filter_info *lfi,
+    local loop_filter_info *lfi,
     global int *filters,
     int filter_type,
     int filter_level,
@@ -316,9 +316,9 @@ __inline void vp8_mbloop_filter_horizontal_edge_worker(
 
     uchar8 data = load8(s_base, s_off, p);
 
-    char mask = vp8_filter_mask(lfi->lim[thread], lfi->mblim[thread], data);
+    char mask = vp8_filter_mask(lfi->lim, lfi->mblim, data);
 
-    char hev = vp8_hevmask(lfi->hev_thr[thread], data.s2345);
+    char hev = vp8_hevmask(lfi->hev_thr, data.s2345);
 
     data = vp8_mbfilter(mask, hev, data);
 
@@ -330,7 +330,7 @@ __inline void vp8_mbloop_filter_vertical_edge_worker(
     global unsigned char *s_base,
     global int *offsets,
     global int *pitches,
-    loop_filter_info *lfi,
+    local loop_filter_info *lfi,
     global int *filters,
     int filter_type,
     int filter_level,
@@ -345,21 +345,23 @@ __inline void vp8_mbloop_filter_vertical_edge_worker(
 
     uchar8 data = load8(s_base, s_off, 1);
 
-    char mask = vp8_filter_mask(lfi->lim[thread], lfi->mblim[thread], data);
+    char mask = vp8_filter_mask(lfi->lim, lfi->mblim, data);
 
-    int hev = vp8_hevmask(lfi->hev_thr[thread], data.s2345);
+    int hev = vp8_hevmask(lfi->hev_thr, data.s2345);
 
     data = vp8_mbfilter(mask, hev, data);
 
     save6(s_base, s_off, 1, data);
 }
 
-__inline void set_lfi(global loop_filter_info_n *lfi_n, loop_filter_info *lfi, int frame_type, int filter_level){
-    int hev_index = lfi_n->hev_thr_lut[frame_type][filter_level];
-    lfi->mblim = lfi_n->mblim[filter_level];
-    lfi->blim = lfi_n->blim[filter_level];
-    lfi->lim = lfi_n->lim[filter_level];
-    lfi->hev_thr = lfi_n->hev_thr[hev_index];
+__inline void set_lfi(global loop_filter_info_n *lfi_n, local loop_filter_info *lfi, int frame_type, int filter_level){
+    if (get_local_id(0) == 0 && get_local_id(1)==0 && get_local_id(2)==0){
+        int hev_index = lfi_n->hev_thr_lut[frame_type][filter_level];
+        lfi->mblim = lfi_n->mblim[filter_level][0];
+        lfi->blim = lfi_n->blim[filter_level][0];
+        lfi->lim = lfi_n->lim[filter_level][0];
+        lfi->hev_thr = lfi_n->hev_thr[hev_index][0];
+    }
 }
 
 //Assumes a 20x20 local memory array size which can store all needed MB data
@@ -403,7 +405,7 @@ kernel void vp8_loop_filter_all_edges_kernel(
     global int *filters = &filters_in[4*block_offset];
     size_t num_blocks = priority_num_blocks[priority_level];
     int filter_level = filters[block];
-    loop_filter_info lf_info;
+    local loop_filter_info lf_info;
 
 /*
     int mb_col = filters[num_blocks * COLS_LOCATION + block];
@@ -501,7 +503,7 @@ kernel void vp8_loop_filter_horizontal_edges_kernel(
     int filter_level = filters[block];
     int p = pitches[plane];
     
-    loop_filter_info lf_info;
+    local loop_filter_info lf_info;
     set_lfi(lfi_n, &lf_info, frame_type, filter_level);
 
     int thread_level_filter = (thread<threads[plane]) & (filter_level!=0);
@@ -548,7 +550,7 @@ kernel void vp8_loop_filter_vertical_edges_kernel(
     offsets = &offsets[13*block_offset];
     int filter_level = filters[block];
     
-    loop_filter_info lf_info;
+    local loop_filter_info lf_info;
     set_lfi(lfi_n, &lf_info, frame_type, filter_level);
 
     int p = pitches[plane];
@@ -589,7 +591,7 @@ void vp8_loop_filter_simple_horizontal_edge_worker
     global unsigned char *s_base,
     global int *offsets,
     global int *pitches,
-    loop_filter_info *lfi,
+    local loop_filter_info *lfi,
     global int *filters_in,
     int use_mbflim,
     int filter_type,
@@ -619,7 +621,7 @@ void vp8_loop_filter_simple_horizontal_edge_worker
             size_t i= get_global_id(0);
 
             if (i < threads[plane]){
-                global uchar *flimit;
+                uchar flimit;
                 if (use_mbflim == 0){
                     flimit = lfi->blim;
                 } else {
@@ -627,7 +629,7 @@ void vp8_loop_filter_simple_horizontal_edge_worker
                 }
 
                 s_off += i;
-                mask = vp8_simple_filter_mask(flimit[0], s_base[s_off-2*p], s_base[s_off-p], s_base[s_off], s_base[s_off+p]);
+                mask = vp8_simple_filter_mask(flimit, s_base[s_off-2*p], s_base[s_off-p], s_base[s_off], s_base[s_off+p]);
                 vp8_simple_filter(mask, s_base, s_off - 2 * p, s_off - 1 * p, s_off, s_off + 1 * p);
             }
         }
@@ -638,7 +640,7 @@ void vp8_loop_filter_simple_vertical_edge_worker(
     global unsigned char *s_base,
     global int *offsets, /* Y or YUV offsets for EACH block being processed*/
     global int *pitches, /* 1 or 3 values for Y or YUV pitches*/
-    loop_filter_info *lfi, /* Single struct for the frame */
+    local loop_filter_info *lfi, /* Single struct for the frame */
     global int *filters_in, /* Filters for each block being processed */
     int use_mbflim, /* Use lfi->flim or lfi->mbflim, need once per kernel call */
     int filter_type, /* Should dc_diffs, rows, or cols be used?*/
@@ -666,7 +668,7 @@ void vp8_loop_filter_simple_vertical_edge_worker(
             size_t i= get_global_id(0);
 
             if (i < threads[0]){
-                global uchar *flimit;
+                uchar flimit;
                 if (use_mbflim == 0){
                     flimit = lfi->blim;
                 } else {
@@ -674,7 +676,7 @@ void vp8_loop_filter_simple_vertical_edge_worker(
                 }
 
                 s_off += p * i;
-                mask = vp8_simple_filter_mask(flimit[0], s_base[s_off-2], s_base[s_off-1], s_base[s_off], s_base[s_off+1]);
+                mask = vp8_simple_filter_mask(flimit, s_base[s_off-2], s_base[s_off-1], s_base[s_off], s_base[s_off+1]);
                 vp8_simple_filter(mask, s_base, s_off - 2, s_off - 1, s_off, s_off + 1);
             }
         }
@@ -696,7 +698,7 @@ kernel void vp8_loop_filter_simple_vertical_edges_kernel
     int frame_type
 ){
     
-    loop_filter_info lfi;
+    local loop_filter_info lfi;
     int block_offset = block_offsets[priority_level];
     int filter_level = filters_in[4*block_offset + get_global_id(2)];
     set_lfi(lfi_n, &lfi, frame_type, filter_level);
@@ -735,7 +737,7 @@ kernel void vp8_loop_filter_simple_horizontal_edges_kernel
     int frame_type
 ){
 
-    loop_filter_info lfi;
+    local loop_filter_info lfi;
     int block_offset = block_offsets[priority_level];
     int filter_level = filters_in[4*block_offset + get_global_id(2)];
     set_lfi(lfi_n, &lfi, frame_type, filter_level);
@@ -774,7 +776,7 @@ kernel void vp8_loop_filter_simple_all_edges_kernel
 {
 
     int block = (int)get_global_id(2);
-    loop_filter_info lfi;
+    local loop_filter_info lfi;
     
     for (int i = 0; i < num_levels; i++){
         int block_offset = block_offsets[priority_level];
