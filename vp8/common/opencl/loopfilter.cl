@@ -180,22 +180,6 @@ __inline uchar16 load16(global unsigned char *s_base, int s_off, int p){
     return data;
 }
 
-//Assumes a 20x20 local memory array size which can store all needed MB data
-__inline void load_mb_y(local uchar *dst, int dst_pitch, global uchar *src, int src_off, int src_pitch, int mb_row, int mb_col){
-    //int dst_pitch = 20;
-    event_t e=0;
-    //Load above border if row != 0
-    
-    //Load left border if col != 0
-    
-    //Load Macroblock Y plane data
-    for (int i = 0; i < 16; i++){
-        e = async_work_group_copy( &dst[(4+i)*dst_pitch], &src[i*src_pitch + src_off], 16, e);
-    }
-    
-    wait_group_events(1, &e);
-}
-
 __inline void private_load16(private uchar *dest, global unsigned char *s_base, int s_off, int p){
     dest[0] = s_base[s_off-4*p];
     dest[1] = s_base[s_off-3*p];
@@ -378,6 +362,22 @@ __inline void set_lfi(global loop_filter_info_n *lfi_n, loop_filter_info *lfi, i
     lfi->hev_thr = lfi_n->hev_thr[hev_index];
 }
 
+//Assumes a 20x20 local memory array size which can store all needed MB data
+//Also assumes a work group size of 1 plane
+__inline void load_mb_y(local uchar *dst, int dst_pitch, global uchar *src, int src_off, int src_pitch, int mb_row, int mb_col){
+    event_t e=0;
+    
+    //Load above border if row != 0
+    //Load left border if col != 0
+
+    //Load 16x16 pixels of Macroblock Y plane data
+    for (int i = 0; i < 16; i++){
+        e = async_work_group_copy( &dst[(4+i)*dst_pitch], &src[i*src_pitch + src_off], 16, e);
+    }
+    
+    wait_group_events(1, &e);
+}
+
 kernel void vp8_loop_filter_all_edges_kernel(
     global unsigned char *s_base,
     global int *offsets_in,
@@ -405,8 +405,18 @@ kernel void vp8_loop_filter_all_edges_kernel(
     int filter_level = filters[block];
     loop_filter_info lf_info;
 
-    //if (plane == 0)
-    //    load_mb_y(y_data, 20, s_base, block*3, pitches[0], 0, 0);
+/*
+    int mb_col = filters[num_blocks * COLS_LOCATION + block];
+    int mb_row = filters[num_blocks * ROWS_LOCATION + block];
+    switch (plane){
+    if (plane == 0){
+        case 0:
+        load_mb_y(y_data, 20, s_base, offsets[block*3], pitches[0], mb_row, mb_col);
+        break;
+        case 1:
+            load_mb_uv(u_data, 10, s_base, offsets[block*3+1])
+    }
+*/
 
     int p = pitches[plane];
     int thread_level_filter = (thread<threads[plane]) & (filter_level!=0);
