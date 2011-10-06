@@ -281,61 +281,27 @@ void vp8_loop_filter_build_offsets(MACROBLOCKD *mbd, int num_blocks,
         VP8_COMMON *cm, LOOPFILTERTYPE filter_type, int priority_level, cl_int *offsets
 )
 {
-    int y_stride = post->y_stride;
-    int uv_stride = post->uv_stride;
     int blk;
     
     if (filter_type == NORMAL_LOOPFILTER){
                 
-        offsets += block_offsets[priority_level]*13;
+        offsets += block_offsets[priority_level]*3;
                 
         //populate it with the correct offsets for current filter type
         for (blk = 0; blk < num_blocks; blk++){
-            int y_off, u_off, v_off;
-            y_off = y_offsets[blk];
-            u_off = u_offsets[blk];
-            v_off = v_offsets[blk];
-            
             //MBV/MBH offsets
-            offsets[blk * 3 + 0] = y_off;
-            offsets[blk * 3 + 1] = u_off;
-            offsets[blk * 3 + 2] = v_off;
-
-            //BV Offsets
-            offsets[num_blocks * 3 + blk * 3 + 0] = y_off+4;
-            offsets[num_blocks * 3 + blk * 3 + 1] = u_off+4;
-            offsets[num_blocks * 3 + blk * 3 + 2] = v_off+4;
-            offsets[num_blocks * 6 + blk]         = y_off+8;
-            offsets[num_blocks * 7 + blk]         = y_off+12;
-
-            //BH Offsets
-            offsets[num_blocks * 8 + blk * 3 + 0] = y_off+4*y_stride;
-            offsets[num_blocks * 8 + blk * 3 + 1] = u_off+4*uv_stride;
-            offsets[num_blocks * 8 + blk * 3 + 2] = v_off+4*uv_stride;
-            offsets[num_blocks * 11 + blk]         = y_off+8*y_stride;
-            offsets[num_blocks * 12 + blk]         = y_off+12*y_stride;
+            offsets[blk * 3 + 0] = y_offsets[blk];
+            offsets[blk * 3 + 1] = u_offsets[blk];
+            offsets[blk * 3 + 2] = v_offsets[blk];
         }
     } else {
         //Simple filter
-
-        offsets += block_offsets[priority_level]*7;
+        offsets += block_offsets[priority_level];
         
         //populate it with the correct offsets for current filter type
         for (blk = 0; blk < num_blocks; blk++){
-            int y_off = y_offsets[blk];
-
             //MB[HV]S offsets
-            offsets[blk] = y_off;
-
-            //BVS Offsets
-            offsets[num_blocks + blk]     = y_off + 4;
-            offsets[num_blocks * 2 + blk] = y_off + 8;
-            offsets[num_blocks * 3 + blk] = y_off + 12;
-
-            //BHS Offsets
-            offsets[num_blocks * 4 + blk] = y_off + 4 * y_stride;
-            offsets[num_blocks * 5 + blk] = y_off + 8 * y_stride;
-            offsets[num_blocks * 6 + blk] = y_off + 12 * y_stride;
+            offsets[blk] = y_offsets[blk];
         }
     }
 }
@@ -571,9 +537,9 @@ void vp8_loop_filter_frame_cl
         
         //map offsets_mem
         if (cm->filter_type == NORMAL_LOOPFILTER)
-            offsets_size = sizeof(cl_int)*cm->MBs*13;
+            offsets_size = sizeof(cl_int)*cm->MBs*3;
         else
-            offsets_size = sizeof(cl_int)*cm->MBs*7;
+            offsets_size = sizeof(cl_int)*cm->MBs;
 
         max_blocks = 0;
             
