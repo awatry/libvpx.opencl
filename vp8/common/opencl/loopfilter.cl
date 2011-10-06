@@ -463,8 +463,10 @@ void compare_data(local uchar *mb_data, int local_pitch, global uchar *s_base, i
         int s_off = s_pitch*row;
         int l_off = local_pitch * row;
         for (int col = 0; col < size; col++){
-            if (mb_data[l_off] != s_base[s_off]){
-                printf("Data mismatch at {%d, %d}, %d != %d\n", row, col, mb_data[l_off], s_base[s_off]);
+            uchar local_data = mb_data[l_off];
+            uchar global_data = s_base[s_off];
+            if (local_data != global_data){
+                //printf("Data mismatch at {%d, %d}, %d != %d\n", row, col, local_data, global_data);
             }
         }
     }
@@ -518,7 +520,6 @@ kernel void vp8_loop_filter_all_edges_kernel(
         //printf("s_base[%d] = %d, mb_data[%d] = %d\n", source_offset, s_base[source_offset], 4*(threads[plane]+4)+4, mb_data[4*(threads[plane]+4)+4]);
         //compare_data(mb_data+4*(threads[plane]+4)+4, threads[plane]+4, &s_base[source_offset], p, threads[plane]);
     }
-    
 */
     int thread_level_filter = (thread<threads[plane]) & (filter_level!=0);
 
