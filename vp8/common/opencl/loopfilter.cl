@@ -580,14 +580,15 @@ kernel void vp8_loop_filter_all_edges_kernel(
     
 #define USE_LOCAL_MEM_FILTER 0
 #if USE_LOCAL_MEM_FILTER
-    //At the moment this local memory mechanism only works if local==global
-    local uchar mb_data[400]; //Local copy of frame data for current plane
+    //At the moment this local memory mechanism only works if local number of
+    //threads == 16
+    local uchar mb_data[1200]; //Local copy of frame data for current plane
     int mb_offset, mb_pitch;
     
-    int local_global_match = (get_local_size(0) == get_global_size(0));
+    int local_global_match = (get_local_size(0) == 16);
     
     if ( local_global_match){
-        mb_offset = 4+4*(threads[plane]+4);
+        mb_offset = 4+4*(threads[plane]+4) + 400*plane;
         mb_pitch = threads[plane]+4;
 
         load_mb(threads[plane], &mb_data[mb_offset], s_base, source_offset, p, mb_row, mb_col, dc_diffs);

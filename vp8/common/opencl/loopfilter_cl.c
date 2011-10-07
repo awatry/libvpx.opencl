@@ -37,11 +37,7 @@
 #define COLS_LOCATION 1
 #define DC_DIFFS_LOCATION 2
 #define ROWS_LOCATION 3
-#if VP8_LOOP_FILTER_MULTI_LEVEL
-const char *loopFilterCompileOptions = "-D COLS_LOCATION=1 -D DC_DIFFS_LOCATION=2 -D ROWS_LOCATION=3 -D VP8_LOOP_FILTER_MULTI_LEVEL=1 -D MAX_LOOP_FILTER=63 -D SIMD_WIDTH="SIMD_STRING;
-#else
-const char *loopFilterCompileOptions = "-D COLS_LOCATION=1 -D DC_DIFFS_LOCATION=2 -D ROWS_LOCATION=3 -D VP8_LOOP_FILTER_MULTI_LEVEL=0 -D MAX_LOOP_FILTER=63 -D SIMD_WIDTH="SIMD_STRING;
-#endif
+const char *loopFilterCompileOptions = "-D COLS_LOCATION=1 -D DC_DIFFS_LOCATION=2 -D ROWS_LOCATION=3 -D MAX_LOOP_FILTER=63 -D SIMD_WIDTH="SIMD_STRING;
 const char *loop_filter_cl_file_name = "vp8/common/opencl/loopfilter";
 
 typedef struct VP8_LOOP_SETTINGS{
@@ -596,22 +592,7 @@ void vp8_loop_filter_frame_cl
     
     //Actually process the various priority levels
     for (priority = 0; priority < num_levels ; priority++){
-#if VP8_LOOP_FILTER_MULTI_LEVEL
-        int end_level = priority;
-        if (priority_num_blocks[priority]*48 < cl_data.vp8_loop_filter_all_edges_kernel_size){
-            while(++end_level < num_levels){
-                if (priority_num_blocks[end_level]*48 > cl_data.vp8_loop_filter_all_edges_kernel_size){
-                    break;
-                }
-            }
-            end_level--;
-        }
-
-        vp8_loop_filter_macroblocks_cl(cm, mbd, priority, (end_level-priority+1), &args);
-        priority = end_level;
-#else
         vp8_loop_filter_macroblocks_cl(cm,  mbd, priority, 1, &args);
-#endif
     }
 
     //Retrieve buffer contents
