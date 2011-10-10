@@ -1131,7 +1131,10 @@ __inline char vp8_hevmask_mem(uchar thresh, uchar *pq){
 /* is there high variance internal edge ( 11111111 yes, 00000000 no) */
 __inline char vp8_hevmask(uchar thresh, uchar4 pq)
 {
-    return ~any(abs_diff(pq.s03, pq.s12) > (uchar2)thresh) + 1;
+    uchar mask = abs_diff(pq.s0, pq.s1) > thresh;
+    mask |= abs_diff(pq.s3, pq.s2) > thresh;
+    return ~mask + 1;
+    //return ~any(abs_diff(pq.s03, pq.s12) > (uchar2)thresh) + 1;
 }
 
 __inline signed char vp8_filter_mask_mem(uc limit, uc blimit, uchar *pq)
