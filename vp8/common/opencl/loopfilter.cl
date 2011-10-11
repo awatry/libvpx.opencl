@@ -517,7 +517,7 @@ kernel void vp8_loop_filter_all_edges_kernel(
     int block_offset = block_offsets[priority_level];
     global int *filters = &filters_in[4*block_offset];
     int filter_level = filters[block];
-    if ( filter_level == 0 )
+    if ( filter_level <= 0 )
         return;
     
     size_t thread = get_global_id(0);
@@ -532,7 +532,9 @@ kernel void vp8_loop_filter_all_edges_kernel(
     global int *offsets = &offsets_in[3*block_offset];
     size_t num_blocks = priority_num_blocks[priority_level];
     local loop_filter_info lf_info;
-    set_lfi(lfi_n, &lf_info, frame_type, filter_level);
+    //if (get_local_id(0) == 0){
+        set_lfi(lfi_n, &lf_info, frame_type, filter_level);
+    //}
 
     int source_offset = offsets[block*3 + plane];
     
@@ -549,13 +551,14 @@ kernel void vp8_loop_filter_all_edges_kernel(
     local uchar mb_data[1200]; //Local copy of frame data for current plane
     int mb_offset, mb_pitch;
     
-    int local_global_match = (get_local_size(0) == 16);
+    int local_global_match = (get_local_size(0) == get_global_size(0));
     
     if ( local_global_match){
         mb_offset = 4+4*(threads[plane]+4) + 400*plane;
         mb_pitch = threads[plane]+4;
 
         load_mb(threads[plane], &mb_data[mb_offset], s_base, source_offset, p, mb_row, mb_col, dc_diffs, thread);
+        write_mem_fence(CLK_LOCAL_MEM_FENCE);
     }
 #endif
 
@@ -589,7 +592,7 @@ kernel void vp8_loop_filter_all_edges_kernel(
             vp8_loop_filter_vertical_edge_worker(s_base, source_offset, &lf_info,
                     dc_diffs, 3, thread, p);
         }
-        //write_mem_fence(CLK_GLOBAL_MEM_FENCE);
+        write_mem_fence(CLK_GLOBAL_MEM_FENCE);
 #if USE_LOCAL_MEM_FILTER
     }
 
