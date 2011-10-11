@@ -434,32 +434,34 @@ __inline void vp8_mbloop_filter_vertical_edge_worker_local(
 __inline void load_mb(int size, local uchar *dst, global uchar *src, int src_off, int src_pitch, int mb_row, int mb_col, int dc_diffs, int thread){
     //Load 4 row top border if row != 0, starting at row 0, col 4
     int dst_pitch = size + 4;
-    int start, end;
-    
+    int row_start, row_end, col_start, col_end;
+
+    if (dc_diffs > 0){
+        row_end = 0;
+        col_end = size;
+    } else {
+        row_end = 4;
+        col_end = 4;
+    }
+
+    row_start = -4;
+
+    //Load 4 col left border if col != 0, otherwise just the pixels of block data
+    if (mb_col > 0){
+        col_start = -4;
+    } else {
+        col_start = 0;
+    }
+
     if (mb_row > 0){
-        start = -4;
-        end = 4;
-        if (dc_diffs > 0){
-            end = 0;
-        }
-    
-        for (int i = start; i < end; i++){
+        for (int i = row_start; i < row_end; i++){
                 dst[i*dst_pitch + thread] = src[i*src_pitch + src_off + thread];
         }
-    }
-    
-    //Load 4 col left border if col != 0, otherwise just the pixels of block data
-    start = 0;
-    if ( mb_col > 0 )
-        start = -4;
-    end = 4;
-    if (dc_diffs > 0){
-        end = size;
     }
 
     //Load 16x16 or 8x8 pixels of Macroblock data with destination starting at
     //row 4, col 4.
-    for (int i = start; i < end; i++){
+    for (int i = col_start; i < col_end; i++){
         dst[thread*dst_pitch + i] = src[thread*src_pitch + src_off + i];
     }
 }
@@ -467,34 +469,34 @@ __inline void load_mb(int size, local uchar *dst, global uchar *src, int src_off
 __inline void save_mb(int size, local uchar *src, global uchar *dst, int dst_off, int dst_pitch, int mb_row, int mb_col, int dc_diffs, int thread){
     //Load 4 row top border if row != 0, starting at row 0, col 4
     int src_pitch = size + 4;
-    int start, end;
+    int row_start, row_end, col_start, col_end;
+
+    if (dc_diffs > 0){
+        row_end = 0;
+        col_end = size;
+    } else {
+        row_end = 3;
+        col_end = 3;
+    }
+
+    row_start = -3;
+
+    //Save 3 col left border if col != 0, otherwise just the pixels of block data
+    if (mb_col > 0){
+        col_start = -3;
+    } else {
+        col_start = 0;
+    }
+
     if (mb_row > 0){
-        start = -3;
-        end = 3;
-        if (dc_diffs > 0){
-            end = 1;
-        }
-        
-        for (int i = start; i < end; i++){
+        for (int i = row_start; i < row_end; i++){
             dst[i*dst_pitch + dst_off + thread] = src[i*src_pitch + thread];
         }
     }
-    
-    //Save 3 col left border if col != 0, otherwise just the pixels of block data
-    if (mb_col > 0){
-        start = -3;
-    } else {
-        start = 0;
-    }
-
-    if (dc_diffs > 0){
-        end = size;
-    } else
-        end = 3;
 
     //Save 16x16 or 8x8 pixels of Macroblock data with destination starting at
     //row 4, col 4.
-    for (int i = start; i < end; i++){
+    for (int i = col_start; i < col_end; i++){
         dst[thread*dst_pitch + dst_off + i] = src[thread*src_pitch + i];
     }
 }
@@ -524,17 +526,25 @@ kernel void vp8_loop_filter_all_edges_kernel(
     size_t plane = 0;
     
     //Threads 0-15 are Y plane, 16-23 are U, 24-31 are V.
+#if 0
     if (thread > 15){
         plane += thread / 8 - 1;
         thread = thread % 8;
     }
+#else
+    int new_thread = thread;
+    plane = thread / 16;
+    new_thread = new_thread - plane * (thread/8 * 8); //If plane==1, new thread = thread%8... without branching
+    plane += plane * (thread / 8 - 2); //plane = 0/1/2 for Y/U/V
+    thread = new_thread;
+#endif
     
     global int *offsets = &offsets_in[3*block_offset];
     size_t num_blocks = priority_num_blocks[priority_level];
     local loop_filter_info lf_info;
-    //if (get_local_id(0) == 0){
+    if (get_local_id(0) == 0){ //shared among all local threads, save bandwidth
         set_lfi(lfi_n, &lf_info, frame_type, filter_level);
-    //}
+    }
 
     int source_offset = offsets[block*3 + plane];
     
@@ -547,7 +557,7 @@ kernel void vp8_loop_filter_all_edges_kernel(
 #define USE_LOCAL_MEM_FILTER 0
 #if USE_LOCAL_MEM_FILTER
     //At the moment this local memory mechanism only works if local number of
-    //threads == 16
+    //threads/plane == global number of threads/plane
     local uchar mb_data[1200]; //Local copy of frame data for current plane
     int mb_offset, mb_pitch;
     
@@ -559,11 +569,7 @@ kernel void vp8_loop_filter_all_edges_kernel(
 
         load_mb(threads[plane], &mb_data[mb_offset], s_base, source_offset, p, mb_row, mb_col, dc_diffs, thread);
         write_mem_fence(CLK_LOCAL_MEM_FENCE);
-    }
-#endif
 
-#if USE_LOCAL_MEM_FILTER
-    if ( local_global_match ){
         if ( mb_col > 0 ){
             vp8_mbloop_filter_vertical_edge_worker_local(mb_data, mb_offset, &lf_info, thread, mb_pitch);
         }
