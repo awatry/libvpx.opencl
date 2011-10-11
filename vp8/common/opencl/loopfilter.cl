@@ -541,7 +541,7 @@ kernel void vp8_loop_filter_all_edges_kernel(
     int mb_row = filters[num_blocks * ROWS_LOCATION + block];
     int dc_diffs = filters[num_blocks * DC_DIFFS_LOCATION + block];
     
-#define USE_LOCAL_MEM_FILTER 1
+#define USE_LOCAL_MEM_FILTER 0
 #if USE_LOCAL_MEM_FILTER
     //At the moment this local memory mechanism only works if local number of
     //threads/plane == global number of threads/plane.
