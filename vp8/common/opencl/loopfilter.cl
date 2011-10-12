@@ -11,10 +11,14 @@ __inline char vp8_hevmask_mem(uchar, uchar*);
 __inline char vp8_hevmask(uchar, uchar4);
 
 __inline void vp8_filter_mem( signed char mask, uchar hev, uchar *base);
+__inline uchar4 vp8_filter( signed char mask, uchar hev, uchar4 base);
+
 
 __inline signed char vp8_simple_filter_mask(uc, uc, uc, uc, uc);
 
 __inline uchar8 vp8_mbfilter(signed char mask, uchar hev, uchar8);
+__inline void vp8_mbfilter_mem(signed char mask, uchar hev, uchar*);
+
 
 __inline void vp8_simple_filter(signed char mask,global uc *base, int op1_off,int op0_off,int oq0_off,int oq1_off);
 
@@ -25,10 +29,10 @@ constant size_t threads[3] = {16, 8, 8};
 #endif
 
 #if !defined(__OPENCL_VERSION__) || (__OPENCL_VERSION__ == __CL_VERSION_1_0__)
-#define clamp(x,y,z) vp8_char_clamp(x)
 char vp8_char_clamp(int in){
     return max(min(in, 127), -128);
 }
+#define clamp(x,y,z) vp8_char_clamp(x)
 #endif
 
 typedef struct
@@ -51,6 +55,27 @@ typedef struct
 } loop_filter_info;
 
 __inline void set_lfi(global loop_filter_info_n *lfi_n, local loop_filter_info *lfi, int frame_type, int filter_level);
+
+
+//Load + Store functions
+__inline uchar4 load4(global unsigned char *s_base, int s_off, int p);
+__inline uchar8 load8(global unsigned char *s_base, int s_off, int p);
+__inline uchar16 load16(global unsigned char *s_base, int s_off, int p);
+__inline uchar4 load4_local(local unsigned char *s_base, int s_off, int p);
+__inline uchar8 load8_local(local unsigned char *s_base, int s_off, int p);
+__inline uchar16 load16_local(local unsigned char *s_base, int s_off, int p);
+
+__inline void save4(global unsigned char *s_base, int s_off, int p, uchar8 data);
+__inline void save6(global unsigned char *s_base, int s_off, int p, uchar8 data);
+__inline void save12(global unsigned char *s_base, int s_off, int p, uchar16 data);
+__inline void save4_local(local unsigned char *s_base, int s_off, int p, uchar8 data);
+__inline void save6_local(local unsigned char *s_base, int s_off, int p, uchar8 data);
+__inline void save12_local(local unsigned char *s_base, int s_off, int p, uchar16 data);
+
+__inline void load_mb(int size, local uchar *dst, global uchar *src, int src_off, int src_pitch, int mb_row, int mb_col, int dc_diffs, int thread);
+__inline void save_mb(int size, local uchar *src, global uchar *dst, int dst_off, int dst_pitch, int mb_row, int mb_col, int dc_diffs, int thread);
+
+
 
 __inline void vp8_filter_mem(
     signed char mask,
@@ -517,6 +542,7 @@ kernel void vp8_loop_filter_all_edges_kernel(
     if (get_local_id(0) == 0){ //shared among all local threads, save bandwidth
         set_lfi(lfi_n, &lf_info, frame_type, filter_level);
     }
+    barrier(CLK_LOCAL_MEM_FENCE);
 
     int source_offset = offsets[block*3 + plane];
     
@@ -532,13 +558,13 @@ kernel void vp8_loop_filter_all_edges_kernel(
     //threads/plane == global number of threads/plane.
     //This is forced in loop_filter_filters.c
     
-    local uchar mb_data[1200]; //Local copy of frame data for current plane
+    local uchar mb_data_actual[1200]; //Local copy of frame data for current plane
     int mb_offset, mb_pitch;
     
     int num_threads = threads[plane];
     mb_pitch = num_threads+4;
     mb_offset = 4+4*mb_pitch + 400*plane;
-    mb_data = &mb_data[mb_offset];
+    local uchar *mb_data = &mb_data_actual[mb_offset];
     
     load_mb(num_threads, mb_data, s_base, source_offset, p, mb_row, mb_col, dc_diffs, thread);
     //write_mem_fence(CLK_LOCAL_MEM_FENCE);
@@ -583,6 +609,7 @@ kernel void vp8_loop_filter_all_edges_kernel(
                 dc_diffs, 3, thread, p);
     }
     write_mem_fence(CLK_GLOBAL_MEM_FENCE);
+    barrier(CLK_GLOBAL_MEM_FENCE);
 
     if (mb_row > 0){
         vp8_mbloop_filter_horizontal_edge_worker(s_base, source_offset, &lf_info, thread, p);
