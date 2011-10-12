@@ -572,7 +572,7 @@ kernel void vp8_loop_filter_all_edges_kernel(
     
     int p = pitches[plane];    
     
-#define USE_LOCAL_MEM_FILTER 1
+#define USE_LOCAL_MEM_FILTER 0
 #if USE_LOCAL_MEM_FILTER
     //At the moment this local memory mechanism only works if local number of
     //threads/plane == global number of threads/plane.
