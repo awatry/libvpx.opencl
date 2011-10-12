@@ -615,6 +615,8 @@ kernel void vp8_loop_filter_all_edges_kernel(
     save_mb(num_threads, mb_data, s_base, source_offset, p, mb_row, mb_col, dc_diffs, thread);
 
 #else
+    //prefetch(&s_base[source_offset+thread*p], threads[plane]);
+    
     //Load/stores directly out of global memory.
     if ( mb_col > 0 ){
         vp8_mbloop_filter_vertical_edge_worker(s_base, source_offset, &lf_info, thread, p);
