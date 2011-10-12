@@ -502,30 +502,15 @@ kernel void vp8_loop_filter_all_edges_kernel(
 ){
     
     size_t block = get_global_id(2);
+    size_t thread = get_global_id(0);
+    size_t plane = get_global_id(1);
 
     int block_offset = block_offsets[priority_level];
     global int *filters = &filters_in[4*block_offset];
     int filter_level = filters[block];
-    if ( filter_level <= 0 )
+    if ( filter_level <= 0 || thread >= threads[plane])
         return;
-    
-    size_t thread = get_global_id(0);
-    size_t plane = 0;
-    
-    //Threads 0-15 are Y plane, 16-23 are U, 24-31 are V.
-#if 0
-    if (thread > 15){
-        plane += thread / 8 - 1;
-        thread = thread % 8;
-    }
-#else
-    int new_thread = thread;
-    plane = thread / 16;
-    new_thread = new_thread - plane * (thread/8 * 8); //If plane==1, new thread = thread%8... without branching
-    plane += plane * (thread / 8 - 2); //plane = 0/1/2 for Y/U/V
-    thread = new_thread;
-#endif
-    
+
     global int *offsets = &offsets_in[3*block_offset];
     size_t num_blocks = priority_num_blocks[priority_level];
     local loop_filter_info lf_info;
