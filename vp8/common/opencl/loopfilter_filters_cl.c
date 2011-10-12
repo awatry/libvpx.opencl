@@ -56,17 +56,17 @@ static int vp8_loop_filter_cl_run(
 ){
 
     size_t global[3] = {16, num_planes, num_blocks};
-    size_t local[3] = {16, 1, 1};
+    size_t local[3] = {16, num_planes, 1};
     int err;
 
-    if ((max_local_size < 16 * num_planes )){
-        local[1] = 1; //Drop down to 1 plane
-        if (max_local_size < 16){
-            local[0] = 1; //Finally drop to 1 thread per group if necessary.
-                          //At this point it'd be better to probably disable CL
+    if (max_local_size < 16*num_planes){
+        local[1] = 1;
+        if ((max_local_size < local[0] )){
+                local[0] = 1; //drop to 1 thread per group if necessary.
+                              //At this point it'd be better to probably disable CL
         }
     }
-
+    
     if (first_run){
         memset(filter_args, -1, sizeof(VP8_LOOPFILTER_ARGS)*NUM_KERNELS);
         first_run = 0;
@@ -173,7 +173,7 @@ void vp8_loop_filter_simple_all_edges_cl
 {
 
     size_t local = cl_data.vp8_loop_filter_simple_all_edges_kernel_size;
-    if (local < 48){
+    if (local < 16){
         int iter = 0;
         int num_levels = args->num_levels;
         args->num_levels = 1;
