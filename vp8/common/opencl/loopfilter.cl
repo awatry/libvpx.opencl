@@ -628,7 +628,7 @@ kernel void vp8_loop_filter_all_edges_kernel(
         vp8_loop_filter_vertical_edge_worker(s_base, source_offset, &lf_info,
                 dc_diffs, 3, thread, p);
     }
-    write_mem_fence(CLK_GLOBAL_MEM_FENCE);
+
     barrier(CLK_GLOBAL_MEM_FENCE);
 
     if (mb_row > 0){
