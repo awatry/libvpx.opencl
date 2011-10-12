@@ -539,18 +539,19 @@ kernel void vp8_loop_filter_all_edges_kernel(
     global int *offsets = &offsets_in[3*block_offset];
     size_t num_blocks = priority_num_blocks[priority_level];
     local loop_filter_info lf_info;
+    local int mb_row, mb_col, dc_diffs;
     if (get_local_id(0) == 0){ //shared among all local threads, save bandwidth
         set_lfi(lfi_n, &lf_info, frame_type, filter_level);
+
+        mb_col = filters[num_blocks * COLS_LOCATION + block];
+        mb_row = filters[num_blocks * ROWS_LOCATION + block];
+        dc_diffs = filters[num_blocks * DC_DIFFS_LOCATION + block];
     }
     barrier(CLK_LOCAL_MEM_FENCE);
 
     int source_offset = offsets[block*3 + plane];
     
-    int p = pitches[plane];
-    
-    int mb_col = filters[num_blocks * COLS_LOCATION + block];
-    int mb_row = filters[num_blocks * ROWS_LOCATION + block];
-    int dc_diffs = filters[num_blocks * DC_DIFFS_LOCATION + block];
+    int p = pitches[plane];    
     
 #define USE_LOCAL_MEM_FILTER 0
 #if USE_LOCAL_MEM_FILTER
