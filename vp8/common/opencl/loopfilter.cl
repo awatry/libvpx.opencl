@@ -19,7 +19,7 @@ __inline uchar8 vp8_mbfilter(signed char mask, uchar hev, uchar8);
 
 __inline signed char vp8_simple_filter_mask(uc, uc, uc, uc, uc);
 
-__inline void vp8_simple_filter(signed char mask,global uc *base, int op1_off,int op0_off,int oq0_off,int oq1_off);
+__inline void vp8_simple_filter(signed char mask,global uint *base, int op1_off,int op0_off,int oq0_off,int oq1_off);
 
 constant size_t threads[3] = {16, 8, 8};
 
@@ -57,22 +57,22 @@ __inline void set_lfi(global loop_filter_info_n *lfi_n, local loop_filter_info *
 
 
 //Load + Store functions
-__inline uchar4 load4(global unsigned char *s_base, int s_off, int p);
-__inline uchar8 load8(global unsigned char *s_base, int s_off, int p);
-__inline uchar16 load16(global unsigned char *s_base, int s_off, int p);
-__inline uchar4 load4_local(local unsigned char *s_base, int s_off, int p);
-__inline uchar8 load8_local(local unsigned char *s_base, int s_off, int p);
-__inline uchar16 load16_local(local unsigned char *s_base, int s_off, int p);
+__inline uchar4 load4(global uint *s_base, int s_off, int p);
+__inline uchar8 load8(global uint *s_base, int s_off, int p);
+__inline uchar16 load16(global uint *s_base, int s_off, int p);
+__inline uchar4 load4_local(local uint *s_base, int s_off, int p);
+__inline uchar8 load8_local(local uint *s_base, int s_off, int p);
+__inline uchar16 load16_local(local uint *s_base, int s_off, int p);
 
-__inline void save4(global unsigned char *s_base, int s_off, int p, uchar8 data);
-__inline void save6(global unsigned char *s_base, int s_off, int p, uchar8 data);
-__inline void save12(global unsigned char *s_base, int s_off, int p, uchar16 data);
-__inline void save4_local(local unsigned char *s_base, int s_off, int p, uchar8 data);
-__inline void save6_local(local unsigned char *s_base, int s_off, int p, uchar8 data);
-__inline void save12_local(local unsigned char *s_base, int s_off, int p, uchar16 data);
+__inline void save4(global uint *s_base, int s_off, int p, uchar8 data);
+__inline void save6(global uint *s_base, int s_off, int p, uchar8 data);
+__inline void save12(global uint *s_base, int s_off, int p, uchar16 data);
+__inline void save4_local(local uint *s_base, int s_off, int p, uchar8 data);
+__inline void save6_local(local uint *s_base, int s_off, int p, uchar8 data);
+__inline void save12_local(local uint *s_base, int s_off, int p, uchar16 data);
 
-__inline void load_mb(int size, local uchar *dst, global uchar *src, int src_off, int src_pitch, int mb_row, int mb_col, int dc_diffs, int thread);
-__inline void save_mb(int size, local uchar *src, global uchar *dst, int dst_off, int dst_pitch, int mb_row, int mb_col, int dc_diffs, int thread);
+__inline void load_mb(int size, local uint *dst, global uint *src, int src_off, int src_pitch, int mb_row, int mb_col, int dc_diffs, int thread);
+__inline void save_mb(int size, local uint *src, global uint *dst, int dst_off, int dst_pitch, int mb_row, int mb_col, int dc_diffs, int thread);
 
 __inline void vp8_filter_mem(
     signed char mask,
@@ -171,7 +171,7 @@ __inline uchar4 vp8_filter(
 
 }
 
-__inline uchar8 load8(global unsigned char *s_base, int s_off, int p){
+__inline uchar8 load8(global uint *s_base, int s_off, int p){
     uchar8 data;
     data.s0 = s_base[s_off-4*p];
     data.s1 = s_base[s_off-3*p];
@@ -184,7 +184,7 @@ __inline uchar8 load8(global unsigned char *s_base, int s_off, int p){
     return data;
 }
 
-__inline uchar8 load8_local(local unsigned char *s_base, int s_off, int p){
+__inline uchar8 load8_local(local uint *s_base, int s_off, int p){
     uchar8 data;
     data.s0 = s_base[s_off-4*p];
     data.s1 = s_base[s_off-3*p];
@@ -197,7 +197,7 @@ __inline uchar8 load8_local(local unsigned char *s_base, int s_off, int p){
     return data;
 }
 
-__inline uchar4 load4_local(local unsigned char *s_base, int s_off, int p){
+__inline uchar4 load4_local(local uint *s_base, int s_off, int p){
     uchar4 data;
     data.s0 = s_base[s_off-2*p];
     data.s1 = s_base[s_off-p];
@@ -206,21 +206,21 @@ __inline uchar4 load4_local(local unsigned char *s_base, int s_off, int p){
     return data;
 }
 
-__inline void save4(global unsigned char *s_base, int s_off, int p, uchar8 data){
+__inline void save4(global uint *s_base, int s_off, int p, uchar8 data){
     s_base[s_off - 2*p] = data.s2;
     s_base[s_off - p  ] = data.s3;
     s_base[s_off      ] = data.s4;
     s_base[s_off + p  ] = data.s5;
 }
 
-__inline void save4_local(local unsigned char *s_base, int s_off, int p, uchar8 data){
+__inline void save4_local(local uint *s_base, int s_off, int p, uchar8 data){
     s_base[s_off - 2*p] = data.s2;
     s_base[s_off - p  ] = data.s3;
     s_base[s_off      ] = data.s4;
     s_base[s_off + p  ] = data.s5;
 }
 
-__inline void save6(global unsigned char *s_base, int s_off, int p, uchar8 data){
+__inline void save6(global uint *s_base, int s_off, int p, uchar8 data){
     s_base[s_off - 3*p] = data.s1;
     s_base[s_off - 2*p] = data.s2;
     s_base[s_off - p  ] = data.s3;
@@ -229,7 +229,7 @@ __inline void save6(global unsigned char *s_base, int s_off, int p, uchar8 data)
     s_base[s_off + 2*p  ] = data.s6;
 }
 
-__inline void save6_local(local unsigned char *s_base, int s_off, int p, uchar8 data){
+__inline void save6_local(local uint *s_base, int s_off, int p, uchar8 data){
     s_base[s_off - 3*p] = data.s1;
     s_base[s_off - 2*p] = data.s2;
     s_base[s_off - p  ] = data.s3;
@@ -238,14 +238,14 @@ __inline void save6_local(local unsigned char *s_base, int s_off, int p, uchar8 
     s_base[s_off + 2*p  ] = data.s6;
 }
 
-__inline uchar16 load16(global unsigned char *s_base, int s_off, int p){
+__inline uchar16 load16(global uint *s_base, int s_off, int p){
     uchar16 data;
     data.s01234567 = load8(s_base, s_off, p);
     data.s89abcdef = load8(s_base, s_off+8*p, p);
     return data;
 }
 
-__inline void save12(global unsigned char *s_base, int s_off, int p, uchar16 data){
+__inline void save12(global uint *s_base, int s_off, int p, uchar16 data){
     s_base[s_off - 2*p] = data.s2;
     s_base[s_off - p  ] = data.s3;
     s_base[s_off      ] = data.s4;
@@ -262,7 +262,7 @@ __inline void save12(global unsigned char *s_base, int s_off, int p, uchar16 dat
 
 // Filters horizontal edges of inner blocks in a Macroblock
 __inline void vp8_loop_filter_horizontal_edge_worker(
-    global uchar *s_base,
+    global uint *s_base,
     int source_offset,
     global int *pitches, /* pitch */
     local loop_filter_info *lfi,
@@ -296,7 +296,7 @@ __inline void vp8_loop_filter_horizontal_edge_worker(
 
 // Filters horizontal edges of inner blocks in a Macroblock
 __inline void vp8_loop_filter_horizontal_edge_worker_local(
-    local uchar *s_base,
+    local uint *s_base,
     local loop_filter_info *lfi,
     int dc_diffs,
     int cur_iter,
@@ -321,7 +321,7 @@ __inline void vp8_loop_filter_horizontal_edge_worker_local(
 }
 
 __inline void vp8_loop_filter_vertical_edge_worker(
-    global uchar *s_base,
+    global uint *s_base,
     int source_offset,
     local loop_filter_info *lfi,
     int dc_diffs,
@@ -346,7 +346,7 @@ __inline void vp8_loop_filter_vertical_edge_worker(
 }
 
 __inline void vp8_loop_filter_vertical_edge_worker_local(
-    local uchar *s_base,
+    local uint *s_base,
     local loop_filter_info *lfi,
     int dc_diffs,
     int cur_iter,
@@ -380,7 +380,7 @@ __inline void vp8_loop_filter_vertical_edge_worker_local(
 }
 
 __inline void vp8_mbloop_filter_horizontal_edge_worker(
-    global unsigned char *s_base,
+    global uint *s_base,
     int source_offset,
     local loop_filter_info *lfi,
     size_t thread,
@@ -402,7 +402,7 @@ __inline void vp8_mbloop_filter_horizontal_edge_worker(
 }
 
 __inline void vp8_mbloop_filter_horizontal_edge_worker_local(
-    local unsigned char *source,
+    local uint *source,
     local loop_filter_info *lfi,
     size_t thread,
     int p //pitches[plane]
@@ -421,7 +421,7 @@ __inline void vp8_mbloop_filter_horizontal_edge_worker_local(
 }
 
 __inline void vp8_mbloop_filter_vertical_edge_worker(
-    global unsigned char *s_base,
+    global uint *s_base,
     int source_offset,
     local loop_filter_info *lfi,
     size_t thread,
@@ -442,7 +442,7 @@ __inline void vp8_mbloop_filter_vertical_edge_worker(
 }
 
 __inline void vp8_mbloop_filter_vertical_edge_worker_local(
-    local unsigned char *source,
+    local unsigned int *source,
     local loop_filter_info *lfi,
     size_t thread,
     int p //threads[plane]+4
@@ -462,7 +462,7 @@ __inline void vp8_mbloop_filter_vertical_edge_worker_local(
 }
 
 //Assumes a work group size of 1 plane
-__inline void load_mb(int size, local uchar *dst, global uchar *src, int src_off, int src_pitch, int mb_row, int mb_col, int dc_diffs, int thread){
+__inline void load_mb(int size, local uint *dst, global uint *src, int src_off, int src_pitch, int mb_row, int mb_col, int dc_diffs, int thread){
     //Load 4 row top border if row != 0, starting at row 0, col 4
     int dst_pitch = size + 4;
     int row_start, row_end, col_start, col_end;
@@ -497,7 +497,7 @@ __inline void load_mb(int size, local uchar *dst, global uchar *src, int src_off
     }
 }
 
-__inline void save_mb(int size, local uchar *src, global uchar *dst, int dst_off, int dst_pitch, int mb_row, int mb_col, int dc_diffs, int thread){
+__inline void save_mb(int size, local uint *src, global uint *dst, int dst_off, int dst_pitch, int mb_row, int mb_col, int dc_diffs, int thread){
     //Load 4 row top border if row != 0, starting at row 0, col 4
     int src_pitch = size + 4;
     int row_start, row_end, col_start, col_end;
@@ -533,7 +533,7 @@ __inline void save_mb(int size, local uchar *src, global uchar *dst, int dst_off
 }
 
 kernel void vp8_loop_filter_all_edges_kernel(
-    global unsigned char *s_base,
+    global unsigned int *s_base,
     global int *offsets_in,
     global int *pitches,
     global loop_filter_info_n *lfi_n,
@@ -649,7 +649,7 @@ kernel void vp8_loop_filter_all_edges_kernel(
 }
 
 kernel void vp8_loop_filter_horizontal_edges_kernel(
-    global unsigned char *s_base,
+    global unsigned int *s_base,
     global int *offsets,
     global int *pitches, /* pitch */
     global loop_filter_info_n *lfi_n,
@@ -698,7 +698,7 @@ kernel void vp8_loop_filter_horizontal_edges_kernel(
 }
 
 kernel void vp8_loop_filter_vertical_edges_kernel(
-    global unsigned char *s_base,
+    global unsigned int *s_base,
     global int *offsets,
     global int *pitches,
     global loop_filter_info_n *lfi_n,
@@ -752,7 +752,7 @@ kernel void vp8_loop_filter_vertical_edges_kernel(
 
 void vp8_loop_filter_simple_horizontal_edge_worker
 (
-    global unsigned char *s_base,
+    global unsigned int *s_base,
     global int *offsets,
     global int *pitches,
     local loop_filter_info *lfi,
@@ -789,7 +789,7 @@ void vp8_loop_filter_simple_horizontal_edge_worker
                     flimit = lfi->mblim;
                 }
 
-                mask = vp8_simple_filter_mask(flimit, s_base[s_off-2*p], s_base[s_off-p], s_base[s_off], s_base[s_off+p]);
+                mask = vp8_simple_filter_mask(flimit, (uc)s_base[s_off-2*p], (uc)s_base[s_off-p], (uc)s_base[s_off], (uc)s_base[s_off+p]);
                 vp8_simple_filter(mask, s_base, s_off - 2 * p, s_off - 1 * p, s_off, s_off + 1 * p);
             }
         }
@@ -797,7 +797,7 @@ void vp8_loop_filter_simple_horizontal_edge_worker
 }
 
 void vp8_loop_filter_simple_vertical_edge_worker(
-    global unsigned char *s_base,
+    global unsigned int *s_base,
     global int *offsets, /* Y or YUV offsets for EACH block being processed*/
     global int *pitches, /* 1 or 3 values for Y or YUV pitches*/
     local loop_filter_info *lfi, /* Single struct for the frame */
@@ -843,7 +843,7 @@ void vp8_loop_filter_simple_vertical_edge_worker(
 
 kernel void vp8_loop_filter_simple_vertical_edges_kernel
 (
-    global unsigned char *s_base,
+    global unsigned int *s_base,
     global int *offsets, /* Y or YUV offsets for EACH block being processed*/
     global int *pitches, /* 1 or 3 values for Y or YUV pitches*/
     global loop_filter_info_n *lfi_n, /* Single struct for the frame */
@@ -886,7 +886,7 @@ kernel void vp8_loop_filter_simple_vertical_edges_kernel
 
 kernel void vp8_loop_filter_simple_horizontal_edges_kernel
 (
-    global unsigned char *s_base,
+    global unsigned int *s_base,
     global int *offsets,
     global int *pitches,
     global loop_filter_info_n *lfi_n,
@@ -926,7 +926,7 @@ kernel void vp8_loop_filter_simple_horizontal_edges_kernel
 
 kernel void vp8_loop_filter_simple_all_edges_kernel
 (
-    global unsigned char *s_base,
+    global unsigned int *s_base,
     global int *offsets,
     global int *pitches,
     global loop_filter_info_n *lfi_n,
@@ -938,7 +938,6 @@ kernel void vp8_loop_filter_simple_all_edges_kernel
     int frame_type
 )
 {
-
     int block = (int)get_global_id(2);
     local loop_filter_info lfi;
     
@@ -1161,7 +1160,7 @@ __inline signed char vp8_simple_filter_mask(uc blimit, uc p1, uc p0, uc q0, uc q
 
 __inline void vp8_simple_filter(
     signed char mask,
-    global uc *base,
+    global uint *base,
     int op1_off,
     int op0_off,
     int oq0_off,
@@ -1169,14 +1168,13 @@ __inline void vp8_simple_filter(
 )
 {
 
-    global uc *op1 = base + op1_off;
-    global uc *op0 = base + op0_off;
-    global uc *oq0 = base + oq0_off;
-    global uc *oq1 = base + oq1_off;
+    global uint *op1 = base + op1_off;
+    global uint *op0 = base + op0_off;
+    global uint *oq0 = base + oq0_off;
+    global uint *oq1 = base + oq1_off;
 
     signed char vp8_filter;
     char2 filter;
-    
     char4 pq = (char4){*op1, *op0, *oq0, *oq1};
     pq ^= (char4)0x80;
 
@@ -1193,10 +1191,10 @@ __inline void vp8_simple_filter(
     filter.s1 >>= 3;
 
     u = sub_sat(pq.s2, filter.s0);
-    *oq0  = u ^ 0x80;
+    *oq0  = (uint) (u ^ 0x80);
 
     u = add_sat(pq.s1, filter.s1);
-    *op0 = u ^ 0x80;
+    *op0 = (uint) (u ^ 0x80);
 }
 
 

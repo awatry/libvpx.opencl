@@ -17,7 +17,7 @@
 #include "blockd_cl.h"
 
 //Disable usage of mapped buffers for performance increase on Nvidia hardware
-#if 0 
+#if 0
 #define USE_MAPPED_BUFFERS 0
 #define MAP_FILTERS 0
 #define MAP_OFFSETS 0
@@ -462,7 +462,7 @@ void vp8_loop_filter_frame_cl
     int err, priority;
 #if USE_MAPPED_BUFFERS
     loop_filter_info *lfi_ptr = NULL;
-    unsigned char *buf = NULL;
+    cl_uint *buf = NULL;
 #endif
 
     cl_int *offsets = NULL;
@@ -476,6 +476,7 @@ void vp8_loop_filter_frame_cl
     cl_int filter_levels[cm->MBs];
     int num_levels = 2 * (cm->mb_rows - 1) + cm->mb_cols;
     int current_blocks = 0;
+    int i;
     
     VP8_LOOPFILTER_ARGS args;
     
@@ -499,9 +500,13 @@ void vp8_loop_filter_frame_cl
      }
 #endif
 
-#if USE_MAPPED_BUFFERS
-    VP8_CL_MAP_BUF(mbd->cl_commands, post->buffer_mem, buf, post->frame_size, vp8_loop_filter_frame(cm,mbd),);
-    vpx_memcpy(buf, post->buffer_alloc, post->frame_size);
+#if USE_MAPPED_BUFFERS || 1
+    VP8_CL_MAP_BUF(mbd->cl_commands, post->buffer_mem, buf, post->frame_size * sizeof(cl_int), vp8_loop_filter_frame(cm,mbd),);
+    for (i = 0; i < post->frame_size; i++){
+        buf[i] = (cl_int)post->buffer_alloc[i];
+    }
+    //vpx_memcpy(buf, post->buffer_alloc, post->frame_size);
+    
     VP8_CL_UNMAP_BUF(mbd->cl_commands, post->buffer_mem, buf,,);
 #else
     VP8_CL_SET_BUF(mbd->cl_commands, post->buffer_mem, post->frame_size, post->buffer_alloc,
@@ -596,9 +601,12 @@ void vp8_loop_filter_frame_cl
     }
 
     //Retrieve buffer contents
-#if USE_MAPPED_BUFFERS && (!defined(CL_MEM_USE_PERSISTENT_MEM_AMD) || (CL_MEM_USE_PERSISTENT_MEM_AMD != VP8_CL_MEM_ALLOC_TYPE))
-    buf = clEnqueueMapBuffer(mbd->cl_commands, post->buffer_mem, CL_TRUE, CL_MAP_READ, 0, post->frame_size, 0, NULL, NULL, &err); \
-    vpx_memcpy(post->buffer_alloc, buf, post->frame_size);
+#if 1 || USE_MAPPED_BUFFERS && (!defined(CL_MEM_USE_PERSISTENT_MEM_AMD) || (CL_MEM_USE_PERSISTENT_MEM_AMD != VP8_CL_MEM_ALLOC_TYPE))
+    buf = clEnqueueMapBuffer(mbd->cl_commands, post->buffer_mem, CL_TRUE, CL_MAP_READ, 0, post->frame_size * sizeof(cl_int), 0, NULL, NULL, &err); \
+    for (i = 0; i < post->frame_size; i++){
+        post->buffer_alloc[i] = (unsigned char)buf[i];
+    }
+    //vpx_memcpy(post->buffer_alloc, buf, post->frame_size);
     VP8_CL_UNMAP_BUF(mbd->cl_commands, post->buffer_mem, buf,,);
 #else
     err = clEnqueueReadBuffer(mbd->cl_commands, post->buffer_mem, CL_FALSE, 0, post->frame_size, post->buffer_alloc, 0, NULL, NULL);
