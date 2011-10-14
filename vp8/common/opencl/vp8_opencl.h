@@ -26,6 +26,7 @@ extern "C" {
 
 #ifdef CL_MEM_USE_PERSISTENT_MEM_AMD
 #define VP8_CL_MEM_ALLOC_TYPE CL_MEM_USE_PERSISTENT_MEM_AMD
+//#define VP8_CL_MEM_ALLOC_TYPE 0 //Use whatever the driver decides.
 #else
 #define VP8_CL_MEM_ALLOC_TYPE CL_MEM_ALLOC_HOST_PTR
 #endif
