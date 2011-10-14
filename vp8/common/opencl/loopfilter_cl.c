@@ -138,17 +138,17 @@ int cl_grow_loop_mem(MACROBLOCKD *mbd, YV12_BUFFER_CONFIG *post, VP8_COMMON *cm)
     cl_free_loop_mem();
 
     //Now re-allocate the memory in the right size
-    loop_mem.offsets_mem = clCreateBuffer(cl_data.context, CL_MEM_READ_ONLY|CL_MEM_ALLOC_HOST_PTR, sizeof(cl_int)*cm->MBs*16, NULL, &err);
+    loop_mem.offsets_mem = clCreateBuffer(cl_data.context, CL_MEM_READ_ONLY|VP8_CL_MEM_ALLOC_TYPE, sizeof(cl_int)*cm->MBs*16, NULL, &err);
     if (err != CL_SUCCESS){
         printf("Error creating loop filter buffer\n");
         return err;
     }
-    loop_mem.pitches_mem = clCreateBuffer(cl_data.context, CL_MEM_READ_ONLY|CL_MEM_ALLOC_HOST_PTR, sizeof(cl_int)*3, NULL, &err);
+    loop_mem.pitches_mem = clCreateBuffer(cl_data.context, CL_MEM_READ_ONLY|VP8_CL_MEM_ALLOC_TYPE, sizeof(cl_int)*3, NULL, &err);
     if (err != CL_SUCCESS){
         printf("Error creating loop filter buffer\n");
         return err;
     }
-    loop_mem.filters_mem = clCreateBuffer(cl_data.context, CL_MEM_READ_ONLY|CL_MEM_ALLOC_HOST_PTR, sizeof(cl_int)*cm->MBs*4, NULL, &err);
+    loop_mem.filters_mem = clCreateBuffer(cl_data.context, CL_MEM_READ_ONLY|VP8_CL_MEM_ALLOC_TYPE, sizeof(cl_int)*cm->MBs*4, NULL, &err);
     if (err != CL_SUCCESS){
         printf("Error creating loop filter buffer\n");
         return err;
@@ -161,7 +161,7 @@ int cl_grow_loop_mem(MACROBLOCKD *mbd, YV12_BUFFER_CONFIG *post, VP8_COMMON *cm)
         cl_destroy(mbd->cl_commands, VP8_CL_TRIED_BUT_FAILED);
         return VP8_CL_TRIED_BUT_FAILED;
     }
-    loop_mem.block_offsets_mem = clCreateBuffer(cl_data.context, CL_MEM_READ_ONLY|CL_MEM_ALLOC_HOST_PTR, sizeof(cl_int) * priority_levels, NULL, &err);
+    loop_mem.block_offsets_mem = clCreateBuffer(cl_data.context, CL_MEM_READ_ONLY|VP8_CL_MEM_ALLOC_TYPE, sizeof(cl_int) * priority_levels, NULL, &err);
     if (err != CL_SUCCESS){
         printf("Error creating loop filter buffer\n");
         return err;
@@ -173,7 +173,7 @@ int cl_grow_loop_mem(MACROBLOCKD *mbd, YV12_BUFFER_CONFIG *post, VP8_COMMON *cm)
         cl_destroy(mbd->cl_commands, VP8_CL_TRIED_BUT_FAILED);
         return VP8_CL_TRIED_BUT_FAILED;
     }
-    loop_mem.priority_num_blocks_mem = clCreateBuffer(cl_data.context, CL_MEM_READ_ONLY|CL_MEM_ALLOC_HOST_PTR, sizeof(cl_int) * priority_levels, NULL, &err);
+    loop_mem.priority_num_blocks_mem = clCreateBuffer(cl_data.context, CL_MEM_READ_ONLY|VP8_CL_MEM_ALLOC_TYPE, sizeof(cl_int) * priority_levels, NULL, &err);
     if (err != CL_SUCCESS){
         printf("Error creating loop filter buffer\n");
         return err;
@@ -269,7 +269,7 @@ void vp8_loop_filter_build_filter_offsets(cl_int *filters, int level,
     vpx_memcpy(&filters[offset+DC_DIFFS_LOCATION*num_blocks], dc_diffs, num_blocks*sizeof(cl_int));
     vpx_memcpy(&filters[offset+COLS_LOCATION*num_blocks], mb_cols, num_blocks*sizeof(cl_int));
     vpx_memcpy(&filters[offset+ROWS_LOCATION*num_blocks], mb_rows, num_blocks*sizeof(cl_int));
-    
+
 }
 
 void vp8_loop_filter_build_offsets(MACROBLOCKD *mbd, int num_blocks, 
@@ -596,7 +596,7 @@ void vp8_loop_filter_frame_cl
     }
 
     //Retrieve buffer contents
-#if USE_MAPPED_BUFFERS
+#if USE_MAPPED_BUFFERS && (!defined(CL_MEM_USE_PERSISTENT_MEM_AMD) || (CL_MEM_USE_PERSISTENT_MEM_AMD != VP8_CL_MEM_ALLOC_TYPE))
     buf = clEnqueueMapBuffer(mbd->cl_commands, post->buffer_mem, CL_TRUE, CL_MAP_READ, 0, post->frame_size, 0, NULL, NULL, &err); \
     vpx_memcpy(post->buffer_alloc, buf, post->frame_size);
     VP8_CL_UNMAP_BUF(mbd->cl_commands, post->buffer_mem, buf,,);

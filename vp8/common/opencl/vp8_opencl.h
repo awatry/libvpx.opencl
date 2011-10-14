@@ -21,8 +21,15 @@ extern "C" {
 #include <OpenCL/cl.h>
 #else
 #include <CL/cl.h>
+#include <CL/cl_ext.h>
 #endif
 
+#ifdef CL_MEM_USE_PERSISTENT_MEM_AMD
+#define VP8_CL_MEM_ALLOC_TYPE CL_MEM_USE_PERSISTENT_MEM_AMD
+#else
+#define VP8_CL_MEM_ALLOC_TYPE CL_MEM_ALLOC_HOST_PTR
+#endif
+    
 #if HAVE_DLOPEN
 #include "dynamic_cl.h"
 #endif
