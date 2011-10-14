@@ -1,4 +1,3 @@
-#pragma OPENCL EXTENSION cl_khr_byte_addressable_store : enable
 #pragma OPENCL EXTENSION cl_amd_printf : enable
 
 typedef unsigned char uc;
@@ -544,7 +543,6 @@ kernel void vp8_loop_filter_all_edges_kernel(
     global int *priority_num_blocks,
     int frame_type
 ){
-    return;
     size_t block = get_global_id(2);
     size_t thread = get_global_id(0);
     size_t plane = get_global_id(1);
