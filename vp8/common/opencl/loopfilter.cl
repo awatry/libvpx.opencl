@@ -4,22 +4,22 @@
 typedef unsigned char uc;
 typedef signed char sc;
 
-signed char vp8_filter_mask_mem(uc limit, uc blimit, uchar pq0, uchar pq1,
+int vp8_filter_mask_mem(uint limit, uint blimit, uchar pq0, uchar pq1,
         uchar pq2, uchar pq3, uchar pq4, uchar pq5, uchar pq6, uchar pq7);
-__inline signed char vp8_filter_mask(uc, uc, uchar8);
+__inline int vp8_filter_mask(uint, uint, uchar8);
 
-char vp8_hevmask_mem(uchar, uchar, uchar, uchar, uchar);
-__inline char vp8_hevmask(uchar, uchar4);
+int vp8_hevmask_mem(uint, uchar, uchar, uchar, uchar);
+__inline int vp8_hevmask(uint, uchar4);
 
 __inline void vp8_filter_mem( signed char mask, uchar hev, local uchar *, local uchar *, local uchar *, local uchar * );
 __inline uchar4 vp8_filter( signed char mask, uchar hev, uchar4 base);
 
-__inline void vp8_mbfilter_mem(signed char mask, uchar hev, local uchar*, int p);
-__inline uchar8 vp8_mbfilter(signed char mask, uchar hev, uchar8);
+__inline void vp8_mbfilter_mem(int mask, uint hev, local uchar*, int p);
+__inline uchar8 vp8_mbfilter(int mask, uint hev, uchar8);
 
-__inline signed char vp8_simple_filter_mask(uc, uc, uc, uc, uc);
+__inline int vp8_simple_filter_mask(uint, uc, uc, uc, uc);
 
-__inline void vp8_simple_filter(signed char mask,global uint *base, int op1_off,int op0_off,int oq0_off,int oq1_off);
+__inline void vp8_simple_filter(int mask,global uint *base, int op1_off,int op0_off,int oq0_off,int oq1_off);
 
 constant size_t threads[3] = {16, 8, 8};
 
@@ -47,10 +47,10 @@ typedef struct
 
 typedef struct
 {
-    unsigned char mblim;
-    unsigned char blim;
-    unsigned char lim;
-    unsigned char hev_thr;
+    unsigned int mblim;
+    unsigned int blim;
+    unsigned int lim;
+    unsigned int hev_thr;
 } loop_filter_info;
 
 __inline void set_lfi(global loop_filter_info_n *lfi_n, local loop_filter_info *lfi, int frame_type, int filter_level);
@@ -544,7 +544,7 @@ kernel void vp8_loop_filter_all_edges_kernel(
     global int *priority_num_blocks,
     int frame_type
 ){
-    
+    return;
     size_t block = get_global_id(2);
     size_t thread = get_global_id(0);
     size_t plane = get_global_id(1);
@@ -991,66 +991,9 @@ kernel void vp8_loop_filter_simple_all_edges_kernel
 }
 
 //Inline and non-kernel functions follow.
-__inline void vp8_mbfilter_mem(
-    signed char mask,
-    uchar hev,
-    local uchar *base,
-    int p
-)
-{
-    char4 u;
-
-    local char *pq = (local char*)base;
-    pq[0*p] ^= 0x80;
-    pq[1*p] ^= 0x80;
-    pq[2*p] ^= 0x80;
-    pq[3*p] ^= 0x80;
-    pq[4*p] ^= 0x80;
-    pq[5*p] ^= 0x80;
-    
-    /* add outer taps if we have high edge variance */
-    char vp8_filter = sub_sat(pq[2*p], pq[5*p]);
-    vp8_filter = clamp(vp8_filter + 3 * (pq[4*p] - pq[3*p]), -128, 127);
-    vp8_filter &= mask;
-
-    char2 filter = (char2)vp8_filter;
-    filter &= (char2)hev;
-
-    /* save bottom 3 bits so that we round one side +4 and the other +3 */
-    char2 rounding = {4,3};
-    filter = add_sat(filter, rounding);
-    filter.s0 >>= 3;
-    filter.s1 >>= 3;
-    
-    pq[4*p] = sub_sat(pq[4*p], filter.s0);
-    pq[3*p] = add_sat(pq[3*p], filter.s1);
-
-    /* only apply wider filter if not high edge variance */
-    filter.s1 = vp8_filter & ~hev;
-
-    /* roughly 3/7th, 2/7th, and 1/7th difference across boundary */
-    u.s0 = clamp((63 + filter.s1 * 27) >> 7, -128, 127);
-    u.s1 = clamp((63 + filter.s1 * 18) >> 7, -128, 127);
-    u.s2 = clamp((63 + filter.s1 * 9) >> 7, -128, 127);
-    u.s3 = 0;
-    
-    char4 s;
-    s = sub_sat(as_char4(load4_local(base, 6*p, p)), u);
-    pq[4*p] = s.s0 ^ 0x80;
-    pq[5*p] = s.s1 ^ 0x80;
-    pq[6*p] = s.s2 ^ 0x80;
-    pq[7*p] = s.s3;
-    
-    s = add_sat(as_char4(load4_local(base, 6*p, p)), u.s3210);
-    pq[0*p] = s.s0;
-    pq[1*p] = s.s1 ^ 0x80;
-    pq[2*p] = s.s2 ^ 0x80;
-    pq[3*p] = s.s3 ^ 0x80;
-}
-
 __inline uchar8 vp8_mbfilter(
-    signed char mask,
-    uchar hev,
+    int mask,
+    uint hev,
     uchar8 base
 )
 {
@@ -1094,21 +1037,8 @@ __inline uchar8 vp8_mbfilter(
     return as_uchar8(pq);
 }
 
-char vp8_hevmask_mem(uchar thresh, uchar pq0, uchar pq1, uchar pq2, uchar pq3){
-#if 1
-    signed char hev = 0;
-    hev  |= (abs(pq0 - pq1) > thresh) * -1;
-    hev  |= (abs(pq3 - pq2) > thresh) * -1;
-    return hev;
-#else
-    uchar mask = abs_diff(pq0, pq1) > thresh;
-    mask |= abs_diff(pq3, pq2) > thresh;
-    return ~mask + 1;
-#endif
-}
-
 /* is there high variance internal edge ( 11111111 yes, 00000000 no) */
-__inline char vp8_hevmask(uchar thresh, uchar4 pq)
+__inline int vp8_hevmask(uint thresh, uchar4 pq)
 {
     uchar mask = abs_diff(pq.s0, pq.s1) > thresh;
     mask |= abs_diff(pq.s3, pq.s2) > thresh;
@@ -1116,11 +1046,11 @@ __inline char vp8_hevmask(uchar thresh, uchar4 pq)
     //return ~any(abs_diff(pq.s03, pq.s12) > (uchar2)thresh) + 1;
 }
 
-signed char vp8_filter_mask_mem(uc limit, uc blimit, uchar pq0, uchar pq1,
+int vp8_filter_mask_mem(uint limit, uint blimit, uchar pq0, uchar pq1,
         uchar pq2, uchar pq3, uchar pq4, uchar pq5, uchar pq6, uchar pq7)
 {
     //Only apply the filter if the difference is LESS than 'limit'
-    char mask = (abs_diff(pq0, pq1) > limit);
+    int mask = (abs_diff(pq0, pq1) > limit);
     mask |= (abs_diff(pq1, pq2) > limit);
     mask |= (abs_diff(pq2, pq3) > limit);
     mask |= (abs_diff(pq5, pq4) > limit);
@@ -1131,11 +1061,11 @@ signed char vp8_filter_mask_mem(uc limit, uc blimit, uchar pq0, uchar pq1,
 }
 
 /* should we apply any filter at all ( 11111111 yes, 00000000 no) */
-__inline signed char vp8_filter_mask(uc limit, uc blimit, uchar8 pq)
+__inline int vp8_filter_mask(uint limit, uint blimit, uchar8 pq)
 {
 #if 1
    //Only apply the filter if the difference is LESS than 'limit'
-    signed char mask = (abs_diff(pq.s0, pq.s1) > limit);
+    int mask = (abs_diff(pq.s0, pq.s1) > limit);
     mask |= (abs_diff(pq.s1, pq.s2) > limit);
     mask |= (abs_diff(pq.s2, pq.s3) > limit);
     mask |= (abs_diff(pq.s5, pq.s4) > limit);
@@ -1144,7 +1074,7 @@ __inline signed char vp8_filter_mask(uc limit, uc blimit, uchar8 pq)
     mask |= (abs_diff(pq.s3, pq.s4) * 2 + abs_diff(pq.s2, pq.s5) / 2  > blimit);
     return mask - 1;
 #else
-	char8 mask8 = abs_diff(pq.s01256700, pq.s12345600) > limit;
+	int8 mask8 = abs_diff(pq.s01256700, pq.s12345600) > limit;
 	mask8 |= (char8)(abs_diff(pq.s3, pq.s4) * 2 + abs_diff(pq.s2, pq.s5) / 2 > blimit);
 	mask8--;
 	return any(mask8) ? -1 : 0;
@@ -1152,14 +1082,14 @@ __inline signed char vp8_filter_mask(uc limit, uc blimit, uchar8 pq)
 }
 
 /* should we apply any filter at all ( 11111111 yes, 00000000 no) */
-__inline signed char vp8_simple_filter_mask(uc blimit, uc p1, uc p0, uc q0, uc q1)
+__inline int vp8_simple_filter_mask(uint blimit, uc p1, uc p0, uc q0, uc q1)
 {
-    signed char mask = (abs(p0 - q0) * 2 + abs(p1 - q1) / 2  <= blimit) * -1;
+    int mask = (abs(p0 - q0) * 2 + abs(p1 - q1) / 2  <= blimit) * -1;
     return mask;
 }
 
 __inline void vp8_simple_filter(
-    signed char mask,
+    int mask,
     global uint *base,
     int op1_off,
     int op0_off,
