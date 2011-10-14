@@ -24,9 +24,10 @@ extern "C" {
 #include <CL/cl_ext.h>
 #endif
 
-#ifdef CL_MEM_USE_PERSISTENT_MEM_AMD
+//AMD supports allocating buffers directly out of GPU memory in Windows.
+//This leads to a pretty decent performance boost for AMDAPP >=2.4
+#if defined(CL_MEM_USE_PERSISTENT_MEM_AMD) && defined(_CYGWIN)
 #define VP8_CL_MEM_ALLOC_TYPE CL_MEM_USE_PERSISTENT_MEM_AMD
-//#define VP8_CL_MEM_ALLOC_TYPE 0 //Use whatever the driver decides.
 #else
 #define VP8_CL_MEM_ALLOC_TYPE CL_MEM_ALLOC_HOST_PTR
 #endif

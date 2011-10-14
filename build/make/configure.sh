@@ -975,7 +975,7 @@ process_common_toolchain() {
                 add_extralibs -framework OpenCL
                 ;;
             *-win32-gcc)
-                #check_add_cflags -D_WIN32
+                check_add_cflags -D_CYGWIN
 #                if check_header dlfcn.h; then
 #                    add_extralibs -ldl 
 #                    enable dlopen
