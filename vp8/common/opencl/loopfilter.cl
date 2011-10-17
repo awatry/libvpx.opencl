@@ -16,7 +16,7 @@ __inline uchar4 vp8_filter( signed char mask, uchar hev, uchar4 base);
 __inline void vp8_mbfilter_mem(int mask, uint hev, local uchar*, int p);
 __inline uchar8 vp8_mbfilter(int mask, uint hev, uchar8);
 
-__inline int vp8_simple_filter_mask(uint, uc, uc, uc, uc);
+__inline int vp8_simple_filter_mask(uint, uint, uint, uint, uint);
 
 __inline void vp8_simple_filter(int mask,global uint *base, int op1_off,int op0_off,int oq0_off,int oq1_off);
 
@@ -787,7 +787,7 @@ void vp8_loop_filter_simple_horizontal_edge_worker
                     flimit = lfi->mblim;
                 }
 
-                mask = vp8_simple_filter_mask(flimit, (uc)s_base[s_off-2*p], (uc)s_base[s_off-p], (uc)s_base[s_off], (uc)s_base[s_off+p]);
+                mask = vp8_simple_filter_mask(flimit, s_base[s_off-2*p], s_base[s_off-p], s_base[s_off], s_base[s_off+p]);
                 vp8_simple_filter(mask, s_base, s_off - 2 * p, s_off - 1 * p, s_off, s_off + 1 * p);
             }
         }
@@ -1080,9 +1080,18 @@ __inline int vp8_filter_mask(uint limit, uint blimit, uchar8 pq)
 }
 
 /* should we apply any filter at all ( 11111111 yes, 00000000 no) */
-__inline int vp8_simple_filter_mask(uint blimit, uc p1, uc p0, uc q0, uc q1)
+__inline int vp8_simple_filter_mask(uint blimit, uint p1i, uint p0i, uint q0i, uint q1i)
 {
-    int mask = (abs(p0 - q0) * 2 + abs(p1 - q1) / 2  <= blimit) * -1;
+    uc p1, p0, q0, q1;
+    p1 = p1i;
+    p0 = p0i;
+    q0 = q0i;
+    q1 = q1i;
+    //uint diff1 = p0 > q0 ? p0 - q0 : q0 - p0;
+    //uint diff2 = p1 > q1 ? p1 - q1 : q1 - p1;
+    //int maski = ((diff1 * 2 + diff2 / 2) <= blimit) * -1;
+    int mask = (abs_diff(p0, q0) * 2 + abs_diff(p1, q1) / 2  <= blimit) * -1;
+
     return mask;
 }
 
@@ -1096,33 +1105,36 @@ __inline void vp8_simple_filter(
 )
 {
 
-    global uint *op1 = base + op1_off;
-    global uint *op0 = base + op0_off;
-    global uint *oq0 = base + oq0_off;
-    global uint *oq1 = base + oq1_off;
+    global int *op1 = &base[op1_off];
+    global int *op0 = &base[op0_off];
+    global int *oq0 = &base[oq0_off];
+    global int *oq1 = &base[oq1_off];
 
-    signed char vp8_filter;
-    char2 filter;
-    char4 pq = (char4){*op1, *op0, *oq0, *oq1};
-    pq ^= (char4)0x80;
+    int vp8_filter;
+    int2 filter;
+    int4 pq = (int4){*op1, *op0, *oq0, *oq1};
+    int4 sign = pq < 0 ? 1 : -1;
+    pq += 0x80 * sign; //Equivalent to (char) ^ 0x80
 
-    signed char u;
+    int u;
 
-    vp8_filter = sub_sat(pq.s0, pq.s3);
+    vp8_filter = clamp(pq.s0 - pq.s3, -128, 127);
     vp8_filter = clamp(vp8_filter + 3 * (pq.s2 - pq.s1), -128, 127);
     vp8_filter &= mask;
 
     /* save bottom 3 bits so that we round one side +4 and the other +3 */
-    char2 rounding = {4,3};
-    filter = add_sat((char2)vp8_filter, rounding);
+    int2 rounding = {4,3};
+    filter = clamp((int2)vp8_filter + rounding, -128, 127);
     filter.s0 >>= 3;
     filter.s1 >>= 3;
 
-    u = sub_sat(pq.s2, filter.s0);
-    *oq0  = (uint) (u ^ 0x80);
+    u = clamp(pq.s2 - filter.s0, -128, 127);
+    int sign1 = u < 0 ? 1 : -1;
+    *oq0  = (u + 128 * sign1);
 
-    u = add_sat(pq.s1, filter.s1);
-    *op0 = (uint) (u ^ 0x80);
+    u = clamp(pq.s1 + filter.s1, -128, 127);
+    sign1 = u < 0 ? 1 : -1;
+    *op0 = (u + 128 * sign1);
 }
 
 
