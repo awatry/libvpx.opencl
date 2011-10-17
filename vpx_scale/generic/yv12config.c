@@ -97,7 +97,7 @@ vp8_yv12_alloc_frame_buffer(YV12_BUFFER_CONFIG *ybf, int width, int height, int 
 #if CONFIG_OPENCL
         ybf->buffer_mem = NULL;
         if (cl_initialized == CL_SUCCESS){
-            ybf->buffer_mem = clCreateBuffer(cl_data.context, CL_MEM_READ_WRITE|VP8_CL_MEM_ALLOC_TYPE, ybf->frame_size * sizeof(cl_int), NULL, NULL);
+            ybf->buffer_mem = clCreateBuffer(cl_data.context, CL_MEM_READ_WRITE|VP8_CL_MEM_ALLOC_TYPE, ybf->frame_size * sizeof(cl_uint), NULL, NULL);
             if (ybf->buffer_mem == NULL){
                 cl_destroy(NULL, VP8_CL_TRIED_BUT_FAILED);
             }

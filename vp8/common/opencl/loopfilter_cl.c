@@ -501,9 +501,10 @@ void vp8_loop_filter_frame_cl
 #endif
 
 #if USE_MAPPED_BUFFERS || 1
-    VP8_CL_MAP_BUF(mbd->cl_commands, post->buffer_mem, buf, post->frame_size * sizeof(cl_int), vp8_loop_filter_frame(cm,mbd),);
+    VP8_CL_MAP_BUF(mbd->cl_commands, post->buffer_mem, buf, post->frame_size * sizeof(cl_uint), vp8_loop_filter_frame(cm,mbd),);
+    //Copy frame to GPU and convert from uchar to uint
     for (i = 0; i < post->frame_size; i++){
-        buf[i] = (cl_int)post->buffer_alloc[i];
+        buf[i] = (cl_uint)post->buffer_alloc[i];
     }
     //vpx_memcpy(buf, post->buffer_alloc, post->frame_size);
     
@@ -602,7 +603,7 @@ void vp8_loop_filter_frame_cl
 
     //Retrieve buffer contents
 #if 1 || USE_MAPPED_BUFFERS && (!defined(CL_MEM_USE_PERSISTENT_MEM_AMD) || (CL_MEM_USE_PERSISTENT_MEM_AMD != VP8_CL_MEM_ALLOC_TYPE))
-    buf = clEnqueueMapBuffer(mbd->cl_commands, post->buffer_mem, CL_TRUE, CL_MAP_READ, 0, post->frame_size * sizeof(cl_int), 0, NULL, NULL, &err); \
+    buf = clEnqueueMapBuffer(mbd->cl_commands, post->buffer_mem, CL_TRUE, CL_MAP_READ, 0, post->frame_size * sizeof(cl_uint), 0, NULL, NULL, &err); \
     for (i = 0; i < post->frame_size; i++){
         post->buffer_alloc[i] = (unsigned char)buf[i];
     }
