@@ -3,15 +3,15 @@
 typedef unsigned char uc;
 typedef signed char sc;
 
-int vp8_filter_mask_mem(uint limit, uint blimit, uchar pq0, uchar pq1,
-        uchar pq2, uchar pq3, uchar pq4, uchar pq5, uchar pq6, uchar pq7);
+int vp8_filter_mask_mem(uint limit, uint blimit, uint pq0, uint pq1,
+        uint pq2, uint pq3, uint pq4, uint pq5, uint pq6, uint pq7);
 __inline int vp8_filter_mask(uint, uint, uchar8);
 
 int vp8_hevmask_mem(uint, uchar, uchar, uchar, uchar);
 __inline int vp8_hevmask(uint, uchar4);
 
 __inline void vp8_filter_mem( signed char mask, uchar hev, local uchar *, local uchar *, local uchar *, local uchar * );
-__inline uchar4 vp8_filter( signed char mask, uchar hev, uchar4 base);
+__inline uchar4 vp8_filter( int mask, uint hev, uchar4 base);
 
 __inline void vp8_mbfilter_mem(int mask, uint hev, local uchar*, int p);
 __inline uchar8 vp8_mbfilter(int mask, uint hev, uchar8);
@@ -117,12 +117,14 @@ __inline void vp8_filter_mem(
 }
 
 __inline uchar4 vp8_filter(
-    signed char mask,
-    uchar hev,
+    int mask,
+    uint hev,
     uchar4 base
 )
 {
-    char4 pq = as_char4(base) ^ (char4)0x80;
+    char4 pq = as_char4(base);
+    char4 sign = pq < (char4)0 ? 1 : -1;
+    pq += (char4)0x80 * sign;
 
     char vp8_filter;
     char2 Filter;
@@ -140,8 +142,8 @@ __inline uchar4 vp8_filter(
      * if it equals 4 we'll set to adjust by -1 to account for the fact
      * we'd round 3 the other way
      */
-    char2 rounding = {4,3};
-    Filter = add_sat((char2)vp8_filter, rounding);
+    int2 rounding = {4,3};
+    Filter = convert_char2(clamp((int2)vp8_filter + rounding, -128, 127));
     Filter.s0 >>= 3;
     Filter.s1 >>= 3;
 
@@ -150,12 +152,14 @@ __inline uchar4 vp8_filter(
     vp8_filter >>= 1;
     vp8_filter &= ~hev;
 
-    u.s0 = add_sat(pq.s0, vp8_filter);
-    u.s1 = add_sat(pq.s1, Filter.s1);
-    u.s2 = sub_sat(pq.s2, Filter.s0);
-    u.s3 = sub_sat(pq.s3, vp8_filter);
+    u.s0 = clamp((int)pq.s0 + (int)vp8_filter, -128, 127);
+    u.s1 = clamp((int)pq.s1 + (int)Filter.s1, -128, 127);
+    u.s2 = clamp((int)pq.s2 - (int)Filter.s0, -128, 127);
+    u.s3 = clamp((int)pq.s3 - (int)vp8_filter, -128, 127);
 
-    return as_uchar4(u ^ (char4)0x80);
+    sign = u < (char4)0 ? 1 : -1;
+    u += (char4)0x80 * sign;
+    return as_uchar4(u);
 
 }
 
@@ -1039,8 +1043,8 @@ __inline int vp8_hevmask(uint thresh, uchar4 pq)
     //return ~any(abs_diff(pq.s03, pq.s12) > (uchar2)thresh) + 1;
 }
 
-int vp8_filter_mask_mem(uint limit, uint blimit, uchar pq0, uchar pq1,
-        uchar pq2, uchar pq3, uchar pq4, uchar pq5, uchar pq6, uchar pq7)
+int vp8_filter_mask_mem(uint limit, uint blimit, uint pq0, uint pq1,
+        uint pq2, uint pq3, uint pq4, uint pq5, uint pq6, uint pq7)
 {
     //Only apply the filter if the difference is LESS than 'limit'
     int mask = (abs_diff(pq0, pq1) > limit);
@@ -1054,9 +1058,11 @@ int vp8_filter_mask_mem(uint limit, uint blimit, uchar pq0, uchar pq1,
 }
 
 /* should we apply any filter at all ( 11111111 yes, 00000000 no) */
-__inline int vp8_filter_mask(uint limit, uint blimit, uchar8 pq)
+__inline int vp8_filter_mask(uint limit, uint blimit, uchar8 pq_in)
 {
+
 #if 1
+    int8 pq = convert_int8(pq_in);
    //Only apply the filter if the difference is LESS than 'limit'
     int mask = (abs_diff(pq.s0, pq.s1) > limit);
     mask |= (abs_diff(pq.s1, pq.s2) > limit);
