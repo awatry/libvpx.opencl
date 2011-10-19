@@ -123,7 +123,7 @@ __inline uchar4 vp8_filter(
 )
 {
     char4 pq = as_char4(base);
-    char4 sign = pq < (char4)0 ? 1 : -1;
+    char4 sign = pq < (char4)0 ? (char4)1 : (char4)-1;
     pq += (char4)0x80 * sign;
 
     char vp8_filter;
@@ -157,7 +157,7 @@ __inline uchar4 vp8_filter(
     u.s2 = clamp((int)pq.s2 - (int)Filter.s0, -128, 127);
     u.s3 = clamp((int)pq.s3 - (int)vp8_filter, -128, 127);
 
-    sign = u < (char4)0 ? 1 : -1;
+    sign = u < (char4)0 ? (char4)1 : (char4)-1;
     u += (char4)0x80 * sign;
     return as_uchar4(u);
 
@@ -990,10 +990,9 @@ __inline uchar8 vp8_mbfilter(
 {
     int4 u;
 
-    int8 pq = convert_int8(as_char8(base));
+    int8 pq = as_int8(convert_uint8(base));
     int8 sign = pq < 0 ? 1 : -1;
     pq += 128 * sign;
-    //pq ^= (char8){0, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0};
     
     /* add outer taps if we have high edge variance */
     int vp8_filter = clamp(pq.s2 - pq.s5, -128, 127);
@@ -1026,21 +1025,24 @@ __inline uchar8 vp8_mbfilter(
     s.s4567 = clamp(pq.s4567 - u, -128, 127);
 
     sign = s < 0 ? 1 : -1;
-    s.s123456 += 128 * sign.s123456;
-    pq = s;
-    //pq.s0123 = s.s0123 ^ (char4){0, 0x80, 0x80, 0x80};
-    //pq.s4567 = s.s4567 ^ (char4){0x80, 0x80, 0x80, 0};
+    sign.s07 = 0;
+    pq = s + 128 * sign;
     
-    return as_uchar8(convert_char8(pq));
+    return convert_uchar8(as_uint8(pq));
 }
 
 /* is there high variance internal edge ( 11111111 yes, 00000000 no) */
-__inline int vp8_hevmask(uint thresh, uchar4 pq)
+__inline int vp8_hevmask(uint thresh, uchar4 pq_in)
 {
-    uchar mask = abs_diff(pq.s0, pq.s1) > thresh;
+    uint4 pq = convert_uint4(pq_in);
+    
+#if 1
+    int mask = abs_diff(pq.s0, pq.s1) > thresh;
     mask |= abs_diff(pq.s3, pq.s2) > thresh;
-    return ~mask + 1;
-    //return ~any(abs_diff(pq.s03, pq.s12) > (uchar2)thresh) + 1;
+    return mask * -1;
+#else
+    return ~any(abs_diff(pq.s03, pq.s12) > (uint2)thresh) + 1;
+#endif
 }
 
 int vp8_filter_mask_mem(uint limit, uint blimit, uint pq0, uint pq1,
@@ -1083,9 +1085,14 @@ __inline int vp8_filter_mask(uint limit, uint blimit, uchar8 pq_in)
 /* should we apply any filter at all ( 11111111 yes, 00000000 no) */
 __inline int vp8_simple_filter_mask(uint blimit, uint p1, uint p0, uint q0, uint q1)
 {
-    //Note: need to cast to UC or you get wrong results... not sure why.
-    int mask = ((abs_diff((uc)p0, (uc)q0) * 2 + abs_diff((uc)p1, (uc)q1) / 2) <= blimit) * -1;
-    return mask;
+    //There's a bug somewhere that is messing up the inputs by casting uc -> sc -> int,
+    //which is sign extending the uint values incorrectly.
+    p1 &= 0x000000ff;
+    p0 &= 0x000000ff;
+    q0 &= 0x000000ff;
+    q1 &= 0x000000ff;
+    int mask = ((abs_diff(p0, q0) * 2 + abs_diff(p1, q1) / 2) <= blimit);
+    return mask * -1;
 }
 
 __inline void vp8_simple_filter(
