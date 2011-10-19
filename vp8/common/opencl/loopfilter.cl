@@ -122,16 +122,16 @@ __inline uchar4 vp8_filter(
     uchar4 base
 )
 {
-    char4 pq = as_char4(base);
-    char4 sign = pq < (char4)0 ? (char4)1 : (char4)-1;
-    pq += (char4)0x80 * sign;
+    int4 pq = as_int4(convert_uint4(base));
+    int4 sign = pq < (int4)0 ? (int4)1 : (int4)-1;
+    pq += (int4)0x00000080 * sign;
 
-    char vp8_filter;
-    char2 Filter;
-    char4 u;
+    int vp8_filter;
+    int2 Filter;
+    int4 u;
 
     /* add outer taps if we have high edge variance */
-    vp8_filter = sub_sat(pq.s0, pq.s3);
+    vp8_filter = clamp(pq.s0 - pq.s3, -128, 127);
     vp8_filter &= hev;
 
     /* inner taps */
@@ -143,7 +143,7 @@ __inline uchar4 vp8_filter(
      * we'd round 3 the other way
      */
     int2 rounding = {4,3};
-    Filter = convert_char2(clamp((int2)vp8_filter + rounding, -128, 127));
+    Filter = clamp((int2)vp8_filter + rounding, -128, 127);
     Filter.s0 >>= 3;
     Filter.s1 >>= 3;
 
@@ -157,9 +157,9 @@ __inline uchar4 vp8_filter(
     u.s2 = clamp((int)pq.s2 - (int)Filter.s0, -128, 127);
     u.s3 = clamp((int)pq.s3 - (int)vp8_filter, -128, 127);
 
-    sign = u < (char4)0 ? (char4)1 : (char4)-1;
-    u += (char4)0x80 * sign;
-    return as_uchar4(u);
+    sign = u < (int4)0 ? (int4)1 : (int4)-1;
+    u += (int4)0x80 * sign;
+    return as_uchar4(convert_char4(u));
 
 }
 
