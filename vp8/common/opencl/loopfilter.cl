@@ -45,19 +45,13 @@ __inline void set_lfi(global loop_filter_info_n *lfi_n, local loop_filter_info *
 
 
 //Load + Store functions
-__inline uchar4 load4(global uint *s_base, int s_off, int p);
-__inline uchar8 load8(global uint *s_base, int s_off, int p);
-__inline uchar16 load16(global uint *s_base, int s_off, int p);
-__inline uchar4 load4_local(local uint *s_base, int s_off, int p);
+__inline uint8 load8(global uint *s_base, int s_off, int p);
 __inline uchar8 load8_local(local uint *s_base, int s_off, int p);
-__inline uchar16 load16_local(local uint *s_base, int s_off, int p);
 
-__inline void save4(global uint *s_base, int s_off, int p, uchar8 data);
-__inline void save6(global uint *s_base, int s_off, int p, uchar8 data);
-__inline void save12(global uint *s_base, int s_off, int p, uchar16 data);
+__inline void save4(global uint *s_base, int s_off, int p, uint8 data);
+__inline void save6(global uint *s_base, int s_off, int p, uint8 data);
 __inline void save4_local(local uint *s_base, int s_off, int p, uchar8 data);
 __inline void save6_local(local uint *s_base, int s_off, int p, uchar8 data);
-__inline void save12_local(local uint *s_base, int s_off, int p, uchar16 data);
 
 __inline void load_mb(int size, local uint *dst, global uint *src, int src_off, int src_pitch, int mb_row, int mb_col, int dc_diffs, int thread);
 __inline void save_mb(int size, local uint *src, global uint *dst, int dst_off, int dst_pitch, int mb_row, int mb_col, int dc_diffs, int thread);
@@ -163,8 +157,8 @@ __inline uint4 vp8_filter(
 
 }
 
-__inline uchar8 load8(global uint *s_base, int s_off, int p){
-    uchar8 data;
+__inline uint8 load8(global uint *s_base, int s_off, int p){
+    uint8 data;
     data.s0 = s_base[s_off-4*p];
     data.s1 = s_base[s_off-3*p];
     data.s2 = s_base[s_off-2*p];
@@ -173,7 +167,9 @@ __inline uchar8 load8(global uint *s_base, int s_off, int p){
     data.s5 = s_base[s_off+p];
     data.s6 = s_base[s_off+2*p];
     data.s7 = s_base[s_off+3*p];
-    return data;
+    
+    //TODO: the & 128 is to avoid a sign extension bug that exists somewhere
+    return data & (uint8)0x000000ff;
 }
 
 __inline uchar8 load8_local(local uint *s_base, int s_off, int p){
@@ -189,16 +185,9 @@ __inline uchar8 load8_local(local uint *s_base, int s_off, int p){
     return data;
 }
 
-__inline uchar4 load4_local(local uint *s_base, int s_off, int p){
-    uchar4 data;
-    data.s0 = s_base[s_off-2*p];
-    data.s1 = s_base[s_off-p];
-    data.s2 = s_base[s_off];
-    data.s3 = s_base[s_off+p];
-    return data;
-}
-
-__inline void save4(global uint *s_base, int s_off, int p, uchar8 data){
+__inline void save4(global uint *s_base, int s_off, int p, uint8 data){
+    //TODO: the & 128 is to avoid a sign extension bug that exists somewhere
+    data &= (uint8) 0x000000ff;
     s_base[s_off - 2*p] = data.s2;
     s_base[s_off - p  ] = data.s3;
     s_base[s_off      ] = data.s4;
@@ -212,7 +201,7 @@ __inline void save4_local(local uint *s_base, int s_off, int p, uchar8 data){
     s_base[s_off + p  ] = data.s5;
 }
 
-__inline void save6(global uint *s_base, int s_off, int p, uchar8 data){
+__inline void save6(global uint *s_base, int s_off, int p, uint8 data){
     s_base[s_off - 3*p] = data.s1;
     s_base[s_off - 2*p] = data.s2;
     s_base[s_off - p  ] = data.s3;
@@ -228,28 +217,6 @@ __inline void save6_local(local uint *s_base, int s_off, int p, uchar8 data){
     s_base[s_off      ] = data.s4;
     s_base[s_off + p  ] = data.s5;
     s_base[s_off + 2*p  ] = data.s6;
-}
-
-__inline uchar16 load16(global uint *s_base, int s_off, int p){
-    uchar16 data;
-    data.s01234567 = load8(s_base, s_off, p);
-    data.s89abcdef = load8(s_base, s_off+8*p, p);
-    return data;
-}
-
-__inline void save12(global uint *s_base, int s_off, int p, uchar16 data){
-    s_base[s_off - 2*p] = data.s2;
-    s_base[s_off - p  ] = data.s3;
-    s_base[s_off      ] = data.s4;
-    s_base[s_off + p  ] = data.s5;
-    s_base[s_off + 2*p] = data.s6;
-    s_base[s_off + 3*p] = data.s7;
-    s_base[s_off + 4*p] = data.s8;
-    s_base[s_off + 5*p] = data.s9;
-    s_base[s_off + 6*p] = data.sa;
-    s_base[s_off + 7*p] = data.sb;
-    s_base[s_off + 8*p] = data.sc;
-    s_base[s_off + 9*p] = data.sd;
 }
 
 // Filters horizontal edges of inner blocks in a Macroblock
@@ -273,7 +240,7 @@ __inline void vp8_loop_filter_horizontal_edge_worker(
         int s_off = source_offset + 4*cur_iter*p; //Move down 4 lines per iter
         s_off += thread; //Move to the right part of the horizontal line
 
-        uint8 data = convert_uint8(load8(s_base, s_off, p));
+        uint8 data = load8(s_base, s_off, p);
 
         int mask = vp8_filter_mask(lfi->lim, lfi->blim, data);
 
@@ -281,7 +248,7 @@ __inline void vp8_loop_filter_horizontal_edge_worker(
 
         data.s2345 = vp8_filter(mask, hev, data.s2345);
 
-        save4(s_base, s_off, p, convert_uchar8(data));
+        save4(s_base, s_off, p, data);
     }
 }
 
@@ -322,7 +289,7 @@ __inline void vp8_loop_filter_vertical_edge_worker(
         int s_off = source_offset + 4*cur_iter; //Move right 4 cols per iter
         s_off += thread * p; //Move down to the right part of the vertical line
 
-        uint8 data = convert_uint8(load8(s_base, s_off, 1));
+        uint8 data = load8(s_base, s_off, 1);
 
         int mask = vp8_filter_mask(lfi->lim, lfi->blim, data);
 
@@ -330,7 +297,7 @@ __inline void vp8_loop_filter_vertical_edge_worker(
         
         data.s2345 = vp8_filter(mask, hev, data.s2345);
         
-        save4(s_base, s_off, 1, convert_uchar8(data));
+        save4(s_base, s_off, 1, data);
     }
 }
 
@@ -378,7 +345,7 @@ __inline void vp8_mbloop_filter_horizontal_edge_worker(
     
     int s_off = source_offset + thread;
 
-    uint8 data = convert_uint8(load8(s_base, s_off, p));
+    uint8 data = load8(s_base, s_off, p);
 
     int mask = vp8_filter_mask(lfi->lim, lfi->mblim, data);
 
@@ -386,7 +353,7 @@ __inline void vp8_mbloop_filter_horizontal_edge_worker(
 
     data = vp8_mbfilter(mask, hev, data);
 
-    save6(s_base, s_off, p, convert_uchar8(data));
+    save6(s_base, s_off, p, data);
 
 }
 
@@ -419,7 +386,7 @@ __inline void vp8_mbloop_filter_vertical_edge_worker(
 
     int s_off = source_offset + p*thread;
 
-    uint8 data = convert_uint8(load8(s_base, s_off, 1));
+    uint8 data = load8(s_base, s_off, 1);
 
     int mask = vp8_filter_mask(lfi->lim, lfi->mblim, data);
 
@@ -427,7 +394,7 @@ __inline void vp8_mbloop_filter_vertical_edge_worker(
 
     data = vp8_mbfilter(mask, hev, data);
 
-    save6(s_base, s_off, 1, convert_uchar8(data));
+    save6(s_base, s_off, 1, data);
 }
 
 __inline void vp8_mbloop_filter_vertical_edge_worker_local(
