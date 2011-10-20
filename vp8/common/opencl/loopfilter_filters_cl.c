@@ -56,7 +56,7 @@ static int vp8_loop_filter_cl_run(
 ){
 
     size_t global[3] = {16, num_planes, num_blocks};
-    size_t local[3] = {16, num_planes, 1};
+    size_t local[3] = {16, 1, 1};
     int err;
 
     if (max_local_size < 16*num_planes){
