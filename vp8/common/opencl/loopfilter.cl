@@ -155,7 +155,7 @@ __inline uint4 vp8_filter(
 
     sign = u < (int4)0 ? (int4)1 : (int4)-1;
     u += (int4)128 * sign;
-    return as_uint4(u);
+    return as_uint4(u) & 0x000000ff;
 
 }
 
@@ -169,9 +169,8 @@ __inline uint8 load8(global uint *s_base, int s_off, int p){
     data.s5 = s_base[s_off+p];
     data.s6 = s_base[s_off+2*p];
     data.s7 = s_base[s_off+3*p];
-    
-    //TODO: the & 128 is to avoid a sign extension bug that exists somewhere
-    return data & (uint8)0x000000ff;
+
+    return data;
 }
 
 __inline uint16 load16(global uint *s_base, int s_off, int p){
@@ -196,8 +195,6 @@ __inline uint8 load8_local(local uint *s_base, int s_off, int p){
 }
 
 __inline void save4(global uint *s_base, int s_off, int p, uint8 data){
-    //TODO: the & 128 is to avoid a sign extension bug that exists somewhere
-    data &= (uint8) 0x000000ff;
     s_base[s_off - 2*p] = data.s2;
     s_base[s_off - p  ] = data.s3;
     s_base[s_off      ] = data.s4;
@@ -553,7 +550,7 @@ kernel void vp8_loop_filter_all_edges_kernel(
         mb_row = filters[num_blocks * ROWS_LOCATION + block];
         dc_diffs = filters[num_blocks * DC_DIFFS_LOCATION + block];
     }
-    barrier(CLK_LOCAL_MEM_FENCE);
+    //barrier(CLK_LOCAL_MEM_FENCE);
 
     int source_offset = offsets[block*3 + plane];
     
@@ -1025,7 +1022,7 @@ __inline uint8 vp8_mbfilter(
     sign.s07 = 0;
     pq = s + 128 * sign;
     
-    return as_uint8(pq);
+    return as_uint8(pq) & 0x000000ff;
 }
 
 /* is there high variance internal edge ( 11111111 yes, 00000000 no) */
@@ -1036,7 +1033,7 @@ __inline int vp8_hevmask(uint thresh, uint4 pq)
     mask |= abs_diff(pq.s3, pq.s2) > thresh;
     return mask * -1;
 #else
-    return ~any(abs_diff(pq.s03, pq.s12) > (uint2)thresh) + 1;
+    return any(abs_diff(pq.s03, pq.s12) > (uint2)thresh) * -1;
 #endif
 }
 
@@ -1069,10 +1066,13 @@ __inline int vp8_filter_mask(uint limit, uint blimit, uint8 pq)
     mask |= (abs_diff(pq.s3, pq.s4) * 2 + abs_diff(pq.s2, pq.s5) / 2  > blimit);
     return mask - 1;
 #else
-	int8 mask8 = abs_diff(pq.s01256700, pq.s12345600) > limit;
-	mask8 |= (char8)(abs_diff(pq.s3, pq.s4) * 2 + abs_diff(pq.s2, pq.s5) / 2 > blimit);
-	mask8--;
-	return any(mask8) ? -1 : 0;
+    //int8 mask8 = abs_diff(pq.s01256700, pq.s12345600) > limit;
+    //mask8.s0 |= (abs_diff(pq.s3, pq.s4) * 2 + abs_diff(pq.s2, pq.s5) / 2 > blimit) * -1;
+    //return any(mask8) ? 0 : -1;
+    uint8 diffs = abs_diff(pq.s01256732, pq.s12345645);
+    diffs.s6 = diffs.s6 * 2 + diffs.s7 / 2;
+    uint8 limits = {limit,limit,limit,limit,limit,limit,blimit, 0xffffffff};
+    return any(diffs > limits) ? 0 : -1;
 #endif
 }
 
