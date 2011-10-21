@@ -139,9 +139,7 @@ __inline uint4 vp8_filter(
      * we'd round 3 the other way
      */
     int2 rounding = {4,3};
-    Filter = clamp((int2)vp8_filter + rounding, -128, 127);
-    Filter.s0 >>= 3;
-    Filter.s1 >>= 3;
+    Filter = clamp((int2)vp8_filter + rounding, -128, 127) >> 3;
 
     /* outer tap adjustments */
     vp8_filter = Filter.s0 + 1;
