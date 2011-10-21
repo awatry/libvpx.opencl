@@ -118,10 +118,10 @@ __inline uint4 vp8_filter(
     uint4 base
 )
 {
-    int4 pq = as_int4(base);
-    int4 sign = pq < (int4)0 ? (int4)1 : (int4)-1;
-    pq += (int4)128 * sign;
-
+    //Need to convert the uint4 to int4, but intermediately treat it like the
+    //original alrogithm which XOR'd with 0x80 on a uchar.
+    int4 pq = convert_int4(convert_char4(base)^0x80);
+    
     int vp8_filter;
     int2 Filter;
     int4 u;
@@ -148,14 +148,13 @@ __inline uint4 vp8_filter(
     vp8_filter >>= 1;
     vp8_filter &= ~hev;
 
-    u.s0 = clamp((int)pq.s0 + (int)vp8_filter, -128, 127);
-    u.s1 = clamp((int)pq.s1 + (int)Filter.s1, -128, 127);
-    u.s2 = clamp((int)pq.s2 - (int)Filter.s0, -128, 127);
-    u.s3 = clamp((int)pq.s3 - (int)vp8_filter, -128, 127);
+    u.s0 = pq.s0 + vp8_filter;
+    u.s1 = pq.s1 + Filter.s1;
+    u.s2 = pq.s2 - Filter.s0;
+    u.s3 = pq.s3 - vp8_filter;
+    u = clamp(u, -128, 127);
 
-    sign = u < (int4)0 ? (int4)1 : (int4)-1;
-    u += (int4)128 * sign;
-    return as_uint4(u) & 0x000000ff;
+    return convert_uint4(convert_uchar4(u) ^ 0x80);
 
 }
 
@@ -984,9 +983,7 @@ __inline uint8 vp8_mbfilter(
 {
     int4 u;
 
-    int8 pq = as_int8(base);
-    int8 sign = pq < 0 ? 1 : -1;
-    pq += 128 * sign;
+    int8 pq = convert_int8(convert_char8(base)^0x80);
     
     /* add outer taps if we have high edge variance */
     int vp8_filter = clamp(pq.s2 - pq.s5, -128, 127);
@@ -1018,11 +1015,7 @@ __inline uint8 vp8_mbfilter(
     s.s0123 = clamp(pq.s0123 + u.s3210, -128, 127);
     s.s4567 = clamp(pq.s4567 - u, -128, 127);
 
-    sign = s < 0 ? 1 : -1;
-    sign.s07 = 0;
-    pq = s + 128 * sign;
-    
-    return as_uint8(pq) & 0x000000ff;
+    return convert_uint8(convert_uchar8(s) ^ 0x80);
 }
 
 /* is there high variance internal edge ( 11111111 yes, 00000000 no) */
