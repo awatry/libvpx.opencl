@@ -1048,7 +1048,7 @@ int vp8_filter_mask_mem(uint limit, uint blimit, uint pq0, uint pq1,
 __inline int vp8_filter_mask(uint limit, uint blimit, uint8 pq)
 {
 
-#if 1
+#if 0
    //Only apply the filter if the difference is LESS than 'limit'
     int mask = (abs_diff(pq.s0, pq.s1) > limit);
     mask |= (abs_diff(pq.s1, pq.s2) > limit);
@@ -1059,13 +1059,10 @@ __inline int vp8_filter_mask(uint limit, uint blimit, uint8 pq)
     mask |= (abs_diff(pq.s3, pq.s4) * 2 + abs_diff(pq.s2, pq.s5) / 2  > blimit);
     return mask - 1;
 #else
-    //int8 mask8 = abs_diff(pq.s01256700, pq.s12345600) > limit;
-    //mask8.s0 |= (abs_diff(pq.s3, pq.s4) * 2 + abs_diff(pq.s2, pq.s5) / 2 > blimit) * -1;
-    //return any(mask8) ? 0 : -1;
     uint8 diffs = abs_diff(pq.s01256732, pq.s12345645);
     diffs.s6 = diffs.s6 * 2 + diffs.s7 / 2;
     uint8 limits = {limit,limit,limit,limit,limit,limit,blimit, 0xffffffff};
-    return any(diffs > limits) ? 0 : -1;
+    return any(diffs > limits) - 1;
 #endif
 }
 
