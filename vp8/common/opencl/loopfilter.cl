@@ -1201,11 +1201,9 @@ __inline void vp8_simple_filter(
 
 
 __inline void set_lfi(global loop_filter_info_n *lfi_n, local loop_filter_info *lfi, int frame_type, int filter_level){
-    if (get_local_id(0) == 0 && get_local_id(1)==0 && get_local_id(2)==0){
-        int hev_index = lfi_n->hev_thr_lut[frame_type][filter_level];
-        lfi->mblim = lfi_n->mblim[filter_level][0];
-        lfi->blim = lfi_n->blim[filter_level][0];
-        lfi->lim = lfi_n->lim[filter_level][0];
-        lfi->hev_thr = lfi_n->hev_thr[hev_index][0];
-    }
+    int hev_index = lfi_n->hev_thr_lut[frame_type][filter_level];
+    lfi->mblim = lfi_n->mblim[filter_level][0];
+    lfi->blim = lfi_n->blim[filter_level][0];
+    lfi->lim = lfi_n->lim[filter_level][0];
+    lfi->hev_thr = lfi_n->hev_thr[hev_index][0];
 }
