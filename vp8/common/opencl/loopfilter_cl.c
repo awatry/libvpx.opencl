@@ -462,8 +462,8 @@ void vp8_loop_filter_frame_cl
     int err, priority;
 #if USE_MAPPED_BUFFERS
     loop_filter_info *lfi_ptr = NULL;
-    cl_uint *buf = NULL;
 #endif
+    cl_uint *buf = NULL;
 
     cl_int *offsets = NULL;
     size_t offsets_size;
