@@ -457,32 +457,28 @@ __inline void load_mb(int size, local uint *dst, global uint *src, int src_off, 
         col_end = 4;
     }
 
-    row_start = -4;
+    row_start = (mb_row > 0) * -4;
 
     //Load 4 col left border if col != 0, otherwise just the pixels of block data
-    if (mb_col > 0){
-        col_start = -4;
-    } else {
-        col_start = 0;
-    }
+    col_start = (mb_col > 0) * -4;
 
-    if (mb_row > 0){
-        for (int i = row_start; i < row_end; i++){
-                dst[i*dst_pitch + thread] = src[i*src_pitch + src_off + thread];
-        }
+    for (int i = row_start; i < row_end; i++){
+        dst[i*dst_pitch + thread] = src[i*src_pitch + src_off + thread];
     }
 
     //Load 16x16 or 8x8 pixels of Macroblock data with destination starting at
     //row 4, col 4.
+    dst = &dst[thread * dst_pitch];
+    src = &src[thread * src_pitch + src_off];
     for (int i = col_start; i < col_end; i++){
-        dst[thread*dst_pitch + i] = src[thread*src_pitch + src_off + i];
+        dst[i] = src[i];
     }
 }
 
 __inline void save_mb(int size, local uint *src, global uint *dst, int dst_off, int dst_pitch, int mb_row, int mb_col, int dc_diffs, int thread){
     //Load 4 row top border if row != 0, starting at row 0, col 4
     int src_pitch = size + 4;
-    int row_start, row_end, col_start, col_end;
+    int row_end, col_start, col_end;
 
     if (dc_diffs > 0){
         row_end = 0;
@@ -492,8 +488,6 @@ __inline void save_mb(int size, local uint *src, global uint *dst, int dst_off, 
         col_end = 3;
     }
 
-    row_start = -3;
-
     //Save 3 col left border if col != 0, otherwise just the pixels of block data
     if (mb_col > 0){
         col_start = -3;
@@ -502,7 +496,7 @@ __inline void save_mb(int size, local uint *src, global uint *dst, int dst_off, 
     }
 
     if (mb_row > 0){
-        for (int i = row_start; i < row_end; i++){
+        for (int i = -3; i < row_end; i++){
             dst[i*dst_pitch + dst_off + thread] = src[i*src_pitch + thread];
         }
     }
@@ -553,18 +547,18 @@ kernel void vp8_loop_filter_all_edges_kernel(
     
     int p = pitches[plane];    
     
-#define USE_LOCAL_MEM_FILTER 0
+#define USE_LOCAL_MEM_FILTER 1
 #if USE_LOCAL_MEM_FILTER
     //At the moment this local memory mechanism only works if local number of
     //threads/plane == global number of threads/plane.
     //This is forced in loop_filter_filters.c
     
-    local uint mb_data_actual[1200]; //Local copy of frame data for current plane
+    local uint mb_data_actual[400]; //Local copy of frame data for current plane
     int mb_offset, mb_pitch;
     
     int num_threads = threads[plane];
     mb_pitch = num_threads+4;
-    mb_offset = 4+4*mb_pitch + 400*plane;
+    mb_offset = 4+4*mb_pitch;
     local uint *mb_data = &mb_data_actual[mb_offset];
     
     load_mb(num_threads, mb_data, s_base, source_offset, p, mb_row, mb_col, dc_diffs, thread);
