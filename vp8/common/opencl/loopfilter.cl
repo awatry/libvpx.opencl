@@ -120,7 +120,7 @@ __inline uint4 vp8_filter(
 {
     //Need to convert the uint4 to int4, but intermediately treat it like the
     //original alrogithm which XOR'd with 0x80 on a uchar.
-    int4 pq = convert_int4(convert_char4(base)^0x80);
+    int4 pq = convert_int4(convert_char4(base) ^ (char4)0x80);
     
     int vp8_filter;
     int2 Filter;
@@ -152,7 +152,7 @@ __inline uint4 vp8_filter(
     u.s3 = pq.s3 - vp8_filter;
     u = clamp(u, -128, 127);
 
-    return convert_uint4(convert_uchar4(u) ^ 0x80);
+    return convert_uint4(convert_uchar4(u) ^ (uchar4)0x80);
 
 }
 
@@ -981,7 +981,7 @@ __inline uint8 vp8_mbfilter(
 {
     int4 u;
 
-    int8 pq = convert_int8(convert_char8(base)^0x80);
+    int8 pq = convert_int8(convert_char8(base) ^ (char8)0x80);
     
     /* add outer taps if we have high edge variance */
     int vp8_filter = clamp(pq.s2 - pq.s5, -128, 127);
@@ -1013,7 +1013,7 @@ __inline uint8 vp8_mbfilter(
     s.s0123 = clamp(pq.s0123 + u.s3210, -128, 127);
     s.s4567 = clamp(pq.s4567 - u, -128, 127);
 
-    return convert_uint8(convert_uchar8(s) ^ 0x80);
+    return convert_uint8(convert_uchar8(s) ^ (uchar8)0x80);
 }
 
 /* is there high variance internal edge ( 11111111 yes, 00000000 no) */
