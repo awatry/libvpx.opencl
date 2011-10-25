@@ -537,7 +537,7 @@ kernel void vp8_loop_filter_all_edges_kernel(
         mb_row = filters[num_blocks * ROWS_LOCATION + block];
         dc_diffs = filters[num_blocks * DC_DIFFS_LOCATION + block];
     }
-    //write_mem_fence(CLK_LOCAL_MEM_FENCE);
+    write_mem_fence(CLK_LOCAL_MEM_FENCE);
 
     int source_offset = offsets[block*3 + plane];
     
