@@ -519,7 +519,8 @@ kernel void vp8_loop_filter_all_edges_kernel(
     int block_offset = block_offsets[priority_level];
     filters = &filters[4*block_offset];
     int filter_level = filters[block];
-    if ( filter_level <= 0 || (thread >= 8 && plane > 0) || thread >= 16)
+    int num_threads = (plane == 0) ? 16 : 8;
+    if ( filter_level <= 0 || thread >= num_threads)
         return;
 
     offsets = &offsets[3*block_offset];
@@ -586,8 +587,8 @@ kernel void vp8_loop_filter_all_edges_kernel(
     save_mb(num_threads, mb_data, s_base, source_offset, p, mb_row, mb_col, dc_diffs, thread);
 
 #else
-    //prefetch(&s_base[source_offset+thread*p], threads[plane]);
-    
+    //prefetch(&s_base[source_offset+thread*p], num_threads);
+
     //Load/stores directly out of global memory.
     if ( mb_col > 0 ){
         vp8_mbloop_filter_vertical_edge_worker(s_base, source_offset, &lf_info, thread, p);
