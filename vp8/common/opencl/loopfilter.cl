@@ -234,17 +234,10 @@ __inline void save6_local(local uint *s_base, int s_off, int p, uint8 data){
 __inline void vp8_loop_filter_horizontal_edge_worker(
     global uint *s_base,
     int source_offset,
-    global int *pitches, /* pitch */
     local loop_filter_info *lfi,
-    global int *filters,
     int dc_diffs,
-    int filter_level,
     int cur_iter,
-    size_t num_blocks,
-    size_t num_planes,
     size_t thread,
-    size_t plane,
-    size_t block,
     int p //pitches[plane]
 ){
     if (dc_diffs > 0){
@@ -509,10 +502,10 @@ __inline void save_mb(int size, local uint *src, global uint *dst, int dst_off, 
 
 kernel void vp8_loop_filter_all_edges_kernel(
     global unsigned int *s_base,
-    global int *offsets_in,
+    global int *offsets,
     global int *pitches,
     global loop_filter_info_n *lfi_n,
-    global int *filters_in,
+    global int *filters,
     int priority_level,
     int num_levels,
     global int *block_offsets,
@@ -524,12 +517,12 @@ kernel void vp8_loop_filter_all_edges_kernel(
     size_t plane = get_global_id(1);
 
     int block_offset = block_offsets[priority_level];
-    global int *filters = &filters_in[4*block_offset];
+    filters = &filters[4*block_offset];
     int filter_level = filters[block];
     if ( filter_level <= 0 || thread >= threads[plane])
         return;
 
-    global int *offsets = &offsets_in[3*block_offset];
+    offsets = &offsets[3*block_offset];
     size_t num_blocks = priority_num_blocks[priority_level];
     local loop_filter_info lf_info;
     local int mb_row, mb_col, dc_diffs;
@@ -612,13 +605,13 @@ kernel void vp8_loop_filter_all_edges_kernel(
         vp8_mbloop_filter_horizontal_edge_worker(s_base, source_offset, &lf_info, thread, p);
     }
     //YUV planes, then 2 more passes of Y plane
-    vp8_loop_filter_horizontal_edge_worker(s_base, source_offset, pitches, &lf_info, filters,
-            dc_diffs, filter_level, 1, num_blocks, 3, thread, plane, block, p);
+    vp8_loop_filter_horizontal_edge_worker(s_base, source_offset, &lf_info,
+            dc_diffs, 1, thread, p);
     if (plane == 0){
-        vp8_loop_filter_horizontal_edge_worker(s_base, source_offset, pitches, &lf_info, filters,
-                dc_diffs, filter_level, 2, num_blocks, 1, thread, plane, block, p);
-        vp8_loop_filter_horizontal_edge_worker(s_base, source_offset, pitches, &lf_info, filters,
-                dc_diffs, filter_level, 3, num_blocks, 1, thread, plane, block, p);
+        vp8_loop_filter_horizontal_edge_worker(s_base, source_offset, &lf_info,
+            dc_diffs, 2, thread, p);
+        vp8_loop_filter_horizontal_edge_worker(s_base, source_offset, &lf_info,
+            dc_diffs, 3, thread, p);
     }
 #endif
 }
@@ -661,13 +654,13 @@ kernel void vp8_loop_filter_horizontal_edges_kernel(
 
     //YUV planes, then 2 more passes of Y plane
     if (thread_level_filter){
-        vp8_loop_filter_horizontal_edge_worker(s_base, source_offset, pitches, &lf_info, filters,
-                dc_diffs, filter_level, 1, num_blocks, 3, thread, plane, block, p);
+        vp8_loop_filter_horizontal_edge_worker(s_base, source_offset, &lf_info,
+                dc_diffs, 1, thread, p);
         if (plane == 0){
-            vp8_loop_filter_horizontal_edge_worker(s_base, source_offset, pitches, &lf_info, filters,
-                    dc_diffs, filter_level, 2, num_blocks, 1, thread, plane, block, p);
-            vp8_loop_filter_horizontal_edge_worker(s_base, source_offset, pitches, &lf_info, filters,
-                    dc_diffs, filter_level, 3, num_blocks, 1, thread, plane, block, p);
+            vp8_loop_filter_horizontal_edge_worker(s_base, source_offset, &lf_info,
+                dc_diffs, 2, thread, p);
+            vp8_loop_filter_horizontal_edge_worker(s_base, source_offset, &lf_info,
+                dc_diffs, 3, thread, p);
         }
     }
 }
