@@ -7,10 +7,10 @@ int vp8_filter_mask_mem(uint limit, uint blimit, uint pq0, uint pq1,
         uint pq2, uint pq3, uint pq4, uint pq5, uint pq6, uint pq7);
 __inline int vp8_filter_mask(uint, uint, uint8);
 
-int vp8_hevmask_mem(uint, uchar, uchar, uchar, uchar);
+int vp8_hevmask_mem(uint, uint, uint, uint, uint);
 __inline int vp8_hevmask(uint, uint4);
 
-__inline void vp8_filter_mem( signed char mask, uchar hev, local uchar *, local uchar *, local uchar *, local uchar * );
+__inline void vp8_filter_mem( int mask, uint hev, local uint *, local uint *, local uint *, local uint * );
 __inline uint4 vp8_filter( int mask, uint hev, uint4 base);
 
 __inline void vp8_mbfilter_mem(int mask, uint hev, local uchar*, int p);
@@ -102,12 +102,12 @@ __inline uint4 vp8_filter(
 }
 
 __inline void vp8_filter_mem(
-    signed char mask,
-    uchar hev,
-    local uchar *p1,
-    local uchar *p0,
-    local uchar *q0,
-    local uchar *q1
+    int mask,
+    uint hev,
+    local uint *p1,
+    local uint *p0,
+    local uint *q0,
+    local uint *q1
 )
 {
 
@@ -337,7 +337,7 @@ __inline void vp8_loop_filter_vertical_edge_worker_local(
     if (dc_diffs > 0){
         int s_off = cur_iter + thread * p; //Move right 4 cols per iter
         //Move down to the right part of the vertical line
-#if 0
+#if 1
         uint8 data = load8_local(s_base, s_off, 1);
         int mask = vp8_filter_mask(lfi->lim, lfi->blim, data);
         uint hev = vp8_hevmask(lfi->hev_thr, data.s2345);
@@ -546,7 +546,7 @@ kernel void vp8_loop_filter_all_edges_kernel(
     
     int p = pitches[plane];    
     
-#define USE_LOCAL_MEM_FILTER 1
+#define USE_LOCAL_MEM_FILTER 0
 #if USE_LOCAL_MEM_FILTER
     //At the moment this local memory mechanism only works if local number of
     //threads/plane == global number of threads/plane.
@@ -1007,6 +1007,12 @@ __inline uint8 vp8_mbfilter(
     s.s4567 = clamp(pq.s4567 - u, -128, 127);
 
     return convert_uint8(convert_uchar8(s) ^ (uchar8)0x80);
+}
+
+int vp8_hevmask_mem(uint thresh, uint s0, uint s1, uint s2, uint s3){
+    int mask = abs_diff(s0, s1) > thresh;
+    mask |= abs_diff(s3, s2) > thresh;
+    return mask * -1;
 }
 
 /* is there high variance internal edge ( 11111111 yes, 00000000 no) */
