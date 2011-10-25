@@ -58,6 +58,49 @@ __inline void save12(global uint *s_base, int s_off, int p, uint16 data);
 __inline void load_mb(int size, local uint *dst, global uint *src, int src_off, int src_pitch, int mb_row, int mb_col, int dc_diffs, int thread);
 __inline void save_mb(int size, local uint *src, global uint *dst, int dst_off, int dst_pitch, int mb_row, int mb_col, int dc_diffs, int thread);
 
+__inline uint4 vp8_filter(
+    int mask,
+    uint hev,
+    uint4 base
+)
+{
+    //Need to convert the uint4 to int4, but intermediately treat it like the
+    //original alrogithm which XOR'd with 0x80 on a uchar.
+    int4 pq = convert_int4(convert_char4(base) ^ (char4)0x80);
+    
+    int vp8_filter;
+    int2 Filter;
+    int4 u;
+
+    /* add outer taps if we have high edge variance */
+    vp8_filter = clamp(pq.s0 - pq.s3, -128, 127);
+    vp8_filter &= hev;
+
+    /* inner taps */
+    vp8_filter = clamp(vp8_filter + 3 * (pq.s2 - pq.s1), -128, 127);
+    vp8_filter &= mask;
+
+    /* save bottom 3 bits so that we round one side +4 and the other +3
+     * if it equals 4 we'll set to adjust by -1 to account for the fact
+     * we'd round 3 the other way
+     */
+    int2 rounding = {4,3};
+    Filter = clamp((int2)vp8_filter + rounding, -128, 127) >> 3;
+
+    /* outer tap adjustments */
+    vp8_filter = Filter.s0 + 1;
+    vp8_filter >>= 1;
+    vp8_filter &= ~hev;
+
+    u.s0 = pq.s0 + vp8_filter;
+    u.s1 = pq.s1 + Filter.s1;
+    u.s2 = pq.s2 - Filter.s0;
+    u.s3 = pq.s3 - vp8_filter;
+    u = clamp(u, -128, 127);
+
+    return convert_uint4(convert_uchar4(u) ^ (uchar4)0x80);
+}
+
 __inline void vp8_filter_mem(
     signed char mask,
     uchar hev,
@@ -109,50 +152,6 @@ __inline void vp8_filter_mem(
     *p0 = (uchar)(u.s1 ^ 0x80);
     *q0 = (uchar)(u.s2 ^ 0x80);
     *q1 = (uchar)(u.s3 ^ 0x80);
-
-}
-
-__inline uint4 vp8_filter(
-    int mask,
-    uint hev,
-    uint4 base
-)
-{
-    //Need to convert the uint4 to int4, but intermediately treat it like the
-    //original alrogithm which XOR'd with 0x80 on a uchar.
-    int4 pq = convert_int4(convert_char4(base) ^ (char4)0x80);
-    
-    int vp8_filter;
-    int2 Filter;
-    int4 u;
-
-    /* add outer taps if we have high edge variance */
-    vp8_filter = clamp(pq.s0 - pq.s3, -128, 127);
-    vp8_filter &= hev;
-
-    /* inner taps */
-    vp8_filter = clamp(vp8_filter + 3 * (pq.s2 - pq.s1), -128, 127);
-    vp8_filter &= mask;
-
-    /* save bottom 3 bits so that we round one side +4 and the other +3
-     * if it equals 4 we'll set to adjust by -1 to account for the fact
-     * we'd round 3 the other way
-     */
-    int2 rounding = {4,3};
-    Filter = clamp((int2)vp8_filter + rounding, -128, 127) >> 3;
-
-    /* outer tap adjustments */
-    vp8_filter = Filter.s0 + 1;
-    vp8_filter >>= 1;
-    vp8_filter &= ~hev;
-
-    u.s0 = pq.s0 + vp8_filter;
-    u.s1 = pq.s1 + Filter.s1;
-    u.s2 = pq.s2 - Filter.s0;
-    u.s3 = pq.s3 - vp8_filter;
-    u = clamp(u, -128, 127);
-
-    return convert_uint4(convert_uchar4(u) ^ (uchar4)0x80);
 
 }
 
@@ -338,7 +337,7 @@ __inline void vp8_loop_filter_vertical_edge_worker_local(
     if (dc_diffs > 0){
         int s_off = cur_iter + thread * p; //Move right 4 cols per iter
         //Move down to the right part of the vertical line
-#if 1
+#if 0
         uint8 data = load8_local(s_base, s_off, 1);
         int mask = vp8_filter_mask(lfi->lim, lfi->blim, data);
         uint hev = vp8_hevmask(lfi->hev_thr, data.s2345);
