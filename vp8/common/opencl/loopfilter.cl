@@ -10,15 +10,15 @@ __inline int vp8_filter_mask(uint, uint, uint8);
 int vp8_hevmask_mem(uint, uint, uint, uint, uint);
 __inline int vp8_hevmask(uint, uint4);
 
-__inline void vp8_filter_mem( int mask, uint hev, local uint *, local uint *, local uint *, local uint * );
-__inline uint4 vp8_filter( int mask, uint hev, uint4 base);
+__inline void vp8_filter_mem( int mask, uint hev, local int *, local int *, local int *, local int * );
+__inline int4 vp8_filter( int mask, uint hev, int4 base);
 
 __inline void vp8_mbfilter_mem(int mask, uint hev, local uchar*, int p);
-__inline uint8 vp8_mbfilter(int mask, uint hev, uint8);
+__inline int8 vp8_mbfilter(int mask, uint hev, int8);
 
 __inline int vp8_simple_filter_mask(uint, uint, uint, uint, uint);
 
-__inline void vp8_simple_filter(int mask,global uint *base, int op1_off,int op0_off,int oq0_off,int oq1_off);
+__inline void vp8_simple_filter(int mask,global int *base, int op1_off,int op0_off,int oq0_off,int oq1_off);
 
 constant size_t threads[3] = {16, 8, 8};
 
@@ -46,28 +46,27 @@ typedef struct
 __inline void set_lfi(global loop_filter_info_n *lfi_n, LFI_MEM_TYPE loop_filter_info *lfi, int frame_type, int filter_level);
 
 //Load + Store functions
-__inline uint8 load8(global uint *s_base, int s_off, int p);
-__inline uint8 load8_local(local uint *s_base, int s_off, int p);
-__inline uint16 load16(global uint *s_base, int s_off, int p);
+__inline int8 load8(global int *s_base, int s_off, int p);
+__inline int8 load8_local(local int *s_base, int s_off, int p);
+__inline int16 load16(global int *s_base, int s_off, int p);
 
-__inline void save4(global uint *s_base, int s_off, int p, uint8 data);
-__inline void save6(global uint *s_base, int s_off, int p, uint8 data);
-__inline void save4_local(local uint *s_base, int s_off, int p, uint8 data);
-__inline void save6_local(local uint *s_base, int s_off, int p, uint8 data);
-__inline void save12(global uint *s_base, int s_off, int p, uint16 data);
+__inline void save4(global int *s_base, int s_off, int p, int8 data);
+__inline void save6(global int *s_base, int s_off, int p, int8 data);
+__inline void save4_local(local int *s_base, int s_off, int p, int8 data);
+__inline void save6_local(local int *s_base, int s_off, int p, int8 data);
+__inline void save12(global int *s_base, int s_off, int p, int16 data);
 
-__inline void load_mb(int size, local uint *dst, global uint *src, int src_off, int src_pitch, int mb_row, int mb_col, int dc_diffs, int thread);
-__inline void save_mb(int size, local uint *src, global uint *dst, int dst_off, int dst_pitch, int mb_row, int mb_col, int dc_diffs, int thread);
+__inline void load_mb(int size, local int *dst, global int *src, int src_off, int src_pitch, int mb_row, int mb_col, int dc_diffs, int thread);
+__inline void save_mb(int size, local int *src, global int *dst, int dst_off, int dst_pitch, int mb_row, int mb_col, int dc_diffs, int thread);
 
-__inline uint4 vp8_filter(
+__inline int4 vp8_filter(
     int mask,
     uint hev,
-    uint4 base
+    int4 base
 )
 {
-    //Need to convert the uint4 to int4, but intermediately treat it like the
-    //original alrogithm which XOR'd with 0x80 on a uchar.
-    int4 pq = convert_int4(convert_char4(base) ^ (char4)0x80);
+    //Original algorithm XOR'd with 0x80 on a uchar. Extend that to int4.
+    int4 pq = base ^ (int4)0xffffff80;
     
     int vp8_filter;
     int2 Filter;
@@ -99,16 +98,16 @@ __inline uint4 vp8_filter(
     u.s3 = pq.s3 - vp8_filter;
     u = clamp(u, -128, 127);
 
-    return convert_uint4(convert_uchar4(u) ^ (uchar4)0x80);
+    return u ^ (int4)0xffffff80;
 }
 
 __inline void vp8_filter_mem(
     int mask,
     uint hev,
-    local uint *p1,
-    local uint *p0,
-    local uint *q0,
-    local uint *q1
+    local int *p1,
+    local int *p0,
+    local int *q0,
+    local int *q1
 )
 {
 
@@ -149,15 +148,15 @@ __inline void vp8_filter_mem(
     u.s2 = sub_sat(pq2, Filter.s0);
     u.s3 = sub_sat(pq3, vp8_filter);
 
-    *p1 = (uchar)(u.s0 ^ 0x80);
-    *p0 = (uchar)(u.s1 ^ 0x80);
-    *q0 = (uchar)(u.s2 ^ 0x80);
-    *q1 = (uchar)(u.s3 ^ 0x80);
+    *p1 = (int)(u.s0 ^ 0x80);
+    *p0 = (int)(u.s1 ^ 0x80);
+    *q0 = (int)(u.s2 ^ 0x80);
+    *q1 = (int)(u.s3 ^ 0x80);
 
 }
 
-__inline uint8 load8(global uint *s_base, int s_off, int p){
-    uint8 data;
+__inline int8 load8(global int *s_base, int s_off, int p){
+    int8 data;
     data.s0 = s_base[s_off-4*p];
     data.s1 = s_base[s_off-3*p];
     data.s2 = s_base[s_off-2*p];
@@ -166,20 +165,19 @@ __inline uint8 load8(global uint *s_base, int s_off, int p){
     data.s5 = s_base[s_off+p];
     data.s6 = s_base[s_off+2*p];
     data.s7 = s_base[s_off+3*p];
-
     return data;
 }
 
-__inline uint16 load16(global uint *s_base, int s_off, int p){
-    uint16 data;
+__inline int16 load16(global int *s_base, int s_off, int p){
+    int16 data;
     data.s01234567 = load8(s_base, s_off, p);
     data.s89abcdef = load8(s_base, s_off+8*p, p);
     return data;
 }
 
 
-__inline uint8 load8_local(local uint *s_base, int s_off, int p){
-    uint8 data;
+__inline int8 load8_local(local int *s_base, int s_off, int p){
+    int8 data;
     data.s0 = s_base[s_off-4*p];
     data.s1 = s_base[s_off-3*p];
     data.s2 = s_base[s_off-2*p];
@@ -188,31 +186,30 @@ __inline uint8 load8_local(local uint *s_base, int s_off, int p){
     data.s5 = s_base[s_off+p];
     data.s6 = s_base[s_off+2*p];
     data.s7 = s_base[s_off+3*p];
-    return data & (uint8)0x000000ff;
+    return data;
 }
 
-__inline void save4(global uint *s_base, int s_off, int p, uint8 data){
+__inline void save4(global int *s_base, int s_off, int p, int8 data){
     s_base[s_off - 2*p] = data.s2;
     s_base[s_off - p  ] = data.s3;
     s_base[s_off      ] = data.s4;
     s_base[s_off + p  ] = data.s5;
 }
 
-__inline void save12(global uint *s_base, int s_off, int p, uint16 data){
+__inline void save12(global int *s_base, int s_off, int p, int16 data){
     save4(s_base, s_off, p, data.s01234567);
     save4(s_base, s_off+4*p, p, data.s456789ab);
     save4(s_base, s_off+8*p, p, data.s89abcdef);
 }
 
-__inline void save4_local(local uint *s_base, int s_off, int p, uint8 data){
-    data &= (uint8)0x000000ff;
+__inline void save4_local(local int *s_base, int s_off, int p, int8 data){
     s_base[s_off - 2*p] = data.s2;
     s_base[s_off - p  ] = data.s3;
     s_base[s_off      ] = data.s4;
     s_base[s_off + p  ] = data.s5;
 }
 
-__inline void save6(global uint *s_base, int s_off, int p, uint8 data){
+__inline void save6(global int *s_base, int s_off, int p, int8 data){
     s_base[s_off - 3*p] = data.s1;
     s_base[s_off - 2*p] = data.s2;
     s_base[s_off - p  ] = data.s3;
@@ -221,8 +218,7 @@ __inline void save6(global uint *s_base, int s_off, int p, uint8 data){
     s_base[s_off + 2*p  ] = data.s6;
 }
 
-__inline void save6_local(local uint *s_base, int s_off, int p, uint8 data){
-    data &= (uint8)0x000000ff;
+__inline void save6_local(local int *s_base, int s_off, int p, int8 data){
     s_base[s_off - 3*p] = data.s1;
     s_base[s_off - 2*p] = data.s2;
     s_base[s_off - p  ] = data.s3;
@@ -233,7 +229,7 @@ __inline void save6_local(local uint *s_base, int s_off, int p, uint8 data){
 
 // Filters horizontal edges of inner blocks in a Macroblock
 __inline void vp8_loop_filter_horizontal_edge_worker(
-    global uint *s_base,
+    global int *s_base,
     int source_offset,
     LFI_MEM_TYPE loop_filter_info *lfi,
     int dc_diffs,
@@ -245,12 +241,12 @@ __inline void vp8_loop_filter_horizontal_edge_worker(
         int s_off = source_offset + 4*cur_iter*p; //Move down 4 lines per iter
         s_off += thread; //Move to the right part of the horizontal line
 
-        uint8 data = load8(s_base, s_off, p);
+        int8 data = load8(s_base, s_off, p);
 
-        int mask = vp8_filter_mask(lfi->lim, lfi->blim, data);
+        int mask = vp8_filter_mask(lfi->lim, lfi->blim, as_uint8(data) & (uint8) 0x000000ff);
 
-        uint hev = vp8_hevmask(lfi->hev_thr, data.s2345);
-
+        uint hev = vp8_hevmask(lfi->hev_thr, as_uint4(data.s2345) & (uint4) 0x000000ff);
+        
         data.s2345 = vp8_filter(mask, hev, data.s2345);
 
         save4(s_base, s_off, p, data);
@@ -259,7 +255,7 @@ __inline void vp8_loop_filter_horizontal_edge_worker(
 
 // Filters horizontal edges of inner blocks in a Macroblock
 __inline void vp8_loop_filter_horizontal_edge_worker_local(
-    local uint *s_base,
+    local int *s_base,
     LFI_MEM_TYPE loop_filter_info *lfi,
     int dc_diffs,
     int cur_iter,
@@ -269,11 +265,11 @@ __inline void vp8_loop_filter_horizontal_edge_worker_local(
     if (dc_diffs > 0){
         int s_off = cur_iter*p + thread; //Move down 4 lines per iter
         //Move to the right part of the horizontal line
-        uint8 data = load8_local(s_base, s_off, p);
+        int8 data = load8_local(s_base, s_off, p);
 
-        int mask = vp8_filter_mask(lfi->lim, lfi->blim, data);
+        int mask = vp8_filter_mask(lfi->lim, lfi->blim, as_uint8(data) & (uint8) 0x000000ff);
 
-        uint hev = vp8_hevmask(lfi->hev_thr, data.s2345);
+        uint hev = vp8_hevmask(lfi->hev_thr, as_uint4(data.s2345) & (uint4) 0x000000ff);
 
         data.s2345 = vp8_filter(mask, hev, data.s2345);
 
@@ -282,7 +278,7 @@ __inline void vp8_loop_filter_horizontal_edge_worker_local(
 }
 
 __inline void vp8_loop_filter_vertical_edge_worker(
-    global uint *s_base,
+    global int *s_base,
     int source_offset,
     LFI_MEM_TYPE loop_filter_info *lfi,
     int dc_diffs,
@@ -294,11 +290,11 @@ __inline void vp8_loop_filter_vertical_edge_worker(
         int s_off = source_offset + 4*cur_iter + thread*p; //Move right 4 cols per iter
         //Move down to the right part of the vertical line
 
-        uint8 data = load8(s_base, s_off, 1);
+        int8 data = load8(s_base, s_off, 1);
 
-        int mask = vp8_filter_mask(lfi->lim, lfi->blim, data);
+        int mask = vp8_filter_mask(lfi->lim, lfi->blim, as_uint8(data) & (uint8) 0x000000ff);
 
-        uint hev = vp8_hevmask(lfi->hev_thr, data.s2345);
+        uint hev = vp8_hevmask(lfi->hev_thr, as_uint4(data.s2345) & (uint4) 0x000000ff);
         
         data.s2345 = vp8_filter(mask, hev, data.s2345);
         
@@ -306,14 +302,14 @@ __inline void vp8_loop_filter_vertical_edge_worker(
     }
 }
 
-__inline uint8 vp8_loop_filter_vertical_edge_worker_vector(
-    uint8 data,
+__inline int8 vp8_loop_filter_vertical_edge_worker_vector(
+    int8 data,
     LFI_MEM_TYPE loop_filter_info *lfi,
     int dc_diffs
 ){
     if (dc_diffs > 0){
-        int mask = vp8_filter_mask(lfi->lim, lfi->blim, data);
-        uint hev = vp8_hevmask(lfi->hev_thr, data.s2345);
+        int mask = vp8_filter_mask(lfi->lim, lfi->blim, as_uint8(data) & (uint8)0x000000ff);
+        uint hev = vp8_hevmask(lfi->hev_thr, as_uint4(data.s2345) & (uint4)0x000000ff);
         data.s2345 = vp8_filter(mask, hev, data.s2345);
     }
     return data;
@@ -321,7 +317,7 @@ __inline uint8 vp8_loop_filter_vertical_edge_worker_vector(
 
 
 __inline void vp8_loop_filter_vertical_edge_worker_local(
-    local uint *s_base,
+    local int *s_base,
     LFI_MEM_TYPE loop_filter_info *lfi,
     int dc_diffs,
     int cur_iter,
@@ -332,10 +328,14 @@ __inline void vp8_loop_filter_vertical_edge_worker_local(
         int s_off = cur_iter + thread * p; //Move right 4 cols per iter
         //Move down to the right part of the vertical line
 #if 1
-        uint8 data = load8_local(s_base, s_off, 1);
-        int mask = vp8_filter_mask(lfi->lim, lfi->blim, data);
-        uint hev = vp8_hevmask(lfi->hev_thr, data.s2345);
+        int8 data = load8_local(s_base, s_off, 1);
+
+        int mask = vp8_filter_mask(lfi->lim, lfi->blim, as_uint8(data) & (uint8) 0x000000ff);
+
+        uint hev = vp8_hevmask(lfi->hev_thr, as_uint4(data.s2345) & (uint4) 0x000000ff);
+
         data.s2345 = vp8_filter(mask, hev, data.s2345);
+
         save4_local(s_base, s_off, 1, data);
 #else
         uint sn4 = s_base[s_off-4];
@@ -355,7 +355,7 @@ __inline void vp8_loop_filter_vertical_edge_worker_local(
 }
 
 __inline void vp8_mbloop_filter_horizontal_edge_worker(
-    global uint *s_base,
+    global int *s_base,
     int source_offset,
     LFI_MEM_TYPE loop_filter_info *lfi,
     size_t thread,
@@ -364,11 +364,11 @@ __inline void vp8_mbloop_filter_horizontal_edge_worker(
     
     int s_off = source_offset + thread;
 
-    uint8 data = load8(s_base, s_off, p);
+    int8 data = load8(s_base, s_off, p);
 
-    int mask = vp8_filter_mask(lfi->lim, lfi->mblim, data);
+    int mask = vp8_filter_mask(lfi->lim, lfi->mblim, as_uint8(data) & (uint8) 0x000000ff);
 
-    uint hev = vp8_hevmask(lfi->hev_thr, data.s2345);
+    uint hev = vp8_hevmask(lfi->hev_thr, as_uint4(data.s2345) & (uint4) 0x000000ff);
 
     data = vp8_mbfilter(mask, hev, data);
 
@@ -377,17 +377,17 @@ __inline void vp8_mbloop_filter_horizontal_edge_worker(
 }
 
 __inline void vp8_mbloop_filter_horizontal_edge_worker_local(
-    local uint *source,
+    local int *source,
     LFI_MEM_TYPE loop_filter_info *lfi,
     size_t thread,
     int p //pitches[plane]
 ){
     
-    uint8 data = load8_local(source, thread, p);
+    int8 data = load8_local(source, thread, p);
     
-    int mask = vp8_filter_mask(lfi->lim, lfi->mblim, data);
+    int mask = vp8_filter_mask(lfi->lim, lfi->blim, as_uint8(data) & (uint8) 0x000000ff);
 
-    uint hev = vp8_hevmask(lfi->hev_thr, data.s2345);
+    uint hev = vp8_hevmask(lfi->hev_thr, as_uint4(data.s2345) & (uint4) 0x000000ff);
 
     data = vp8_mbfilter(mask, hev, data);
 
@@ -396,7 +396,7 @@ __inline void vp8_mbloop_filter_horizontal_edge_worker_local(
 }
 
 __inline void vp8_mbloop_filter_vertical_edge_worker(
-    global uint *s_base,
+    global int *s_base,
     int source_offset,
     LFI_MEM_TYPE loop_filter_info *lfi,
     size_t thread,
@@ -405,11 +405,11 @@ __inline void vp8_mbloop_filter_vertical_edge_worker(
 
     int s_off = source_offset + p*thread;
 
-    uint8 data = load8(s_base, s_off, 1);
+    int8 data = load8(s_base, s_off, 1);
 
-    int mask = vp8_filter_mask(lfi->lim, lfi->mblim, data);
+    int mask = vp8_filter_mask(lfi->lim, lfi->mblim, as_uint8(data) & (uint8) 0x000000ff);
 
-    uint hev = vp8_hevmask(lfi->hev_thr, data.s2345);
+    uint hev = vp8_hevmask(lfi->hev_thr, as_uint4(data.s2345) & (uint4) 0x000000ff);
 
     data = vp8_mbfilter(mask, hev, data);
 
@@ -417,7 +417,7 @@ __inline void vp8_mbloop_filter_vertical_edge_worker(
 }
 
 __inline void vp8_mbloop_filter_vertical_edge_worker_local(
-    local unsigned int *source,
+    local int *source,
     LFI_MEM_TYPE loop_filter_info *lfi,
     size_t thread,
     int p //threads[plane]+4
@@ -425,11 +425,11 @@ __inline void vp8_mbloop_filter_vertical_edge_worker_local(
 
     int s_off = p*thread;
 
-    uint8 data = load8_local(source, s_off, 1);
+    int8 data = load8_local(source, s_off, 1);
 
-    int mask = vp8_filter_mask(lfi->lim, lfi->mblim, data);
+    int mask = vp8_filter_mask(lfi->lim, lfi->blim, as_uint8(data) & (uint8) 0x000000ff);
 
-    uint hev = vp8_hevmask(lfi->hev_thr, data.s2345);
+    uint hev = vp8_hevmask(lfi->hev_thr, as_uint4(data.s2345) & (uint4) 0x000000ff);
 
     data = vp8_mbfilter(mask, hev, data);
 
@@ -437,7 +437,7 @@ __inline void vp8_mbloop_filter_vertical_edge_worker_local(
 }
 
 //Assumes a work group size of 1 plane
-__inline void load_mb(int size, local uint *dst, global uint *src, int src_off, int src_pitch, int mb_row, int mb_col, int dc_diffs, int thread){
+__inline void load_mb(int size, local int *dst, global int *src, int src_off, int src_pitch, int mb_row, int mb_col, int dc_diffs, int thread){
     //Load 4 row top border if row != 0, starting at row 0, col 4
     int dst_pitch = size + 4;
     int row_start, row_end, col_start, col_end;
@@ -468,7 +468,7 @@ __inline void load_mb(int size, local uint *dst, global uint *src, int src_off, 
     }
 }
 
-__inline void save_mb(int size, local uint *src, global uint *dst, int dst_off, int dst_pitch, int mb_row, int mb_col, int dc_diffs, int thread){
+__inline void save_mb(int size, local int *src, global int *dst, int dst_off, int dst_pitch, int mb_row, int mb_col, int dc_diffs, int thread){
     //Load 4 row top border if row != 0, starting at row 0, col 4
     int src_pitch = size + 4;
     int row_end, col_start, col_end;
@@ -502,7 +502,7 @@ __inline void save_mb(int size, local uint *src, global uint *dst, int dst_off, 
 }
 
 kernel void vp8_loop_filter_all_edges_kernel(
-    global unsigned int *s_base,
+    global int *s_base,
     global int *offsets,
     global int *pitches,
     global loop_filter_info_n *lfi_n,
@@ -541,7 +541,6 @@ kernel void vp8_loop_filter_all_edges_kernel(
         dc_diffs = filters[num_blocks * DC_DIFFS_LOCATION + block];
     }
     write_mem_fence(CLK_LOCAL_MEM_FENCE);
-
     int source_offset = offsets[block*3 + plane];
     
     int p = pitches[plane];    
@@ -552,16 +551,15 @@ kernel void vp8_loop_filter_all_edges_kernel(
     //threads/plane == global number of threads/plane.
     //This is forced in loop_filter_filters.c
     
-    local uint mb_data_actual[400]; //Local copy of frame data for current plane
+    local int mb_data_actual[400]; //Local copy of frame data for current plane
     int mb_offset, mb_pitch;
     
-    int num_threads = threads[plane];
     mb_pitch = num_threads+4;
     mb_offset = 4+4*mb_pitch;
-    local uint *mb_data = &mb_data_actual[mb_offset];
+    local int *mb_data = &mb_data_actual[mb_offset];
     
     load_mb(num_threads, mb_data, s_base, source_offset, p, mb_row, mb_col, dc_diffs, thread);
-    //write_mem_fence(CLK_LOCAL_MEM_FENCE);
+    write_mem_fence(CLK_LOCAL_MEM_FENCE);
 
     if ( mb_col > 0 ){
         vp8_mbloop_filter_vertical_edge_worker_local(mb_data, &lf_info, thread, mb_pitch);
@@ -624,7 +622,7 @@ kernel void vp8_loop_filter_all_edges_kernel(
 }
 
 kernel void vp8_loop_filter_horizontal_edges_kernel(
-    global unsigned int *s_base,
+    global int *s_base,
     global int *offsets,
     global int *pitches, /* pitch */
     global loop_filter_info_n *lfi_n,
@@ -673,7 +671,7 @@ kernel void vp8_loop_filter_horizontal_edges_kernel(
 }
 
 kernel void vp8_loop_filter_vertical_edges_kernel(
-    global unsigned int *s_base,
+    global int *s_base,
     global int *offsets,
     global int *pitches,
     global loop_filter_info_n *lfi_n,
@@ -727,7 +725,7 @@ kernel void vp8_loop_filter_vertical_edges_kernel(
 
 void vp8_loop_filter_simple_horizontal_edge_worker
 (
-    global unsigned int *s_base,
+    global int *s_base,
     global int *offsets,
     global int *pitches,
     LFI_MEM_TYPE loop_filter_info *lfi,
@@ -772,7 +770,7 @@ void vp8_loop_filter_simple_horizontal_edge_worker
 }
 
 void vp8_loop_filter_simple_vertical_edge_worker(
-    global unsigned int *s_base,
+    global int *s_base,
     global int *offsets, /* Y or YUV offsets for EACH block being processed*/
     global int *pitches, /* 1 or 3 values for Y or YUV pitches*/
     LFI_MEM_TYPE loop_filter_info *lfi, /* Single struct for the frame */
@@ -818,7 +816,7 @@ void vp8_loop_filter_simple_vertical_edge_worker(
 
 kernel void vp8_loop_filter_simple_vertical_edges_kernel
 (
-    global unsigned int *s_base,
+    global int *s_base,
     global int *offsets, /* Y or YUV offsets for EACH block being processed*/
     global int *pitches, /* 1 or 3 values for Y or YUV pitches*/
     global loop_filter_info_n *lfi_n, /* Single struct for the frame */
@@ -861,7 +859,7 @@ kernel void vp8_loop_filter_simple_vertical_edges_kernel
 
 kernel void vp8_loop_filter_simple_horizontal_edges_kernel
 (
-    global unsigned int *s_base,
+    global int *s_base,
     global int *offsets,
     global int *pitches,
     global loop_filter_info_n *lfi_n,
@@ -901,7 +899,7 @@ kernel void vp8_loop_filter_simple_horizontal_edges_kernel
 
 kernel void vp8_loop_filter_simple_all_edges_kernel
 (
-    global unsigned int *s_base,
+    global int *s_base,
     global int *offsets,
     global int *pitches,
     global loop_filter_info_n *lfi_n,
@@ -966,15 +964,15 @@ kernel void vp8_loop_filter_simple_all_edges_kernel
 }
 
 //Inline and non-kernel functions follow.
-__inline uint8 vp8_mbfilter(
+__inline int8 vp8_mbfilter(
     int mask,
     uint hev,
-    uint8 base
+    int8 base
 )
 {
     int4 u;
 
-    int8 pq = convert_int8(convert_char8(base) ^ (char8)0x80);
+    int8 pq = base ^ (int8)0xffffff80;
     
     /* add outer taps if we have high edge variance */
     int vp8_filter = clamp(pq.s2 - pq.s5, -128, 127);
@@ -1006,7 +1004,7 @@ __inline uint8 vp8_mbfilter(
     s.s0123 = clamp(pq.s0123 + u.s3210, -128, 127);
     s.s4567 = clamp(pq.s4567 - u, -128, 127);
 
-    return convert_uint8(convert_uchar8(s) ^ (uchar8)0x80);
+    return s ^ (int8)0xffffff80;
 }
 
 int vp8_hevmask_mem(uint thresh, uint s0, uint s1, uint s2, uint s3){
@@ -1078,7 +1076,7 @@ __inline int vp8_simple_filter_mask(uint blimit, uint p1, uint p0, uint q0, uint
 
 __inline void vp8_simple_filter(
     int mask,
-    global uint *base,
+    global int *base,
     int op1_off,
     int op0_off,
     int oq0_off,
@@ -1086,10 +1084,10 @@ __inline void vp8_simple_filter(
 )
 {
 
-    global int *op1 = (global int*)&base[op1_off];
-    global int *op0 = (global int*)&base[op0_off];
-    global int *oq0 = (global int*)&base[oq0_off];
-    global int *oq1 = (global int*)&base[oq1_off];
+    global int *op1 = &base[op1_off];
+    global int *op0 = &base[op0_off];
+    global int *oq0 = &base[oq0_off];
+    global int *oq1 = &base[oq1_off];
 
     int vp8_filter;
     int2 filter;
