@@ -42,6 +42,7 @@ typedef struct
 } loop_filter_info;
 
 #define LFI_MEM_TYPE local
+#define LFI_IS_LOCAL 1
 __inline void set_lfi(global loop_filter_info_n *lfi_n, LFI_MEM_TYPE loop_filter_info *lfi, int frame_type, int filter_level);
 
 //Load + Store functions
@@ -527,11 +528,11 @@ kernel void vp8_loop_filter_all_edges_kernel(
     size_t num_blocks = priority_num_blocks[priority_level];
     LFI_MEM_TYPE loop_filter_info lf_info;
     local int mb_row, mb_col, dc_diffs;
-#if LFI_MEM_TYPE != local
+#ifndef LFI_IS_LOCAL
     set_lfi(lfi_n, &lf_info, frame_type, filter_level);
 #endif
     if (get_local_id(0) == 0){ //shared among all local threads, save bandwidth
-#if LFI_MEM_TYPE == local
+#ifdef LFI_IS_LOCAL
         set_lfi(lfi_n, &lf_info, frame_type, filter_level);
 #endif
         mb_col = filters[num_blocks * COLS_LOCATION + block];
