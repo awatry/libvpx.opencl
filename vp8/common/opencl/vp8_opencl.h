@@ -18,10 +18,9 @@ extern "C" {
 #include "../../../vpx_config.h"
 
 #ifdef __APPLE__
-#include <OpenCL/cl.h>
+#include <OpenCL/opencl.h>
 #else
-#include <CL/cl.h>
-#include <CL/cl_ext.h>
+#include <CL/opencl.h>
 #endif
 
 //AMD supports allocating buffers directly out of GPU memory in Windows.
