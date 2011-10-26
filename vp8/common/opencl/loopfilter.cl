@@ -531,7 +531,8 @@ kernel void vp8_loop_filter_all_edges_kernel(
 #ifndef LFI_IS_LOCAL
     set_lfi(lfi_n, &lf_info, frame_type, filter_level);
 #endif
-    if (get_local_id(0) == 0){ //shared among all local threads, save bandwidth
+    //shared among all local threads, save bandwidth
+    if (get_local_id(0) == 0 && get_local_id(1) == 0 && get_local_id(2)==0){
 #ifdef LFI_IS_LOCAL
         set_lfi(lfi_n, &lf_info, frame_type, filter_level);
 #endif
