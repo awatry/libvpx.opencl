@@ -265,6 +265,9 @@ void vp8_loop_filter_build_filter_offsets(cl_int *filters, int level,
     int offset = block_offsets[level]*4;
     int num_blocks = priority_num_blocks[level];
 
+    if (num_blocks == 0)
+        return;
+
     vpx_memcpy(&filters[offset], filter_levels, num_blocks*sizeof(cl_int));
     vpx_memcpy(&filters[offset+DC_DIFFS_LOCATION*num_blocks], dc_diffs, num_blocks*sizeof(cl_int));
     vpx_memcpy(&filters[offset+COLS_LOCATION*num_blocks], mb_cols, num_blocks*sizeof(cl_int));
@@ -313,6 +316,7 @@ void vp8_loop_filter_macroblocks_cl(
     args->priority_level = priority_level;
     args->num_levels = num_levels;
     
+    /*
     if (num_levels > 1){
         int max = 0;
         int level;
@@ -321,6 +325,10 @@ void vp8_loop_filter_macroblocks_cl(
                 max = priority_num_blocks[level];
         }
         num_blocks = max;
+    }
+    */
+    if (num_blocks == 0){
+        return;
     }
     
     if (filter_type == NORMAL_LOOPFILTER){
@@ -333,29 +341,20 @@ void vp8_loop_filter_macroblocks_cl(
 
 void vp8_loop_filter_add_macroblock_cl(VP8_COMMON *cm, int mb_row, int mb_col,
         MACROBLOCKD *mbd, YV12_BUFFER_CONFIG *post, cl_int row[], cl_int col[], cl_int dc_diffs[], int y_offsets[], int u_offsets[], int v_offsets[],
-        cl_int filter_levels[], loop_filter_info_n *lfi_n, int pos)
+        cl_int filter_levels[], loop_filter_info_n *lfi_n, int pos, int filter_level)
 {
     int y_offset = 16 * (mb_col + (mb_row*cm->mb_cols)) + mb_row * (post->y_stride * 16 - post->y_width);
     int uv_offset = 8 * (mb_col + (mb_row*cm->mb_cols)) + mb_row * (post->uv_stride * 8 - post->uv_width);
 
-    int mode_index, seg, ref_frame, filter_level;
-    
     unsigned char *buf_base = post->buffer_alloc;
     y_offsets[pos] = post->y_buffer - buf_base + y_offset;
     u_offsets[pos] = post->u_buffer - buf_base + uv_offset;
     v_offsets[pos] = post->v_buffer - buf_base + uv_offset;
 
-    mbd->mode_info_context = cm->mi + ((mb_row * (cm->mb_cols+1) + mb_col));
-
     /* Distance of Mb to the various image edges.
      * These specified to 8th pel as they are always compared to values that are in 1/8th pel units
      * Apply any context driven MB level adjustment
      */
-    
-    mode_index = lfi_n->mode_lf_lut[mbd->mode_info_context->mbmi.mode];
-    seg = mbd->mode_info_context->mbmi.segment_id;
-    ref_frame = mbd->mode_info_context->mbmi.ref_frame;
-    filter_level = lfi_n->lvl[seg][ref_frame][mode_index];
     
     filter_levels[pos] = filter_level;
     row[pos] = mb_row;
@@ -389,9 +388,19 @@ void vp8_loop_filter_build_priority(int priority, VP8_COMMON *cm, MACROBLOCKD *m
 
         //Skip non-existent MBs
         if ((mb_col > -1 && (mb_col < mb_cols)) && (mb_row < cm->mb_rows)){
+            
+            int mode_index, seg, ref_frame, filter_level;
+            mbd->mode_info_context = cm->mi + ((mb_row * (cm->mb_cols+1) + mb_col));
+            mode_index = cm->lf_info.mode_lf_lut[mbd->mode_info_context->mbmi.mode];
+            seg = mbd->mode_info_context->mbmi.segment_id;
+            ref_frame = mbd->mode_info_context->mbmi.ref_frame;
+            filter_level = cm->lf_info.lvl[seg][ref_frame][mode_index];
+            if (filter_level <= 0)
+                continue;
+            
             vp8_loop_filter_add_macroblock_cl(cm, mb_row, mb_col,
                 mbd, post, rows, cols, dc_diffs, y_offsets, u_offsets, v_offsets,
-                filter_levels, &cm->lf_info, *current_blocks
+                filter_levels, &cm->lf_info, *current_blocks, filter_level
             );
             current_blocks[0]++;
             priority_mbs++;
@@ -421,9 +430,11 @@ void vp8_loop_filter_offsets_copy(VP8_COMMON *cm, MACROBLOCKD *mbd,
     
     cl_int *filters;
 
+    int num_blocks = priority_num_blocks[levels-1] + block_offsets[levels-1];
+    
 #if MAP_FILTERS
     //Always copy the dc_diffs, rows, cols, and filter_offsets values
-    VP8_CL_MAP_BUF(mbd->cl_commands, loop_mem.filters_mem, filters, 4*cm->MBs*sizeof(cl_int),,);
+    VP8_CL_MAP_BUF(mbd->cl_commands, loop_mem.filters_mem, filters, 4*num_blocks*sizeof(cl_int),,);
 #else
     filters = malloc(4*cm->MBs*sizeof(cl_int));
     if (filters == NULL){
@@ -445,7 +456,7 @@ void vp8_loop_filter_offsets_copy(VP8_COMMON *cm, MACROBLOCKD *mbd,
 #if MAP_FILTERS
     VP8_CL_UNMAP_BUF(mbd->cl_commands, loop_mem.filters_mem, filters, ,)
 #else
-    VP8_CL_SET_BUF(mbd->cl_commands, loop_mem.filters_mem, 4*cm->MBs*sizeof(cl_int), filters, vp8_loop_filter_frame(cm,mbd),)
+    VP8_CL_SET_BUF(mbd->cl_commands, loop_mem.filters_mem, 4*num_blocks*sizeof(cl_int), filters, vp8_loop_filter_frame(cm,mbd),)
     free(filters);
 #endif
 }
@@ -527,6 +538,8 @@ void vp8_loop_filter_frame_cl
     else if (memcmp(&current_settings, &prior_settings, sizeof(VP8_LOOP_SETTINGS))){
         recalculate_offsets = 1;
     }
+    
+    recalculate_offsets = 1;
     
     if (recalculate_offsets == 1){
         if (cm->MBs <= loop_mem.num_blocks)
