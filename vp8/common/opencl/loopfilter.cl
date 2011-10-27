@@ -517,13 +517,14 @@ kernel void vp8_loop_filter_all_edges_kernel(
     size_t thread = get_global_id(0);
     size_t plane = get_global_id(1);
 
-    int num_threads = (plane == 0) ? 16 : 8;
-    if ( thread >= num_threads )
-        return;
-
     int block_offset = block_offsets[priority_level];
     filters = &filters[4*block_offset];
     int filter_level = filters[block];
+
+    int num_threads = (plane == 0) ? 16 : 8;
+    if ( filter_level <= 0 || thread >= num_threads )
+        return;
+
     
     offsets = &offsets[3*block_offset];
     size_t num_blocks = priority_num_blocks[priority_level];

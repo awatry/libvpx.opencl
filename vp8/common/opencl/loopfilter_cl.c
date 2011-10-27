@@ -27,6 +27,8 @@
 #define MAP_OFFSETS 1
 #endif
 
+#define SKIP_NON_FILTERED_MBS 0
+
 #define STRINGIFY(x) #x
 #if SIMD_WIDTH == 1
 #define SIMD_STRING "1"
@@ -327,9 +329,11 @@ void vp8_loop_filter_macroblocks_cl(
         num_blocks = max;
     }
     */
+#if SKIP_NON_FILTERED_MBS
     if (num_blocks == 0){
         return;
     }
+#endif
     
     if (filter_type == NORMAL_LOOPFILTER){
         vp8_loop_filter_all_edges_cl(mbd, args, 3, num_blocks);
@@ -395,8 +399,13 @@ void vp8_loop_filter_build_priority(int priority, VP8_COMMON *cm, MACROBLOCKD *m
             seg = mbd->mode_info_context->mbmi.segment_id;
             ref_frame = mbd->mode_info_context->mbmi.ref_frame;
             filter_level = cm->lf_info.lvl[seg][ref_frame][mode_index];
-            if (filter_level <= 0)
+            
+#if SKIP_NON_FILTERED_MBS
+            if (filter_level <= 0 || (mb_row == 0 && mb_col == 0 && (mbd->mode_info_context->mbmi.mode != B_PRED &&
+                            mbd->mode_info_context->mbmi.mode != SPLITMV &&
+                            mbd->mode_info_context->mbmi.mb_skip_coeff)))
                 continue;
+#endif
             
             vp8_loop_filter_add_macroblock_cl(cm, mb_row, mb_col,
                 mbd, post, rows, cols, dc_diffs, y_offsets, u_offsets, v_offsets,
@@ -525,12 +534,15 @@ void vp8_loop_filter_frame_cl
             vp8_loop_filter_frame(cm,mbd),);
 #endif
 
+#if SKIP_NON_FILTERED_MBS
+    recalculate_offsets = 1;
+#else
     current_settings.filter_type = cm->filter_type;
     current_settings.y_stride = post->y_stride;
     current_settings.uv_stride = post->uv_stride;
     current_settings.mbcols = cm->mb_cols;
     current_settings.mbrows = cm->mb_rows;
-    
+
     //Determine if offsets need to be recalculated
     recalculate_offsets = 0;
     if (frame_num++ == 0)
@@ -538,8 +550,8 @@ void vp8_loop_filter_frame_cl
     else if (memcmp(&current_settings, &prior_settings, sizeof(VP8_LOOP_SETTINGS))){
         recalculate_offsets = 1;
     }
-    
-    recalculate_offsets = 1;
+#endif
+
     
     if (recalculate_offsets == 1){
         if (cm->MBs <= loop_mem.num_blocks)
