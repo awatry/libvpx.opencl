@@ -17,7 +17,7 @@
 #include "blockd_cl.h"
 
 //Disable usage of mapped buffers for performance increase on Nvidia hardware
-#if 0 
+#if 0
 #define USE_MAPPED_BUFFERS 0
 #define MAP_FILTERS 0
 #define MAP_OFFSETS 0
@@ -26,6 +26,8 @@
 #define MAP_FILTERS 1
 #define MAP_OFFSETS 1
 #endif
+
+#define SKIP_NON_FILTERED_MBS 0
 
 #define STRINGIFY(x) #x
 #if SIMD_WIDTH == 1
@@ -267,6 +269,9 @@ void vp8_loop_filter_build_filter_offsets(cl_int *filters, int level,
     int offset = block_offsets[level]*4;
     int num_blocks = priority_num_blocks[level];
 
+    if (num_blocks == 0)
+        return;
+
     vpx_memcpy(&filters[offset], filter_levels, num_blocks*sizeof(cl_int));
     vpx_memcpy(&filters[offset+DC_DIFFS_LOCATION*num_blocks], dc_diffs, num_blocks*sizeof(cl_int));
     vpx_memcpy(&filters[offset+COLS_LOCATION*num_blocks], mb_cols, num_blocks*sizeof(cl_int));
@@ -315,6 +320,7 @@ void vp8_loop_filter_macroblocks_cl(
     args->priority_level = priority_level;
     args->num_levels = num_levels;
     
+    /*
     if (num_levels > 1){
         int max = 0;
         int level;
@@ -324,6 +330,12 @@ void vp8_loop_filter_macroblocks_cl(
         }
         num_blocks = max;
     }
+    */
+#if SKIP_NON_FILTERED_MBS
+    if (num_blocks == 0){
+        return;
+    }
+#endif
     
     if (filter_type == NORMAL_LOOPFILTER){
         vp8_loop_filter_all_edges_cl(mbd, args, 3, num_blocks);
@@ -335,29 +347,20 @@ void vp8_loop_filter_macroblocks_cl(
 
 void vp8_loop_filter_add_macroblock_cl(VP8_COMMON *cm, int mb_row, int mb_col,
         MACROBLOCKD *mbd, YV12_BUFFER_CONFIG *post, cl_int row[], cl_int col[], cl_int dc_diffs[], int y_offsets[], int u_offsets[], int v_offsets[],
-        cl_int filter_levels[], loop_filter_info_n *lfi_n, int pos)
+        cl_int filter_levels[], loop_filter_info_n *lfi_n, int pos, int filter_level)
 {
     int y_offset = 16 * (mb_col + (mb_row*cm->mb_cols)) + mb_row * (post->y_stride * 16 - post->y_width);
     int uv_offset = 8 * (mb_col + (mb_row*cm->mb_cols)) + mb_row * (post->uv_stride * 8 - post->uv_width);
 
-    int mode_index, seg, ref_frame, filter_level;
-    
     unsigned char *buf_base = post->buffer_alloc;
     y_offsets[pos] = post->y_buffer - buf_base + y_offset;
     u_offsets[pos] = post->u_buffer - buf_base + uv_offset;
     v_offsets[pos] = post->v_buffer - buf_base + uv_offset;
 
-    mbd->mode_info_context = cm->mi + ((mb_row * (cm->mb_cols+1) + mb_col));
-
     /* Distance of Mb to the various image edges.
      * These specified to 8th pel as they are always compared to values that are in 1/8th pel units
      * Apply any context driven MB level adjustment
      */
-    
-    mode_index = lfi_n->mode_lf_lut[mbd->mode_info_context->mbmi.mode];
-    seg = mbd->mode_info_context->mbmi.segment_id;
-    ref_frame = mbd->mode_info_context->mbmi.ref_frame;
-    filter_level = lfi_n->lvl[seg][ref_frame][mode_index];
     
     filter_levels[pos] = filter_level;
     row[pos] = mb_row;
@@ -391,9 +394,24 @@ void vp8_loop_filter_build_priority(int priority, VP8_COMMON *cm, MACROBLOCKD *m
 
         //Skip non-existent MBs
         if ((mb_col > -1 && (mb_col < mb_cols)) && (mb_row < cm->mb_rows)){
+            
+            int mode_index, seg, ref_frame, filter_level;
+            mbd->mode_info_context = cm->mi + ((mb_row * (cm->mb_cols+1) + mb_col));
+            mode_index = cm->lf_info.mode_lf_lut[mbd->mode_info_context->mbmi.mode];
+            seg = mbd->mode_info_context->mbmi.segment_id;
+            ref_frame = mbd->mode_info_context->mbmi.ref_frame;
+            filter_level = cm->lf_info.lvl[seg][ref_frame][mode_index];
+            
+#if SKIP_NON_FILTERED_MBS
+            if (filter_level <= 0 || (mb_row == 0 && mb_col == 0 && (mbd->mode_info_context->mbmi.mode != B_PRED &&
+                            mbd->mode_info_context->mbmi.mode != SPLITMV &&
+                            mbd->mode_info_context->mbmi.mb_skip_coeff)))
+                continue;
+#endif
+            
             vp8_loop_filter_add_macroblock_cl(cm, mb_row, mb_col,
                 mbd, post, rows, cols, dc_diffs, y_offsets, u_offsets, v_offsets,
-                filter_levels, &cm->lf_info, *current_blocks
+                filter_levels, &cm->lf_info, *current_blocks, filter_level
             );
             current_blocks[0]++;
             priority_mbs++;
@@ -423,9 +441,11 @@ void vp8_loop_filter_offsets_copy(VP8_COMMON *cm, MACROBLOCKD *mbd,
     
     cl_int *filters;
 
+    int num_blocks = priority_num_blocks[levels-1] + block_offsets[levels-1];
+    
 #if MAP_FILTERS
     //Always copy the dc_diffs, rows, cols, and filter_offsets values
-    VP8_CL_MAP_BUF(mbd->cl_commands, loop_mem.filters_mem, filters, 4*cm->MBs*sizeof(cl_int),,);
+    VP8_CL_MAP_BUF(mbd->cl_commands, loop_mem.filters_mem, filters, 4*num_blocks*sizeof(cl_int),,);
 #else
     filters = malloc(4*cm->MBs*sizeof(cl_int));
     if (filters == NULL){
@@ -447,7 +467,7 @@ void vp8_loop_filter_offsets_copy(VP8_COMMON *cm, MACROBLOCKD *mbd,
 #if MAP_FILTERS
     VP8_CL_UNMAP_BUF(mbd->cl_commands, loop_mem.filters_mem, filters, ,)
 #else
-    VP8_CL_SET_BUF(mbd->cl_commands, loop_mem.filters_mem, 4*cm->MBs*sizeof(cl_int), filters, vp8_loop_filter_frame(cm,mbd),)
+    VP8_CL_SET_BUF(mbd->cl_commands, loop_mem.filters_mem, 4*num_blocks*sizeof(cl_int), filters, vp8_loop_filter_frame(cm,mbd),)
     free(filters);
 #endif
 }
@@ -464,8 +484,8 @@ void vp8_loop_filter_frame_cl
     int err, priority;
 #if USE_MAPPED_BUFFERS
     loop_filter_info *lfi_ptr = NULL;
-    unsigned char *buf = NULL;
 #endif
+    cl_uint *buf = NULL;
 
     cl_int *offsets = NULL;
     size_t offsets_size;
@@ -478,6 +498,7 @@ void vp8_loop_filter_frame_cl
     cl_int filter_levels[cm->MBs];
     int num_levels = 2 * (cm->mb_rows - 1) + cm->mb_cols;
     int current_blocks = 0;
+    int i;
     
     VP8_LOOPFILTER_ARGS args;
     
@@ -501,21 +522,29 @@ void vp8_loop_filter_frame_cl
      }
 #endif
 
-#if USE_MAPPED_BUFFERS
-    VP8_CL_MAP_BUF(mbd->cl_commands, post->buffer_mem, buf, post->frame_size, vp8_loop_filter_frame(cm,mbd),);
-    vpx_memcpy(buf, post->buffer_alloc, post->frame_size);
+#if USE_MAPPED_BUFFERS || 1
+    VP8_CL_MAP_BUF(mbd->cl_commands, post->buffer_mem, buf, post->frame_size * sizeof(cl_uint), vp8_loop_filter_frame(cm,mbd),);
+    //Copy frame to GPU and convert from uchar to uint
+    for (i = 0; i < post->frame_size; i++){
+        buf[i] = (cl_uint)post->buffer_alloc[i];
+    }
+    //vpx_memcpy(buf, post->buffer_alloc, post->frame_size);
+    
     VP8_CL_UNMAP_BUF(mbd->cl_commands, post->buffer_mem, buf,,);
 #else
     VP8_CL_SET_BUF(mbd->cl_commands, post->buffer_mem, post->frame_size, post->buffer_alloc,
             vp8_loop_filter_frame(cm,mbd),);
 #endif
 
+#if SKIP_NON_FILTERED_MBS
+    recalculate_offsets = 1;
+#else
     current_settings.filter_type = cm->filter_type;
     current_settings.y_stride = post->y_stride;
     current_settings.uv_stride = post->uv_stride;
     current_settings.mbcols = cm->mb_cols;
     current_settings.mbrows = cm->mb_rows;
-    
+
     //Determine if offsets need to be recalculated
     recalculate_offsets = 0;
     if (frame_num++ == 0)
@@ -523,6 +552,8 @@ void vp8_loop_filter_frame_cl
     else if (memcmp(&current_settings, &prior_settings, sizeof(VP8_LOOP_SETTINGS))){
         recalculate_offsets = 1;
     }
+#endif
+
     
     if (recalculate_offsets == 1){
         if (cm->MBs <= loop_mem.num_blocks)
@@ -598,9 +629,12 @@ void vp8_loop_filter_frame_cl
     }
 
     //Retrieve buffer contents
-#if USE_MAPPED_BUFFERS && (!defined(CL_MEM_USE_PERSISTENT_MEM_AMD) || (CL_MEM_USE_PERSISTENT_MEM_AMD != VP8_CL_MEM_ALLOC_TYPE))
-    buf = clEnqueueMapBuffer(mbd->cl_commands, post->buffer_mem, CL_TRUE, CL_MAP_READ, 0, post->frame_size, 0, NULL, NULL, &err); \
-    vpx_memcpy(post->buffer_alloc, buf, post->frame_size);
+#if 1 || USE_MAPPED_BUFFERS && (!defined(CL_MEM_USE_PERSISTENT_MEM_AMD) || (CL_MEM_USE_PERSISTENT_MEM_AMD != VP8_CL_MEM_ALLOC_TYPE))
+    buf = clEnqueueMapBuffer(mbd->cl_commands, post->buffer_mem, CL_TRUE, CL_MAP_READ, 0, post->frame_size * sizeof(cl_uint), 0, NULL, NULL, &err); \
+    for (i = 0; i < post->frame_size; i++){
+        post->buffer_alloc[i] = (unsigned char)buf[i];
+    }
+    //vpx_memcpy(post->buffer_alloc, buf, post->frame_size);
     VP8_CL_UNMAP_BUF(mbd->cl_commands, post->buffer_mem, buf,,);
 #else
     err = clEnqueueReadBuffer(mbd->cl_commands, post->buffer_mem, CL_FALSE, 0, post->frame_size, post->buffer_alloc, 0, NULL, NULL);
