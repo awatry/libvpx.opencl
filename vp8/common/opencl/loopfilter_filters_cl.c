@@ -45,6 +45,11 @@ void vp8_loop_filter_simple_horizontal_edges_cl( MACROBLOCKD *x,
         VP8_LOOPFILTER_ARGS *args, int num_planes, int num_blocks
 );
 
+void vp8_loop_filter_filters_init()
+{
+    memset(filter_args, -1, sizeof(VP8_LOOPFILTER_ARGS)*NUM_KERNELS);
+}
+
 static int vp8_loop_filter_cl_run(
     cl_command_queue cq,
     cl_kernel kernel,
@@ -65,11 +70,6 @@ static int vp8_loop_filter_cl_run(
                 local[0] = 1; //drop to 1 thread per group if necessary.
                               //At this point it'd be better to probably disable CL
         }
-    }
-    
-    if (first_run){
-        memset(filter_args, -1, sizeof(VP8_LOOPFILTER_ARGS)*NUM_KERNELS);
-        first_run = 0;
     }
     
     err = 0;

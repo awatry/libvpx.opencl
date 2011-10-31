@@ -229,7 +229,9 @@ int cl_init_loop_filter() {
     loop_mem.priority_num_blocks_mem = NULL;
     block_offsets = NULL;
     priority_num_blocks = NULL;
-    
+
+    vp8_loop_filter_filters_init();
+
     return CL_SUCCESS;
 }
 

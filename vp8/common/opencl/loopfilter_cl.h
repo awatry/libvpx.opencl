@@ -39,6 +39,8 @@ typedef struct VP8_LOOPFILTER_ARGS{
     void sym(MACROBLOCKD*, unsigned char *y, unsigned char *u, unsigned char *v,\
              int ystride, int uv_stride, loop_filter_info *lfi, int filter_level)
 
+void vp8_loop_filter_filters_init();
+
 extern void vp8_loop_filter_frame_cl
 (
     VP8_COMMON *cm,
