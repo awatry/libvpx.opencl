@@ -19,7 +19,6 @@
 
 typedef unsigned char uc;
 
-static int first_run = 1;
 #define NUM_KERNELS 6
 static VP8_LOOPFILTER_ARGS filter_args[NUM_KERNELS];
 
