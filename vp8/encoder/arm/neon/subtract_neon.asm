@@ -31,7 +31,7 @@
     ldr     r3, [r3]
     ldr     r6, [r0, #vp8_block_src_stride]
     add     r3, r3, r4                      ; src = *base_src + src
-    ldr     r7, [r1, #vp8_blockd_predictor]
+    ldr     r7, [r1, #vp8_blockd_predictor_base + vp8_blockd_predictor_offset]
 
     vld1.8          {d0}, [r3], r6          ;load src
     vld1.8          {d1}, [r7], r2          ;load pred

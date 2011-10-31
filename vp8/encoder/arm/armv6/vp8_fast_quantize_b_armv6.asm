@@ -27,8 +27,8 @@
     ldr     r3, [r0, #vp8_block_coeff]      ; coeff
     ldr     r4, [r0, #vp8_block_quant_fast] ; quant_fast
     ldr     r5, [r0, #vp8_block_round]      ; round
-    ldr     r6, [r1, #vp8_blockd_qcoeff]    ; qcoeff
-    ldr     r7, [r1, #vp8_blockd_dqcoeff]   ; dqcoeff
+    ldr     r6, [r1, #vp8_blockd_qcoeff_base + vp8_blockd_qcoeff_offset]    ; qcoeff
+    ldr     r7, [r1, #vp8_blockd_dqcoeff_base + vp8_blockd_dqcoeff_offset]   ; dqcoeff
     ldr     r8, [r1, #vp8_blockd_dequant]   ; dequant
 
     ldr     r2, loop_count          ; loop_count=0x1000000. 'lsls' instruction
@@ -107,7 +107,7 @@ loop
     ldr     r11, [sp, #0]           ; restore BLOCKD pointer
     beq     end                     ; skip eob calculations if all zero
 
-    ldr     r0, [r11, #vp8_blockd_qcoeff]
+    ldr     r0, [r11, #vp8_blockd_qcoeff_base + vp8_blockd_qcoeff_offset]
 
     ; check shortcut for nonzero qcoeffs
     tst    r1, #0x80
