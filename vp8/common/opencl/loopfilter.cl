@@ -22,6 +22,22 @@ __inline void vp8_simple_filter(int mask,global uint *base, int op1_off,int op0_
 
 constant size_t threads[3] = {16, 8, 8};
 
+#if !defined(__OPENCL_VERSION__) || !defined(__CL_VERSION_1_1__) || (__OPENCL_VERSION__ < __CL_VERSION_1_1__)
+__inline int clamp1(int input, int min1, int max1){
+    return min(max(input, min1), max1);
+}
+__inline int2 clamp2(int2 input, int2 min2, int2 max2){
+    return min(max(input, min2), max2);
+}
+__inline int4 clamp4(int4 input, int4 min4, int4 max4){
+    return min(max(input, min4), max4);
+}
+#else
+#define clamp1(in, min, max) clamp(in, min, max)
+#define clamp2(in, min, max) clamp(in, min, max)
+#define clamp4(in, min, max) clamp(in, min, max)
+#endif
+
 typedef struct
 {
     unsigned char mblim[MAX_LOOP_FILTER + 1][SIMD_WIDTH];
@@ -74,11 +90,11 @@ __inline uint4 vp8_filter(
     int4 u;
 
     /* add outer taps if we have high edge variance */
-    vp8_filter = clamp(pq.s0 - pq.s3, -128, 127);
+    vp8_filter = clamp1(pq.s0 - pq.s3, -128, 127);
     vp8_filter &= hev;
 
     /* inner taps */
-    vp8_filter = clamp(vp8_filter + 3 * (pq.s2 - pq.s1), -128, 127);
+    vp8_filter = clamp1(vp8_filter + 3 * (pq.s2 - pq.s1), -128, 127);
     vp8_filter &= mask;
 
     /* save bottom 3 bits so that we round one side +4 and the other +3
@@ -86,7 +102,7 @@ __inline uint4 vp8_filter(
      * we'd round 3 the other way
      */
     int2 rounding = {4,3};
-    Filter = clamp((int2)vp8_filter + rounding, -128, 127) >> 3;
+    Filter = clamp2((int2)vp8_filter + rounding, -128, 127) >> 3;
 
     /* outer tap adjustments */
     vp8_filter = Filter.s0 + 1;
@@ -97,7 +113,7 @@ __inline uint4 vp8_filter(
     u.s1 = pq.s1 + Filter.s1;
     u.s2 = pq.s2 - Filter.s0;
     u.s3 = pq.s3 - vp8_filter;
-    u = clamp(u, -128, 127);
+    u = clamp4(u, -128, 127);
 
     return convert_uint4(convert_uchar4(u) ^ (uchar4)0x80);
 }
@@ -127,7 +143,7 @@ __inline void vp8_filter_mem(
     vp8_filter &= hev;
 
     /* inner taps */
-    vp8_filter = clamp(vp8_filter + 3 * (pq2 - pq1), -128, 127);
+    vp8_filter = clamp1(vp8_filter + 3 * (pq2 - pq1), -128, 127);
     vp8_filter &= mask;
 
     /* save bottom 3 bits so that we round one side +4 and the other +3
@@ -979,8 +995,8 @@ __inline uint8 vp8_mbfilter(
     int8 pq = convert_int8(convert_char8(base) ^ (char8)0x80);
     
     /* add outer taps if we have high edge variance */
-    int vp8_filter = clamp(pq.s2 - pq.s5, -128, 127);
-    vp8_filter = clamp(vp8_filter + 3 * (pq.s4 - pq.s3), -128, 127);
+    int vp8_filter = clamp1(pq.s2 - pq.s5, -128, 127);
+    vp8_filter = clamp1(vp8_filter + 3 * (pq.s4 - pq.s3), -128, 127);
     vp8_filter &= mask;
 
     int2 filter = (int2)vp8_filter;
@@ -988,25 +1004,25 @@ __inline uint8 vp8_mbfilter(
 
     /* save bottom 3 bits so that we round one side +4 and the other +3 */
     int2 rounding = (int2){4,3};
-    filter = clamp(filter + rounding, -128, 127);
+    filter = clamp2(filter + rounding, -128, 127);
     filter.s0 >>= 3;
     filter.s1 >>= 3;
     
-    pq.s4 = clamp(pq.s4 - filter.s0, -128, 127);
-    pq.s3 = clamp(pq.s3 + filter.s1, -128, 127);
+    pq.s4 = clamp1(pq.s4 - filter.s0, -128, 127);
+    pq.s3 = clamp1(pq.s3 + filter.s1, -128, 127);
 
     /* only apply wider filter if not high edge variance */
     filter.s1 = vp8_filter & ~hev;
 
     /* roughly 3/7th, 2/7th, and 1/7th difference across boundary */
-    u.s0 = clamp((63 + filter.s1 * 27) >> 7, -128, 127);
-    u.s1 = clamp((63 + filter.s1 * 18) >> 7, -128, 127);
-    u.s2 = clamp((63 + filter.s1 * 9) >> 7, -128, 127);
+    u.s0 = clamp1((63 + filter.s1 * 27) >> 7, -128, 127);
+    u.s1 = clamp1((63 + filter.s1 * 18) >> 7, -128, 127);
+    u.s2 = clamp1((63 + filter.s1 * 9) >> 7, -128, 127);
     u.s3 = 0;
     
     int8 s;
-    s.s0123 = clamp(pq.s0123 + u.s3210, -128, 127);
-    s.s4567 = clamp(pq.s4567 - u, -128, 127);
+    s.s0123 = clamp4(pq.s0123 + u.s3210, -128, 127);
+    s.s4567 = clamp4(pq.s4567 - u, -128, 127);
 
     return convert_uint8(convert_uchar8(s) ^ (uchar8)0x80);
 }
@@ -1101,21 +1117,21 @@ __inline void vp8_simple_filter(
 
     int u;
 
-    vp8_filter = clamp(pq.s0 - pq.s3, -128, 127);
-    vp8_filter = clamp(vp8_filter + 3 * (pq.s2 - pq.s1), -128, 127);
+    vp8_filter = clamp1(pq.s0 - pq.s3, -128, 127);
+    vp8_filter = clamp1(vp8_filter + 3 * (pq.s2 - pq.s1), -128, 127);
     vp8_filter &= mask;
 
     /* save bottom 3 bits so that we round one side +4 and the other +3 */
     int2 rounding = {4,3};
-    filter = clamp((int2)vp8_filter + (int2)rounding, (int2)-128, (int2)127);
+    filter = clamp2((int2)vp8_filter + (int2)rounding, (int2)-128, (int2)127);
     filter.s0 >>= 3;
     filter.s1 >>= 3;
 
-    u = clamp(pq.s2 - filter.s0, -128, 127);
+    u = clamp1(pq.s2 - filter.s0, -128, 127);
     int sign1 = u < 0 ? 1 : -1;
     *oq0  = (u + 128 * sign1);
 
-    u = clamp(pq.s1 + filter.s1, -128, 127);
+    u = clamp1(pq.s1 + filter.s1, -128, 127);
     sign1 = u < 0 ? 1 : -1;
     *op0 = (u + 128 * sign1);
 }
