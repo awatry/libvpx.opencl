@@ -415,7 +415,8 @@ int cl_use_binary_kernel(char *src_file, char *bin_file){
         return ret;
     }
     
-    //Stat the two files
+    //Stat the two files. If either fails, use current return code
+    //Note: Useful if you have source or binary kernels, but not both
     if (stat(src_file, &src_stat) || stat(bin_file, &bin_stat)){
         return ret;
     }

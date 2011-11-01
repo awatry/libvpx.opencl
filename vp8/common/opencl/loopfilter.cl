@@ -262,7 +262,7 @@ __inline void vp8_loop_filter_horizontal_edge_worker(
         s_off += thread; //Move to the right part of the horizontal line
 
         uint8 data = load8(s_base, s_off, p);
-
+        
         int mask = vp8_filter_mask(lfi->lim, lfi->blim, data);
 
         uint hev = vp8_hevmask(lfi->hev_thr, data.s2345);
@@ -529,6 +529,8 @@ kernel void vp8_loop_filter_all_edges_kernel(
     global int *priority_num_blocks,
     int frame_type
 ){
+
+#if 0
     size_t block = get_global_id(2);
     size_t thread = get_global_id(0);
     size_t plane = get_global_id(1);
@@ -562,9 +564,77 @@ kernel void vp8_loop_filter_all_edges_kernel(
 
     int source_offset = offsets[block*3 + plane];
     
+    int p = pitches[plane];
+
+    if ( mb_col > 0 ){
+        vp8_mbloop_filter_vertical_edge_worker(s_base, source_offset, &lf_info, thread, p);
+    }
+
+    //YUV planes, then 2 more passes of Y plane
+    vp8_loop_filter_vertical_edge_worker(s_base, source_offset, &lf_info,
+            dc_diffs, 1, thread, p);
+    if (plane == 0){
+        vp8_loop_filter_vertical_edge_worker(s_base, source_offset, &lf_info,
+                dc_diffs, 2, thread, p);
+        vp8_loop_filter_vertical_edge_worker(s_base, source_offset, &lf_info,
+                dc_diffs, 3, thread, p);
+    }
+
+    barrier(CLK_GLOBAL_MEM_FENCE);
+
+    if (mb_row > 0){
+    //    vp8_mbloop_filter_horizontal_edge_worker(s_base, source_offset, &lf_info, thread, p);
+    }
+    //YUV planes, then 2 more passes of Y plane
+    vp8_loop_filter_horizontal_edge_worker(s_base, source_offset, &lf_info,
+            dc_diffs, 1, thread, p);
+    //if (plane == 0){
+    //    vp8_loop_filter_horizontal_edge_worker(s_base, source_offset, &lf_info,
+    //        dc_diffs, 2, thread, p);
+    //    vp8_loop_filter_horizontal_edge_worker(s_base, source_offset, &lf_info,
+    //        dc_diffs, 3, thread, p);
+    //}
+
+
+    return;
+#else
+    size_t block = get_global_id(2);
+    size_t thread = get_global_id(0);
+    size_t plane = get_global_id(1);
+
+    int block_offset = block_offsets[priority_level];
+    filters = &filters[4*block_offset];
+    int filter_level = filters[block];
+
+    int num_threads = (plane == 0) ? 16 : 8;
+    if ( filter_level <= 0 || thread >= num_threads )
+        return;
+
+    
+    offsets = &offsets[3*block_offset];
+    size_t num_blocks = priority_num_blocks[priority_level];
+    LFI_MEM_TYPE loop_filter_info lf_info;
+    local int mb_row, mb_col, dc_diffs;
+#ifndef LFI_IS_LOCAL
+    set_lfi(lfi_n, &lf_info, frame_type, filter_level);
+#endif
+    //shared among all local threads, save bandwidth
+    if (get_local_id(0) == 0 && get_local_id(1) == 0 && get_local_id(2)==0){
+#ifdef LFI_IS_LOCAL
+        set_lfi(lfi_n, &lf_info, frame_type, filter_level);
+#endif
+        mb_col = filters[num_blocks * COLS_LOCATION + block];
+        mb_row = filters[num_blocks * ROWS_LOCATION + block];
+        dc_diffs = filters[num_blocks * DC_DIFFS_LOCATION + block];
+    }
+    write_mem_fence(CLK_LOCAL_MEM_FENCE);
+    barrier(CLK_LOCAL_MEM_FENCE);
+
+    int source_offset = offsets[block*3 + plane];
+    
     int p = pitches[plane];    
     
-#define USE_LOCAL_MEM_FILTER 0
+#define USE_LOCAL_MEM_FILTER 1
 #if USE_LOCAL_MEM_FILTER
     //At the moment this local memory mechanism only works if local number of
     //threads/plane == global number of threads/plane.
@@ -573,7 +643,6 @@ kernel void vp8_loop_filter_all_edges_kernel(
     local uint mb_data_actual[400]; //Local copy of frame data for current plane
     int mb_offset, mb_pitch;
     
-    int num_threads = threads[plane];
     mb_pitch = num_threads+4;
     mb_offset = 4+4*mb_pitch;
     local uint *mb_data = &mb_data_actual[mb_offset];
@@ -595,6 +664,9 @@ kernel void vp8_loop_filter_all_edges_kernel(
                 dc_diffs, 12, thread, mb_pitch);
     }
     
+    barrier(CLK_LOCAL_MEM_FENCE);
+    write_mem_fence(CLK_LOCAL_MEM_FENCE);
+
     if (mb_row > 0){
         vp8_mbloop_filter_horizontal_edge_worker_local(mb_data, &lf_info, thread, mb_pitch);
     }
@@ -604,6 +676,9 @@ kernel void vp8_loop_filter_all_edges_kernel(
         vp8_loop_filter_horizontal_edge_worker_local(mb_data, &lf_info, dc_diffs, 8, thread, mb_pitch);
         vp8_loop_filter_horizontal_edge_worker_local(mb_data, &lf_info, dc_diffs, 12, thread, mb_pitch);
     }
+
+    write_mem_fence(CLK_LOCAL_MEM_FENCE);
+    barrier(CLK_LOCAL_MEM_FENCE);
     save_mb(num_threads, mb_data, s_base, source_offset, p, mb_row, mb_col, dc_diffs, thread);
 
 #else
@@ -638,6 +713,8 @@ kernel void vp8_loop_filter_all_edges_kernel(
         vp8_loop_filter_horizontal_edge_worker(s_base, source_offset, &lf_info,
             dc_diffs, 3, thread, p);
     }
+#endif
+
 #endif
 }
 
