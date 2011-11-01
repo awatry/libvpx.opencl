@@ -817,7 +817,7 @@ void vp8_loop_filter_simple_vertical_edge_worker(
             int s_off = cur_iter*4;
             s_off += p * i;
             
-            signed char mask = 0;
+            signed char mask;
 
             if (i < threads[0]){
                 uchar flimit;
@@ -931,6 +931,7 @@ kernel void vp8_loop_filter_simple_all_edges_kernel
     int frame_type
 )
 {
+
     size_t block = get_global_id(2);
     LFI_MEM_TYPE loop_filter_info lfi;
     
@@ -1041,7 +1042,7 @@ __inline int vp8_hevmask(uint thresh, uint4 pq)
     mask |= abs_diff(pq.s3, pq.s2) > thresh;
     return mask * -1;
 #else
-    return any(abs_diff(pq.s03, pq.s12) > (uint2)thresh) * -1;
+    return any(as_int2(abs_diff(pq.s03, pq.s12)) > (int2)thresh) * -1;
 #endif
 }
 
@@ -1074,9 +1075,9 @@ __inline int vp8_filter_mask(uint limit, uint blimit, uint8 pq)
     mask |= (abs_diff(pq.s3, pq.s4) * 2 + abs_diff(pq.s2, pq.s5) / 2  > blimit);
     return mask - 1;
 #else
-    uint8 diffs = abs_diff(pq.s01256732, pq.s12345645);
+    int8 diffs = as_int8(abs_diff(pq.s01256732, pq.s12345645));
     diffs.s6 = diffs.s6 * 2 + diffs.s7 / 2;
-    uint8 limits = {limit,limit,limit,limit,limit,limit,blimit, 0xffffffff};
+    int8 limits = {limit,limit,limit,limit,limit,limit,blimit, 0x7fffffff};
     return any(diffs > limits) - 1;
 #endif
 }
@@ -1111,22 +1112,20 @@ __inline void vp8_simple_filter(
 
     int vp8_filter;
     int2 filter;
-    int4 pq = (int4){*op1, *op0, *oq0, *oq1};
-    int4 sign = pq < 0 ? 1 : -1;
-    pq += 0x80 * sign; //Equivalent to (char) ^ 0x80
-
-    int u;
+    uint4 in = (uint4){*op1, *op0, *oq0, *oq1};
+    int4 pq = convert_int4(convert_char4(in) ^ 0x80);
 
     vp8_filter = clamp1(pq.s0 - pq.s3, -128, 127);
     vp8_filter = clamp1(vp8_filter + 3 * (pq.s2 - pq.s1), -128, 127);
     vp8_filter &= mask;
 
     /* save bottom 3 bits so that we round one side +4 and the other +3 */
-    int2 rounding = {4,3};
+    int2 rounding = (int2){4,3};
     filter = clamp2((int2)vp8_filter + (int2)rounding, (int2)-128, (int2)127);
     filter.s0 >>= 3;
     filter.s1 >>= 3;
 
+    int u;
     u = clamp1(pq.s2 - filter.s0, -128, 127);
     int sign1 = u < 0 ? 1 : -1;
     *oq0  = (u + 128 * sign1);

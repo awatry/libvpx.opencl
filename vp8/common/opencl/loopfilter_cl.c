@@ -17,7 +17,7 @@
 #include "blockd_cl.h"
 
 //Disable usage of mapped buffers for performance increase on Nvidia hardware
-#if 0
+#if ARCH_ARM
 #define USE_MAPPED_BUFFERS 0
 #define MAP_FILTERS 0
 #define MAP_OFFSETS 0
@@ -30,7 +30,7 @@
 #define SKIP_NON_FILTERED_MBS 0
 
 #define STRINGIFY(x) #x
-#if SIMD_WIDTH == 1
+#if ARCH_ARM
 #define SIMD_STRING "1"
 #else
 #define SIMD_STRING "16"
