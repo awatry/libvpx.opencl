@@ -140,7 +140,7 @@ int cl_grow_loop_mem(MACROBLOCKD *mbd, YV12_BUFFER_CONFIG *post, VP8_COMMON *cm)
     cl_free_loop_mem();
 
     //Now re-allocate the memory in the right size
-    loop_mem.offsets_mem = clCreateBuffer(cl_data.context, CL_MEM_READ_ONLY|VP8_CL_MEM_ALLOC_TYPE, sizeof(cl_int)*cm->MBs*16, NULL, &err);
+    loop_mem.offsets_mem = clCreateBuffer(cl_data.context, CL_MEM_READ_ONLY|VP8_CL_MEM_ALLOC_TYPE, sizeof(cl_int)*cm->MBs*3, NULL, &err);
     if (err != CL_SUCCESS){
         printf("Error creating loop filter buffer\n");
         return err;
