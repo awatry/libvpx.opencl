@@ -108,7 +108,7 @@ void vp8_loop_filter_all_edges_cl
 {
     
     size_t local = cl_data.vp8_loop_filter_all_edges_kernel_size;
-    if (local < 16){
+    if (local < 16 || cl_data.device_type == CL_DEVICE_TYPE_CPU){
         int iter = 0;
         int num_levels = args->num_levels;
         args->num_levels = 1;
