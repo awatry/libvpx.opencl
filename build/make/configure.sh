@@ -479,6 +479,9 @@ process_common_cmdline() {
         ;;
         --help|-h) show_help
         ;;
+        --opencl_ld_override=*)
+        alt_opencl="${optval}"
+        ;;
         *) die_unknown $opt
         ;;
         esac
@@ -963,7 +966,7 @@ process_common_toolchain() {
         echo "  disabling multithread"
         soft_enable opencl #Provide output to make user comfortable
         enable runtime_cpu_detect
-	
+	        
         #Use dlopen() to load OpenCL when possible.
         case ${toolchain} in
             *darwin10*) #Snow Leopard
@@ -985,11 +988,14 @@ process_common_toolchain() {
 #                fi
                 ;;
             *)
-                if check_header dlfcn.h; then
+                OPENCL="-lOpenCL"
+                OPENCL="${alt_opencl:-${OPENCL}}"
+
+                if [ "${alt_opencl}x" == "x" ] && check_header dlfcn.h; then
                     add_extralibs -ldl 
                     enable dlopen
                 else
-                    add_extralibs -lOpenCL
+                    add_extralibs ${OPENCL}
 #                    add_extralibs -I${CL_TOP}/inc -L${CL_TOP}/lib/${CL_MACH} -lsnusamsung_opencl -ldl -lpthread -lrt
                 fi
                 ;;
