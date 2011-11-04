@@ -940,7 +940,7 @@ kernel void vp8_loop_filter_simple_all_edges_kernel
 )
 {
 
-    size_t block = get_global_id(2);
+    int block = (int)get_global_id(2);
     LFI_MEM_TYPE loop_filter_info lfi;
     
     int block_offset = block_offsets[priority_level];
@@ -1121,7 +1121,7 @@ __inline void vp8_simple_filter(
     int vp8_filter;
     int2 filter;
     uint4 in = (uint4){*op1, *op0, *oq0, *oq1};
-    int4 pq = convert_int4(convert_char4(in) ^ 0x80);
+    int4 pq = convert_int4(convert_char4(in) ^ (char4)0x80);
 
     vp8_filter = clamp1(pq.s0 - pq.s3, -128, 127);
     vp8_filter = clamp1(vp8_filter + 3 * (pq.s2 - pq.s1), -128, 127);
