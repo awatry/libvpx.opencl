@@ -534,6 +534,18 @@ kernel void vp8_loop_filter_all_edges_kernel(
     size_t thread = get_global_id(0);
     size_t plane = get_global_id(1);
 
+#if COMBINE_PLANES
+    if (thread > 15){
+        if (thread > 23){
+            thread -= 24;
+            plane = 2;
+        } else {
+            thread -= 16;
+            plane = 1;
+        }
+    }
+#endif
+
     int block_offset = block_offsets[priority_level];
     filters = &filters[4*block_offset];
     int filter_level = filters[block];
@@ -666,6 +678,18 @@ kernel void vp8_loop_filter_horizontal_edges_kernel(
     size_t block = get_global_id(2);
     size_t num_blocks = get_global_size(2);
     
+#if COMBINE_PLANES
+    if (thread > 15){
+        if (thread > 23){
+            thread -= 24;
+            plane = 2;
+        } else {
+            thread -= 16;
+            plane = 1;
+        }
+    }
+#endif
+
     int block_offset = block_offsets[priority_level];
     filters = &filters[4*block_offset];
     offsets = &offsets[3*block_offset];
@@ -714,7 +738,19 @@ kernel void vp8_loop_filter_vertical_edges_kernel(
     size_t plane = get_global_id(1);
     size_t block = get_global_id(2);
     size_t num_blocks = get_global_size(2);
-    
+   
+#if COMBINE_PLANES
+    if (thread > 15){
+        if (thread > 23){
+            thread -= 24;
+            plane = 2;
+        } else {
+            thread -= 16;
+            plane = 1;
+        }
+    }
+#endif
+ 
     int block_offset = block_offsets[priority_level];
     
     filters = &filters[4*block_offset];

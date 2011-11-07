@@ -59,8 +59,23 @@ static int vp8_loop_filter_cl_run(
     VP8_LOOPFILTER_ARGS *current_args
 ){
 
-    size_t global[3] = {16, num_planes, num_blocks};
-    size_t local[3] = {16, 1, 1};
+    size_t global[3], local[3];
+    if (cl_data.vp8_loop_filter_combine_planes == 0){
+        global[0] = 16;
+        global[1] = num_planes;
+        local[0] = 16;
+    } else {
+        global[0] = 32;
+        global[1] = 1;
+        local[0] = 32;
+    }
+    global[2] = num_blocks;
+    local[1] = local[2] = 1;
+            
+    if (num_planes == 1){
+        global[0] = local[0] = 16;
+    }
+    
     int err;
 
     if (max_local_size < 16){

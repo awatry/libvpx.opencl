@@ -29,17 +29,16 @@
 
 #define SKIP_NON_FILTERED_MBS 0
 
+#define STR(x) STRINGIFY(x)
 #define STRINGIFY(x) #x
-#if ARCH_ARM
-#define SIMD_STRING "1"
-#else
-#define SIMD_STRING "16"
-#endif
+
+#define VP8_SIMD_STRING " -D SIMD_WIDTH=" STR(SIMD_WIDTH)
+#define VP8_LF_COMBINE_PLANES_STR " -D COMBINE_PLANES="
 
 #define COLS_LOCATION 1
 #define DC_DIFFS_LOCATION 2
 #define ROWS_LOCATION 3
-const char *loopFilterCompileOptions = "-D COLS_LOCATION=1 -D DC_DIFFS_LOCATION=2 -D ROWS_LOCATION=3 -D MAX_LOOP_FILTER=63 -D SIMD_WIDTH="SIMD_STRING;
+const char *loopFilterCompileOptions = "-D COLS_LOCATION=1 -D DC_DIFFS_LOCATION=2 -D ROWS_LOCATION=3 -D MAX_LOOP_FILTER=63" VP8_SIMD_STRING;
 const char *loop_filter_cl_file_name = "vp8/common/opencl/loopfilter";
 
 typedef struct VP8_LOOP_SETTINGS{
@@ -186,15 +185,46 @@ int cl_grow_loop_mem(MACROBLOCKD *mbd, YV12_BUFFER_CONFIG *post, VP8_COMMON *cm)
     return cl_populate_loop_mem(mbd, post);
 }
 
+static char* vp8_cl_build_lf_compile_opts(){
+    //Build program compile-time options
+    //If CPU (or forced), use combined planes
+    size_t lf_co_size = strlen(loopFilterCompileOptions)+1;
+    char *type_str;
+    char *lf_opts = malloc(lf_co_size + strlen(VP8_LF_COMBINE_PLANES_STR)+1);
+    if (lf_opts == NULL){
+        return NULL;
+    }
+
+    type_str = malloc(2);
+    if (type_str == NULL){
+        free(lf_opts);
+        return NULL;
+    }
+    cl_data.vp8_loop_filter_combine_planes = (cl_data.device_type == CL_DEVICE_TYPE_CPU);
+    sprintf(type_str,"%d", cl_data.vp8_loop_filter_combine_planes);
+    
+    lf_opts = strcpy(lf_opts, loopFilterCompileOptions);
+    lf_opts = strcat(lf_opts, VP8_LF_COMBINE_PLANES_STR);
+    lf_opts = strcat(lf_opts, type_str);
+    free(type_str);
+    return lf_opts;
+}
+
 //Start of externally callable functions.
 
 int cl_init_loop_filter() {
     int err;
 
+    char *lf_opts = vp8_cl_build_lf_compile_opts();
+    if (lf_opts == NULL)
+        return VP8_CL_TRIED_BUT_FAILED;
+    
     // Create the filter compute program from the file-defined source code
     if ( cl_load_program(&cl_data.loop_filter_program, loop_filter_cl_file_name,
-            loopFilterCompileOptions) != CL_SUCCESS )
+            lf_opts) != CL_SUCCESS )
         return VP8_CL_TRIED_BUT_FAILED;
+    
+    free(lf_opts);
 
     // Create the compute kernels in the program we wish to run
     VP8_CL_CREATE_KERNEL(cl_data,loop_filter_program,vp8_loop_filter_all_edges_kernel,"vp8_loop_filter_all_edges_kernel");
