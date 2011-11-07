@@ -250,7 +250,8 @@ typedef struct VP8_COMMON_CL {
     size_t vp8_loop_filter_simple_vertical_edges_kernel_size;
     
     int vp8_loop_filter_combine_planes;
-
+    int vp8_loop_filter_uint_buffer;
+    
     cl_program dequant_program;
     cl_kernel vp8_dequant_dc_idct_add_kernel;
     cl_kernel vp8_dequant_idct_add_kernel;

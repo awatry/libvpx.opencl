@@ -35,6 +35,8 @@
 #define VP8_SIMD_STRING " -D SIMD_WIDTH=" STR(SIMD_WIDTH)
 #define VP8_LF_COMBINE_PLANES_STR " -D COMBINE_PLANES="
 
+#define VP8_LF_UINT_BUFFER_STR " -D MEM_IS_UINT="
+
 #define COLS_LOCATION 1
 #define DC_DIFFS_LOCATION 2
 #define ROWS_LOCATION 3
@@ -190,7 +192,7 @@ static char* vp8_cl_build_lf_compile_opts(){
     //If CPU (or forced), use combined planes
     size_t lf_co_size = strlen(loopFilterCompileOptions)+1;
     char *type_str;
-    char *lf_opts = malloc(lf_co_size + strlen(VP8_LF_COMBINE_PLANES_STR)+1);
+    char *lf_opts = malloc(lf_co_size + strlen(VP8_LF_COMBINE_PLANES_STR) + 1 + strlen(VP8_LF_UINT_BUFFER_STR)+1);
     if (lf_opts == NULL){
         return NULL;
     }
@@ -206,6 +208,12 @@ static char* vp8_cl_build_lf_compile_opts(){
     lf_opts = strcpy(lf_opts, loopFilterCompileOptions);
     lf_opts = strcat(lf_opts, VP8_LF_COMBINE_PLANES_STR);
     lf_opts = strcat(lf_opts, type_str);
+    
+    cl_data.vp8_loop_filter_uint_buffer = (cl_data.device_type != CL_DEVICE_TYPE_CPU);
+    sprintf(type_str,"%d", cl_data.vp8_loop_filter_uint_buffer);
+    lf_opts = strcat(lf_opts, VP8_LF_UINT_BUFFER_STR);
+    lf_opts = strcat(lf_opts, type_str);
+    
     free(type_str);
     return lf_opts;
 }
@@ -555,10 +563,13 @@ void vp8_loop_filter_frame_cl
 #if USE_MAPPED_BUFFERS || 1
     VP8_CL_MAP_BUF(mbd->cl_commands, post->buffer_mem, buf, post->frame_size * sizeof(cl_uint), vp8_loop_filter_frame(cm,mbd),);
     //Copy frame to GPU and convert from uchar to uint
-    for (i = 0; i < post->frame_size; i++){
-        buf[i] = (cl_uint)post->buffer_alloc[i];
+    if (cl_data.vp8_loop_filter_uint_buffer){
+        for (i = 0; i < post->frame_size; i++){
+            buf[i] = (cl_uint)post->buffer_alloc[i];
+        }
+    } else {
+        vpx_memcpy(buf, post->buffer_alloc, post->frame_size);
     }
-    //vpx_memcpy(buf, post->buffer_alloc, post->frame_size);
     
     VP8_CL_UNMAP_BUF(mbd->cl_commands, post->buffer_mem, buf,,);
 #else
@@ -661,10 +672,13 @@ void vp8_loop_filter_frame_cl
     //Retrieve buffer contents
 #if 1 || USE_MAPPED_BUFFERS && (!defined(CL_MEM_USE_PERSISTENT_MEM_AMD) || (CL_MEM_USE_PERSISTENT_MEM_AMD != VP8_CL_MEM_ALLOC_TYPE))
     buf = clEnqueueMapBuffer(mbd->cl_commands, post->buffer_mem, CL_TRUE, CL_MAP_READ, 0, post->frame_size * sizeof(cl_uint), 0, NULL, NULL, &err); \
-    for (i = 0; i < post->frame_size; i++){
-        post->buffer_alloc[i] = (unsigned char)buf[i];
+    if (cl_data.vp8_loop_filter_uint_buffer){
+        for (i = 0; i < post->frame_size; i++){
+            post->buffer_alloc[i] = (unsigned char)buf[i];
+        }
+    } else {
+        vpx_memcpy(post->buffer_alloc, buf, post->frame_size);
     }
-    //vpx_memcpy(post->buffer_alloc, buf, post->frame_size);
     VP8_CL_UNMAP_BUF(mbd->cl_commands, post->buffer_mem, buf,,);
 #else
     err = clEnqueueReadBuffer(mbd->cl_commands, post->buffer_mem, CL_FALSE, 0, post->frame_size, post->buffer_alloc, 0, NULL, NULL);
