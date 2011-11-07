@@ -550,9 +550,15 @@ kernel void vp8_loop_filter_all_edges_kernel(
     filters = &filters[4*block_offset];
     int filter_level = filters[block];
 
-    int num_threads = (plane == 0) ? 16 : 8;
+    int num_threads = 16 - (plane > 0)*8;
+
+#if COMBINE_PLANES == 0
     if ( filter_level <= 0 || thread >= num_threads )
         return;
+#else
+    if ( filter_level <= 0 )
+        return;
+#endif
 
     offsets = &offsets[3*block_offset];
     size_t num_blocks = priority_num_blocks[priority_level];
@@ -702,7 +708,12 @@ kernel void vp8_loop_filter_horizontal_edges_kernel(
     LFI_MEM_TYPE loop_filter_info lf_info;
     set_lfi(lfi_n, &lf_info, frame_type, filter_level);
 
+#if COMBINE_PLANES == 0
     int thread_level_filter = (thread<threads[plane]) & (filter_level!=0);
+#else
+    int thread_level_filter = (filter_level!=0);
+#endif
+
     int do_filter = filters[num_blocks*ROWS_LOCATION + block] > 0;
     do_filter &= thread_level_filter;
     if (do_filter){
@@ -765,7 +776,12 @@ kernel void vp8_loop_filter_vertical_edges_kernel(
 
     int p = pitches[plane];
     
+#if COMBINE_PLANES == 0
     int thread_level_filter = (thread<threads[plane]) & (filter_level!=0);
+#else
+    int thread_level_filter = (filter_level!=0);
+#endif
+
     int do_filter = filters[num_blocks*COLS_LOCATION + block] > 0;
     do_filter &= thread_level_filter;
     if (do_filter){
