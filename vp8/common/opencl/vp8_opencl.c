@@ -128,10 +128,10 @@ int cl_common_init() {
     //printf("Enumerating %d platform(s)\n", num_found);
     //Enumerate the platforms found
     for (i = 0; i < num_found; i++){
-    	char buf[2048];
-        size_t len;
-        
 #if 0
+        char buf[2048];
+        size_t len;
+
     	err = clGetPlatformInfo( platform_ids[i], CL_PLATFORM_VENDOR, sizeof(buf), buf, &len);
     	if (err != CL_SUCCESS){
             fprintf(stderr, "Error retrieving platform vendor for platform %d",i);
@@ -162,18 +162,24 @@ int cl_common_init() {
         //printf("found %d devices\n", num_devices);
         cl_data.device_id = NULL;
         for( dev = 0; dev < num_devices; dev++ ){
+#if ENABLE_CL_IDCT_DEQUANT == 1 || ENABLE_CL_SUBPIXEL == 1
             char ext[2048];
+            
             //Get info for this device.
             err = clGetDeviceInfo(devices[dev], CL_DEVICE_EXTENSIONS,
                     sizeof(ext),ext,NULL);
             VP8_CL_CHECK_SUCCESS(NULL,err != CL_SUCCESS,
                     "Error retrieving device extension list",continue, 0);
+            
             //printf("Device %d supports: %s\n",dev,ext);
             
-            //The kernels in VP8 require byte-addressable stores, which is an
+            //The prediction/IDCT kernels in VP8 require byte-addressable stores, which is an
             //extension. It's required in OpenCL 1.1, but not all devices
             //support that version.
+
             if (strstr(ext,"cl_khr_byte_addressable_store")){
+#endif
+
                 //We found a valid device, so use it. But if we find a GPU
                 //(maybe this is one), prefer that.
                 cl_data.device_id = devices[dev];
@@ -183,7 +189,9 @@ int cl_common_init() {
                     //printf("Device %d is a GPU\n",dev);
                     break;
                 }
+#if ENABLE_CL_IDCT_DEQUANT == 1 || ENABLE_CL_SUBPIXEL == 1
             }
+#endif
         }
 
         //If we've found a usable GPU, stop looking.
