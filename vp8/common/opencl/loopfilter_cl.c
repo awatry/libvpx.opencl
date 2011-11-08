@@ -238,7 +238,7 @@ int cl_init_loop_filter() {
     VP8_CL_CREATE_KERNEL(cl_data,loop_filter_program,vp8_loop_filter_all_edges_kernel,"vp8_loop_filter_all_edges_kernel");
     VP8_CL_CALC_LOCAL_SIZE(cl_data.vp8_loop_filter_all_edges_kernel,&cl_data.vp8_loop_filter_all_edges_kernel_size);
     
-    if (cl_data.device_type == CL_DEVICE_TYPE_CPU || cl_data.vp8_loop_filter_all_edges_kernel_size < 16){
+    if (cl_data.vp8_loop_filter_all_edges_kernel_size < 16){
         VP8_CL_CREATE_KERNEL(cl_data,loop_filter_program,vp8_loop_filter_horizontal_edges_kernel,"vp8_loop_filter_horizontal_edges_kernel");
         VP8_CL_CREATE_KERNEL(cl_data,loop_filter_program,vp8_loop_filter_vertical_edges_kernel,"vp8_loop_filter_vertical_edges_kernel");
         VP8_CL_CALC_LOCAL_SIZE(cl_data.vp8_loop_filter_horizontal_edges_kernel,&cl_data.vp8_loop_filter_horizontal_edges_kernel_size);
