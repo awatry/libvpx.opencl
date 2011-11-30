@@ -43,7 +43,7 @@ Advanced options:
   ${toggle_static}                static library support
   ${toggle_small}                 favor smaller size over speed
   ${toggle_opencl}                support for OpenCL-assisted VP8 decoding (experimental)
-  --opencl_ld_overide=LDFLAGS     Override OpenCL library name and flags (default = -lOpenCL)
+  --opencl_ld_override=LDFLAGS     Override OpenCL library name and flags (default = -lOpenCL)
   ${toggle_postproc_visualizer}   macro block / block level visualizers
 
 Codecs:
