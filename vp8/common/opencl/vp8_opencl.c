@@ -455,7 +455,6 @@ int cl_load_program(cl_program *prog_ref, const char *file_name, const char *opt
 
     if (cl_use_binary_kernel(src_file, bin_file)){
         //Attempt to load binary kernel first
-        kernel_bin = NULL;
         kernel_bin = cl_read_binary_file(bin_file, &size);
         if (kernel_bin != NULL){
             cl_int status;
@@ -489,7 +488,8 @@ int cl_load_program(cl_program *prog_ref, const char *file_name, const char *opt
         free(src_file);
 
         if (kernel_src != NULL) {
-            *prog_ref = clCreateProgramWithSource(cl_data.context, 1, (const char**)(&kernel_src), NULL, &err);
+            const char *src = kernel_src;
+            *prog_ref = clCreateProgramWithSource(cl_data.context, 1, &src, NULL, &err);
             free(kernel_src);
 
             if (err != CL_SUCCESS) {
