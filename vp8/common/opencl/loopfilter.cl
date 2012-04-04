@@ -88,7 +88,7 @@ __inline uint4 vp8_filter(
 )
 {
     //Need to convert the uint4 to int4, but intermediately treat it like the
-    //original alrogithm which XOR'd with 0x80 on a uchar.
+    //original algorithm which XOR'd with 0x80 on a uchar.
     int4 pq = convert_int4(convert_char4(base) ^ (char4)0x80);
     
     int vp8_filter;
