@@ -76,9 +76,11 @@ sym(vp8_fast_quantize_b_ssse3):
     pmulhw      xmm1, [rdx]
     pmulhw      xmm5, [rdx + 16]
 
-    mov         rax, [rsi + vp8_blockd_qcoeff_base + vp8_blockd_qcoeff_offset]
+    mov         rax, [rsi + vp8_blockd_qcoeff_base]
+    add         rax, vp8_blockd_qcoeff_offset
     mov         rdi, [rsi + vp8_blockd_dequant]
-    mov         rcx, [rsi + vp8_blockd_dqcoeff_base + vp8_blockd_dqcoeff_offset]
+    mov         rcx, [rsi + vp8_blockd_dqcoeff_base]
+    add         rcx, vp8_blockd_dqcoeff_offset
 
     pxor        xmm1, xmm0
     pxor        xmm5, xmm4

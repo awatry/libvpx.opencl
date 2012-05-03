@@ -35,7 +35,8 @@
     ldr     r3, [r4]
     ldr     r7, [r0, #vp8_block_src_stride]
     add     r3, r3, r5          ; src = *base_src + src
-    ldr     r8, [r1, #vp8_blockd_predictor_base + vp8_blockd_predictor_offset]
+    ldr     r8, [r1, #vp8_blockd_predictor_base]
+    add     r8, r8, #vp8_blockd_predictor_offset
 
     mov     r9, #4              ; loop count
 

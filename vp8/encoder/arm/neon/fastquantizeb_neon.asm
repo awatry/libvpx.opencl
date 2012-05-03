@@ -32,7 +32,8 @@
 
     vld1.16         {q0, q1}, [r4@128]  ; load z
 
-    ldr             r7, [r2, #vp8_blockd_qcoeff_base + vp8_blockd_qcoeff_offset]
+    ldr             r7, [r2, #vp8_blockd_qcoeff_base]
+    vadd.s16        r7, #vp8_blockd_qcoeff_offset
 
     vabs.s16        q4, q0              ; calculate x = abs(z)
     vabs.s16        q5, q1
@@ -82,7 +83,8 @@
     vshr.s16        q10, #1             ; right shift 1 after vqdmulh
     vshr.s16        q11, #1
 
-    ldr             r9, [r2, #vp8_blockd_dqcoeff_base + vp8_blockd_dqcoeff_offset]
+    ldr             r9, [r2, #vp8_blockd_dqcoeff_base]
+	vadd.s16        r9, #vp8_blockd_dqcoeff_offset
 
     veor.s16        q10, q12            ; y2^sz2
     veor.s16        q11, q13
@@ -93,7 +95,8 @@
     vsub.s16        q10, q12            ; x2=(y^sz)-sz = (y^sz)-(-1) (2's complement)
     vsub.s16        q11, q13
 
-    ldr             r6, [r3, #vp8_blockd_qcoeff_base + vp8_blockd_qcoeff_offset]
+    ldr             r6, [r3, #vp8_blockd_qcoeff_base]
+    vadd.s16        r6, #vp8_blockd_qcoeff_offset
 
     vmul.s16        q2, q6, q4          ; x * Dequant
     vmul.s16        q3, q7, q5
@@ -114,7 +117,8 @@
 
     vst1.s16        {q2, q3}, [r9]      ; store dqcoeff = x * Dequant
 
-    ldr             r7, [r3, #vp8_blockd_dqcoeff_base + vp8_blockd_dqcoeff_offset]
+    ldr             r7, [r3, #vp8_blockd_dqcoeff_base]
+    vadd.s16        r7, #vp8_blockd_dqcoeff_offset
 
     vand            q0, q6, q14         ; get all valid numbers from scan array
     vand            q1, q7, q15
@@ -164,8 +168,10 @@
 
     vld1.16         {q0, q1}, [r3@128]  ; load z
     vorr.s16        q14, q0, q1         ; check if all zero (step 1)
-    ldr             r6, [r1, #vp8_blockd_qcoeff_base + vp8_blockd_qcoeff_offset]
-    ldr             r7, [r1, #vp8_blockd_dqcoeff_base + vp8_blockd_dqcoeff_offset]
+    ldr             r6, [r1, #vp8_blockd_qcoeff_base]
+    vadd.s16        r6, #vp8_blockd_qcoeff_offset
+    ldr             r7, [r1, #vp8_blockd_dqcoeff_base]
+    vadd.s16        r7, #vp8_blockd_dqcoeff_offset
     vorr.s16        d28, d28, d29       ; check if all zero (step 2)
 
     vabs.s16        q12, q0             ; calculate x = abs(z)
