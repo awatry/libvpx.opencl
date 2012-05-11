@@ -26,6 +26,7 @@ typedef enum
 static void setup_block
 (
     BLOCKD *b,
+    int mv_stride,
     unsigned char **base,
     int Stride,
     int offset,
@@ -54,63 +55,36 @@ static void setup_macroblock(MACROBLOCKD *x, BLOCKSET bs)
     int block;
 
     unsigned char **y, **u, **v;
-    unsigned char **buf_base;
-    int y_off, u_off, v_off;
 
     if (bs == DEST)
     {
-        buf_base = &x->dst.buffer_alloc;
-        y_off = x->dst.y_buffer - x->dst.buffer_alloc;
-        u_off = x->dst.u_buffer - x->dst.buffer_alloc;
-        v_off = x->dst.v_buffer - x->dst.buffer_alloc;
         y = &x->dst.y_buffer;
         u = &x->dst.u_buffer;
         v = &x->dst.v_buffer;
-        y_off = 0;
-
-        //y = buf_base;
-        //y_off = x->dst.y_buffer - x->dst.buffer_alloc;
-        
-        u = buf_base;
-        v = buf_base;
-
-        u_off = x->dst.u_buffer - x->dst.buffer_alloc;
-        v_off = x->dst.v_buffer - x->dst.buffer_alloc;
-
     }
     else
     {
-        buf_base = &x->pre.buffer_alloc;
         y = &x->pre.y_buffer;
         u = &x->pre.u_buffer;
         v = &x->pre.v_buffer;
-        y_off = u_off = v_off = 0;
-
-        //y = buf_base;
-        //y_off = x->pre.y_buffer - x->pre.buffer_alloc;
-        //u = buf_base;
-        //u_off = x->pre.u_buffer - x->pre.buffer_alloc;
-        //v = buf_base;
-        //v_off = x->pre.v_buffer - x->pre.buffer_alloc;
     }
 
     for (block = 0; block < 16; block++) /* y blocks */
     {
-        setup_block(&x->block[block], y, x->dst.y_stride,
-                        y_off + ((block >> 2) * 4 * x->dst.y_stride + (block & 3) * 4), bs);
+        setup_block(&x->block[block], x->dst.y_stride, y, x->dst.y_stride,
+                        (block >> 2) * 4 * x->dst.y_stride + (block & 3) * 4, bs);
     }
 
     for (block = 16; block < 20; block++) /* U and V blocks */
     {
-        int block_off = ((block - 16) >> 1) * 4 * x->dst.uv_stride + (block & 1) * 4;
+        setup_block(&x->block[block], x->dst.uv_stride, u, x->dst.uv_stride,
+                        ((block - 16) >> 1) * 4 * x->dst.uv_stride + (block & 1) * 4, bs);
 
-        setup_block(&x->block[block], u, x->dst.uv_stride,
-                        u_off + block_off, bs);
-
-        setup_block(&x->block[block+4], v, x->dst.uv_stride,
-                        v_off + block_off, bs);
+        setup_block(&x->block[block+4], x->dst.uv_stride, v, x->dst.uv_stride,
+                        ((block - 16) >> 1) * 4 * x->dst.uv_stride + (block & 1) * 4, bs);
     }
 }
+
 
 void vp8_setup_block_dptrs(MACROBLOCKD *x)
 {
@@ -146,7 +120,9 @@ void vp8_setup_block_dptrs(MACROBLOCKD *x)
         for (c = 0; c < 4; c++)
         {
             offset = r * 4 * 16 + c * 4;
+            x->block[r*4+c].diff_base      = x->diff;
             x->block[r*4+c].diff_offset      = offset;
+            x->block[r*4+c].predictor_offset = x->predictor;
             x->block[r*4+c].predictor_offset = offset;
 #if CONFIG_OPENCL && !ONE_CQ_PER_MB
             if (cl_initialized == CL_SUCCESS)
@@ -161,8 +137,10 @@ void vp8_setup_block_dptrs(MACROBLOCKD *x)
         for (c = 0; c < 2; c++)
         {
             offset = 256 + r * 4 * 8 + c * 4;
+            x->block[16+r*2+c].diff_base      = x->diff;
             x->block[16+r*2+c].diff_offset      = offset;
-            x->block[16+r*2+c].predictor_offset = offset;
+            x->block[16+r*2+c].predictor_base = x->predictor;
+			x->block[16+r*2+c].predictor_offset = offset;
 
 #if CONFIG_OPENCL && !ONE_CQ_PER_MB
             if (cl_initialized == CL_SUCCESS)
@@ -177,7 +155,9 @@ void vp8_setup_block_dptrs(MACROBLOCKD *x)
         for (c = 0; c < 2; c++)
         {
             offset = 320+ r * 4 * 8 + c * 4;
+            x->block[20+r*2+c].diff_base      = x->diff;
             x->block[20+r*2+c].diff_offset      = offset;
+            x->block[20+r*2+c].predictor_base = x->predictor;
             x->block[20+r*2+c].predictor_offset = offset;
 
 #if CONFIG_OPENCL && !ONE_CQ_PER_MB
@@ -187,6 +167,7 @@ void vp8_setup_block_dptrs(MACROBLOCKD *x)
         }
     }
 
+    x->block[24].diff_base = x->diff;
     x->block[24].diff_offset = 384;
 
     for (r = 0; r < 25; r++)
@@ -196,8 +177,6 @@ void vp8_setup_block_dptrs(MACROBLOCKD *x)
         x->block[r].dqcoeff_base = x->dqcoeff;
         x->block[r].dqcoeff_offset = r * 16;
         
-        x->block[r].predictor_base = x->predictor;
-        x->block[r].diff_base = x->diff;
         x->block[r].eobs_base = x->eobs;
 
 #if CONFIG_OPENCL

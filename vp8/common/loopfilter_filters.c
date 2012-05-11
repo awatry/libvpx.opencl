@@ -95,7 +95,6 @@ static __inline void vp8_filter(signed char mask, uc hev, uc *op1,
     *op1 = u ^ 0x80;
 
 }
-
 void vp8_loop_filter_horizontal_edge_c
 (
     unsigned char *s,

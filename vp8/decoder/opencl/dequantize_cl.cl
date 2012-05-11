@@ -48,22 +48,13 @@ __kernel void vp8_dequant_idct_add_kernel(
     __global short *input_base,
     int input_offset,
     __global short *dq,
-    __global unsigned char *pred_base,
-    int pred_offset,
     __global unsigned char *dest_base,
     int dest_offset,
-    int pitch,
     int stride
-)
-{
-    short output[16];
-    short *diff_ptr = output;
-    int r, c;
+){
     int i;
-    __global unsigned char *dest = dest_base + dest_offset;
-    __global short *input = input_base + input_offset;
-    __global unsigned char *pred = pred_base + pred_offset;
-
+	_global short *input = &input_base[input_offset];
+	
 #if USE_VECTORS
     vstore16( (short16)vload16(0,dq) * (short16)vload16(0,input) , 0, input);
 #else
@@ -73,31 +64,10 @@ __kernel void vp8_dequant_idct_add_kernel(
     }
 #endif
 
-    /* the idct halves ( >> 1) the pitch */
-    vp8_short_idct4x4llm(input, output, 4 << 1);
+    vp8_short_idct4x4llm(input, &dest_base[dest_offset], stride, &dest_base[dest_offset], stride);
 
-    //Note, remember to copy back the input buffer (qcoeff) to system memory.
     cl_memset_short(input, 0, 32);
 
-    for (r = 0; r < 4; r++)
-    {
-        for (c = 0; c < 4; c++)
-        {
-            int a = diff_ptr[c] + pred[c];
-
-            if (a < 0)
-                a = 0;
-
-            if (a > 255)
-                a = 255;
-
-            dest[c] = (unsigned char) a;
-        }
-
-        dest += stride;
-        diff_ptr += 4;
-        pred += pitch;
-    }
 }
 
 
@@ -108,16 +78,10 @@ __kernel void vp8_dequant_dc_idct_add_kernel(
     __global short *dequant_base,
     int dequant_offset,
 
-    __global unsigned char *pred_base,
-    int pred_offset,
-
-    __global short *diff_base,
-    int diff_offset,
-
     __global unsigned char *dest,
 
-    int pitch,
-    int stride
+    int stride,
+    int Dc
 )
 {
     int i;
@@ -127,10 +91,8 @@ __kernel void vp8_dequant_dc_idct_add_kernel(
 
     global short *input = &qcoeff_base[qcoeff_offset];
     global short *dq = &dequant_base[dequant_offset];
-    global unsigned char *pred = pred_base + pred_offset;
 
-    //A modified input buffer... copy back to System memory when done!
-    input[0] = diff_base[diff_offset];
+    input[0] = Dc;
 
 #if USE_VECTORS
     vstore16( (short16)vload16(0,dq) * (short16)vload16(0,input) , 0, input);
@@ -141,61 +103,39 @@ __kernel void vp8_dequant_dc_idct_add_kernel(
     }
 #endif
     
-    /* the idct halves ( >> 1) the pitch */
-    vp8_short_idct4x4llm(input, output, 4 << 1);
+    vp8_short_idct4x4llm(input, dest, stride, dest, stride);
 
     cl_memset_short(input, 0, 32);
-
-    for (r = 0; r < 4; r++)
-    {
-        for (c = 0; c < 4; c++)
-        {
-            int a = diff_ptr[c] + pred[c];
-
-            if (a < 0)
-                a = 0;
-
-            if (a > 255)
-                a = 255;
-
-            dest[c] = (unsigned char) a;
-        }
-
-        dest += stride;
-        diff_ptr += 4;
-        pred += pitch;
-    }
 }
 
 
 
 
-//Note that this kernel has been copied from common/opencl/idctllm_cl.cl
-void vp8_short_idct4x4llm(
-    __global short *input,
-    short *output,
-    int pitch
-)
+//Note that this has been copied from common/opencl/idctllm_cl.cl
+void vp8_short_idct4x4llm(global short *input, global unsigned char *pred_ptr,
+                            int pred_stride, global unsigned char *dst_ptr,
+                            int dst_stride)
 {
     int i;
+    int r, c;
     int a1, b1, c1, d1;
-
-    __global short *ip = input;
+    short output[16];
+    global short *ip = input;
     short *op = output;
     int temp1, temp2;
-    int shortpitch = pitch >> 1;
+    int shortpitch = 4;
 
     for (i = 0; i < 4; i++)
     {
         a1 = ip[0] + ip[8];
         b1 = ip[0] - ip[8];
 
-        temp1 = (ip[4] * sinpi8sqrt2 + rounding) >> 16;
-        temp2 = ip[12] + ((ip[12] * cospi8sqrt2minus1 + rounding) >> 16);
+        temp1 = (ip[4] * sinpi8sqrt2) >> 16;
+        temp2 = ip[12] + ((ip[12] * cospi8sqrt2minus1) >> 16);
         c1 = temp1 - temp2;
 
-        temp1 = ip[4] + ((ip[4] * cospi8sqrt2minus1 + rounding) >> 16);
-        temp2 = (ip[12] * sinpi8sqrt2 + rounding) >> 16;
+        temp1 = ip[4] + ((ip[4] * cospi8sqrt2minus1) >> 16);
+        temp2 = (ip[12] * sinpi8sqrt2) >> 16;
         d1 = temp1 + temp2;
 
         op[shortpitch*0] = a1 + d1;
@@ -208,19 +148,20 @@ void vp8_short_idct4x4llm(
         op++;
     }
 
+    ip = output;
     op = output;
 
     for (i = 0; i < 4; i++)
     {
-        a1 = op[0] + op[2];
-        b1 = op[0] - op[2];
+        a1 = ip[0] + ip[2];
+        b1 = ip[0] - ip[2];
 
-        temp1 = (op[1] * sinpi8sqrt2 + rounding) >> 16;
-        temp2 = op[3] + ((op[3] * cospi8sqrt2minus1 + rounding) >> 16);
+        temp1 = (ip[1] * sinpi8sqrt2) >> 16;
+        temp2 = ip[3] + ((ip[3] * cospi8sqrt2minus1) >> 16);
         c1 = temp1 - temp2;
 
-        temp1 = op[1] + ((op[1] * cospi8sqrt2minus1 + rounding) >> 16);
-        temp2 = (op[3] * sinpi8sqrt2 + rounding) >> 16;
+        temp1 = ip[1] + ((ip[1] * cospi8sqrt2minus1) >> 16);
+        temp2 = (ip[3] * sinpi8sqrt2) >> 16;
         d1 = temp1 + temp2;
 
 
@@ -230,38 +171,28 @@ void vp8_short_idct4x4llm(
         op[1] = (b1 + c1 + 4) >> 3;
         op[2] = (b1 - c1 + 4) >> 3;
 
+        ip += shortpitch;
         op += shortpitch;
     }
 
-}
+    ip = output;
+    for (r = 0; r < 4; r++)
+    {
+        for (c = 0; c < 4; c++)
+        {
+            int a = ip[c] + pred_ptr[c] ;
 
-void vp8_dc_only_idct_add_kernel(
-    short input_dc,
-    __global unsigned char *pred_ptr,
-    __global unsigned char *dst_ptr,
-    int pitch,
-    int stride
-)
-{
-    int a1 = ((input_dc + 4) >> 3);
-    int r, c;
-    int pred_offset,dst_offset;
+            if (a < 0)
+                a = 0;
 
-    int tid = get_global_id(0);
-    if (tid < 16){
-        r = tid / 4;
-        c = tid % 4;
+            if (a > 255)
+                a = 255;
 
-        pred_offset = r * pitch;
-        dst_offset = r * stride;
-        int a = a1 + pred_ptr[pred_offset + c] ;
-
-        if (a < 0)
-            a = 0;
-        else if (a > 255)
-            a = 255;
-
-        dst_ptr[dst_offset + c] = (unsigned char) a ;
+            dst_ptr[c] = (unsigned char) a ;
+        }
+        ip += 4;
+        dst_ptr += dst_stride;
+        pred_ptr += pred_stride;
     }
 }
 

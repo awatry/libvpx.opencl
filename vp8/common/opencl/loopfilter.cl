@@ -46,10 +46,10 @@ __inline int4 clamp4(int4 input, int4 min4, int4 max4){
 
 typedef struct
 {
-    unsigned char mblim[MAX_LOOP_FILTER + 1][SIMD_WIDTH];
-    unsigned char blim[MAX_LOOP_FILTER + 1][SIMD_WIDTH];
-    unsigned char lim[MAX_LOOP_FILTER + 1][SIMD_WIDTH];
-    unsigned char hev_thr[4][SIMD_WIDTH];
+    unsigned char mblim[MAX_LOOP_FILTER + 1][SIMD_WIDTH] __attribute__ ((aligned(SIMD_WIDTH)));
+    unsigned char blim[MAX_LOOP_FILTER + 1][SIMD_WIDTH] __attribute__ ((aligned(SIMD_WIDTH)));
+    unsigned char lim[MAX_LOOP_FILTER + 1][SIMD_WIDTH] __attribute__ ((aligned(SIMD_WIDTH)));
+    unsigned char hev_thr[4][SIMD_WIDTH] __attribute__ ((aligned(SIMD_WIDTH)));
     unsigned char lvl[4][4][4];
     unsigned char hev_thr_lut[2][MAX_LOOP_FILTER + 1];
     unsigned char mode_lf_lut[10];

@@ -8,6 +8,16 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
+/**
+ * XXX: The kernel arguments are probably WRONG after merging ed9c66f from
+ *      upstream. The kernels themselves probably need tweaking, and same for 
+ *      kernels in idctllm_cl.cl
+ * 
+ *      I've committed this as is becase IDCT is useless at the moment anyway.
+ *      It's prohibitively slow and not necessarily producing correct output,
+ *      which is why it's disabled by default.
+ */
+
 //ACW: Remove me after debugging.
 #include <stdio.h>
 #include <string.h>
@@ -117,8 +127,8 @@ void vp8_dequant_idct_add_cl(BLOCKD *b, unsigned char *dest_base, cl_mem dest_me
     err |= clSetKernelArg(cl_data.vp8_dequant_idct_add_kernel, 8, sizeof (int), &stride);
     VP8_CL_CHECK_SUCCESS( b->cl_commands, err != CL_SUCCESS,
         "Error: Failed to set kernel arguments!\n",
-        idct_add(b->qcoeff_base+q_offset, b->dequant,  b->predictor_base + pred_offset,
-            dest_base + dest_offset, pitch, stride),
+        idct_add(b->qcoeff_base+q_offset, b->dequant,
+            dest_base + dest_offset, stride),
     );
 
     /* Execute the kernel */
@@ -126,8 +136,8 @@ void vp8_dequant_idct_add_cl(BLOCKD *b, unsigned char *dest_base, cl_mem dest_me
     VP8_CL_CHECK_SUCCESS( b->cl_commands, err != CL_SUCCESS,
         "Error: Failed to execute kernel!\n",
         printf("err = %d\n",err);\
-        idct_add(b->qcoeff_base+q_offset, b->dequant,  b->predictor_base + pred_offset,
-            dest_base + dest_offset, pitch, stride),
+        idct_add(b->qcoeff_base+q_offset, b->dequant,
+            dest_base + dest_offset, stride),
     );
 
     if (free_mem == 1){
@@ -135,8 +145,8 @@ void vp8_dequant_idct_add_cl(BLOCKD *b, unsigned char *dest_base, cl_mem dest_me
         err = clEnqueueReadBuffer(b->cl_commands, dest_mem, CL_FALSE, 0, dst_size, dest_base, 0, NULL, NULL);
         VP8_CL_CHECK_SUCCESS( b->cl_commands, err != CL_SUCCESS,
             "Error: Failed to read output array!\n",
-            idct_add(b->qcoeff_base+q_offset, b->dequant,  b->predictor_base + pred_offset,
-                dest_base + dest_offset, pitch, stride),
+            idct_add(b->qcoeff_base+q_offset, b->dequant,
+				dest_base + dest_offset, stride),
         );
 
         //CL Spec says this can be freed without finish first

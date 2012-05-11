@@ -16,7 +16,7 @@
 
 void vp8_intra4x4_predict(BLOCKD *x,
                           int b_mode,
-                          unsigned char *predictor)
+                          unsigned char *predictor, int stride)
 {
     int i, r, c;
 
@@ -50,7 +50,7 @@ void vp8_intra4x4_predict(BLOCKD *x,
                 predictor[c] = expected_dc;
             }
 
-            predictor += 16;
+            predictor += stride;
         }
     }
     break;
@@ -72,7 +72,7 @@ void vp8_intra4x4_predict(BLOCKD *x,
                 predictor[c] = pred;
             }
 
-            predictor += 16;
+            predictor += stride;
         }
     }
     break;
@@ -94,7 +94,7 @@ void vp8_intra4x4_predict(BLOCKD *x,
                 predictor[c] = ap[c];
             }
 
-            predictor += 16;
+            predictor += stride;
         }
 
     }
@@ -117,43 +117,30 @@ void vp8_intra4x4_predict(BLOCKD *x,
                 predictor[c] = lp[r];
             }
 
-            predictor += 16;
+            predictor += stride;
         }
     }
     break;
     case B_LD_PRED:
     {
         unsigned char *ptr = Above;
+        predictor[0 * stride + 0] = (ptr[0] + ptr[1] * 2 + ptr[2] + 2) >> 2;
+        predictor[0 * stride + 1] =
+            predictor[1 * stride + 0] = (ptr[1] + ptr[2] * 2 + ptr[3] + 2) >> 2;
+        predictor[0 * stride + 2] =
+            predictor[1 * stride + 1] =
+                predictor[2 * stride + 0] = (ptr[2] + ptr[3] * 2 + ptr[4] + 2) >> 2;
+        predictor[0 * stride + 3] =
+            predictor[1 * stride + 2] =
+                predictor[2 * stride + 1] =
+                    predictor[3 * stride + 0] = (ptr[3] + ptr[4] * 2 + ptr[5] + 2) >> 2;
+        predictor[1 * stride + 3] =
+            predictor[2 * stride + 2] =
+                predictor[3 * stride + 1] = (ptr[4] + ptr[5] * 2 + ptr[6] + 2) >> 2;
+        predictor[2 * stride + 3] =
+            predictor[3 * stride + 2] = (ptr[5] + ptr[6] * 2 + ptr[7] + 2) >> 2;
+        predictor[3 * stride + 3] = (ptr[6] + ptr[7] * 2 + ptr[7] + 2) >> 2;
 
-#if 0
-        //More readable version of the unrolled loop
-        int stride = 16, r=0, c=0;
-        for (r=0; r < 4; r++){
-            for (c=0; c < 4; c++){
-                int off = r+c;
-                int off2 = off > 5 ? 5: off; //Clamp so [3,3] has max off2 of 7
-                predictor[r*stride+c] = (ptr[off] + ptr[off+1]*2 + ptr[off2+2] + 2)>>2;
-            }
-        }
-#else
-        predictor[0 * 16 + 0] = (ptr[0] + ptr[1] * 2 + ptr[2] + 2) >> 2;
-        predictor[0 * 16 + 1] =
-            predictor[1 * 16 + 0] = (ptr[1] + ptr[2] * 2 + ptr[3] + 2) >> 2;
-        predictor[0 * 16 + 2] =
-            predictor[1 * 16 + 1] =
-                predictor[2 * 16 + 0] = (ptr[2] + ptr[3] * 2 + ptr[4] + 2) >> 2;
-        predictor[0 * 16 + 3] =
-            predictor[1 * 16 + 2] =
-                predictor[2 * 16 + 1] =
-                    predictor[3 * 16 + 0] = (ptr[3] + ptr[4] * 2 + ptr[5] + 2) >> 2;
-        predictor[1 * 16 + 3] =
-            predictor[2 * 16 + 2] =
-                predictor[3 * 16 + 1] = (ptr[4] + ptr[5] * 2 + ptr[6] + 2) >> 2;
-        predictor[2 * 16 + 3] =
-            predictor[3 * 16 + 2] = (ptr[5] + ptr[6] * 2 + ptr[7] + 2) >> 2;
-        predictor[3 * 16 + 3] = (ptr[6] + ptr[7] * 2 + ptr[7] + 2) >> 2;
-#endif
-        
     }
     break;
     case B_RD_PRED:
@@ -171,22 +158,22 @@ void vp8_intra4x4_predict(BLOCKD *x,
         pp[7] = Above[2];
         pp[8] = Above[3];
 
-        predictor[3 * 16 + 0] = (pp[0] + pp[1] * 2 + pp[2] + 2) >> 2;
-        predictor[3 * 16 + 1] =
-            predictor[2 * 16 + 0] = (pp[1] + pp[2] * 2 + pp[3] + 2) >> 2;
-        predictor[3 * 16 + 2] =
-            predictor[2 * 16 + 1] =
-                predictor[1 * 16 + 0] = (pp[2] + pp[3] * 2 + pp[4] + 2) >> 2;
-        predictor[3 * 16 + 3] =
-            predictor[2 * 16 + 2] =
-                predictor[1 * 16 + 1] =
-                    predictor[0 * 16 + 0] = (pp[3] + pp[4] * 2 + pp[5] + 2) >> 2;
-        predictor[2 * 16 + 3] =
-            predictor[1 * 16 + 2] =
-                predictor[0 * 16 + 1] = (pp[4] + pp[5] * 2 + pp[6] + 2) >> 2;
-        predictor[1 * 16 + 3] =
-            predictor[0 * 16 + 2] = (pp[5] + pp[6] * 2 + pp[7] + 2) >> 2;
-        predictor[0 * 16 + 3] = (pp[6] + pp[7] * 2 + pp[8] + 2) >> 2;
+        predictor[3 * stride + 0] = (pp[0] + pp[1] * 2 + pp[2] + 2) >> 2;
+        predictor[3 * stride + 1] =
+            predictor[2 * stride + 0] = (pp[1] + pp[2] * 2 + pp[3] + 2) >> 2;
+        predictor[3 * stride + 2] =
+            predictor[2 * stride + 1] =
+                predictor[1 * stride + 0] = (pp[2] + pp[3] * 2 + pp[4] + 2) >> 2;
+        predictor[3 * stride + 3] =
+            predictor[2 * stride + 2] =
+                predictor[1 * stride + 1] =
+                    predictor[0 * stride + 0] = (pp[3] + pp[4] * 2 + pp[5] + 2) >> 2;
+        predictor[2 * stride + 3] =
+            predictor[1 * stride + 2] =
+                predictor[0 * stride + 1] = (pp[4] + pp[5] * 2 + pp[6] + 2) >> 2;
+        predictor[1 * stride + 3] =
+            predictor[0 * stride + 2] = (pp[5] + pp[6] * 2 + pp[7] + 2) >> 2;
+        predictor[0 * stride + 3] = (pp[6] + pp[7] * 2 + pp[8] + 2) >> 2;
 
     }
     break;
@@ -206,22 +193,22 @@ void vp8_intra4x4_predict(BLOCKD *x,
         pp[8] = Above[3];
 
 
-        predictor[3 * 16 + 0] = (pp[1] + pp[2] * 2 + pp[3] + 2) >> 2;
-        predictor[2 * 16 + 0] = (pp[2] + pp[3] * 2 + pp[4] + 2) >> 2;
-        predictor[3 * 16 + 1] =
-            predictor[1 * 16 + 0] = (pp[3] + pp[4] * 2 + pp[5] + 2) >> 2;
-        predictor[2 * 16 + 1] =
-            predictor[0 * 16 + 0] = (pp[4] + pp[5] + 1) >> 1;
-        predictor[3 * 16 + 2] =
-            predictor[1 * 16 + 1] = (pp[4] + pp[5] * 2 + pp[6] + 2) >> 2;
-        predictor[2 * 16 + 2] =
-            predictor[0 * 16 + 1] = (pp[5] + pp[6] + 1) >> 1;
-        predictor[3 * 16 + 3] =
-            predictor[1 * 16 + 2] = (pp[5] + pp[6] * 2 + pp[7] + 2) >> 2;
-        predictor[2 * 16 + 3] =
-            predictor[0 * 16 + 2] = (pp[6] + pp[7] + 1) >> 1;
-        predictor[1 * 16 + 3] = (pp[6] + pp[7] * 2 + pp[8] + 2) >> 2;
-        predictor[0 * 16 + 3] = (pp[7] + pp[8] + 1) >> 1;
+        predictor[3 * stride + 0] = (pp[1] + pp[2] * 2 + pp[3] + 2) >> 2;
+        predictor[2 * stride + 0] = (pp[2] + pp[3] * 2 + pp[4] + 2) >> 2;
+        predictor[3 * stride + 1] =
+            predictor[1 * stride + 0] = (pp[3] + pp[4] * 2 + pp[5] + 2) >> 2;
+        predictor[2 * stride + 1] =
+            predictor[0 * stride + 0] = (pp[4] + pp[5] + 1) >> 1;
+        predictor[3 * stride + 2] =
+            predictor[1 * stride + 1] = (pp[4] + pp[5] * 2 + pp[6] + 2) >> 2;
+        predictor[2 * stride + 2] =
+            predictor[0 * stride + 1] = (pp[5] + pp[6] + 1) >> 1;
+        predictor[3 * stride + 3] =
+            predictor[1 * stride + 2] = (pp[5] + pp[6] * 2 + pp[7] + 2) >> 2;
+        predictor[2 * stride + 3] =
+            predictor[0 * stride + 2] = (pp[6] + pp[7] + 1) >> 1;
+        predictor[1 * stride + 3] = (pp[6] + pp[7] * 2 + pp[8] + 2) >> 2;
+        predictor[0 * stride + 3] = (pp[7] + pp[8] + 1) >> 1;
 
     }
     break;
@@ -230,22 +217,22 @@ void vp8_intra4x4_predict(BLOCKD *x,
 
         unsigned char *pp = Above;
 
-        predictor[0 * 16 + 0] = (pp[0] + pp[1] + 1) >> 1;
-        predictor[1 * 16 + 0] = (pp[0] + pp[1] * 2 + pp[2] + 2) >> 2;
-        predictor[2 * 16 + 0] =
-            predictor[0 * 16 + 1] = (pp[1] + pp[2] + 1) >> 1;
-        predictor[1 * 16 + 1] =
-            predictor[3 * 16 + 0] = (pp[1] + pp[2] * 2 + pp[3] + 2) >> 2;
-        predictor[2 * 16 + 1] =
-            predictor[0 * 16 + 2] = (pp[2] + pp[3] + 1) >> 1;
-        predictor[3 * 16 + 1] =
-            predictor[1 * 16 + 2] = (pp[2] + pp[3] * 2 + pp[4] + 2) >> 2;
-        predictor[0 * 16 + 3] =
-            predictor[2 * 16 + 2] = (pp[3] + pp[4] + 1) >> 1;
-        predictor[1 * 16 + 3] =
-            predictor[3 * 16 + 2] = (pp[3] + pp[4] * 2 + pp[5] + 2) >> 2;
-        predictor[2 * 16 + 3] = (pp[4] + pp[5] * 2 + pp[6] + 2) >> 2;
-        predictor[3 * 16 + 3] = (pp[5] + pp[6] * 2 + pp[7] + 2) >> 2;
+        predictor[0 * stride + 0] = (pp[0] + pp[1] + 1) >> 1;
+        predictor[1 * stride + 0] = (pp[0] + pp[1] * 2 + pp[2] + 2) >> 2;
+        predictor[2 * stride + 0] =
+            predictor[0 * stride + 1] = (pp[1] + pp[2] + 1) >> 1;
+        predictor[1 * stride + 1] =
+            predictor[3 * stride + 0] = (pp[1] + pp[2] * 2 + pp[3] + 2) >> 2;
+        predictor[2 * stride + 1] =
+            predictor[0 * stride + 2] = (pp[2] + pp[3] + 1) >> 1;
+        predictor[3 * stride + 1] =
+            predictor[1 * stride + 2] = (pp[2] + pp[3] * 2 + pp[4] + 2) >> 2;
+        predictor[0 * stride + 3] =
+            predictor[2 * stride + 2] = (pp[3] + pp[4] + 1) >> 1;
+        predictor[1 * stride + 3] =
+            predictor[3 * stride + 2] = (pp[3] + pp[4] * 2 + pp[5] + 2) >> 2;
+        predictor[2 * stride + 3] = (pp[4] + pp[5] * 2 + pp[6] + 2) >> 2;
+        predictor[3 * stride + 3] = (pp[5] + pp[6] * 2 + pp[7] + 2) >> 2;
     }
     break;
 
@@ -263,22 +250,22 @@ void vp8_intra4x4_predict(BLOCKD *x,
         pp[8] = Above[3];
 
 
-        predictor[3 * 16 + 0] = (pp[0] + pp[1] + 1) >> 1;
-        predictor[3 * 16 + 1] = (pp[0] + pp[1] * 2 + pp[2] + 2) >> 2;
-        predictor[2 * 16 + 0] =
-            predictor[3 * 16 + 2] = (pp[1] + pp[2] + 1) >> 1;
-        predictor[2 * 16 + 1] =
-            predictor[3 * 16 + 3] = (pp[1] + pp[2] * 2 + pp[3] + 2) >> 2;
-        predictor[2 * 16 + 2] =
-            predictor[1 * 16 + 0] = (pp[2] + pp[3] + 1) >> 1;
-        predictor[2 * 16 + 3] =
-            predictor[1 * 16 + 1] = (pp[2] + pp[3] * 2 + pp[4] + 2) >> 2;
-        predictor[1 * 16 + 2] =
-            predictor[0 * 16 + 0] = (pp[3] + pp[4] + 1) >> 1;
-        predictor[1 * 16 + 3] =
-            predictor[0 * 16 + 1] = (pp[3] + pp[4] * 2 + pp[5] + 2) >> 2;
-        predictor[0 * 16 + 2] = (pp[4] + pp[5] * 2 + pp[6] + 2) >> 2;
-        predictor[0 * 16 + 3] = (pp[5] + pp[6] * 2 + pp[7] + 2) >> 2;
+        predictor[3 * stride + 0] = (pp[0] + pp[1] + 1) >> 1;
+        predictor[3 * stride + 1] = (pp[0] + pp[1] * 2 + pp[2] + 2) >> 2;
+        predictor[2 * stride + 0] =
+            predictor[3 * stride + 2] = (pp[1] + pp[2] + 1) >> 1;
+        predictor[2 * stride + 1] =
+            predictor[3 * stride + 3] = (pp[1] + pp[2] * 2 + pp[3] + 2) >> 2;
+        predictor[2 * stride + 2] =
+            predictor[1 * stride + 0] = (pp[2] + pp[3] + 1) >> 1;
+        predictor[2 * stride + 3] =
+            predictor[1 * stride + 1] = (pp[2] + pp[3] * 2 + pp[4] + 2) >> 2;
+        predictor[1 * stride + 2] =
+            predictor[0 * stride + 0] = (pp[3] + pp[4] + 1) >> 1;
+        predictor[1 * stride + 3] =
+            predictor[0 * stride + 1] = (pp[3] + pp[4] * 2 + pp[5] + 2) >> 2;
+        predictor[0 * stride + 2] = (pp[4] + pp[5] * 2 + pp[6] + 2) >> 2;
+        predictor[0 * stride + 3] = (pp[5] + pp[6] * 2 + pp[7] + 2) >> 2;
     }
     break;
 
@@ -286,28 +273,33 @@ void vp8_intra4x4_predict(BLOCKD *x,
     case B_HU_PRED:
     {
         unsigned char *pp = Left;
-        predictor[0 * 16 + 0] = (pp[0] + pp[1] + 1) >> 1;
-        predictor[0 * 16 + 1] = (pp[0] + pp[1] * 2 + pp[2] + 2) >> 2;
-        predictor[0 * 16 + 2] =
-            predictor[1 * 16 + 0] = (pp[1] + pp[2] + 1) >> 1;
-        predictor[0 * 16 + 3] =
-            predictor[1 * 16 + 1] = (pp[1] + pp[2] * 2 + pp[3] + 2) >> 2;
-        predictor[1 * 16 + 2] =
-            predictor[2 * 16 + 0] = (pp[2] + pp[3] + 1) >> 1;
-        predictor[1 * 16 + 3] =
-            predictor[2 * 16 + 1] = (pp[2] + pp[3] * 2 + pp[3] + 2) >> 2;
-        predictor[2 * 16 + 2] =
-            predictor[2 * 16 + 3] =
-                predictor[3 * 16 + 0] =
-                    predictor[3 * 16 + 1] =
-                        predictor[3 * 16 + 2] =
-                            predictor[3 * 16 + 3] = pp[3];
+        predictor[0 * stride + 0] = (pp[0] + pp[1] + 1) >> 1;
+        predictor[0 * stride + 1] = (pp[0] + pp[1] * 2 + pp[2] + 2) >> 2;
+        predictor[0 * stride + 2] =
+            predictor[1 * stride + 0] = (pp[1] + pp[2] + 1) >> 1;
+        predictor[0 * stride + 3] =
+            predictor[1 * stride + 1] = (pp[1] + pp[2] * 2 + pp[3] + 2) >> 2;
+        predictor[1 * stride + 2] =
+            predictor[2 * stride + 0] = (pp[2] + pp[3] + 1) >> 1;
+        predictor[1 * stride + 3] =
+            predictor[2 * stride + 1] = (pp[2] + pp[3] * 2 + pp[3] + 2) >> 2;
+        predictor[2 * stride + 2] =
+            predictor[2 * stride + 3] =
+                predictor[3 * stride + 0] =
+                    predictor[3 * stride + 1] =
+                        predictor[3 * stride + 2] =
+                            predictor[3 * stride + 3] = pp[3];
     }
     break;
 
 
     }
 }
+
+
+
+
+
 /* copy 4 bytes from the above right down so that the 4x4 prediction modes using pixels above and
  * to the right prediction have filled in pixels to use.
  */
@@ -324,3 +316,5 @@ void vp8_intra_prediction_down_copy(MACROBLOCKD *x)
     *dst_ptr1 = *src_ptr;
     *dst_ptr2 = *src_ptr;
 }
+
+

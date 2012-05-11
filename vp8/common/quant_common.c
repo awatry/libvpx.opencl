@@ -66,7 +66,6 @@ int vp8_dc2quant(int QIndex, int Delta)
     return retval;
 
 }
-
 int vp8_dc_uv_quant(int QIndex, int Delta)
 {
     int retval;
@@ -117,7 +116,6 @@ int vp8_ac2quant(int QIndex, int Delta)
 
     return retval;
 }
-
 int vp8_ac_uv_quant(int QIndex, int Delta)
 {
     int retval;

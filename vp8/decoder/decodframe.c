@@ -212,12 +212,12 @@ static void decode_macroblock(VP8D_COMP *pbi, MACROBLOCKD *xd,
     /* do prediction */
     if (xd->mode_info_context->mbmi.ref_frame == INTRA_FRAME)
     {
-        RECON_INVOKE(&pbi->common.rtcd.recon, build_intra_predictors_mbuv)(xd);
+        RECON_INVOKE(&pbi->common.rtcd.recon, build_intra_predictors_mbuv_s)(xd);
 
         if (mode != B_PRED)
         {
             RECON_INVOKE(&pbi->common.rtcd.recon,
-                         build_intra_predictors_mby)(xd);
+                         build_intra_predictors_mby_s)(xd);
         } else {
             vp8_intra_prediction_down_copy(xd);
         }
@@ -257,29 +257,33 @@ static void decode_macroblock(VP8D_COMP *pbi, MACROBLOCKD *xd,
             int b_mode = xd->mode_info_context->bmi[i].as_mode;
 
             RECON_INVOKE(RTCD_VTABLE(recon), intra4x4_predict)
-                          (b, b_mode, b->predictor_base + b->predictor_offset);
+                          (b, b_mode, *(b->base_dst) + b->dst, b->dst_stride);
 
-            if (xd->eobs[i] > 1)
+            if (xd->eobs[i] )
             {
-                DEQUANT_INVOKE(&pbi->dequant, idct_add)
-                    (qcoeff, b->dequant,  b->predictor_base + b->predictor_offset,
-                    *(b->base_dst) + b->dst, 16, b->dst_stride);
-            }
-            else
-            {
-                IDCT_INVOKE(RTCD_VTABLE(idct), idct1_scalar_add)
-                    (qcoeff[0] * b->dequant[0], b->predictor_base + b->predictor_offset,
-                    *(b->base_dst) + b->dst, 16, b->dst_stride);
-                ((int *)qcoeff)[0] = 0;
+                if (xd->eobs[i] > 1)
+                {
+                    DEQUANT_INVOKE(&pbi->dequant, idct_add)
+                        (qcoeff, b->dequant,
+                        *(b->base_dst) + b->dst, b->dst_stride);
+                }
+                else
+                {
+                    IDCT_INVOKE(RTCD_VTABLE(idct), idct1_scalar_add)
+                        (qcoeff[0] * b->dequant[0],
+                        *(b->base_dst) + b->dst, b->dst_stride,
+                        *(b->base_dst) + b->dst, b->dst_stride);
+                    ((int *)qcoeff)[0] = 0;
+                }
             }
         }
     }
     else if (mode == SPLITMV)
     {
         DEQUANT_INVOKE (&pbi->dequant, idct_add_y_block)
-            (xd->qcoeff, xd->block[0].dequant,
-             xd->predictor, xd->dst.y_buffer,
-             xd->dst.y_stride, xd->eobs);
+                        (xd->qcoeff, xd->block[0].dequant,
+                         xd->dst.y_buffer,
+                         xd->dst.y_stride, xd->eobs);
     }
     else
     {
@@ -288,12 +292,12 @@ static void decode_macroblock(VP8D_COMP *pbi, MACROBLOCKD *xd,
         short *qcoeff = b->qcoeff_base + b->qcoeff_offset;
         short *diff = b->diff_base + b->diff_offset;
         short *dqcoeff = b->dqcoeff_base + b->dqcoeff_offset;
-        
-        DEQUANT_INVOKE(&pbi->dequant, block)(b);
 
-        /* do 2nd order transform on the dc block */
+		/* do 2nd order transform on the dc block */
         if (xd->eobs[24] > 1)
         {
+            DEQUANT_INVOKE(&pbi->dequant, block)(b);
+
             IDCT_INVOKE(RTCD_VTABLE(idct), iwalsh16)(&dqcoeff[0], diff);
             ((int *)qcoeff)[0] = 0;
             ((int *)qcoeff)[1] = 0;
@@ -306,20 +310,21 @@ static void decode_macroblock(VP8D_COMP *pbi, MACROBLOCKD *xd,
         }
         else
         {
+            dqcoeff[0] = qcoeff[0] * b->dequant[0];
             IDCT_INVOKE(RTCD_VTABLE(idct), iwalsh1)(&dqcoeff[0], diff);
             ((int *)qcoeff)[0] = 0;
         }
 
         DEQUANT_INVOKE (&pbi->dequant, dc_idct_add_y_block)
                         (xd->qcoeff, xd->block[0].dequant,
-                         xd->predictor, xd->dst.y_buffer,
-                         xd->dst.y_stride, xd->eobs, diff);
+                         xd->dst.y_buffer,
+                         xd->dst.y_stride, xd->eobs, xd->block[24].diff_base + xd->block[24].diff_offset);
     }
 
     DEQUANT_INVOKE (&pbi->dequant, idct_add_uv_block)
-        (xd->qcoeff+16*16, xd->block[16].dequant,
-         xd->predictor+16*16, xd->dst.u_buffer, xd->dst.v_buffer,
-         xd->dst.uv_stride, xd->eobs+16);
+                    (xd->qcoeff+16*16, xd->block[16].dequant,
+                     xd->dst.u_buffer, xd->dst.v_buffer,
+                     xd->dst.uv_stride, xd->eobs+16);
 }
 
 
@@ -371,13 +376,8 @@ decode_mb_row(VP8D_COMP *pbi, VP8_COMMON *pc, int mb_row, MACROBLOCKD *xd)
     xd->mb_to_bottom_edge = ((pc->mb_rows - 1 - mb_row) * 16) << 3;
 
 
-    xd->dst.buffer_alloc = pc->yv12_fb[dst_fb_idx].buffer_alloc;
-    xd->dst.frame_size = pc->yv12_fb[dst_fb_idx].frame_size;
-#if CONFIG_OPENCL
-    xd->dst.buffer_mem = pc->yv12_fb[dst_fb_idx].buffer_mem;
-#endif
 
-    for (mb_col = 0; mb_col < pc->mb_cols; mb_col++)
+	for (mb_col = 0; mb_col < pc->mb_cols; mb_col++)
     {
         /* Distance of Mb to the various image edges.
          * These are specified to 8th pel as they are always compared to values
@@ -429,11 +429,6 @@ decode_mb_row(VP8D_COMP *pbi, VP8_COMMON *pc, int mb_row, MACROBLOCKD *xd)
         xd->pre.y_buffer = pc->yv12_fb[ref_fb_idx].y_buffer + recon_yoffset;
         xd->pre.u_buffer = pc->yv12_fb[ref_fb_idx].u_buffer + recon_uvoffset;
         xd->pre.v_buffer = pc->yv12_fb[ref_fb_idx].v_buffer + recon_uvoffset;
-        xd->pre.buffer_alloc = pc->yv12_fb[ref_fb_idx].buffer_alloc;
-        xd->pre.frame_size = pc->yv12_fb[ref_fb_idx].frame_size;
-#if CONFIG_OPENCL
-        xd->pre.buffer_mem = pc->yv12_fb[ref_fb_idx].buffer_mem;
-#endif
 
         if (xd->mode_info_context->mbmi.ref_frame != INTRA_FRAME)
         {
@@ -640,7 +635,7 @@ static void init_frame(VP8D_COMP *pbi)
         vpx_memset(xd->segment_feature_data, 0, sizeof(xd->segment_feature_data));
         xd->mb_segement_abs_delta = SEGMENT_DELTADATA;
 
-        /* reset the mode ref deltas for loop filter */
+        /* reset the mode ref deltasa for loop filter */
         vpx_memset(xd->ref_lf_deltas, 0, sizeof(xd->ref_lf_deltas));
         vpx_memset(xd->mode_lf_deltas, 0, sizeof(xd->mode_lf_deltas));
 
@@ -659,8 +654,13 @@ static void init_frame(VP8D_COMP *pbi)
     else
     {
 
-        /* To enable choice of different interpolation filters */
-        if (pc->use_bilinear_mc_filter == 0)
+        if (!pc->use_bilinear_mc_filter)
+            pc->mcomp_filter_type = SIXTAP;
+        else
+            pc->mcomp_filter_type = BILINEAR;
+
+        /* To enable choice of different interploation filters */
+        if (pc->mcomp_filter_type == SIXTAP)
         {
 #if CONFIG_OPENCL
             xd->sixtap_filter = CL_TRUE;
@@ -1067,12 +1067,12 @@ int vp8_decode_frame(VP8D_COMP *pbi)
 #endif
         vp8_setup_intra_recon(&pc->yv12_fb[pc->new_fb_idx]);
 
-    /* clear out the coeff buffer */
-    vpx_memset(xd->qcoeff, 0, sizeof(xd->qcoeff));
-
     vp8_setup_block_dptrs(xd);
 
     vp8_build_block_doffsets(xd);
+
+    /* clear out the coeff buffer */
+    vpx_memset(xd->qcoeff, 0, sizeof(xd->qcoeff));
 
     /* Read the mb_no_coeff_skip flag */
     pc->mb_no_coeff_skip = (int)vp8_read_bit(bc);

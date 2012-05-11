@@ -159,8 +159,8 @@ DECLARE_ALIGNED(16, extern const unsigned char, vp8_norm[256]);
     Prob = coef_probs + (ENTROPY_NODES*2); \
     if(c < 15){\
         qcoeff_ptr [ scan[c] ] = (INT16) v; \
-        continue; \
-    }\
+        ++c; \
+        goto DO_WHILE; }\
     qcoeff_ptr [ 15 ] = (INT16) v; \
     goto BLOCK_FINISHED;
 
@@ -254,8 +254,7 @@ BLOCK_LOOP:
     Prob = coef_probs;
     Prob += v * ENTROPY_NODES;
 
-do{
-
+DO_WHILE:
     Prob += coef_bands_x[c];
     DECODE_AND_BRANCH_IF_ZERO(Prob[EOB_CONTEXT_NODE], BLOCK_FINISHED);
 
@@ -341,8 +340,9 @@ ONE_CONTEXT_NODE_0_:
     if (c < 15)
     {
         qcoeff_ptr [ scan[c] ] = (INT16) v;
+        ++c;
+        goto DO_WHILE;
     }
-} while (c++ < 15);
 
     qcoeff_ptr [ 15 ] = (INT16) v;
 BLOCK_FINISHED:

@@ -100,13 +100,19 @@ static void skip_recon_mb_cl(VP8D_COMP *pbi, MACROBLOCKD *xd)
 void vp8_decode_macroblock_cl(VP8D_COMP *pbi, MACROBLOCKD *xd, int eobtotal)
 {
     int i;
+    int throw_residual = 0;
+    MB_PREDICTION_MODE mode;
+	
+	mode = xd->mode_info_context->mbmi.mode;
 
-    if (xd->mode_info_context->mbmi.mode != B_PRED && xd->mode_info_context->mbmi.mode != SPLITMV && eobtotal == 0)
+    if (eobtotal == 0 && mode != B_PRED && mode != SPLITMV &&
+            !vp8dx_bool_error(xd->current_bc))
     {
         /* Special case:  Force the loopfilter to skip when eobtotal and
          * mb_skip_coeff are zero.
          * */
         xd->mode_info_context->mbmi.mb_skip_coeff = 1;
+
         skip_recon_mb_cl(pbi, xd);
         return;
     }
@@ -115,14 +121,14 @@ void vp8_decode_macroblock_cl(VP8D_COMP *pbi, MACROBLOCKD *xd, int eobtotal)
         mb_init_dequantizer(pbi, xd);
 
     /* do prediction */
-    if (xd->frame_type == KEY_FRAME  ||  xd->mode_info_context->mbmi.ref_frame == INTRA_FRAME)
+    if (xd->mode_info_context->mbmi.ref_frame == INTRA_FRAME)
     {
-        vp8_build_intra_predictors_mbuv(xd);
+        RECON_INVOKE(&pbi->common.rtcd.recon, build_intra_predictors_mbuv_s)(xd);
 
-        if (xd->mode_info_context->mbmi.mode != B_PRED)
+        if (mode != B_PRED)
         {
             RECON_INVOKE(&pbi->common.rtcd.recon,
-                         build_intra_predictors_mby)(xd);
+                         build_intra_predictors_mby_s)(xd);
         } else {
             vp8_intra_prediction_down_copy(xd);
         }
@@ -135,36 +141,84 @@ void vp8_decode_macroblock_cl(VP8D_COMP *pbi, MACROBLOCKD *xd, int eobtotal)
         vp8_build_inter_predictors_mb(xd);
 #endif
 
-#if !ENABLE_CL_IDCT_DEQUANT
+#if (1 || !ENABLE_CL_IDCT_DEQUANT)
         //Wait for inter-predict if dequant/IDCT is being done on the CPU
         VP8_CL_FINISH(xd->cl_commands);
 #endif
     }
+    /* When we have independent partitions we can apply residual even
+     * though other partitions within the frame are corrupt.
+     */
+    throw_residual = (!pbi->independent_partitions &&
+                      pbi->frame_corrupt_residual);
+    throw_residual = (throw_residual || vp8dx_bool_error(xd->current_bc));
+
+#if CONFIG_ERROR_CONCEALMENT
+    if (pbi->ec_active &&
+        (mb_idx >= pbi->mvs_corrupt_from_mb || throw_residual))
+    {
+        /* MB with corrupt residuals or corrupt mode/motion vectors.
+         * Better to use the predictor as reconstruction.
+         */
+        pbi->frame_corrupt_residual = 1;
+        vpx_memset(xd->qcoeff, 0, sizeof(xd->qcoeff));
+        vp8_conceal_corrupt_mb(xd);
+        return;
+    }
+#endif
 
     /* dequantization and idct */
-    if (xd->mode_info_context->mbmi.mode != B_PRED && xd->mode_info_context->mbmi.mode != SPLITMV)
+    if (mode == B_PRED)
+    {
+        for (i = 0; i < 16; i++)
+        {
+            BLOCKD *b = &xd->block[i];
+            short *qcoeff = b->qcoeff_base + b->qcoeff_offset;
+            int b_mode = xd->mode_info_context->bmi[i].as_mode;
+
+            RECON_INVOKE(RTCD_VTABLE(recon), intra4x4_predict)
+                          (b, b_mode, *(b->base_dst) + b->dst, b->dst_stride);
+
+            if (xd->eobs[i] )
+            {
+                if (xd->eobs[i] > 1)
+                {
+                    DEQUANT_INVOKE(&pbi->dequant, idct_add)
+                        (qcoeff, b->dequant,
+                        *(b->base_dst) + b->dst, b->dst_stride);
+                }
+                else
+                {
+                    IDCT_INVOKE(RTCD_VTABLE(idct), idct1_scalar_add)
+                        (qcoeff[0] * b->dequant[0],
+                        *(b->base_dst) + b->dst, b->dst_stride,
+                        *(b->base_dst) + b->dst, b->dst_stride);
+                    ((int *)qcoeff)[0] = 0;
+                }
+            }
+        }
+    }
+    else if (mode == SPLITMV)
+    {
+        DEQUANT_INVOKE (&pbi->dequant, idct_add_y_block)
+                        (xd->qcoeff, xd->block[0].dequant,
+                         xd->dst.y_buffer,
+                         xd->dst.y_stride, xd->eobs);
+    }
+    else
     {
         BLOCKD *b = &xd->block[24];
-        short *qcoeff = b->qcoeff_base + b->qcoeff_offset;
-        vp8_second_order_fn_t second_order;
 
-#if ENABLE_CL_IDCT_DEQUANT
-        if (cl_initialized == CL_SUCCESS){
-            vp8_cl_block_prep(b, DEQUANT|QCOEFF);
-            vp8_dequantize_b_cl(b);
-            vp8_cl_block_finish(b, DQCOEFF);
-            VP8_CL_FINISH(b->cl_commands); //Keep until qcoeff memset below is CL
-        }
-        else
-#endif
+        short *qcoeff = b->qcoeff_base + b->qcoeff_offset;
+        short *diff = b->diff_base + b->diff_offset;
+        short *dqcoeff = b->dqcoeff_base + b->dqcoeff_offset;
+
+		/* do 2nd order transform on the dc block */
+        if (xd->eobs[24] > 1)
         {
             DEQUANT_INVOKE(&pbi->dequant, block)(b);
-        }
 
-
-        /* do 2nd order transform on the dc block */
-        if (xd->eobs[24] > 1){
-            second_order = IDCT_INVOKE(RTCD_VTABLE(idct), iwalsh16);
+            IDCT_INVOKE(RTCD_VTABLE(idct), iwalsh16)(dqcoeff, diff);
             ((int *)qcoeff)[0] = 0;
             ((int *)qcoeff)[1] = 0;
             ((int *)qcoeff)[2] = 0;
@@ -173,129 +227,24 @@ void vp8_decode_macroblock_cl(VP8D_COMP *pbi, MACROBLOCKD *xd, int eobtotal)
             ((int *)qcoeff)[5] = 0;
             ((int *)qcoeff)[6] = 0;
             ((int *)qcoeff)[7] = 0;
-        } else {
-            second_order = IDCT_INVOKE(RTCD_VTABLE(idct), iwalsh1);
+        }
+        else
+        {
+            dqcoeff[0] = qcoeff[0] * b->dequant[0];
+            IDCT_INVOKE(RTCD_VTABLE(idct), iwalsh1)(dqcoeff, diff);
             ((int *)qcoeff)[0] = 0;
         }
 
-#if ENABLE_CL_IDCT_DEQUANT
-        if (cl_initialized == CL_SUCCESS){
-            int y_off = xd->dst.y_buffer - xd->dst.buffer_alloc;
-            vp8_cl_block_prep(b, DQCOEFF|DIFF);
-
-            if (xd->eobs[24] > 1)
-            {
-                vp8_short_inv_walsh4x4_cl(b);
-            } else {
-                vp8_short_inv_walsh4x4_1_cl(b);
-            }
-            vp8_cl_block_finish(b, DIFF);
-
-            vp8_dequant_dc_idct_add_y_block_cl(&xd->block[0], 
-                    xd->dst.buffer_alloc, xd->dst.buffer_mem, y_off, xd->dst.y_stride, xd->eobs,
-                    xd->block[24].diff_offset);
-        }
-        else
-#endif
-        {
-            second_order(b->dqcoeff_base + b->dqcoeff_offset, &b->diff_base[b->diff_offset]);
-            DEQUANT_INVOKE (&pbi->dequant, dc_idct_add_y_block)
-                (xd->qcoeff, xd->block[0].dequant,
-                 xd->predictor, xd->dst.y_buffer,
-                 xd->dst.y_stride, xd->eobs, &xd->block[24].diff_base[xd->block[24].diff_offset]);
-        }
-    }
-    else if ((xd->frame_type == KEY_FRAME  ||  xd->mode_info_context->mbmi.ref_frame == INTRA_FRAME) && xd->mode_info_context->mbmi.mode == B_PRED)
-    {
-#if ENABLE_CL_IDCT_DEQUANT
-        if (cl_initialized == CL_SUCCESS)
-            vp8_cl_mb_prep(xd, DST_BUF);
-#endif
-        for (i = 0; i < 16; i++)
-        {
-            BLOCKD *b = &xd->block[i];
-            short *qcoeff = b->qcoeff_base + b->qcoeff_offset;
-#if ENABLE_CL_IDCT_DEQUANT
-            VP8_CL_FINISH(b->cl_commands);
-#endif
-            RECON_INVOKE(RTCD_VTABLE(recon), intra4x4_predict)
-               (b, b->bmi.as_mode, b->predictor_base + b->predictor_offset);
-
-#if ENABLE_CL_IDCT_DEQUANT
-            if (cl_initialized == CL_SUCCESS){
-                size_t dst_size = (4*b->dst_stride + b->dst + 4);
-                cl_mem dst_mem = xd->dst.buffer_mem;
-
-                int dst_off = *(b->base_dst) - xd->dst.buffer_alloc;
-
-                if (xd->eobs[i] > 1)
-                {
-                    vp8_cl_block_prep(b, QCOEFF|DEQUANT|PREDICTOR);
-                    vp8_dequant_idct_add_cl(b, *(b->base_dst), dst_mem, dst_off+b->dst, dst_size, b->qcoeff_offset, b->predictor_offset, 16, b->dst_stride, DEQUANT_INVOKE(&pbi->dequant, idct_add));
-                    vp8_cl_block_finish(b, QCOEFF);
-                }
-                else
-                {
-                    vp8_cl_block_prep(b, PREDICTOR|DIFF|QCOEFF|DEQUANT);
-                    vp8_dc_only_idct_add_cl(b, CL_FALSE, 0, b->qcoeff_offset, b->predictor_offset,
-                        *(b->base_dst), dst_mem, dst_off+b->dst, dst_size, 16, b->dst_stride);
-                    VP8_CL_FINISH(b->cl_commands);
-                    ((int *)(b->qcoeff_base + b->qcoeff_offset))[0] = 0; //Move into follow-up kernel?
-                }
-                vp8_cl_mb_finish(xd,DST_BUF);
-            }
-            else
-#endif
-            {
-                if (xd->eobs[i] > 1)
-                {
-                    DEQUANT_INVOKE(&pbi->dequant, idct_add)
-                        (qcoeff, b->dequant,  b->predictor_base + b->predictor_offset,
-                        *(b->base_dst) + b->dst, 16, b->dst_stride);
-                }
-                else
-                {
-                    IDCT_INVOKE(RTCD_VTABLE(idct), idct1_scalar_add)
-                        (qcoeff[0] * b->dequant[0], b->predictor_base + b->predictor_offset,
-                        *(b->base_dst) + b->dst, 16, b->dst_stride);
-                    ((int *)qcoeff)[0] = 0;
-                }
-            }
-            
-        }
-    }
-    else
-    {
-#if ENABLE_CL_IDCT_DEQUANT
-        if (cl_initialized == CL_SUCCESS){
-            vp8_cl_mb_prep(xd,DST_BUF);
-            vp8_dequant_idct_add_y_block_cl(pbi, xd);
-            vp8_cl_mb_finish(xd,DST_BUF);
-        }
-        else
-#endif
-        {
-            DEQUANT_INVOKE (&pbi->dequant, idct_add_y_block)
-                (xd->qcoeff, xd->block[0].dequant,
-                 xd->predictor, xd->dst.y_buffer,
-                 xd->dst.y_stride, xd->eobs);
-        }
+        DEQUANT_INVOKE (&pbi->dequant, dc_idct_add_y_block)
+                        (xd->qcoeff, xd->block[0].dequant,
+                         xd->dst.y_buffer,
+                         xd->dst.y_stride, xd->eobs, xd->block[24].diff_base + xd->block[24].diff_offset);
     }
 
-#if ENABLE_CL_IDCT_DEQUANT
-    if (cl_initialized == CL_SUCCESS){
-        vp8_cl_mb_prep(xd,DST_BUF);
-        vp8_dequant_idct_add_uv_block_cl(pbi, xd,  DEQUANT_INVOKE (&pbi->dequant, idct_add_uv_block));
-        vp8_cl_mb_finish(xd,DST_BUF);
-        VP8_CL_FINISH(xd->cl_commands);
-    } else
-#endif
-    {
     DEQUANT_INVOKE (&pbi->dequant, idct_add_uv_block)
-        (xd->qcoeff+16*16, xd->block[16].dequant,
-         xd->predictor+16*16, xd->dst.u_buffer, xd->dst.v_buffer,
-         xd->dst.uv_stride, xd->eobs+16);
-    }
+                    (xd->qcoeff+16*16, xd->block[16].dequant,
+                     xd->dst.u_buffer, xd->dst.v_buffer,
+                     xd->dst.uv_stride, xd->eobs+16);
 }
 
 void vp8_decode_frame_cl_finish(VP8D_COMP *pbi){
