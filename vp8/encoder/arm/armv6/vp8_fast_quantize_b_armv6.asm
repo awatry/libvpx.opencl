@@ -29,7 +29,9 @@
     ldr     r5, [r0, #vp8_block_round]      ; round
     ldr     r6, [r1, #vp8_blockd_qcoeff_base]    ; qcoeff
 	add     r6, r6, #vp8_blockd_qcoeff_offset
+	add     r6, r6, #vp8_blockd_qcoeff_offset
     ldr     r7, [r1, #vp8_blockd_dqcoeff_base]   ; dqcoeff
+    add     r7, r7, #vp8_blockd_dqcoeff_offset
     add     r7, r7, #vp8_blockd_dqcoeff_offset
     ldr     r8, [r1, #vp8_blockd_dequant]   ; dequant
 
@@ -110,6 +112,7 @@ loop
     beq     end                     ; skip eob calculations if all zero
 
     ldr     r0, [r11, #vp8_blockd_qcoeff_base]
+    add     r0, r0, #vp8_blockd_qcoeff_offset
     add     r0, r0, #vp8_blockd_qcoeff_offset
 
     ; check shortcut for nonzero qcoeffs

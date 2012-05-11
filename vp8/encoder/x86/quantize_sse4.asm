@@ -177,6 +177,7 @@ ZIGZAG_LOOP 15, 7, xmm3, xmm7, xmm8
     mov         rcx, [rsi + vp8_blockd_dequant]
     mov         rdi, [rsi + vp8_blockd_dqcoeff_base]
     add         rdi, vp8_blockd_dqcoeff_offset
+    add         rdi, vp8_blockd_dqcoeff_offset
 
 %if ABI_IS_32BIT
     movdqa      xmm4, [rsp + qcoeff]
@@ -197,6 +198,7 @@ ZIGZAG_LOOP 15, 7, xmm3, xmm7, xmm8
     movdqa      xmm1, [rcx + 16]
 
     mov         rcx, [rsi + vp8_blockd_qcoeff_base]
+    add         rcx, vp8_blockd_qcoeff_offset
     add         rcx, vp8_blockd_qcoeff_offset
 
     pmullw      xmm0, xmm4

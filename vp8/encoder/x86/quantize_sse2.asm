@@ -172,7 +172,8 @@ ZIGZAG_LOOP 15
 
     mov         rcx, [rsi + vp8_blockd_dequant] ; dequant_ptr
     mov         rdi, [rsi + vp8_blockd_dqcoeff_base] ; dqcoeff_ptr
-	add         rdi, vp8_blockd_dqcoeff_offset 	
+	add         rdi, vp8_blockd_dqcoeff_offset
+	add         rdi, vp8_blockd_dqcoeff_offset
 
     ; y ^ sz
     pxor        xmm2, xmm0
@@ -186,6 +187,7 @@ ZIGZAG_LOOP 15
     movdqa      xmm1, [rcx + 16]
 
     mov         rcx, [rsi + vp8_blockd_qcoeff_base] ; qcoeff_ptr
+	add         rcx, vp8_blockd_dqcoeff_offset
 	add         rcx, vp8_blockd_dqcoeff_offset
 
     pmullw      xmm0, xmm2
@@ -300,8 +302,10 @@ sym(vp8_fast_quantize_b_sse2):
 
     mov         rax, [rsi + vp8_blockd_qcoeff_base]
     add         rax, vp8_blockd_qcoeff_offset
+    add         rax, vp8_blockd_qcoeff_offset
     mov         rcx, [rsi + vp8_blockd_dequant]
     mov         rdi, [rsi + vp8_blockd_dqcoeff_base]
+	add         rdi, vp8_blockd_dqcoeff_offset
 	add         rdi, vp8_blockd_dqcoeff_offset
 
     ; y = x * quant >> 16

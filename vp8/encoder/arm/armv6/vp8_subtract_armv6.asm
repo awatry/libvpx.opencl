@@ -37,6 +37,7 @@
     add     r3, r3, r5          ; src = *base_src + src
     ldr     r8, [r1, #vp8_blockd_predictor_base]
     add     r8, r8, #vp8_blockd_predictor_offset
+	add     r8, r8, #vp8_blockd_predictor_offset
 
     mov     r9, #4              ; loop count
 
