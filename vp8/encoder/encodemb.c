@@ -481,7 +481,7 @@ static void check_reset_2nd_coeffs(MACROBLOCKD *x, int type,
 
     for(i=0;i<bd->eob;i++)
     {
-        int coef = bd->dqcoeff[vp8_default_zig_zag1d[i]];
+        int coef = bd->dqcoeff_base[bd->dqcoeff_offset + vp8_default_zig_zag1d[i]];
         sum+= (coef>=0)?coef:-coef;
         if(sum>=35)
             return;
@@ -499,8 +499,8 @@ static void check_reset_2nd_coeffs(MACROBLOCKD *x, int type,
         for(i=0;i<bd->eob;i++)
         {
             int rc = vp8_default_zig_zag1d[i];
-            bd->qcoeff[rc]=0;
-            bd->dqcoeff[rc]=0;
+            bd->qcoeff_base[bd->qcoeff_offset + rc]=0;
+            bd->dqcoeff_base[bd->dqcoeff_offset + rc]=0;
         }
         bd->eob = 0;
         *a = *l = (bd->eob != !type);
