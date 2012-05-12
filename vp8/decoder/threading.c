@@ -175,37 +175,7 @@ static void decode_macroblock(VP8D_COMP *pbi, MACROBLOCKD *xd, int mb_row, int m
 #endif
 
     /* dequantization and idct */
-    if (xd->mode_info_context->mbmi.mode != B_PRED && xd->mode_info_context->mbmi.mode != SPLITMV)
-    {
-        BLOCKD *b = &xd->block[24];
-        short *qcoeff = b->qcoeff_base + b->qcoeff_offset;
-        DEQUANT_INVOKE(&pbi->dequant, block)(b);
-
-        /* do 2nd order transform on the dc block */
-        if (xd->eobs[24] > 1)
-        {
-            IDCT_INVOKE(RTCD_VTABLE(idct), iwalsh16)(&b->dqcoeff_base[b->dqcoeff_offset], b->diff_base + b->diff_offset);
-            ((int *)qcoeff)[0] = 0;
-            ((int *)qcoeff)[1] = 0;
-            ((int *)qcoeff)[2] = 0;
-            ((int *)qcoeff)[3] = 0;
-            ((int *)qcoeff)[4] = 0;
-            ((int *)qcoeff)[5] = 0;
-            ((int *)qcoeff)[6] = 0;
-            ((int *)qcoeff)[7] = 0;
-        }
-        else
-        {
-            IDCT_INVOKE(RTCD_VTABLE(idct), iwalsh1)(&b->dqcoeff_base[b->dqcoeff_offset], b->diff_base + b->diff_offset);
-            ((int *)qcoeff)[0] = 0;
-        }
-
-        DEQUANT_INVOKE (&pbi->dequant, dc_idct_add_y_block)
-                        (xd->qcoeff, xd->block[0].dequant,
-                         xd->dst.y_buffer,
-                         xd->dst.y_stride, xd->eobs, xd->block[24].diff_base + xd->block[24].diff_offset);
-    }
-    else if (xd->mode_info_context->mbmi.mode == B_PRED)
+    if (xd->mode_info_context->mbmi.mode == B_PRED)
     {
         for (i = 0; i < 16; i++)
         {
@@ -216,26 +186,73 @@ static void decode_macroblock(VP8D_COMP *pbi, MACROBLOCKD *xd, int mb_row, int m
             vp8mt_predict_intra4x4(pbi, xd, b_mode, *(b->base_dst) + b->dst,
                                    b->dst_stride, mb_row, mb_col, i);
 
-            if (xd->eobs[i] > 1)
+            if (xd->eobs[i] )
             {
-                DEQUANT_INVOKE(&pbi->dequant, idct_add)
-                    (qcoeff, b->dequant,
-                    *(b->base_dst) + b->dst, b->dst_stride);
-            }
-            else
-            {
-                IDCT_INVOKE(RTCD_VTABLE(idct), idct1_scalar_add)
-                    (qcoeff[0] * b->dequant[0],
-                    *(b->base_dst) + b->dst, b->dst_stride,
-                    *(b->base_dst) + b->dst, b->dst_stride);
-                ((int *)qcoeff)[0] = 0;
+                if (xd->eobs[i] > 1)
+                {
+                    DEQUANT_INVOKE(&pbi->dequant, idct_add)
+                        (b->qcoeff, b->dequant,
+                        *(b->base_dst) + b->dst, b->dst_stride);
+                }
+                else
+                {
+                    IDCT_INVOKE(RTCD_VTABLE(idct), idct1_scalar_add)
+                        (b->qcoeff[0] * b->dequant[0],
+                        *(b->base_dst) + b->dst, b->dst_stride,
+                        *(b->base_dst) + b->dst, b->dst_stride);
+                    ((int *)qcoeff)[0] = 0;
+                }
             }
         }
     }
     else
     {
+        short *DQC = xd->block[0].dequant;
+
+        DECLARE_ALIGNED(16, short, local_dequant[16]);
+
+        if (xd->mode_info_context->mbmi.mode != SPLITMV)
+        {
+            BLOCKD *b = &xd->block[24];
+            short *qcoeff = b->qcoeff_base + b->qcoeff_offset;
+			short *dqcoeff = b->dqcoeff_base + b->dqcoeff_offset;
+
+            /* do 2nd order transform on the dc block */
+            if (xd->eobs[24] > 1)
+            {
+                DEQUANT_INVOKE(&pbi->dequant, block)(b);
+
+                IDCT_INVOKE(RTCD_VTABLE(idct), iwalsh16)(&dqcoeff[0],
+                    xd->qcoeff);
+                ((int *)qcoeff)[0] = 0;
+                ((int *)qcoeff)[1] = 0;
+                ((int *)qcoeff)[2] = 0;
+                ((int *)qcoeff)[3] = 0;
+                ((int *)qcoeff)[4] = 0;
+                ((int *)qcoeff)[5] = 0;
+                ((int *)qcoeff)[6] = 0;
+                ((int *)qcoeff)[7] = 0;
+            }
+            else
+            {
+                dqcoeff[0] = qcoeff[0] * b->dequant[0];
+                IDCT_INVOKE(RTCD_VTABLE(idct), iwalsh1)(&dqcoeff[0], xd->qcoeff);
+                ((int *)qcoeff)[0] = 0;
+            }
+
+            /* make a local copy of the dequant constants */
+            vpx_memcpy(local_dequant, xd->block[0].dequant,
+                       sizeof(local_dequant));
+
+            /* override the dc dequant constant */
+            local_dequant[0] = 1;
+
+            /* use the new dequant constants */
+            DQC = local_dequant;
+        }
+
         DEQUANT_INVOKE (&pbi->dequant, idct_add_y_block)
-                        (xd->qcoeff, xd->block[0].dequant,
+                        (xd->qcoeff, DQC,
                          xd->dst.y_buffer,
                          xd->dst.y_stride, xd->eobs);
     }
@@ -245,7 +262,6 @@ static void decode_macroblock(VP8D_COMP *pbi, MACROBLOCKD *xd, int mb_row, int m
                      xd->dst.u_buffer, xd->dst.v_buffer,
                      xd->dst.uv_stride, xd->eobs+16);
 }
-
 
 static THREAD_FUNCTION thread_decoding_proc(void *p_data)
 {
