@@ -23,11 +23,6 @@ int vp8_cl_mb_prep(MACROBLOCKD *x, int flags){
     }
 
     //Copy all blockd.cl_*_mem objects
-    if (flags & DIFF)
-        VP8_CL_SET_BUF(x->cl_commands, x->cl_diff_mem, sizeof(cl_short)*400, x->diff,
-            ,err
-        );
-
     if (flags & PREDICTOR)
         VP8_CL_SET_BUF(x->cl_commands, x->cl_predictor_mem, sizeof(cl_uchar)*384, x->predictor,
             ,err
@@ -69,14 +64,6 @@ int vp8_cl_mb_finish(MACROBLOCKD *x, int flags){
 
     if (cl_initialized != CL_SUCCESS){
         return cl_initialized;
-    }
-
-    if (flags & DIFF){
-        err = clEnqueueReadBuffer(x->cl_commands, x->cl_diff_mem, CL_FALSE, 0, sizeof(cl_short)*400, x->diff, 0, NULL, NULL);
-        VP8_CL_CHECK_SUCCESS( x->cl_commands, err != CL_SUCCESS,
-        "Error: Failed to read from GPU!\n",
-            , err
-        );
     }
 
     if (flags & PREDICTOR){
@@ -141,11 +128,6 @@ int vp8_cl_block_prep(BLOCKD *b, int flags){
     }
 
     //Copy all blockd.cl_*_mem objects
-    if (flags & DIFF)
-        VP8_CL_SET_BUF(b->cl_commands, b->cl_diff_mem, sizeof(cl_short)*400, b->diff_base,
-            ,err
-        );
-
     if (flags & PREDICTOR)
         VP8_CL_SET_BUF(b->cl_commands, b->cl_predictor_mem, sizeof(cl_uchar)*384, b->predictor_base,
             ,err
@@ -179,14 +161,6 @@ int vp8_cl_block_finish(BLOCKD *b, int flags){
 
     if (cl_initialized != CL_SUCCESS){
         return cl_initialized;
-    }
-
-    if (flags & DIFF){
-        err = clEnqueueReadBuffer(b->cl_commands, b->cl_diff_mem, CL_FALSE, 0, sizeof(cl_short)*400, b->diff_base, 0, NULL, NULL);
-        VP8_CL_CHECK_SUCCESS( b->cl_commands, err != CL_SUCCESS,
-        "Error: Failed to read from GPU!\n",
-            , err
-        );
     }
 
     if (flags & PREDICTOR){

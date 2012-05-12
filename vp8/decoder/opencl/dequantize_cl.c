@@ -192,8 +192,8 @@ void vp8_dequant_dc_idct_add_cl(
     err |= clSetKernelArg(cl_data.vp8_dequant_dc_idct_add_kernel, 3, sizeof(int), &dq_offset);
     err |= clSetKernelArg(cl_data.vp8_dequant_dc_idct_add_kernel, 4, sizeof (cl_mem), &b->cl_predictor_mem);
     err |= clSetKernelArg(cl_data.vp8_dequant_dc_idct_add_kernel, 5, sizeof (int), &pred_offset);
-    err |= clSetKernelArg(cl_data.vp8_dequant_dc_idct_add_kernel, 6, sizeof (cl_mem), &b->cl_diff_mem);
-    err |= clSetKernelArg(cl_data.vp8_dequant_dc_idct_add_kernel, 7, sizeof (int), &Dc_offset);
+	printf("I'm going to fail because diff_mem has been removed.");
+	err |= clSetKernelArg(cl_data.vp8_dequant_dc_idct_add_kernel, 7, sizeof (int), &Dc_offset);
     err |= clSetKernelArg(cl_data.vp8_dequant_dc_idct_add_kernel, 8, sizeof (cl_mem), &dest_mem);
     err |= clSetKernelArg(cl_data.vp8_dequant_dc_idct_add_kernel, 9, sizeof (int), &pitch);
     err |= clSetKernelArg(cl_data.vp8_dequant_dc_idct_add_kernel, 10, sizeof (int), &stride);

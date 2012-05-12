@@ -31,8 +31,6 @@ extern "C" {
              int pitch, int stride)\
 
 
-extern prototype_idct_cl(vp8_short_idct4x4llm_1_cl);
-extern prototype_idct_cl(vp8_short_idct4x4llm_cl);
 extern prototype_idct_scalar_add_cl(vp8_dc_only_idct_add_cl);
 
 extern prototype_second_order_cl(vp8_short_inv_walsh4x4_1_cl);

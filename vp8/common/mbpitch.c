@@ -119,11 +119,8 @@ void vp8_setup_block_dptrs(MACROBLOCKD *x)
     {
         for (c = 0; c < 4; c++)
         {
-            offset = r * 4 * 16 + c * 4;
-            x->block[r*4+c].diff_base      = x->diff;
-            x->block[r*4+c].diff_offset      = offset;
-            x->block[r*4+c].predictor_offset = x->predictor;
-            x->block[r*4+c].predictor_offset = offset;
+            x->block[r*4+c].predictor_base = x->predictor;
+            x->block[r*4+c].predictor_offset = r * 4 * 16 + c * 4;
 #if CONFIG_OPENCL && !ONE_CQ_PER_MB
             if (cl_initialized == CL_SUCCESS)
                 x->block[r*4+c].cl_commands = y_cq;
@@ -136,11 +133,8 @@ void vp8_setup_block_dptrs(MACROBLOCKD *x)
     {
         for (c = 0; c < 2; c++)
         {
-            offset = 256 + r * 4 * 8 + c * 4;
-            x->block[16+r*2+c].diff_base      = x->diff;
-            x->block[16+r*2+c].diff_offset      = offset;
             x->block[16+r*2+c].predictor_base = x->predictor;
-			x->block[16+r*2+c].predictor_offset = offset;
+			x->block[16+r*2+c].predictor_offset = 256 + r * 4 * 8 + c * 4;
 
 #if CONFIG_OPENCL && !ONE_CQ_PER_MB
             if (cl_initialized == CL_SUCCESS)
@@ -154,11 +148,8 @@ void vp8_setup_block_dptrs(MACROBLOCKD *x)
     {
         for (c = 0; c < 2; c++)
         {
-            offset = 320+ r * 4 * 8 + c * 4;
-            x->block[20+r*2+c].diff_base      = x->diff;
-            x->block[20+r*2+c].diff_offset      = offset;
             x->block[20+r*2+c].predictor_base = x->predictor;
-            x->block[20+r*2+c].predictor_offset = offset;
+            x->block[20+r*2+c].predictor_offset = 320+ r * 4 * 8 + c * 4;
 
 #if CONFIG_OPENCL && !ONE_CQ_PER_MB
             if (cl_initialized == CL_SUCCESS)
@@ -167,10 +158,7 @@ void vp8_setup_block_dptrs(MACROBLOCKD *x)
         }
     }
 
-    x->block[24].diff_base = x->diff;
-    x->block[24].diff_offset = 384;
-
-    for (r = 0; r < 25; r++)
+	for (r = 0; r < 25; r++)
     {
     	x->block[r].qcoeff_base = x->qcoeff;
     	x->block[r].qcoeff_offset = r * 16;
@@ -189,7 +177,6 @@ void vp8_setup_block_dptrs(MACROBLOCKD *x)
 #endif
 
             /* Set up CL memory buffers as appropriate */
-            x->block[r].cl_diff_mem = x->cl_diff_mem;
             x->block[r].cl_dqcoeff_mem = x->cl_dqcoeff_mem;
             x->block[r].cl_eobs_mem = x->cl_eobs_mem;
             x->block[r].cl_predictor_mem = x->cl_predictor_mem;

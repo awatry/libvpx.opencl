@@ -463,7 +463,6 @@ int vp8dx_receive_compressed_data(VP8D_PTR ptr, unsigned long size, const unsign
         }
         
         pbi->mb.cl_commands = cl_commands;
-        pbi->mb.cl_diff_mem = NULL;
         pbi->mb.cl_predictor_mem = NULL;
         pbi->mb.cl_qcoeff_mem = NULL;
         pbi->mb.cl_dqcoeff_mem = NULL;
@@ -478,9 +477,6 @@ int vp8dx_receive_compressed_data(VP8D_PTR ptr, unsigned long size, const unsign
 #endif
 
 #if ENABLE_CL_IDCT_DEQUANT
-            VP8_CL_CREATE_BUF(pbi->mb.cl_commands, pbi->mb.cl_diff_mem, CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,
-                    sizeof(cl_short)*400, pbi->mb.diff, goto BUF_DONE, -1);
-
             VP8_CL_CREATE_BUF(pbi->mb.cl_commands, pbi->mb.cl_qcoeff_mem, CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,
                     sizeof(cl_short)*400, pbi->mb.qcoeff, goto BUF_DONE,-1);
 
@@ -497,9 +493,6 @@ int vp8dx_receive_compressed_data(VP8D_PTR ptr, unsigned long size, const unsign
 #endif
 
 #if ENABLE_CL_IDCT_DEQUANT
-            VP8_CL_CREATE_BUF(pbi->mb.cl_commands, pbi->mb.cl_diff_mem, CL_MEM_READ_WRITE,
-                    sizeof(cl_short)*400, NULL, goto BUF_DONE,-1);
-
             VP8_CL_CREATE_BUF(pbi->mb.cl_commands, pbi->mb.cl_qcoeff_mem, CL_MEM_READ_WRITE,
                     sizeof(cl_short)*400, NULL, goto BUF_DONE,-1);
 

@@ -198,15 +198,11 @@ typedef struct
     unsigned char *predictor_base;
     int predictor_offset;
 
-    short *diff_base;
-    int diff_offset;
-
     short *dequant;
 
 #if CONFIG_OPENCL
     cl_command_queue cl_commands; //pointer to macroblock CL command queue
 
-    cl_mem cl_diff_mem;
     cl_mem cl_predictor_mem;
     cl_mem cl_qcoeff_mem;
     cl_mem cl_dqcoeff_mem;
@@ -237,7 +233,6 @@ typedef struct
 
 typedef struct MacroBlockD
 {
-    DECLARE_ALIGNED(16, short, diff[400]);      /* from idct diff */
     DECLARE_ALIGNED(16, unsigned char,  predictor[384]);
     DECLARE_ALIGNED(16, short, qcoeff[400]);
     DECLARE_ALIGNED(16, short, dqcoeff[400]);
@@ -245,7 +240,6 @@ typedef struct MacroBlockD
 
 #if CONFIG_OPENCL
     cl_command_queue cl_commands; //Each macroblock gets its own command queue.
-    cl_mem cl_diff_mem;
     cl_mem cl_predictor_mem;
     cl_mem cl_qcoeff_mem;
     cl_mem cl_dqcoeff_mem;

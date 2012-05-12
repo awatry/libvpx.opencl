@@ -283,8 +283,6 @@ void vp8_decode_frame_cl_finish(VP8D_COMP *pbi){
 
 #if ENABLE_CL_IDCT_DEQUANT
         //Free other CL Block/MBlock buffers
-        if (pbi->mb.cl_diff_mem != NULL)
-            clReleaseMemObject(pbi->mb.cl_diff_mem);
         if (pbi->mb.cl_qcoeff_mem != NULL)
             clReleaseMemObject(pbi->mb.cl_qcoeff_mem);
         if (pbi->mb.cl_dqcoeff_mem != NULL)

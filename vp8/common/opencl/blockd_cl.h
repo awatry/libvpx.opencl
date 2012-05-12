@@ -19,7 +19,6 @@ extern "C" {
 #include "vp8_opencl.h"
 #include "../blockd.h"
 
-#define DIFF 0x0001
 #define PREDICTOR 0x0002
 #define QCOEFF 0x0004
 #define DQCOEFF 0x0008

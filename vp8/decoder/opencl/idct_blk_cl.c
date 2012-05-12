@@ -32,7 +32,7 @@ void vp8_dequant_dc_idct_add_y_block_cl(
     unsigned char *dst = dst_base+dst_off;
     size_t dst_size = 16*(stride+1);
 
-    vp8_cl_block_prep(b, QCOEFF|DEQUANT|DIFF|PREDICTOR);
+    vp8_cl_block_prep(b, QCOEFF|DEQUANT|PREDICTOR);
     for (i = 0; i < 4; i++)
     {
         for (j = 0; j < 4; j++)
@@ -73,7 +73,7 @@ void vp8_dequant_idct_add_y_block_cl (VP8D_COMP *pbi, MACROBLOCKD *xd)
     int dst_size = 16 * (stride + 1);
 
 
-    vp8_cl_mb_prep(xd,PREDICTOR|DIFF|QCOEFF);
+    vp8_cl_mb_prep(xd,PREDICTOR|QCOEFF);
     for (i = 0; i < 4; i++)
     {
         for (j = 0; j < 4; j++)
@@ -127,7 +127,7 @@ void vp8_dequant_idct_add_uv_block_cl(VP8D_COMP *pbi, MACROBLOCKD *xd,
     int q_offset = block_num*16;
     int dst_offset = 0;
 
-    vp8_cl_mb_prep(xd, DIFF|QCOEFF|PREDICTOR);
+    vp8_cl_mb_prep(xd, QCOEFF|PREDICTOR);
     for (i = 0; i < 2; i++)
     {
         for (j = 0; j < 2; j++)
