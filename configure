@@ -22,6 +22,7 @@ show_help(){
 Advanced options:
   ${toggle_libs}                  don't build libraries
   ${toggle_examples}              don't build examples
+  ${toggle_unit_tests}            build unit tests
   --libc=PATH                     path to alternate libc
   --as={yasm|nasm|auto}           use specified assembler [auto, yasm preferred]
   ${toggle_fast_unaligned}        don't use unaligned accesses, even when
@@ -265,6 +266,7 @@ CONFIG_LIST="
     opencl
     postproc_visualizer
     os_support
+    unit_tests
 "
 CMDLINE_SELECT="
     extra_warnings
@@ -308,6 +310,7 @@ CMDLINE_SELECT="
     opencl
     opencl_ld_override
     postproc_visualizer
+    unit_tests
 "
 
 process_cmdline() {
