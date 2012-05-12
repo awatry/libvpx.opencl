@@ -198,6 +198,8 @@ ZIGZAG_LOOP 15
     movdqa      [rdi], xmm0        ; store dqcoeff
     movdqa      [rdi + 16], xmm1
 
+    mov         rcx, [rsi + vp8_blockd_eob]
+
     ; select the last value (in zig_zag order) for EOB
     pcmpeqw     xmm2, xmm6
     pcmpeqw     xmm3, xmm6
@@ -218,7 +220,8 @@ ZIGZAG_LOOP 15
     pmaxsw      xmm2, xmm3
     movd        eax, xmm2
     and         eax, 0xff
-    mov         [rsi + vp8_blockd_eob], eax
+
+    mov         BYTE PTR [rcx], al          ; store eob
 
     ; begin epilog
     add         rsp, stack_size
@@ -345,6 +348,8 @@ sym(vp8_fast_quantize_b_sse2):
 
     pmaxsw      xmm1, xmm5
 
+    mov         rcx, [rsi + vp8_blockd_eob]
+
     ; now down to 8
     pshufd      xmm5, xmm1, 00001110b
 
@@ -362,7 +367,8 @@ sym(vp8_fast_quantize_b_sse2):
 
     movd        eax, xmm1
     and         eax, 0xff
-    mov         [rsi + vp8_blockd_eob], eax
+
+    mov         BYTE PTR [rcx], al          ; store eob
 
     ; begin epilog
 %if ABI_IS_32BIT

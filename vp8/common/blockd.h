@@ -215,9 +215,10 @@ typedef struct
     int dst;
     int dst_stride;
 
-    int eob; //only used in encoder? Decoder uses MBD.eobs
-
     char *eobs_base; //beginning of MB.eobs
+    int eobs_offset; //block number
+	
+    char *eob; //encoder only
 
     union b_mode_info bmi;
 } BLOCKD;

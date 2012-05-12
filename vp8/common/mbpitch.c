@@ -178,7 +178,9 @@ void vp8_setup_block_dptrs(MACROBLOCKD *x)
         x->block[r].dqcoeff_offset = r * 16;
         
         x->block[r].eobs_base = x->eobs;
-
+		x->block[r].eobs_offset = r;
+		x->block[r].eob     = x->eobs + r;
+		
 #if CONFIG_OPENCL
         if (cl_initialized == CL_SUCCESS){
             /* Copy command queue reference from macroblock */
