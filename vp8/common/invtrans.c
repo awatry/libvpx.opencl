@@ -44,11 +44,14 @@ void vp8_inverse_transform_mby(const vp8_idct_rtcd_vtable_t *rtcd, MACROBLOCKD *
 {
     int i;
 
-    /* do 2nd order transform on the dc block */
-    IDCT_INVOKE(rtcd, iwalsh16)(x->block[24].dqcoeff_base + x->block[24].dqcoeff_offset, 
-			x->block[24].diff_base + x->block[24].diff_offset);
+    if(x->mode_info_context->mbmi.mode != SPLITMV)
+    {
+        /* do 2nd order transform on the dc block */
+        IDCT_INVOKE(rtcd, iwalsh16)(x->block[24].dqcoeff_base + x->block[24].dqcoeff_offset,
+            x->block[24].diff_base + x->block[24].diff_offset);
 
-    recon_dcblock(x);
+        recon_dcblock(x);
+    }
 
     for (i = 0; i < 16; i++)
     {

@@ -619,74 +619,6 @@ void vp8_optimize_mbuv(MACROBLOCK *x, const VP8_ENCODER_RTCD *rtcd)
     }
 }
 
-static void recon_dcblock(MACROBLOCKD *x)
-{
-    BLOCKD *b = &x->block[24];
-    int i;
-
-    for (i = 0; i < 16; i++)
-    {
-        x->block[i].dqcoeff_base[x->block[i].dqcoeff_offset] = b->diff_base[b->diff_offset+i];
-    }
-
-}
-
-
-static void inverse_transform_mb(const vp8_idct_rtcd_vtable_t *rtcd,
-                                 MACROBLOCKD *x)
-{
-    int i;
-
-    if (x->mode_info_context->mbmi.mode != B_PRED &&
-        x->mode_info_context->mbmi.mode != SPLITMV)
-    {
-        /* do 2nd order transform on the dc block */
-
-        IDCT_INVOKE(rtcd, iwalsh16)(&x->block[24].dqcoeff_base[x->block[i].dqcoeff_offset], 
-				&x->block[24].diff_base[x->block[24].diff_offset]);
-        recon_dcblock(x);
-    }
-
-    for (i = 0; i < 16; i++)
-    {
-        BLOCKD *b = &x->block[i];
-		
-		short *dqcoeff = &b->dqcoeff_base[b->dqcoeff_offset];
-		unsigned char *predictor = &b->predictor_base[b->predictor_offset];
-		
-        if (*b->eob > 1)
-        {
-            IDCT_INVOKE(rtcd, idct16)(dqcoeff, predictor, 16,
-                  *(b->base_dst) + b->dst, b->dst_stride);
-        }
-        else
-        {
-            IDCT_INVOKE(rtcd, idct1_scalar_add)(dqcoeff[0], predictor, 16,
-                             *(b->base_dst) + b->dst, b->dst_stride);
-        }
-    }
-
-
-    for (i = 16; i < 24; i++)
-    {
-        BLOCKD *b = &x->block[i];
-
-		short *dqcoeff = &b->dqcoeff_base[b->dqcoeff_offset];
-		unsigned char *predictor = &b->predictor_base[b->predictor_offset];
-		
-        if (*b->eob > 1)
-        {
-            IDCT_INVOKE(rtcd, idct16)(dqcoeff, predictor, 8,
-                  *(b->base_dst) + b->dst, b->dst_stride);
-        }
-        else
-        {
-            IDCT_INVOKE(rtcd, idct1_scalar_add)(dqcoeff[0], predictor, 8,
-                             *(b->base_dst) + b->dst, b->dst_stride);
-        }
-    }
-
-}
 void vp8_encode_inter16x16(const VP8_ENCODER_RTCD *rtcd, MACROBLOCK *x)
 {
     vp8_build_inter_predictors_mb_e(&x->e_mbd);
@@ -700,10 +632,7 @@ void vp8_encode_inter16x16(const VP8_ENCODER_RTCD *rtcd, MACROBLOCK *x)
     if (x->optimize)
         optimize_mb(x, rtcd);
 
-    inverse_transform_mb(IF_RTCD(&rtcd->common->idct), &x->e_mbd);
-
 }
-
 
 /* this funciton is used by first pass only */
 void vp8_encode_inter16x16y(const VP8_ENCODER_RTCD *rtcd, MACROBLOCK *x)
