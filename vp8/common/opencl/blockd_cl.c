@@ -10,9 +10,9 @@
 
 #include "../../decoder/onyxd_int.h"
 #include "vpx_config.h"
-#include "../../common/idct.h"
+#include "../idct.h"
 #include "blockd_cl.h"
-#include "../../decoder/opencl/dequantize_cl.h"
+#include "dequantize_cl.h"
 
 
 int vp8_cl_mb_prep(MACROBLOCKD *x, int flags){

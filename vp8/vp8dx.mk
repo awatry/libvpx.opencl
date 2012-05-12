@@ -52,7 +52,6 @@ VP8_DX_SRCS-yes += decoder/asm_dec_offsets.c
 VP8_DX_SRCS-yes += decoder/dboolhuff.c
 VP8_DX_SRCS-yes += decoder/decodemv.c
 VP8_DX_SRCS-yes += decoder/decodframe.c
-VP8_DX_SRCS-yes += decoder/dequantize.c
 VP8_DX_SRCS-yes += decoder/detokenize.c
 VP8_DX_SRCS-$(CONFIG_ERROR_CONCEALMENT) += decoder/ec_types.h
 VP8_DX_SRCS-$(CONFIG_ERROR_CONCEALMENT) += decoder/error_concealment.h
@@ -61,31 +60,21 @@ VP8_DX_SRCS-yes += decoder/generic/dsystemdependent.c
 VP8_DX_SRCS-yes += decoder/dboolhuff.h
 VP8_DX_SRCS-yes += decoder/decodemv.h
 VP8_DX_SRCS-yes += decoder/decoderthreading.h
-VP8_DX_SRCS-yes += decoder/dequantize.h
 VP8_DX_SRCS-yes += decoder/detokenize.h
 VP8_DX_SRCS-yes += decoder/onyxd_int.h
 VP8_DX_SRCS-yes += decoder/treereader.h
 VP8_DX_SRCS-yes += decoder/onyxd_if.c
 VP8_DX_SRCS-$(CONFIG_MULTITHREAD) += decoder/threading.c
-VP8_DX_SRCS-yes += decoder/idct_blk.c
 VP8_DX_SRCS-$(CONFIG_MULTITHREAD) += decoder/reconintra_mt.h
 VP8_DX_SRCS-$(CONFIG_MULTITHREAD) += decoder/reconintra_mt.c
 
 VP8_DX_SRCS-yes := $(filter-out $(VP8_DX_SRCS_REMOVE-yes),$(VP8_DX_SRCS-yes))
 
-VP8_DX_SRCS-$(ARCH_X86)$(ARCH_X86_64) += decoder/x86/dequantize_x86.h
 VP8_DX_SRCS-$(ARCH_X86)$(ARCH_X86_64) += decoder/x86/x86_dsystemdependent.c
-VP8_DX_SRCS-$(HAVE_MMX) += decoder/x86/dequantize_mmx.asm
-VP8_DX_SRCS-$(HAVE_MMX) += decoder/x86/idct_blk_mmx.c
-VP8_DX_SRCS-$(HAVE_SSE2) += decoder/x86/idct_blk_sse2.c
-
 
 VP8_DX_SRCS-$(CONFIG_OPENCL) += decoder/opencl/vp8_decode_cl.c
 VP8_DX_SRCS-$(CONFIG_OPENCL) += decoder/opencl/vp8_decode_cl.h
 VP8_DX_SRCS-$(CONFIG_OPENCL) += decoder/opencl/opencl_systemdependent.c
-VP8_DX_SRCS-$(CONFIG_OPENCL) += decoder/opencl/dequantize_cl.c
-VP8_DX_SRCS-$(CONFIG_OPENCL) += decoder/opencl/dequantize_cl.h
-VP8_DX_SRCS-$(CONFIG_OPENCL) += decoder/opencl/dequantize_cl.cl
 VP8_DX_SRCS-$(CONFIG_OPENCL) += decoder/opencl/idct_blk_cl.c
 VP8_DX_SRCS-$(CONFIG_OPENCL) += decoder/opencl/decodframe_cl.c
 VP8_DX_SRCS-$(CONFIG_OPENCL) += decoder/opencl/decodframe_cl.h

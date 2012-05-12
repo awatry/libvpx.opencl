@@ -17,7 +17,7 @@ extern "C" {
 #endif
 
 #include "vp8/decoder/onyxd_int.h"
-#include "vp8/decoder/dequantize.h"
+#include "vp8/common/dequantize.h"
 #include "vp8/common/opencl/vp8_opencl.h"
 
 #define prototype_dequant_block_cl(sym) \
