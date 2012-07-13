@@ -430,6 +430,20 @@ void vp8_loop_filter_build_priority(int priority, VP8_COMMON *cm, MACROBLOCKD *m
             mb_col = priority - 2 * mb_row;
         }
 
+		/*
+		 * So here's the idea for how to do 1-column offset filtering:
+		 * 1) If you're in col 0, or the previous macroblock was NOT filtered, filter the MBV edge
+		 * 2) Block Vertical edges as normal
+		 * 3) MBH Edge as normal
+		 * 4) BH edges as normal
+		 * 5) If the MB to the right exists and will be filtered, do its MBV edge during the previous MB
+		 * 
+		 * By doing this, it might be possible to lag each row by one column instead of 2.
+		 * Worth a shot at least, given that there's a 30+% possible performance gain on the table.
+		 * 
+		 * Credit to Gaute Strokkenes on the Codec Developers group
+		*/
+		
         //Skip non-existent MBs
         if ((mb_col > -1 && (mb_col < mb_cols)) && (mb_row < cm->mb_rows)){
             
