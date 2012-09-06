@@ -9,7 +9,6 @@
  */
 
 #include "vpx_config.h"
-#include "../subpixel.h"
 #include "subpixel_cl.h"
 #include "../onyxc_int.h"
 #include "vp8_opencl.h"

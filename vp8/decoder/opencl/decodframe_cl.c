@@ -11,9 +11,7 @@
 
 #include "../onyxd_int.h"
 #include "vp8/common/header.h"
-#include "vp8/common/reconintra.h"
 #include "vp8/common/reconintra4x4.h"
-#include "vp8/common/recon.h"
 #include "vp8/common/reconinter.h"
 
 #include <assert.h>
@@ -72,8 +70,7 @@ static void skip_recon_mb_cl(VP8D_COMP *pbi, MACROBLOCKD *xd)
     {
 
         vp8_build_intra_predictors_mbuv_s(xd);
-        RECON_INVOKE(&pbi->common.rtcd.recon,
-                     build_intra_predictors_mby_s)(xd);
+        vp8_build_intra_predictors_mby_s(xd);
 
     }
     else
@@ -124,12 +121,11 @@ void vp8_decode_macroblock_cl(VP8D_COMP *pbi, MACROBLOCKD *xd, int eobtotal)
     /* do prediction */
     if (xd->mode_info_context->mbmi.ref_frame == INTRA_FRAME)
     {
-        RECON_INVOKE(&pbi->common.rtcd.recon, build_intra_predictors_mbuv_s)(xd);
+        vp8_build_intra_predictors_mbuv_s(xd);
 
         if (mode != B_PRED)
         {
-            RECON_INVOKE(&pbi->common.rtcd.recon,
-                         build_intra_predictors_mby_s)(xd);
+            vp8_build_intra_predictors_mby_s(xd);
         } else {
             vp8_intra_prediction_down_copy(xd);
         }
@@ -177,7 +173,7 @@ void vp8_decode_macroblock_cl(VP8D_COMP *pbi, MACROBLOCKD *xd, int eobtotal)
             short *qcoeff = b->qcoeff_base + b->qcoeff_offset;
             int b_mode = xd->mode_info_context->bmi[i].as_mode;
 
-            RECON_INVOKE(RTCD_VTABLE(recon), intra4x4_predict)
+            vp8_intra4x4_predict
                           ( *(b->base_dst) + b->dst, b->dst_stride, b_mode,
                             *(b->base_dst) + b->dst, b->dst_stride );
 

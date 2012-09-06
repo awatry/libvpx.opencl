@@ -19,7 +19,6 @@
 //functions. Hopefully this means no worrying about when to copy data back/forth.
 
 #include "vpx_config.h"
-#include "../subpixel.h"
 #if CONFIG_RUNTIME_CPU_DETECT
 //#include "../onyxc_int.h"
 #endif
