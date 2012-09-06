@@ -11,8 +11,8 @@
 
 #include <limits.h>
 #include "vpx_config.h"
+#include "vpx_rtcd.h"
 #include "vpx/vpx_integer.h"
-#include "recon.h"
 #include "subpixel.h"
 #include "blockd.h"
 #include "reconinter.h"
@@ -173,7 +173,7 @@ static void build_inter_predictors4b(MACROBLOCKD *x, BLOCKD *d, unsigned char *d
     }
     else
     {
-        RECON_INVOKE(&x->rtcd->recon, copy8x8)(ptr, d->pre_stride, dst, dst_stride);
+        vp8_copy_mem8x8(ptr, d->pre_stride, dst, dst_stride);
     }
 }
 
@@ -191,7 +191,7 @@ static void build_inter_predictors2b(MACROBLOCKD *x, BLOCKD *d, unsigned char *d
     }
     else
     {
-        RECON_INVOKE(&x->rtcd->recon, copy8x4)(ptr, d->pre_stride, dst, dst_stride);
+        vp8_copy_mem8x4(ptr, d->pre_stride, dst, dst_stride);
     }
 }
 
@@ -261,8 +261,8 @@ void vp8_build_inter16x16_predictors_mbuv(MACROBLOCKD *x)
     }
     else
     {
-        RECON_INVOKE(&x->rtcd->recon, copy8x8)(uptr, pre_stride, upred_ptr, 8);
-        RECON_INVOKE(&x->rtcd->recon, copy8x8)(vptr, pre_stride, vpred_ptr, 8);
+        vp8_copy_mem8x8(uptr, pre_stride, upred_ptr, 8);
+        vp8_copy_mem8x8(vptr, pre_stride, vpred_ptr, 8);
     }
 }
 
@@ -341,7 +341,7 @@ void vp8_build_inter16x16_predictors_mby(MACROBLOCKD *x,
     }
     else
     {
-        RECON_INVOKE(&x->rtcd->recon, copy16x16)(ptr, pre_stride, dst_y,
+        vp8_copy_mem16x16(ptr, pre_stride, dst_y,
             dst_ystride);
     }
 }
@@ -413,7 +413,7 @@ void vp8_build_inter16x16_predictors_mb(MACROBLOCKD *x,
     }
     else
     {
-        RECON_INVOKE(&x->rtcd->recon, copy16x16)(ptr, pre_stride, dst_y, dst_ystride);
+        vp8_copy_mem16x16(ptr, pre_stride, dst_y, dst_ystride);
     }
 
     /* calc uv motion vectors */
@@ -436,8 +436,8 @@ void vp8_build_inter16x16_predictors_mb(MACROBLOCKD *x,
     }
     else
     {
-        RECON_INVOKE(&x->rtcd->recon, copy8x8)(uptr, pre_stride, dst_u, dst_uvstride);
-        RECON_INVOKE(&x->rtcd->recon, copy8x8)(vptr, pre_stride, dst_v, dst_uvstride);
+        vp8_copy_mem8x8(uptr, pre_stride, dst_u, dst_uvstride);
+        vp8_copy_mem8x8(vptr, pre_stride, dst_v, dst_uvstride);
     }
 }
 
