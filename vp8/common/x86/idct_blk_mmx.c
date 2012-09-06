@@ -14,12 +14,11 @@
 
 extern void vp8_dequantize_b_impl_mmx(short *sq, short *dq, short *q);
 
-void vp8_dequantize_b_mmx(BLOCKD *d)
+void vp8_dequantize_b_mmx(BLOCKD *d, short *DQC)
 {
     short *sq = (short *) &d->qcoeff_base[d->qcoeff_offset];
     short *dq = (short *) &d->dqcoeff_base[d->dqcoeff_offset];
-    short *q = (short *) d->dequant;
-    vp8_dequantize_b_impl_mmx(sq, dq, q);
+    vp8_dequantize_b_impl_mmx(sq, dq, DQC);
 }
 
 void vp8_dequant_idct_add_y_block_mmx

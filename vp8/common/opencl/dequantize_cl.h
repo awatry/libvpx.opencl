@@ -21,7 +21,7 @@ extern "C" {
 #include "vp8/common/opencl/vp8_opencl.h"
 
 #define prototype_dequant_block_cl(sym) \
-    void sym(BLOCKD *x)
+    void sym(BLOCKD *x, short *DQC)
 
 #define prototype_dequant_idct_add_cl(sym) \
     void sym(BLOCKD *b, unsigned char *dest_base,cl_mem dest_mem, int dest_offset, size_t dest_size, int q_offset, \

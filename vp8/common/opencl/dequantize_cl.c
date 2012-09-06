@@ -72,7 +72,7 @@ int cl_init_dequant() {
     return CL_SUCCESS;
 }
 
-void vp8_dequantize_b_cl(BLOCKD *d)
+void vp8_dequantize_b_cl(BLOCKD *d, short *DQC)
 {
     int err;
     size_t global = 16;
@@ -86,7 +86,7 @@ void vp8_dequantize_b_cl(BLOCKD *d)
     err |= clSetKernelArg(cl_data.vp8_dequantize_b_kernel, 4, sizeof (cl_mem), &d->cl_dequant_mem);
     VP8_CL_CHECK_SUCCESS( d->cl_commands, err != CL_SUCCESS,
         "Error: Failed to set kernel arguments!\n",
-        vp8_dequantize_b_c(d),
+        vp8_dequantize_b_c(d,DQC),
     );
 
     /* Execute the kernel */
@@ -94,7 +94,7 @@ void vp8_dequantize_b_cl(BLOCKD *d)
     VP8_CL_CHECK_SUCCESS( d->cl_commands, err != CL_SUCCESS,
         "Error: Failed to execute kernel!\n",
         printf("err = %d\n",err);\
-        vp8_dequantize_b_c(d),
+        vp8_dequantize_b_c(d, DQC),
     );
 
 }
