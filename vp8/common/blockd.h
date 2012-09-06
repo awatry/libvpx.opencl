@@ -26,9 +26,6 @@ void vpx_log(const char *format, ...);
 #include "opencl/vp8_opencl.h"
 #endif
 
-#define TRUE    1
-#define FALSE   0
-
 /*#define DCPRED 1*/
 #define DCPREDSIMTHRESH 0
 #define DCPREDCNTTHRESH 3
