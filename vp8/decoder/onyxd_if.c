@@ -231,7 +231,7 @@ vpx_codec_err_t vp8dx_set_reference(VP8D_COMP *pbi, VP8_REFFRAME ref_frame_flag,
 }
 
 /*For ARM NEON, d8-d15 are callee-saved registers, and need to be saved by us.*/
-#if HAVE_ARMV7
+#if HAVE_NEON
 extern void vp8_push_neon(int64_t *store);
 extern void vp8_pop_neon(int64_t *store);
 #endif
@@ -318,7 +318,7 @@ static int swap_frame_buffers (VP8_COMMON *cm)
 
 int vp8dx_receive_compressed_data(VP8D_COMP *pbi, unsigned long size, const unsigned char *source, int64_t time_stamp)
 {
-#if HAVE_ARMV7
+#if HAVE_NEON
     int64_t dx_store_reg[8];
 #endif
     VP8_COMMON *cm = &pbi->common;
@@ -407,7 +407,7 @@ int vp8dx_receive_compressed_data(VP8D_COMP *pbi, unsigned long size, const unsi
         return 0;
     }
 
-#if HAVE_ARMV7
+#if HAVE_NEON
 #if CONFIG_RUNTIME_CPU_DETECT
     if (cm->rtcd.flags & HAS_NEON)
 #endif
@@ -420,7 +420,7 @@ int vp8dx_receive_compressed_data(VP8D_COMP *pbi, unsigned long size, const unsi
 
     if (setjmp(pbi->common.error.jmp))
     {
-#if HAVE_ARMV7
+#if HAVE_NEON
 #if CONFIG_RUNTIME_CPU_DETECT
         if (cm->rtcd.flags & HAS_NEON)
 #endif
@@ -521,7 +521,7 @@ int vp8dx_receive_compressed_data(VP8D_COMP *pbi, unsigned long size, const unsi
 
     if (retcode < 0)
     {
-#if HAVE_ARMV7
+#if HAVE_NEON
 #if CONFIG_RUNTIME_CPU_DETECT
         if (cm->rtcd.flags & HAS_NEON)
 #endif
@@ -542,7 +542,7 @@ int vp8dx_receive_compressed_data(VP8D_COMP *pbi, unsigned long size, const unsi
     {
         if (swap_frame_buffers (cm))
         {
-#if HAVE_ARMV7
+#if HAVE_NEON
 #if CONFIG_RUNTIME_CPU_DETECT
             if (cm->rtcd.flags & HAS_NEON)
 #endif
@@ -560,7 +560,7 @@ int vp8dx_receive_compressed_data(VP8D_COMP *pbi, unsigned long size, const unsi
     {
         if (swap_frame_buffers (cm))
         {
-#if HAVE_ARMV7
+#if HAVE_NEON
 #if CONFIG_RUNTIME_CPU_DETECT
             if (cm->rtcd.flags & HAS_NEON)
 #endif
@@ -685,7 +685,7 @@ int vp8dx_receive_compressed_data(VP8D_COMP *pbi, unsigned long size, const unsi
     }
 #endif
 
-#if HAVE_ARMV7
+#if HAVE_NEON
 #if CONFIG_RUNTIME_CPU_DETECT
     if (cm->rtcd.flags & HAS_NEON)
 #endif
