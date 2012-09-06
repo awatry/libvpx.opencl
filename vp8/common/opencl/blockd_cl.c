@@ -10,7 +10,7 @@
 
 #include "../../decoder/onyxd_int.h"
 #include "vpx_config.h"
-#include "../idct.h"
+#include "vpx_rtcd.h"
 #include "blockd_cl.h"
 #include "dequantize_cl.h"
 

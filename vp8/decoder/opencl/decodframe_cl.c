@@ -190,7 +190,7 @@ void vp8_decode_macroblock_cl(VP8D_COMP *pbi, MACROBLOCKD *xd, int eobtotal)
                 }
                 else
                 {
-                    IDCT_INVOKE(RTCD_VTABLE(idct), idct1_scalar_add)
+                    vp8_dc_only_idct_add
                         (qcoeff[0] * b->dequant[0],
                         *(b->base_dst) + b->dst, b->dst_stride,
                         *(b->base_dst) + b->dst, b->dst_stride);
@@ -214,7 +214,7 @@ void vp8_decode_macroblock_cl(VP8D_COMP *pbi, MACROBLOCKD *xd, int eobtotal)
             {
                 vp8_dequantize_b(b, xd->dequant_y2);
 
-                IDCT_INVOKE(RTCD_VTABLE(idct), iwalsh16)(&dqcoeff[0],
+                vp8_short_inv_walsh4x4(&dqcoeff[0],
                     xd->qcoeff);
                 ((int *)qcoeff)[0] = 0;
                 ((int *)qcoeff)[1] = 0;
@@ -228,7 +228,7 @@ void vp8_decode_macroblock_cl(VP8D_COMP *pbi, MACROBLOCKD *xd, int eobtotal)
             else
             {
                 dqcoeff[0] = qcoeff[0] * b->dequant[0];
-                IDCT_INVOKE(RTCD_VTABLE(idct), iwalsh1)(&dqcoeff[0],
+                vp8_short_inv_walsh4x4_1(&dqcoeff[0],
                     xd->qcoeff);
                 ((int *)qcoeff)[0] = 0;
             }

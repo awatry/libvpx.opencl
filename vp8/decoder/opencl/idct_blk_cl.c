@@ -10,7 +10,7 @@
 
 #include "vp8/decoder/onyxd_int.h"
 #include "vpx_config.h"
-#include "vp8/common/idct.h"
+#include "vp8/common/opencl/idct_cl.h"
 #include "vp8/common/opencl/blockd_cl.h"
 #include "vp8/common/opencl/dequantize_cl.h"
 
