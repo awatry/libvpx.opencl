@@ -31,7 +31,6 @@
 #include "vp8/common/swapyv12buffer.h"
 #include "vp8/common/threading.h"
 #include "vpx_ports/vpx_timer.h"
-#include "temporal_filter.h"
 #if ARCH_ARM
 #include "vpx_ports/arm.h"
 #endif
@@ -42,14 +41,6 @@
 #include <math.h>
 #include <stdio.h>
 #include <limits.h>
-
-#if CONFIG_RUNTIME_CPU_DETECT
-#define IF_RTCD(x) (x)
-#define RTCD(x) &cpi->common.rtcd.x
-#else
-#define IF_RTCD(x) NULL
-#define RTCD(x) NULL
-#endif
 
 extern void vp8cx_pick_filter_level_fast(YV12_BUFFER_CONFIG *sd, VP8_COMP *cpi);
 extern void vp8cx_set_alt_lf_level(VP8_COMP *cpi, int filt_val);
@@ -1997,9 +1988,9 @@ struct VP8_COMP* vp8_create_compressor(VP8_CONFIG *oxcf)
     cpi->fn_ptr[BLOCK_4X4].copymem        = vp8_copy32xn;
 #endif
 
-    cpi->full_search_sad = SEARCH_INVOKE(&cpi->rtcd.search, full_search);
-    cpi->diamond_search_sad = SEARCH_INVOKE(&cpi->rtcd.search, diamond_search);
-    cpi->refining_search_sad = SEARCH_INVOKE(&cpi->rtcd.search, refining_search);
+    cpi->full_search_sad = vp8_full_search_sad;
+    cpi->diamond_search_sad = vp8_diamond_search_sad;
+    cpi->refining_search_sad = vp8_refining_search_sad;
 
     // make sure frame 1 is okay
     cpi->error_bins[0] = cpi->common.MBs;

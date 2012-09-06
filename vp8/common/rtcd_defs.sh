@@ -7,6 +7,8 @@ struct loop_filter_info;
 /* Encoder forward decls */
 struct block;
 struct macroblock;
+struct variance_vtable;
+union int_mv;
 EOF
 }
 forward_decls common_forward_decls
@@ -436,6 +438,56 @@ specialize vp8_quantize_mby neon
 
 prototype void vp8_quantize_mbuv "struct macroblock *"
 specialize vp8_quantize_mbuv neon
+
+#
+# Block subtraction
+#
+prototype int vp8_block_error "short *coeff, short *dqcoeff"
+specialize vp8_block_error mmx sse2
+vp8_block_error_sse2=vp8_block_error_xmm
+
+prototype int vp8_mbblock_error "struct macroblock *mb, int dc"
+specialize vp8_mbblock_error mmx sse2
+vp8_mbblock_error_sse2=vp8_mbblock_error_xmm
+
+prototype int vp8_mbuverror "struct macroblock *mb"
+specialize vp8_mbuverror mmx sse2
+vp8_mbuverror_sse2=vp8_mbuverror_xmm
+
+prototype void vp8_subtract_b "struct block *be, struct blockd *bd, int pitch"
+specialize vp8_subtract_b mmx sse2 media neon
+vp8_subtract_b_media=vp8_subtract_b_armv6
+
+prototype void vp8_subtract_mby "short *diff, unsigned char *src, int src_stride, unsigned char *pred, int pred_stride"
+specialize vp8_subtract_mby mmx sse2 media neon
+vp8_subtract_mby_media=vp8_subtract_mby_armv6
+
+prototype void vp8_subtract_mbuv "short *diff, unsigned char *usrc, unsigned char *vsrc, int src_stride, unsigned char *upred, unsigned char *vpred, int pred_stride"
+specialize vp8_subtract_mbuv mmx sse2 media neon
+vp8_subtract_mbuv_media=vp8_subtract_mbuv_armv6
+
+#
+# Motion search
+#
+prototype int vp8_full_search_sad "struct macroblock *x, struct block *b, struct blockd *d, union int_mv *ref_mv, int sad_per_bit, int distance, struct variance_vtable *fn_ptr, int *mvcost[2], union int_mv *center_mv"
+specialize vp8_full_search_sad sse3 sse4_1
+vp8_full_search_sad_sse3=vp8_full_search_sadx3
+vp8_full_search_sad_sse4_1=vp8_full_search_sadx8
+
+prototype int vp8_refining_search_sad "struct macroblock *x, struct block *b, struct blockd *d, union int_mv *ref_mv, int sad_per_bit, int distance, struct variance_vtable *fn_ptr, int *mvcost[2], union int_mv *center_mv"
+specialize vp8_refining_search_sad sse3
+vp8_refining_search_sad_sse3=vp8_refining_search_sadx4
+
+prototype int vp8_diamond_search_sad "struct macroblock *x, struct block *b, struct blockd *d, union int_mv *ref_mv, union int_mv *best_mv, int search_param, int sad_per_bit, int *num00, struct variance_vtable *fn_ptr, int *mvcost[2], union int_mv *center_mv"
+vp8_diamond_search_sad_sse3=vp8_diamond_search_sadx4
+
+#
+# Alt-ref Noise Reduction (ARNR)
+#
+if [ "$CONFIG_REALTIME_ONLY" != "yes" ]; then
+    prototype void vp8_temporal_filter_apply "unsigned char *frame1, unsigned int stride, unsigned char *frame2, unsigned int block_size, int strength, int filter_weight, unsigned int *accumulator, unsigned short *count"
+    specialize vp8_temporal_filter_apply sse2
+fi
 
 # End of encoder only functions
 fi

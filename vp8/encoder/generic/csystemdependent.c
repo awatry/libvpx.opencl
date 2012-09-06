@@ -24,22 +24,6 @@ extern void vp8_yv12_copy_partial_frame(YV12_BUFFER_CONFIG *src_ybc,
 
 void vp8_cmachine_specific_config(VP8_COMP *cpi)
 {
-#if CONFIG_RUNTIME_CPU_DETECT
-    cpi->rtcd.encodemb.berr                  = vp8_block_error_c;
-    cpi->rtcd.encodemb.mberr                 = vp8_mbblock_error_c;
-    cpi->rtcd.encodemb.mbuverr               = vp8_mbuverror_c;
-    cpi->rtcd.encodemb.subb                  = vp8_subtract_b_c;
-    cpi->rtcd.encodemb.submby                = vp8_subtract_mby_c;
-    cpi->rtcd.encodemb.submbuv               = vp8_subtract_mbuv_c;
-
-    cpi->rtcd.search.full_search             = vp8_full_search_sad;
-    cpi->rtcd.search.refining_search         = vp8_refining_search_sad;
-    cpi->rtcd.search.diamond_search          = vp8_diamond_search_sad;
-#if !(CONFIG_REALTIME_ONLY)
-    cpi->rtcd.temporal.apply                 = vp8_temporal_filter_apply_c;
-#endif
-#endif
-
     // Pure C:
     vp8_yv12_copy_partial_frame_ptr = vp8_yv12_copy_partial_frame;
 
