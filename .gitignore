@@ -69,3 +69,4 @@ vpxenc
 *.csv
 *.oclpj
 /nbproject/private/
+/build/make/
