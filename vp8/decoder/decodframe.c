@@ -123,42 +123,12 @@ void mb_init_dequantizer(VP8D_COMP *pbi, MACROBLOCKD *xd)
 #define RTCD_VTABLE(x) NULL
 #endif
 
-/* skip_recon_mb() is Modified: Instead of writing the result to predictor buffer and then copying it
- *  to dst buffer, we can write the result directly to dst buffer. This eliminates unnecessary copy.
- */
-static void skip_recon_mb(VP8D_COMP *pbi, MACROBLOCKD *xd)
-{
-    if (xd->mode_info_context->mbmi.ref_frame == INTRA_FRAME)
-    {
-        RECON_INVOKE(&pbi->common.rtcd.recon, build_intra_predictors_mbuv_s)(xd);
-        RECON_INVOKE(&pbi->common.rtcd.recon,
-                     build_intra_predictors_mby_s)(xd);
-    }
-    else
-    {
-        vp8_build_inter16x16_predictors_mb(xd, xd->dst.y_buffer,
-                                           xd->dst.u_buffer, xd->dst.v_buffer,
-                                           xd->dst.y_stride, xd->dst.uv_stride);
-
-#if CONFIG_OPENCL && ENABLE_CL_SUBPIXEL
-        VP8_CL_FINISH(xd->cl_commands);
-#if !ONE_CQ_PER_MB
-        VP8_CL_FINISH(xd->block[0].cl_commands);
-        VP8_CL_FINISH(xd->block[16].cl_commands);
-        VP8_CL_FINISH(xd->block[20].cl_commands);
-#endif
-#endif
-    }
-}
-
 static void decode_macroblock(VP8D_COMP *pbi, MACROBLOCKD *xd,
                               unsigned int mb_idx)
 {
-
-    int eobtotal = 0;
-    int throw_residual = 0;
     MB_PREDICTION_MODE mode;
     int i;
+    int corruption_detected = 0;
 
     if (xd->mode_info_context->mbmi.mb_skip_coeff)
     {
@@ -166,10 +136,17 @@ static void decode_macroblock(VP8D_COMP *pbi, MACROBLOCKD *xd,
     }
     else if (!vp8dx_bool_error(xd->current_bc))
     {
+        int eobtotal;
         eobtotal = vp8_decode_mb_tokens(pbi, xd);
+
+        /* Special case:  Force the loopfilter to skip when eobtotal is zero */
+        xd->mode_info_context->mbmi.mb_skip_coeff = (eobtotal==0);
     }
 
+    mode = xd->mode_info_context->mbmi.mode;
 
+    if (xd->segmentation_enabled)
+        mb_init_dequantizer(pbi, xd);
 
 #if PROFILE_OUTPUT
      if (xd->frame_type == KEY_FRAME)
@@ -192,22 +169,38 @@ static void decode_macroblock(VP8D_COMP *pbi, MACROBLOCKD *xd,
     }
 #endif
 
-    mode = xd->mode_info_context->mbmi.mode;
+#if CONFIG_ERROR_CONCEALMENT
 
-    if (eobtotal == 0 && mode != B_PRED && mode != SPLITMV &&
-            !vp8dx_bool_error(xd->current_bc))
+    if(pbi->ec_active)
     {
-        /* Special case:  Force the loopfilter to skip when eobtotal and
-         * mb_skip_coeff are zero.
-         * */
-        xd->mode_info_context->mbmi.mb_skip_coeff = 1;
+        int throw_residual;
+        /* When we have independent partitions we can apply residual even
+         * though other partitions within the frame are corrupt.
+         */
+        throw_residual = (!pbi->independent_partitions &&
+                          pbi->frame_corrupt_residual);
+        throw_residual = (throw_residual || vp8dx_bool_error(xd->current_bc));
 
-        skip_recon_mb(pbi, xd);
-        return;
+        if ((mb_idx >= pbi->mvs_corrupt_from_mb || throw_residual))
+        {
+            /* MB with corrupt residuals or corrupt mode/motion vectors.
+             * Better to use the predictor as reconstruction.
+             */
+            pbi->frame_corrupt_residual = 1;
+            vpx_memset(xd->qcoeff, 0, sizeof(xd->qcoeff));
+            vp8_conceal_corrupt_mb(xd);
+
+
+            corruption_detected = 1;
+
+            /* force idct to be skipped for B_PRED and use the
+             * prediction only for reconstruction
+             * */
+            vpx_memset(xd->eobs, 0, 25);
+        }
     }
+#endif
 
-    if (xd->segmentation_enabled)
-        mb_init_dequantizer(pbi, xd);
 
     /* do prediction */
     if (xd->mode_info_context->mbmi.ref_frame == INTRA_FRAME)
@@ -218,123 +211,117 @@ static void decode_macroblock(VP8D_COMP *pbi, MACROBLOCKD *xd,
         {
             RECON_INVOKE(&pbi->common.rtcd.recon,
                          build_intra_predictors_mby_s)(xd);
-        } else {
+        }
+        else
+        {
+            /* clear out residual eob info */
+            if(xd->mode_info_context->mbmi.mb_skip_coeff)
+                vpx_memset(xd->eobs, 0, 25);
+
             vp8_intra_prediction_down_copy(xd);
+
+            for (i = 0; i < 16; i++)
+            {
+                BLOCKD *b = &xd->block[i];
+                int b_mode = xd->mode_info_context->bmi[i].as_mode;
+
+                RECON_INVOKE(RTCD_VTABLE(recon), intra4x4_predict)
+                              ( *(b->base_dst) + b->dst, b->dst_stride, b_mode,
+                                *(b->base_dst) + b->dst, b->dst_stride );
+
+                if (xd->eobs[i])
+                {
+                    if (xd->eobs[i] > 1)
+                    {
+                        DEQUANT_INVOKE(&pbi->common.rtcd.dequant, idct_add)
+                            (&b->qcoeff_base[b->qcoeff_offset], b->dequant,
+                            *(b->base_dst) + b->dst, b->dst_stride);
+                    }
+                    else
+                    {
+                        IDCT_INVOKE(RTCD_VTABLE(idct), idct1_scalar_add)
+                            (b->qcoeff_base[b->qcoeff_offset] * b->dequant[0],
+                            *(b->base_dst) + b->dst, b->dst_stride,
+                            *(b->base_dst) + b->dst, b->dst_stride);
+                        ((int *)&b->qcoeff_base[b->qcoeff_offset])[0] = 0;
+                    }
+                }
+            }
         }
     }
     else
     {
         vp8_build_inter_predictors_mb(xd);
     }
-    /* When we have independent partitions we can apply residual even
-     * though other partitions within the frame are corrupt.
-     */
-    throw_residual = (!pbi->independent_partitions &&
-                      pbi->frame_corrupt_residual);
-    throw_residual = (throw_residual || vp8dx_bool_error(xd->current_bc));
+
 
 #if CONFIG_ERROR_CONCEALMENT
-    if (pbi->ec_active &&
-        (mb_idx >= pbi->mvs_corrupt_from_mb || throw_residual))
+    if (corruption_detected)
     {
-        /* MB with corrupt residuals or corrupt mode/motion vectors.
-         * Better to use the predictor as reconstruction.
-         */
-        pbi->frame_corrupt_residual = 1;
-        vpx_memset(xd->qcoeff, 0, sizeof(xd->qcoeff));
-        vp8_conceal_corrupt_mb(xd);
         return;
     }
 #endif
 
-    /* dequantization and idct */
-    if (mode == B_PRED)
+    if(!xd->mode_info_context->mbmi.mb_skip_coeff)
     {
-        for (i = 0; i < 16; i++)
+        /* dequantization and idct */
+        if (mode != B_PRED)
         {
-            BLOCKD *b = &xd->block[i];
-            short *qcoeff = b->qcoeff_base + b->qcoeff_offset;
-            int b_mode = xd->mode_info_context->bmi[i].as_mode;
+            short *DQC = xd->block[0].dequant;
 
-            RECON_INVOKE(RTCD_VTABLE(recon), intra4x4_predict)
-                          ( *(b->base_dst) + b->dst, b->dst_stride, b_mode,
-                            *(b->base_dst) + b->dst, b->dst_stride );
+            /* save the dc dequant constant in case it is overridden */
+            short dc_dequant_temp = DQC[0];
 
-            if (xd->eobs[i] )
+            if (mode != SPLITMV)
             {
-                if (xd->eobs[i] > 1)
+                BLOCKD *b = &xd->block[24];
+                short *qcoeff = &b->qcoeff_base[b->qcoeff_offset];
+                
+                /* do 2nd order transform on the dc block */
+                if (xd->eobs[24] > 1)
                 {
-                    DEQUANT_INVOKE(&pbi->common.rtcd.dequant, idct_add)
-                        (qcoeff, b->dequant,
-                        *(b->base_dst) + b->dst, b->dst_stride);
+                    DEQUANT_INVOKE(&pbi->common.rtcd.dequant, block)(b);
+
+                    IDCT_INVOKE(RTCD_VTABLE(idct), iwalsh16)(&b->dqcoeff_base[b->dqcoeff_offset],
+                        xd->qcoeff);
+                    ((int *)qcoeff)[0] = 0;
+                    ((int *)qcoeff)[1] = 0;
+                    ((int *)qcoeff)[2] = 0;
+                    ((int *)qcoeff)[3] = 0;
+                    ((int *)qcoeff)[4] = 0;
+                    ((int *)qcoeff)[5] = 0;
+                    ((int *)qcoeff)[6] = 0;
+                    ((int *)qcoeff)[7] = 0;
                 }
                 else
                 {
-                    IDCT_INVOKE(RTCD_VTABLE(idct), idct1_scalar_add)
-                        (qcoeff[0] * b->dequant[0],
-                        *(b->base_dst) + b->dst, b->dst_stride,
-                        *(b->base_dst) + b->dst, b->dst_stride);
+                    b->dqcoeff_base[b->dqcoeff_offset] = qcoeff[0] * b->dequant[0];
+                    IDCT_INVOKE(RTCD_VTABLE(idct), iwalsh1)(&b->dqcoeff_base[b->dqcoeff_offset],
+                        xd->qcoeff);
                     ((int *)qcoeff)[0] = 0;
                 }
-            }
-        }
-    }
-    else
-    {
-        short *DQC = xd->block[0].dequant;
 
-		/* save the dc dequant constant in case it is overridden */
-        short dc_dequant_temp = DQC[0];
-
-        if (mode != SPLITMV)
-        {
-            BLOCKD *b = &xd->block[24];
-            short *qcoeff = b->qcoeff_base + b->qcoeff_offset;
-            short *dqcoeff = b->dqcoeff_base + b->dqcoeff_offset;
-            
-            /* do 2nd order transform on the dc block */
-            if (xd->eobs[24] > 1)
-            {
-                DEQUANT_INVOKE(&pbi->common.rtcd.dequant, block)(b);
-
-                IDCT_INVOKE(RTCD_VTABLE(idct), iwalsh16)(&dqcoeff[0],
-                    xd->qcoeff);
-                ((int *)qcoeff)[0] = 0;
-                ((int *)qcoeff)[1] = 0;
-                ((int *)qcoeff)[2] = 0;
-                ((int *)qcoeff)[3] = 0;
-                ((int *)qcoeff)[4] = 0;
-                ((int *)qcoeff)[5] = 0;
-                ((int *)qcoeff)[6] = 0;
-                ((int *)qcoeff)[7] = 0;
-            }
-            else
-            {
-                dqcoeff[0] = qcoeff[0] * b->dequant[0];
-                IDCT_INVOKE(RTCD_VTABLE(idct), iwalsh1)(&dqcoeff[0],
-                    xd->qcoeff);
-                ((int *)qcoeff)[0] = 0;
+                /* override the dc dequant constant in order to preserve the
+                 * dc components
+                 */
+                DQC[0] = 1;
             }
 
-            /* override the dc dequant constant */
-            DQC[0] = 1;
+            DEQUANT_INVOKE (&pbi->common.rtcd.dequant, idct_add_y_block)
+                            (xd->qcoeff, xd->block[0].dequant,
+                             xd->dst.y_buffer,
+                             xd->dst.y_stride, xd->eobs);
+
+            /* restore the dc dequant constant */
+            DQC[0] = dc_dequant_temp;
         }
 
-        DEQUANT_INVOKE (&pbi->common.rtcd.dequant, idct_add_y_block)
-                        (xd->qcoeff, xd->block[0].dequant,
-                         xd->dst.y_buffer,
-                         xd->dst.y_stride, xd->eobs);
-
-        /* restore the dc dequant constant */
-        DQC[0] = dc_dequant_temp;
+        DEQUANT_INVOKE (&pbi->common.rtcd.dequant, idct_add_uv_block)
+                        (xd->qcoeff+16*16, xd->block[16].dequant,
+                         xd->dst.u_buffer, xd->dst.v_buffer,
+                         xd->dst.uv_stride, xd->eobs+16);
     }
-
-    DEQUANT_INVOKE (&pbi->common.rtcd.dequant, idct_add_uv_block)
-                    (xd->qcoeff+16*16, xd->block[16].dequant,
-                     xd->dst.u_buffer, xd->dst.v_buffer,
-                     xd->dst.uv_stride, xd->eobs+16);
 }
-
 
 static int get_delta_q(vp8_reader *bc, int prev, int *q_update)
 {
