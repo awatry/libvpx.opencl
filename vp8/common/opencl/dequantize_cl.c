@@ -24,6 +24,7 @@
 
 #include "vp8/common/opencl/blockd_cl.h"
 #include "vp8/common/opencl/idct_cl.h"
+#include "vpx_rtcd.h"
 #include "dequantize_cl.h"
 
 const char *dequantCompileOptions = "";
@@ -99,7 +100,7 @@ void vp8_dequantize_b_cl(BLOCKD *d, short *DQC)
 
 }
 
-void vp8_dequant_idct_add_cl(BLOCKD *b, unsigned char *dest_base, cl_mem dest_mem, int dest_offset, size_t dst_size, int q_offset, int pred_offset, int pitch, int stride, vp8_dequant_idct_add_fn_t idct_add)
+void vp8_dequant_idct_add_cl(BLOCKD *b, unsigned char *dest_base, cl_mem dest_mem, int dest_offset, size_t dst_size, int q_offset, int pred_offset, int pitch, int stride)
 {
     int err;
     size_t global = 1;
@@ -127,7 +128,7 @@ void vp8_dequant_idct_add_cl(BLOCKD *b, unsigned char *dest_base, cl_mem dest_me
     err |= clSetKernelArg(cl_data.vp8_dequant_idct_add_kernel, 8, sizeof (int), &stride);
     VP8_CL_CHECK_SUCCESS( b->cl_commands, err != CL_SUCCESS,
         "Error: Failed to set kernel arguments!\n",
-        idct_add(b->qcoeff_base+q_offset, b->dequant,
+        vp8_dequant_idct_add(b->qcoeff_base+q_offset, b->dequant,
             dest_base + dest_offset, stride),
     );
 
@@ -136,7 +137,7 @@ void vp8_dequant_idct_add_cl(BLOCKD *b, unsigned char *dest_base, cl_mem dest_me
     VP8_CL_CHECK_SUCCESS( b->cl_commands, err != CL_SUCCESS,
         "Error: Failed to execute kernel!\n",
         printf("err = %d\n",err);\
-        idct_add(b->qcoeff_base+q_offset, b->dequant,
+        vp8_dequant_idct_add(b->qcoeff_base+q_offset, b->dequant,
             dest_base + dest_offset, stride),
     );
 
@@ -145,7 +146,7 @@ void vp8_dequant_idct_add_cl(BLOCKD *b, unsigned char *dest_base, cl_mem dest_me
         err = clEnqueueReadBuffer(b->cl_commands, dest_mem, CL_FALSE, 0, dst_size, dest_base, 0, NULL, NULL);
         VP8_CL_CHECK_SUCCESS( b->cl_commands, err != CL_SUCCESS,
             "Error: Failed to read output array!\n",
-            idct_add(b->qcoeff_base+q_offset, b->dequant,
+            vp8_dequant_idct_add(b->qcoeff_base+q_offset, b->dequant,
 				dest_base + dest_offset, stride),
         );
 

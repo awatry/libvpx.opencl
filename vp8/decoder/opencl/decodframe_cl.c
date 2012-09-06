@@ -20,6 +20,7 @@
 #include <stdio.h>
 
 #include "vpx_config.h"
+#include "vpx_rtcd.h"
 #if CONFIG_OPENCL
 #include "vp8/common/opencl/vp8_opencl.h"
 #include "vp8/common/opencl/blockd_cl.h"
@@ -184,8 +185,7 @@ void vp8_decode_macroblock_cl(VP8D_COMP *pbi, MACROBLOCKD *xd, int eobtotal)
             {
                 if (xd->eobs[i] > 1)
                 {
-                    DEQUANT_INVOKE(&pbi->common.rtcd.dequant, idct_add)
-                        (qcoeff, b->dequant,
+                    vp8_dequant_idct_add(qcoeff, b->dequant,
                         *(b->base_dst) + b->dst, b->dst_stride);
                 }
                 else
@@ -212,7 +212,7 @@ void vp8_decode_macroblock_cl(VP8D_COMP *pbi, MACROBLOCKD *xd, int eobtotal)
             /* do 2nd order transform on the dc block */
             if (xd->eobs[24] > 1)
             {
-                DEQUANT_INVOKE(&pbi->common.rtcd.dequant, block)(b, xd->dequant_y2);
+                vp8_dequantize_b(b, xd->dequant_y2);
 
                 IDCT_INVOKE(RTCD_VTABLE(idct), iwalsh16)(&dqcoeff[0],
                     xd->qcoeff);
@@ -239,14 +239,12 @@ void vp8_decode_macroblock_cl(VP8D_COMP *pbi, MACROBLOCKD *xd, int eobtotal)
             DQC = xd->dequant_y1_dc;
         }
 
-        DEQUANT_INVOKE (&pbi->common.rtcd.dequant, idct_add_y_block)
-                        (xd->qcoeff, xd->block[0].dequant,
+        vp8_dequant_idct_add_y_block(xd->qcoeff, xd->block[0].dequant,
                          xd->dst.y_buffer,
                          xd->dst.y_stride, xd->eobs);
     }
 
-    DEQUANT_INVOKE (&pbi->common.rtcd.dequant, idct_add_uv_block)
-                    (xd->qcoeff+16*16, xd->dequant_uv,
+    vp8_dequant_idct_add_uv_block(xd->qcoeff+16*16, xd->dequant_uv,
                      xd->dst.u_buffer, xd->dst.v_buffer,
                      xd->dst.uv_stride, xd->eobs+16);
 }

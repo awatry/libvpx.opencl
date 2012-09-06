@@ -80,7 +80,7 @@ void vp8_dequant_idct_add_y_block_cl (VP8D_COMP *pbi, MACROBLOCKD *xd)
         {
             if (*eobs++ > 1){
                 vp8_cl_block_prep(&xd->block[0], DEQUANT);
-                vp8_dequant_idct_add_cl(&xd->block[0], dst, dst_mem, dst_offset, dst_size+dst_offset, q_offset, pre_offset, 16, stride, pbi->common.rtcd.dequant.idct_add);
+                vp8_dequant_idct_add_cl(&xd->block[0], dst, dst_mem, dst_offset, dst_size+dst_offset, q_offset, pre_offset, 16, stride);
                 vp8_cl_block_finish(&xd->block[0], QCOEFF);
             }
             else
@@ -103,9 +103,7 @@ void vp8_dequant_idct_add_y_block_cl (VP8D_COMP *pbi, MACROBLOCKD *xd)
 
 }
 
-void vp8_dequant_idct_add_uv_block_cl(VP8D_COMP *pbi, MACROBLOCKD *xd,
-        vp8_dequant_idct_add_uv_block_fn_t idct_add_uv_block
-)
+void vp8_dequant_idct_add_uv_block_cl(VP8D_COMP *pbi, MACROBLOCKD *xd)
 {
     int i, j;
 
@@ -134,7 +132,7 @@ void vp8_dequant_idct_add_uv_block_cl(VP8D_COMP *pbi, MACROBLOCKD *xd,
         {
             if (*eobs++ > 1){
                 vp8_cl_block_prep(&xd->block[0], DEQUANT);
-                vp8_dequant_idct_add_cl(&b, dst, dst_mem, u_off+dst_offset, u_off+dst_size, q_offset, pre_offset, 8, stride, DEQUANT_INVOKE (&pbi->common.rtcd.dequant, idct_add));
+                vp8_dequant_idct_add_cl(&b, dst, dst_mem, u_off+dst_offset, u_off+dst_size, q_offset, pre_offset, 8, stride);
             }
             else
             {
@@ -167,7 +165,7 @@ void vp8_dequant_idct_add_uv_block_cl(VP8D_COMP *pbi, MACROBLOCKD *xd,
             if (*eobs++ > 1){
                 vp8_cl_block_prep(&b, DEQUANT);
                 vp8_dequant_idct_add_cl (&b, dst, dst_mem, v_off+dst_offset, v_off+dst_size, q_offset,
-                        pre_offset, 8, stride, DEQUANT_INVOKE (&pbi->common.rtcd.dequant, idct_add));
+                        pre_offset, 8, stride);
             }
             else
             {

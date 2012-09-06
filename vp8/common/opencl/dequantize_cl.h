@@ -17,7 +17,6 @@ extern "C" {
 #endif
 
 #include "vp8/decoder/onyxd_int.h"
-#include "vp8/common/dequantize.h"
 #include "vp8/common/opencl/vp8_opencl.h"
 
 #define prototype_dequant_block_cl(sym) \
@@ -25,8 +24,7 @@ extern "C" {
 
 #define prototype_dequant_idct_add_cl(sym) \
     void sym(BLOCKD *b, unsigned char *dest_base,cl_mem dest_mem, int dest_offset, size_t dest_size, int q_offset, \
-             int pred_offset, int pitch, int stride, \
-             vp8_dequant_idct_add_fn_t idct_add)
+             int pred_offset, int pitch, int stride)
 
 #define prototype_dequant_dc_idct_add_cl(sym) \
     void sym(BLOCKD* b, int qcoeff_offset, \
@@ -50,19 +48,13 @@ extern "C" {
     
 extern prototype_dequant_block_cl(vp8_dequantize_b_cl);
 
-//CL functions
-extern prototype_dequant_idct_add_cl(vp8_dequant_idct_add_cl);
-
 //C functions
 extern prototype_dequant_dc_idct_add_cl(vp8_dequant_dc_idct_add_cl);
-
+extern prototype_dequant_idct_add_cl(vp8_dequant_idct_add_cl);
 
 //Might be CL... check implementation.
 extern prototype_dequant_dc_idct_add_y_block_cl(vp8_dequant_dc_idct_add_y_block_cl);
 extern prototype_dequant_idct_add_y_block_cl(vp8_dequant_idct_add_y_block_cl);
-extern prototype_dequant_idct_add_uv_block_cl(vp8_dequant_idct_add_uv_block_cl);
-
-
 
 extern const char *dequantCompileOptions;
 extern const char *dequant_cl_file_name;
