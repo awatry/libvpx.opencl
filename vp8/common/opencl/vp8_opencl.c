@@ -505,7 +505,8 @@ int cl_load_program(cl_program *prog_ref, const char *file_name, const char *opt
                 err = clBuildProgram(*prog_ref, 0, NULL, opts, NULL, NULL);
                 if (err != CL_SUCCESS) {
                     printf("Error: Failed to build program executable for %s!\n", file_name);
-                    show_build_log(prog_ref);
+					printf("Build options: %s\n", opts);
+					show_build_log(prog_ref);
                     return VP8_CL_TRIED_BUT_FAILED;
                 }
             } else {
