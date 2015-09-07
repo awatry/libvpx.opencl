@@ -582,7 +582,6 @@ kernel void vp8_loop_filter_all_edges_kernel(
         mb_row = filters[num_blocks * ROWS_LOCATION + block];
         dc_diffs = filters[num_blocks * DC_DIFFS_LOCATION + block];
     }
-    write_mem_fence(CLK_LOCAL_MEM_FENCE);
     barrier(CLK_LOCAL_MEM_FENCE);
 
     int source_offset = offsets[block*3 + plane];
@@ -603,7 +602,6 @@ kernel void vp8_loop_filter_all_edges_kernel(
     local uint *mb_data = &mb_data_actual[mb_offset];
     
     load_mb(num_threads, mb_data, s_base, source_offset, p, mb_row, mb_col, dc_diffs, thread);
-    //write_mem_fence(CLK_LOCAL_MEM_FENCE);
 
     if ( mb_col > 0 ){
         vp8_mbloop_filter_vertical_edge_worker_local(mb_data, &lf_info, thread, mb_pitch);
@@ -620,7 +618,6 @@ kernel void vp8_loop_filter_all_edges_kernel(
     }
     
     barrier(CLK_LOCAL_MEM_FENCE);
-    write_mem_fence(CLK_LOCAL_MEM_FENCE);
 
     if (mb_row > 0){
         vp8_mbloop_filter_horizontal_edge_worker_local(mb_data, &lf_info, thread, mb_pitch);
@@ -632,7 +629,6 @@ kernel void vp8_loop_filter_all_edges_kernel(
         vp8_loop_filter_horizontal_edge_worker_local(mb_data, &lf_info, dc_diffs, 12, thread, mb_pitch);
     }
 
-    write_mem_fence(CLK_LOCAL_MEM_FENCE);
     barrier(CLK_LOCAL_MEM_FENCE);
 
     save_mb(num_threads, mb_data, s_base, source_offset, p, mb_row, mb_col, dc_diffs, thread);
