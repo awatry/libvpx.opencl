@@ -586,6 +586,10 @@ process_common_toolchain() {
                 tgt_isa=x86_64
                 tgt_os=darwin11
                 ;;
+            *x86_64-pc-cygwin)
+                [ -z "tgt_isa" ] && tgt_isa=x86_64
+                tgt_os=win64
+                ;;
             *mingw32*|*cygwin*)
                 [ -z "$tgt_isa" ] && tgt_isa=x86
                 tgt_os=win32
