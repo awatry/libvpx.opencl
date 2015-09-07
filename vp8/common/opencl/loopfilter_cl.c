@@ -140,12 +140,14 @@ int cl_grow_loop_mem(MACROBLOCKD *mbd, YV12_BUFFER_CONFIG *post, VP8_COMMON *cm)
     //free all first.
     cl_free_loop_mem();
 
+    //XXX: This could be modified to allocate one buffer and then clCreateSubBuffer
     //Now re-allocate the memory in the right size
     loop_mem.offsets_mem = clCreateBuffer(cl_data.context, CL_MEM_READ_ONLY|VP8_CL_MEM_ALLOC_TYPE, sizeof(cl_int)*cm->MBs*3, NULL, &err);
     if (err != CL_SUCCESS){
         printf("Error creating loop filter buffer\n");
         return err;
     }
+    //XXX: This probably only needs to be allocated once... if we didn't free all loop mem first
     loop_mem.pitches_mem = clCreateBuffer(cl_data.context, CL_MEM_READ_ONLY|VP8_CL_MEM_ALLOC_TYPE, sizeof(cl_int)*3, NULL, &err);
     if (err != CL_SUCCESS){
         printf("Error creating loop filter buffer\n");
