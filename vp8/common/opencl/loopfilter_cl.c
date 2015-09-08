@@ -8,6 +8,7 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
+#include <stdio.h>
 #include "loopfilter_cl.h"
 #include "../onyxc_int.h"
 
@@ -96,13 +97,8 @@ int cl_free_loop_mem(){
     if (loop_mem.filters_mem != NULL) err |= clReleaseMemObject(loop_mem.filters_mem);
     if (loop_mem.block_offsets_mem != NULL) err |= clReleaseMemObject(loop_mem.block_offsets_mem);
     if (loop_mem.priority_num_blocks_mem != NULL) err |= clReleaseMemObject(loop_mem.priority_num_blocks_mem);
-    loop_mem.offsets_mem = NULL;
-    loop_mem.pitches_mem = NULL;
-    loop_mem.filters_mem = NULL;
-    loop_mem.block_offsets_mem = NULL;
-    loop_mem.priority_num_blocks_mem = NULL;
 
-    loop_mem.num_blocks = 0;
+    memset(&loop_mem, 0, sizeof(struct VP8_LOOP_MEM));
 
     return err;
 }
@@ -263,12 +259,7 @@ int cl_init_loop_filter() {
         cl_data.vp8_loop_filter_simple_vertical_edges_kernel = NULL;
     }
     
-    loop_mem.num_blocks = 0;
-    loop_mem.offsets_mem = NULL;
-    loop_mem.pitches_mem = NULL;
-    loop_mem.filters_mem = NULL;
-    loop_mem.block_offsets_mem = NULL;
-    loop_mem.priority_num_blocks_mem = NULL;
+    memset(&loop_mem, 0, sizeof(struct VP8_LOOP_MEM));
     block_offsets = NULL;
     priority_num_blocks = NULL;
 
