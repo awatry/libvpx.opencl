@@ -98,6 +98,27 @@ cl_device_type device_type(cl_device_id dev){
     return type;
 }
 
+static cl_bool is_device_little_endian(cl_device_id dev){
+    cl_bool little_endian;
+    int err;
+
+    err = clGetDeviceInfo(dev, CL_DEVICE_ENDIAN_LITTLE, sizeof(cl_bool), &little_endian, NULL);
+    if (err != CL_SUCCESS)
+        return CL_FALSE; //We have a bad GPU or CL implementation, so we don't really care here.
+    
+    return little_endian;
+}
+
+static cl_bool is_cpu_little_endian(void)
+{
+    union {
+        uint32_t i;
+        char c[4];
+    } bint = {0x01020304};
+
+    return bint.c[0] != 1;
+}
+
 /**
  * 
  * @return
@@ -212,6 +233,10 @@ int cl_common_init() {
         return VP8_CL_TRIED_BUT_FAILED;
     }
 
+    //TODO: Use endianness_mismatch boolean to possibly fix issues with structs that are
+    //      copied from cpu to gpu.
+    cl_data.endianness_mismatch = is_cpu_little_endian() != is_device_little_endian(cl_data.device_id);
+    
     //Initialize programs to null value
     //Enables detection of if they've been initialized as well.
     cl_data.filter_program = NULL;

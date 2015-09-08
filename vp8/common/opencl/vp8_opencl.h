@@ -191,8 +191,8 @@ typedef struct VP8_COMMON_CL {
     cl_device_id device_id; // compute device id
     cl_device_type device_type; //CPU/GPU/other
     cl_context context; // compute context
-    //cl_command_queue commands; // compute command queue
-
+    cl_bool endianness_mismatch;
+    
     cl_program filter_program; // compute program for subpixel/bilinear filters
     cl_kernel vp8_sixtap_predict_kernel;
     size_t    vp8_sixtap_predict_kernel_size;
