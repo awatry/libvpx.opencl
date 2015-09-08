@@ -42,6 +42,7 @@ typedef cl_int(*fn_clRetainCommandQueue_t)(cl_command_queue);
 typedef cl_int(*fn_clReleaseCommandQueue_t)(cl_command_queue);
 typedef cl_int(*fn_clGetCommandQueueInfo_t)(cl_command_queue, cl_command_queue_info, size_t, void *, size_t *);
 typedef cl_mem(*fn_clCreateBuffer_t)(cl_context, cl_mem_flags, size_t, void *, cl_int *);
+typedef cl_mem(*fn_clCreateSubBuffer_t)(cl_mem, cl_mem_flags, cl_buffer_create_type, cl_buffer_region *, cl_int *);
 typedef cl_mem(*fn_clCreateImage2D_t)(cl_context, cl_mem_flags, const cl_image_format *, size_t, size_t, size_t, void *, cl_int *);
 typedef cl_mem(*fn_clCreateImage3D_t)(cl_context, cl_mem_flags, const cl_image_format *, size_t, size_t, size_t, size_t, size_t, void *, cl_int *);
 typedef cl_int(*fn_clRetainMemObject_t)(cl_mem);
@@ -110,6 +111,7 @@ typedef struct CL_FUNCTIONS {
     fn_clReleaseCommandQueue_t releaseCommandQueue;
     fn_clGetCommandQueueInfo_t getCommandQueue;
     fn_clCreateBuffer_t createBuffer;
+    fn_clCreateSubBuffer_t createSubBuffer;
     fn_clCreateImage2D_t createImage2D;
     fn_clCreateImage3D_t createImage3D;
     fn_clRetainMemObject_t retainMemObject;

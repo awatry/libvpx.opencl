@@ -50,6 +50,7 @@ int load_cl(char *lib_name){
     CL_LOAD_FN("clReleaseCommandQueue", cl.releaseCommandQueue);
 //    CL_LOAD_FN("clGetCommandQueueInfo", cl.getCommandQueue);
     CL_LOAD_FN("clCreateBuffer", cl.createBuffer);
+    CL_LOAD_FN("clCreateSubBuffer", cl.createSubBuffer);
 //    CL_LOAD_FN("clCreateImage2D", cl.createImage2D);
 //    CL_LOAD_FN("clCreateImage3D", cl.createImage3D);
 //    CL_LOAD_FN("clRetainMemObject", cl.retainMemObject);
