@@ -523,9 +523,6 @@ int cl_load_program(cl_program *prog_ref, const char *file_name, const char *opt
             
             //Attempt to save program binary
             if (*prog_ref != NULL){
-                vp8_cl_save_binary(file_name, ".bin", prog_ref, opts);
-                free(bin_file);
-                
                 /* Build the program executable */
                 err = clBuildProgram(*prog_ref, 0, NULL, opts, NULL, NULL);
                 if (err != CL_SUCCESS) {
@@ -534,6 +531,8 @@ int cl_load_program(cl_program *prog_ref, const char *file_name, const char *opt
 					show_build_log(prog_ref);
                     return VP8_CL_TRIED_BUT_FAILED;
                 }
+                vp8_cl_save_binary(file_name, ".bin", prog_ref, opts);
+                free(bin_file);
             } else {
                 printf("Error: Couldn't create program\n");
                 free(bin_file);
