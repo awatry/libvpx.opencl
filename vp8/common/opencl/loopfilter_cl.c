@@ -227,8 +227,9 @@ int cl_init_loop_filter() {
         return VP8_CL_TRIED_BUT_FAILED;
     
     // Create the filter compute program from the file-defined source code
-    if (cl_load_program(&cl_data.loop_filter_program, loop_filter_cl_file_name,
-            lf_opts) != CL_SUCCESS)
+    err = cl_load_program(&cl_data.loop_filter_program, loop_filter_cl_file_name, lf_opts);
+    free(lf_opts); //Free before checking status to prevent memory leak in failure case.
+    if (err != CL_SUCCESS) {
         return VP8_CL_TRIED_BUT_FAILED;
     }
 
