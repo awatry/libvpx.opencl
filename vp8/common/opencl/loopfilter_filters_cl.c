@@ -57,8 +57,8 @@ static int vp8_loop_filter_cl_run(
     int num_planes,
     int num_blocks,
     VP8_LOOPFILTER_ARGS *current_args
-){
-
+) {
+    int err;
     size_t global[3], local[3];
     if (cl_data.vp8_loop_filter_combine_planes == 0){
         global[0] = 16;
@@ -76,8 +76,6 @@ static int vp8_loop_filter_cl_run(
         global[0] = local[0] = 16;
     }
     
-    int err;
-
     if (max_local_size < 16){
         if ((max_local_size < local[0] )){
                 local[0] = 1; //drop to 1 thread per group if necessary.
