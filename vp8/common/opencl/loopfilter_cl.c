@@ -9,6 +9,7 @@
  */
 
 #include <stdio.h>
+#include <byteswap.h>
 #include "loopfilter_cl.h"
 #include "../onyxc_int.h"
 
@@ -226,11 +227,10 @@ int cl_init_loop_filter() {
         return VP8_CL_TRIED_BUT_FAILED;
     
     // Create the filter compute program from the file-defined source code
-    if ( cl_load_program(&cl_data.loop_filter_program, loop_filter_cl_file_name,
-            lf_opts) != CL_SUCCESS )
+    if (cl_load_program(&cl_data.loop_filter_program, loop_filter_cl_file_name,
+            lf_opts) != CL_SUCCESS)
         return VP8_CL_TRIED_BUT_FAILED;
-    
-    free(lf_opts);
+    }
 
     // Create the compute kernels in the program we wish to run
     VP8_CL_CREATE_KERNEL(cl_data,loop_filter_program,vp8_loop_filter_all_edges_kernel,"vp8_loop_filter_all_edges_kernel");
@@ -570,9 +570,15 @@ void vp8_loop_filter_frame_cl
 #if USE_MAPPED_BUFFERS || 1
     VP8_CL_MAP_BUF(mbd->cl_commands, post->buffer_mem, buf, post->frame_size * sizeof(cl_uint), vp8_loop_filter_frame(cm,mbd),);
     //Copy frame to GPU and convert from uchar to uint
-    if (cl_data.vp8_loop_filter_uint_buffer){
-        for (i = 0; i < post->frame_size; i++){
-            buf[i] = (cl_uint)post->buffer_alloc[i];
+    if (cl_data.vp8_loop_filter_uint_buffer) {
+        if (cl_data.endianness_mismatch == CL_TRUE) {
+            for (i = 0; i < post->frame_size; i++) {
+                buf[i] = bswap_32((cl_uint) post->buffer_alloc[i]);
+            }
+        } else {
+            for (i = 0; i < post->frame_size; i++) {
+                buf[i] = (cl_uint) post->buffer_alloc[i];
+            }
         }
     } else {
         vpx_memcpy(buf, post->buffer_alloc, post->frame_size);

@@ -233,8 +233,8 @@ int cl_common_init() {
         return VP8_CL_TRIED_BUT_FAILED;
     }
 
-    //TODO: Use endianness_mismatch boolean to possibly fix issues with structs that are
-    //      copied from cpu to gpu.
+    //If we have a mismatch between endianness for cpu/gpu, then we need to byteswap any integers/shorts/longs
+    //that we send over.
     cl_data.endianness_mismatch = is_cpu_little_endian() != is_device_little_endian(cl_data.device_id);
     
     //Initialize programs to null value
